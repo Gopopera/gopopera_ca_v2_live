@@ -25,7 +25,9 @@ export interface Event {
   capacity?: number;
   // New fields for reservation and event type
   isPoperaOwned?: boolean; // True for official Popera events
-  isFakeEvent?: boolean; // True for fake demo events (locked reservations/chat)
+  isFakeEvent?: boolean; // True for fake demo events (locked reservations/chat) - DEPRECATED: use isDemo
+  isDemo?: boolean; // True for demo events (locked reservations/chat)
+  isOfficialLaunch?: boolean; // True for official Popera launch events (fully functional)
   hostId?: string; // User ID of the host
   aboutEvent?: string; // "About this event" section
   whatToExpect?: string; // "What to expect" section

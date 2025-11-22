@@ -16,31 +16,31 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
   };
 
   return (
-    <section className="relative min-h-[40vh] sm:min-h-[45vh] md:min-h-[50vh] lg:min-h-[55vh] xl:min-h-[60vh] flex items-center justify-center overflow-hidden bg-[#15383c] pt-20 sm:pt-24 md:pt-28 lg:pt-32 xl:pt-36 pb-8 sm:pb-10 md:pb-12 lg:pb-16 xl:pb-20">
+    <section className="relative min-h-[40vh] sm:min-h-[45vh] md:min-h-[50vh] lg:min-h-[55vh] xl:min-h-[60vh] flex items-center justify-center overflow-hidden bg-[#15383c] pt-20 sm:pt-24 md:pt-28 lg:pt-32 xl:pt-36 pb-8 sm:pb-10 md:pb-12 lg:pb-16 xl:pb-20 w-full">
       {/* Abstract Background Elements for Depth (No Image) */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {/* Subtle top gradient for light source */}
-        <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[80%] h-[60%] bg-[#1f4d52] blur-[120px] rounded-full opacity-50" />
+        <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[80%] h-[60%] bg-[#15383c] blur-[120px] rounded-full opacity-50" />
         
         {/* Bottom right accent glow */}
-        <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-[#1a454a] blur-[100px] rounded-full opacity-40" />
+        <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-[#15383c] blur-[100px] rounded-full opacity-40" />
       </div>
 
       {/* Content */}
       <div className="relative z-10 w-full max-w-screen-xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 text-center flex flex-col items-center justify-center">
         
-        <div className="mb-3 sm:mb-4 md:mb-5 animate-fade-in-up">
+        <div className="mb-4 sm:mb-5 md:mb-6 lg:mb-7 animate-fade-in-up mt-4 sm:mt-6 md:mt-8">
           <span className="inline-block py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-white/5 border border-white/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase backdrop-blur-sm">
             {t('hero.badge')}
           </span>
         </div>
         
-        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-heading font-bold text-white mb-4 sm:mb-4 md:mb-5 leading-[1.15] sm:leading-[1.1] md:leading-[1.05] tracking-tight px-2 sm:px-4">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-heading font-bold text-white mb-5 sm:mb-6 md:mb-7 lg:mb-8 leading-[1.15] sm:leading-[1.1] md:leading-[1.05] tracking-tight px-2 sm:px-4">
           {t('hero.title')} <br />
           <span className="text-[#e35e25]">{t('hero.titleHighlight')}</span>
         </h1>
         
-        <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-300 mb-6 sm:mb-6 md:mb-8 max-w-2xl mx-auto font-light leading-[1.6] sm:leading-relaxed opacity-90 px-4 sm:px-6">
+        <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-300 mb-8 sm:mb-10 md:mb-12 lg:mb-14 max-w-2xl mx-auto font-light leading-[1.6] sm:leading-relaxed opacity-90 px-4 sm:px-6">
           {t('hero.description')}
         </p>
         

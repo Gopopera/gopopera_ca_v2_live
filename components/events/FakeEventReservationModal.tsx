@@ -30,10 +30,10 @@ export const FakeEventReservationModal: React.FC<FakeEventReservationModalProps>
             <Calendar size={32} className="text-[#15383c]" />
           </div>
           <h3 className="font-heading font-bold text-xl sm:text-2xl text-[#15383c] mb-3">
-            Example Event
+            Demo Event
           </h3>
           <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
-            This is an example Popera event and cannot be reserved. As the Popera community grows, real events will appear here and you'll be able to reserve and join their group conversations.
+            This is a demo event created to show Popera use-case examples. It is not a real event. Browse real events to reserve and join group conversations.
           </p>
         </div>
 

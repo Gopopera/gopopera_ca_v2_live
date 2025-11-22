@@ -37,6 +37,7 @@ import { useEventStore } from './stores/eventStore';
 import { useUserStore } from './stores/userStore';
 import { generatePoperaEvents } from './data/poperaEvents';
 import { generateFakeEvents } from './data/fakeEvents';
+import { categoryMatches } from './utils/categoryMapper';
 
 // Mock Data Generator - Initial seed data
 const generateMockEvents = (): Event[] => [
@@ -232,7 +233,6 @@ const AppContent: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [location, setLocation] = useState('');
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   // Use Zustand stores
   const currentUser = useUserStore((state) => state.getCurrentUser());
@@ -256,7 +256,7 @@ const AppContent: React.FC = () => {
   // Initialize store with Popera events and fake events (first load only)
   useEffect(() => {
     if (storeEvents.length === 0) {
-      // 1. First, add official Popera events
+      // 1. First, add official Popera launch events
       const poperaEvents = generatePoperaEvents();
       poperaEvents.forEach(event => {
         useEventStore.getState().addEvent({
@@ -280,12 +280,13 @@ const AppContent: React.FC = () => {
           lng: event.lng,
           isPoperaOwned: true,
           isFakeEvent: false,
+          isOfficialLaunch: event.isOfficialLaunch || false,
           aboutEvent: event.aboutEvent,
           whatToExpect: event.whatToExpect,
         });
       });
       
-      // 2. Then, add fake demo events (2 hosts per city, 1 event each)
+      // 2. Then, add fake demo events (3 per city, one per value prop)
       const fakeEvents = generateFakeEvents();
       fakeEvents.forEach(event => {
         useEventStore.getState().addEvent({
@@ -309,6 +310,10 @@ const AppContent: React.FC = () => {
           lng: event.lng,
           isPoperaOwned: false,
           isFakeEvent: true,
+          isDemo: true,
+          isOfficialLaunch: false,
+          aboutEvent: event.aboutEvent,
+          whatToExpect: event.whatToExpect,
         });
       });
     }
@@ -343,31 +348,31 @@ const AppContent: React.FC = () => {
   const allEvents = useEventStore((state) => state.getEvents());
 
   // Filter events based on search, location, category, and tags
+  // Apply all filters in sequence for proper combined filtering
+  // Filters work together: Category + City + Tags all apply simultaneously
   let filteredEvents = allEvents;
   
-  // Apply search
+  // Apply search filter first (text search)
   if (searchQuery.trim()) {
     filteredEvents = searchEvents(searchQuery);
   }
   
-  // Apply city filter
+  // Apply city filter (works with category and tags)
   if (location.trim()) {
-    const cityFiltered = filterByCity(location.split(',')[0].trim());
-    filteredEvents = searchQuery.trim() 
-      ? filteredEvents.filter(e => cityFiltered.includes(e))
-      : cityFiltered;
+    const cityName = location.split(',')[0].trim();
+    filteredEvents = filteredEvents.filter(event => 
+      event.city.toLowerCase().includes(cityName.toLowerCase())
+    );
   }
   
-  // Apply tag filter
-  if (selectedTags.length > 0) {
-    const tagFiltered = filterByTags(selectedTags);
-    filteredEvents = filteredEvents.filter(e => tagFiltered.includes(e));
-  }
-  
-  // Apply category filter
+  // Apply category filter (e.g., "Sports", "Community") - works with city and tags
+  // Uses category mapper to handle plural/singular variations (e.g., "Markets" -> "Market")
   if (activeCategory !== 'All') {
-    filteredEvents = filteredEvents.filter(event => event.category === activeCategory);
+    filteredEvents = filteredEvents.filter(event => 
+      categoryMatches(event.category, activeCategory)
+    );
   }
+  
   
   // Group events by time periods for display
   const now = new Date();
@@ -533,9 +538,10 @@ const AppContent: React.FC = () => {
           View All <ArrowRight size={14} className="sm:w-4 sm:h-4" />
         </button>
       </div>
-      <div className="flex overflow-x-auto gap-4 sm:gap-5 md:gap-6 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+      {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
+      <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 overflow-x-auto md:overflow-x-visible gap-4 sm:gap-5 md:gap-6 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
          {events.map(event => (
-           <div key={event.id} className="min-w-[85vw] sm:min-w-[60vw] md:min-w-[300px] lg:min-w-[320px] xl:min-w-[340px] snap-center h-full flex-shrink-0">
+           <div key={event.id} className="w-[88vw] sm:min-w-[60vw] md:w-full lg:w-full xl:w-full snap-center h-full flex-shrink-0 md:flex-shrink mr-3 md:mr-0">
               <EventCard 
                 event={event} 
                 onClick={handleEventClick} 
@@ -552,7 +558,6 @@ const AppContent: React.FC = () => {
   );
 
   // Extract unique tags from all events for tag filter
-  const allTags = Array.from(new Set(allEvents.flatMap(event => event.tags || [])));
 
   return (
     <div className="font-sans text-popera-teal bg-gray-50 min-h-screen flex flex-col w-full max-w-full overflow-x-hidden">
@@ -739,44 +744,8 @@ const AppContent: React.FC = () => {
                </div>
             </div>
 
-            {/* Tag Filter */}
-            {allTags.length > 0 && (
-              <div className="mb-6 sm:mb-8">
-                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-3">Filter by Tags:</label>
-                <div className="flex flex-wrap gap-2">
-                  {allTags.slice(0, 10).map(tag => (
-                    <button
-                      key={tag}
-                      onClick={() => {
-                        if (selectedTags.includes(tag)) {
-                          setSelectedTags(selectedTags.filter(t => t !== tag));
-                        } else {
-                          setSelectedTags([...selectedTags, tag]);
-                        }
-                      }}
-                      className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all touch-manipulation active:scale-95 ${
-                        selectedTags.includes(tag)
-                          ? 'bg-[#15383c] text-white border border-[#15383c]'
-                          : 'bg-white text-gray-600 border border-gray-200 hover:border-[#e35e25] hover:text-[#e35e25]'
-                      }`}
-                    >
-                      {tag}
-                    </button>
-                  ))}
-                </div>
-                {selectedTags.length > 0 && (
-                  <button
-                    onClick={() => setSelectedTags([])}
-                    className="mt-3 text-xs sm:text-sm text-[#e35e25] font-bold hover:underline"
-                  >
-                    Clear Tags
-                  </button>
-                )}
-              </div>
-            )}
-
             {/* Conditional Render: Horizontal Lists vs Grid */}
-            {searchQuery === '' && activeCategory === 'All' && location === '' && selectedTags.length === 0 ? (
+            {searchQuery === '' && activeCategory === 'All' && location === '' ? (
               <div className="space-y-4 animate-fade-in">
                  {/* Show events grouped by city if available */}
                  {Object.keys(eventsByCity).length > 0 ? (
@@ -785,18 +754,20 @@ const AppContent: React.FC = () => {
                        <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">
                          {city}
                        </h2>
-                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                         {cityEvents.slice(0, 4).map(event => (
-                           <EventCard
-                             key={event.id}
-                             event={event}
-                             onClick={handleEventClick}
-                             onChatClick={handleChatClick}
-                             onReviewsClick={handleReviewsClick}
-                             isLoggedIn={isLoggedIn}
-                             isFavorite={favorites.includes(event.id)}
-                             onToggleFavorite={handleToggleFavorite}
-                           />
+                       {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
+                       <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 overflow-x-auto md:overflow-x-visible gap-4 sm:gap-5 md:gap-6 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+                         {cityEvents.map(event => (
+                           <div key={event.id} className="w-[88vw] sm:min-w-[60vw] md:w-full lg:w-full xl:w-full snap-center h-full flex-shrink-0 md:flex-shrink mr-3 md:mr-0">
+                             <EventCard
+                               event={event}
+                               onClick={handleEventClick}
+                               onChatClick={handleChatClick}
+                               onReviewsClick={handleReviewsClick}
+                               isLoggedIn={isLoggedIn}
+                               isFavorite={favorites.includes(event.id)}
+                               onToggleFavorite={handleToggleFavorite}
+                             />
+                           </div>
                          ))}
                        </div>
                      </div>
@@ -814,18 +785,45 @@ const AppContent: React.FC = () => {
                  <div className="mb-6 text-gray-500 text-sm font-medium">
                    Showing {filteredEvents.length} results 
                    {location && ` in ${location.split(',')[0]}`}
-                   {selectedTags.length > 0 && ` with tags: ${selectedTags.join(', ')}`}
                  </div>
                  {filteredEvents.length > 0 ? (
-                    <EventFeed 
-                      events={filteredEvents} 
-                      onEventClick={handleEventClick} 
-                      onChatClick={handleChatClick} 
-                      onReviewsClick={handleReviewsClick}
-                      isLoggedIn={isLoggedIn}
-                      favorites={favorites}
-                      onToggleFavorite={handleToggleFavorite}
-                    />
+                    // Group search results by category
+                    (() => {
+                      const groupedByCategory = filteredEvents.reduce((acc, event) => {
+                        const category = event.category || 'Other';
+                        if (!acc[category]) acc[category] = [];
+                        acc[category].push(event);
+                        return acc;
+                      }, {} as Record<string, Event[]>);
+
+                      return (
+                        <div className="space-y-8 sm:space-y-10 md:space-y-12">
+                          {Object.entries(groupedByCategory).map(([category, categoryEvents]) => (
+                            <div key={category}>
+                              <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">
+                                {category}
+                              </h2>
+                              {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
+                              <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 overflow-x-auto md:overflow-x-visible gap-4 sm:gap-5 md:gap-6 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+                                {categoryEvents.map(event => (
+                                  <div key={event.id} className="w-[88vw] sm:min-w-[60vw] md:w-full lg:w-full xl:w-full snap-center h-full flex-shrink-0 md:flex-shrink mr-3 md:mr-0">
+                                    <EventCard
+                                      event={event}
+                                      onClick={handleEventClick}
+                                      onChatClick={handleChatClick}
+                                      onReviewsClick={handleReviewsClick}
+                                      isLoggedIn={isLoggedIn}
+                                      isFavorite={favorites.includes(event.id)}
+                                      onToggleFavorite={handleToggleFavorite}
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()
                  ) : (
                     <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
                        <p className="text-gray-500">No events found matching your criteria.</p>
@@ -834,7 +832,6 @@ const AppContent: React.FC = () => {
                            setSearchQuery(''); 
                            setLocation(''); 
                            setActiveCategory('All');
-                           setSelectedTags([]);
                          }}
                          className="mt-4 text-[#e35e25] font-bold hover:underline"
                        >

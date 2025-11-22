@@ -27,24 +27,38 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   const addPoll = useChatStore((state) => state.addPoll);
   
   const isPoperaOwned = event.isPoperaOwned === true || event.hostId === POPERA_HOST_ID;
+  const isOfficialLaunch = event.isOfficialLaunch === true;
   const isFakeEvent = event.isFakeEvent === true;
+  const isDemo = event.isDemo === true || isFakeEvent; // Check both flags for compatibility
   const isHost = currentUser && currentUser.id === event.hostId;
   const hasReserved = currentUser ? currentUser.rsvps.includes(event.id) : false;
   
   // Determine view type
-  const viewType = isFakeEvent ? 'demo' : isHost ? 'host' : (isPoperaOwned || hasReserved) ? 'participant' : 'blocked';
+  // Official launch events require reservation for chat access (unlike other Popera events)
+  // Demo events are always blocked
+  // Regular Popera events are open to all
+  // Regular events require reservation
+  const viewType = isDemo 
+    ? 'demo' 
+    : isHost 
+    ? 'host' 
+    : isOfficialLaunch 
+    ? (hasReserved ? 'participant' : 'blocked')
+    : (isPoperaOwned || hasReserved) 
+    ? 'participant' 
+    : 'blocked';
   const canAccessChat = viewType === 'host' || viewType === 'participant';
-  const canSendMessages = canAccessChat && !isFakeEvent;
+  const canSendMessages = canAccessChat && !isDemo && !!currentUser; // Require authentication and not demo
   
   const messages = getMessagesForEvent(event.id);
   const poll = getPollForEvent(event.id);
   
-  // Initialize chat for Popera events
+  // Initialize chat for Popera events (including official launch events)
   useEffect(() => {
-    if (isPoperaOwned && messages.length === 0 && !isFakeEvent) {
+    if (isPoperaOwned && messages.length === 0 && !isDemo) {
       initializeEventChat(event.id, event.hostName);
     }
-  }, [event.id, event.hostName, isPoperaOwned, messages.length, initializeEventChat, isFakeEvent]);
+  }, [event.id, event.hostName, isPoperaOwned, messages.length, initializeEventChat, isDemo]);
   
   const handleSendMessage = () => {
     if (!message.trim() || !canSendMessages || !currentUser) return;
@@ -78,10 +92,10 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
     }
   };
   
-  // Calculate real member count from RSVPs (for Popera events) or use static for fake events
+  // Calculate real member count from RSVPs (for Popera events) or use static for demo events
   const memberCount = isPoperaOwned 
     ? (event.attendeesCount || 0) 
-    : (event.isFakeEvent ? 34 : (event.attendeesCount || 0));
+    : (isDemo ? 34 : (event.attendeesCount || 0));
 
   const tabs = [
     { name: 'Chat', active: true, icon: MessageCircle },
@@ -154,10 +168,10 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
       {/* MAIN CHAT AREA */}
       <main className="flex-1 flex flex-col bg-gray-50 overflow-hidden relative min-w-0">
         {/* Demo Event Blocker - always shown for fake events */}
-        {isFakeEvent && <DemoEventBlocker />}
+        {isDemo && <DemoEventBlocker />}
         
-        {/* Reservation Blocker - shown if user hasn't reserved and event is not Popera-owned and not fake */}
-        {!isFakeEvent && !canAccessChat && (
+        {/* Reservation Blocker - shown if user hasn't reserved and event is not Popera-owned and not demo */}
+        {!isDemo && !canAccessChat && (
           <ChatReservationBlocker 
             onReserve={handleReserve}
             isLoggedIn={isLoggedIn}
@@ -176,7 +190,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
 
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-8 space-y-4 sm:space-y-6">
           {/* Host Tools Bar - Only visible to hosts */}
-          {isHost && !isFakeEvent && (
+          {isHost && !isDemo && (
             <div className="max-w-3xl mx-auto w-full bg-white rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-gray-200 shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-bold text-sm sm:text-base text-[#15383c]">Host Tools</h3>
@@ -234,7 +248,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
           )}
 
           {/* Pinned message for Popera events */}
-          {isPoperaOwned && !isFakeEvent && (
+          {isPoperaOwned && !isDemo && (
             <div className="bg-[#e35e25]/10 border-2 border-[#e35e25]/30 rounded-2xl p-4 sm:p-6 max-w-3xl mx-auto w-full">
               <div className="flex items-start gap-3">
                 <Pin size={20} className="text-[#e35e25] shrink-0 mt-0.5" />
@@ -248,7 +262,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
             </div>
           )}
 
-          {canAccessChat && !isFakeEvent && (
+          {canAccessChat && !isDemo && (
             <>
               <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-center justify-between border border-gray-100 shadow-sm max-w-3xl mx-auto w-full">
                 <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">

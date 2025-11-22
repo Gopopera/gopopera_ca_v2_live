@@ -9,10 +9,10 @@ export const DemoEventBlocker: React.FC = () => {
           <Lock size={32} className="text-gray-400" />
         </div>
         <h3 className="font-heading font-bold text-xl sm:text-2xl text-[#15383c] mb-3">
-          Demo Event
+          Demo Conversation
         </h3>
         <p className="text-gray-600 text-sm sm:text-base mb-6 leading-relaxed">
-          This is a demo event. Group chat is only available for real, upcoming events.
+          This is a demo conversation. Real chats are only available in real events. Browse official Popera launch events to join real conversations.
         </p>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { MapPin, Calendar, MessageCircle, Star, Heart } from 'lucide-react';
 import { Event } from '@/types';
+import { formatDate } from '@/utils/dateFormatter';
 
 interface EventCardProps {
   event: Event;
@@ -24,10 +25,21 @@ export const EventCard: React.FC<EventCardProps> = ({
   return (
     <div 
       onClick={() => onClick(event)}
-      className="group relative bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full flex flex-col max-h-full"
+      className="group relative bg-white rounded-2xl overflow-visible shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full flex flex-col w-full"
     >
-      {/* Image Container - Balanced aspect ratios for proper image/content ratio */}
-      <div className="relative aspect-[3/2] sm:aspect-[16/10] md:aspect-[16/11] lg:aspect-[16/12] overflow-hidden bg-gradient-to-br from-[#15383c] to-[#1f4d52]">
+      {/* Image Container - Consistent aspect ratios across breakpoints */}
+      <div
+        className="
+          relative 
+          aspect-[3/2] 
+          sm:aspect-[3/2] 
+          md:aspect-[3/2]
+          lg:aspect-[3/2]
+          xl:aspect-[3/2]
+          overflow-hidden 
+          bg-gradient-to-br from-[#15383c] to-[#1f4d52]
+        "
+      >
         <img 
           src={event.imageUrl || `https://picsum.photos/seed/${event.id || 'event'}/800/600`} 
           alt={event.title} 
@@ -53,12 +65,12 @@ export const EventCard: React.FC<EventCardProps> = ({
         </div>
 
         {/* ACTION BUTTONS */}
-        <div className="absolute top-3 sm:top-4 right-3 sm:right-4 flex items-center gap-2 sm:gap-2 z-10">
+        <div className="absolute top-3 sm:top-4 right-3 sm:right-4 flex items-center gap-2 sm:gap-2 z-20">
            {/* FEATURE: Favorite Heart (Logged In Only) */}
            {isLoggedIn && onToggleFavorite && (
              <button
                onClick={(e) => onToggleFavorite(e, event.id)}
-               className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center transition-colors shadow-lg hover:bg-white active:scale-[0.92] touch-manipulation border border-white/50"
+               className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center transition-colors shadow-lg hover:bg-white active:scale-[0.92] touch-manipulation border border-white/50 shrink-0"
                aria-label="Toggle Favorite"
              >
                <Heart 
@@ -72,7 +84,7 @@ export const EventCard: React.FC<EventCardProps> = ({
            {/* FEATURE: Conversation Icon */}
            <button
              onClick={(e) => onChatClick(e, event)}
-             className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center text-popera-teal hover:bg-popera-orange hover:text-white transition-colors shadow-lg active:scale-[0.92] touch-manipulation border border-white/50"
+             className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center text-popera-teal hover:bg-popera-orange hover:text-white transition-colors shadow-lg active:scale-[0.92] touch-manipulation border border-white/50 shrink-0"
              aria-label="Join Event Chat"
            >
              <MessageCircle size={20} className="sm:w-5 sm:h-5" strokeWidth={2} />
@@ -81,7 +93,7 @@ export const EventCard: React.FC<EventCardProps> = ({
       </div>
 
       {/* Content */}
-      <div className="p-4 sm:p-5 md:p-6 flex flex-col flex-grow min-h-0">
+      <div className="p-4 sm:p-4 md:p-4 lg:p-4 flex flex-col flex-grow min-h-0">
         {/* Host & Rating Row */}
         <div className="mb-3 sm:mb-2.5 md:mb-3 flex items-center justify-between gap-2">
            {/* Host Info */}
@@ -112,11 +124,39 @@ export const EventCard: React.FC<EventCardProps> = ({
         <div className="mt-auto space-y-2 sm:space-y-2">
           <div className="flex items-center text-gray-600 text-sm sm:text-sm">
             <Calendar size={16} className="sm:w-4 sm:h-4 mr-2 sm:mr-2 text-popera-orange shrink-0" />
-            <span className="truncate leading-relaxed">{event.date} • {event.time}</span>
+            <span className="truncate leading-relaxed">{formatDate(event.date)} • {event.time}</span>
           </div>
-          <div className="flex items-center text-gray-600 text-sm sm:text-sm">
+          <div className="flex items-center text-gray-600 text-sm sm:text-sm min-w-0">
             <MapPin size={16} className="sm:w-4 sm:h-4 mr-2 sm:mr-2 text-popera-orange shrink-0" />
-            <span className="truncate leading-relaxed">{event.location}</span>
+            <div className="flex items-center min-w-0 flex-1 gap-1.5">
+              {/* City - always visible, never truncates */}
+              <span className="font-medium text-[#15383c] shrink-0 whitespace-nowrap">{event.city}</span>
+              {/* Address/Venue - extract from location if it contains more than just city */}
+              {(() => {
+                // If location is just the city, don't show address
+                if (event.location.trim() === event.city || !event.location.includes(',')) {
+                  return null;
+                }
+                // Extract address part (everything before the city)
+                const locationParts = event.location.split(',');
+                const cityIndex = locationParts.findIndex(part => part.trim() === event.city);
+                if (cityIndex > 0) {
+                  // Address is everything before the city
+                  const address = locationParts.slice(0, cityIndex).join(',').trim();
+                  return address ? (
+                    <span className="truncate text-gray-600 leading-relaxed">
+                      {address}
+                    </span>
+                  ) : null;
+                }
+                // Fallback: use address field if available
+                return event.address ? (
+                  <span className="truncate text-gray-600 leading-relaxed">
+                    {event.address}
+                  </span>
+                ) : null;
+              })()}
+            </div>
           </div>
         </div>
       </div>

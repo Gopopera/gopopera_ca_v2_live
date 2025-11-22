@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Hero } from '../components/landing/Hero';
 import { Pillars } from '../components/landing/Pillars';
 import { EventFeed } from '../components/events/EventFeed';
@@ -7,6 +7,7 @@ import { ChatMockupSection } from '../components/landing/ChatMockupSection';
 import { Event, ViewState } from '../types';
 import { ArrowRight, Sparkles, Check, ChevronDown, Search, MapPin, PlusCircle } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { categoryMatches } from '../utils/categoryMapper';
 
 interface LandingPageProps {
   setViewState: (view: ViewState) => void;
@@ -36,6 +37,40 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [location, setLocation] = useState('Montreal, CA');
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+  
+  // Filter events based on category and location
+  const filteredEvents = useMemo(() => {
+    let filtered = events;
+    
+    // Apply category filter
+    // Uses category mapper to handle plural/singular variations (e.g., "Markets" -> "Market")
+    if (activeCategory !== 'All') {
+      filtered = filtered.filter(event => 
+        categoryMatches(event.category, activeCategory)
+      );
+    }
+    
+    // Apply city filter
+    if (location.trim()) {
+      const cityName = location.split(',')[0].trim();
+      filtered = filtered.filter(event => 
+        event.city.toLowerCase().includes(cityName.toLowerCase())
+      );
+    }
+    
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(event => 
+        event.title.toLowerCase().includes(query) ||
+        event.description.toLowerCase().includes(query) ||
+        event.hostName.toLowerCase().includes(query) ||
+        event.tags.some(tag => tag.toLowerCase().includes(query))
+      );
+    }
+    
+    return filtered;
+  }, [events, activeCategory, location, searchQuery]);
 
   const toggleFaq = (index: number) => {
     setOpenFaqIndex(openFaqIndex === index ? null : index);
@@ -184,10 +219,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         </div>
         
-        {/* HORIZONTAL SCROLLING CAROUSEL */}
-        <div className="flex overflow-x-auto gap-4 sm:gap-5 md:gap-6 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
-           {events.slice(0, 8).map(event => (
-             <div key={event.id} className="min-w-[85vw] sm:min-w-[60vw] md:min-w-[300px] lg:min-w-[320px] xl:min-w-[340px] snap-center flex-shrink-0">
+        {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
+        <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 overflow-x-auto md:overflow-x-visible gap-4 sm:gap-5 md:gap-6 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+           {filteredEvents.slice(0, 8).map(event => (
+             <div key={event.id} className="w-[88vw] sm:min-w-[60vw] md:w-full lg:w-full xl:w-full snap-center flex-shrink-0 md:flex-shrink mr-3 md:mr-0">
                 <EventCard 
                   event={event} 
                   onClick={onEventClick} 
@@ -212,7 +247,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* 3. Pop-ups and Crowd Activation section */}
-      <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] relative overflow-hidden w-full max-w-screen-xl mx-auto">
+      <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] relative overflow-hidden w-full">
          {/* Subtle Pattern Overlay */}
          <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
               style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '48px 48px' }}>

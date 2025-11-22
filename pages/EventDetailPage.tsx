@@ -4,6 +4,7 @@ import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info
 import { EventCard } from '../components/events/EventCard';
 import { MockMap } from '../components/map/MockMap';
 import { FakeEventReservationModal } from '../components/events/FakeEventReservationModal';
+import { formatDate } from '../utils/dateFormatter';
 
 interface EventDetailPageProps {
   event: Event;
@@ -35,16 +36,19 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const recommendedEvents = allEvents.filter(e => e.id !== event.id).slice(0, 5);
   const hasRSVPed = rsvps.includes(event.id);
   const isFakeEvent = event.isFakeEvent === true;
+  const isDemo = event.isDemo === true || isFakeEvent; // Check both flags for compatibility
   const isPoperaOwned = event.isPoperaOwned === true;
+  const isOfficialLaunch = event.isOfficialLaunch === true;
   const [showFakeEventModal, setShowFakeEventModal] = useState(false);
   
   const handleRSVP = () => {
-    if (isFakeEvent) {
-      // Show modal for fake events instead of reserving
+    if (isDemo) {
+      // Show modal for demo events instead of reserving
       setShowFakeEventModal(true);
       return;
     }
     
+    // Official launch events and regular events can be reserved
     if (onRSVP) {
       onRSVP(event.id);
     }
@@ -82,7 +86,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                <span className="inline-block px-3 sm:px-3.5 py-1 sm:py-1.5 bg-[#e35e25] rounded-full text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-wider mb-2 sm:mb-3 md:mb-4 shadow-lg">{event.category}</span>
                <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-heading font-bold leading-tight mb-3 sm:mb-4 text-balance shadow-black drop-shadow-lg">{event.title}</h1>
                <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 md:gap-3 lg:gap-4 text-gray-200 text-xs sm:text-sm md:text-base font-medium">
-                  <span className="flex items-center bg-white/10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg backdrop-blur-md border border-white/10"><Calendar size={14} className="sm:w-4 sm:h-4 mr-1.5 sm:mr-2 text-[#e35e25] shrink-0" /> <span className="truncate">{event.date} • {event.time}</span></span>
+                  <span className="flex items-center bg-white/10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg backdrop-blur-md border border-white/10"><Calendar size={14} className="sm:w-4 sm:h-4 mr-1.5 sm:mr-2 text-[#e35e25] shrink-0" /> <span className="truncate">{formatDate(event.date)} • {event.time}</span></span>
                   <span className="flex items-center bg-white/10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg backdrop-blur-md border border-white/10"><MapPin size={14} className="sm:w-4 sm:h-4 mr-1.5 sm:mr-2 text-[#e35e25] shrink-0" /> <span className="truncate">{event.location}</span></span>
                   {event.attendees !== undefined && (<span className="flex items-center bg-white/10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg backdrop-blur-md border border-white/10"><User size={14} className="sm:w-4 sm:h-4 mr-1.5 sm:mr-2 text-[#e35e25] shrink-0" /> <span>{event.attendees} attending</span></span>)}
                </div>
@@ -139,28 +143,28 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               <div className="space-y-3">
                 <button 
                   onClick={handleRSVP}
-                  disabled={isFakeEvent}
+                  disabled={isDemo}
                   className={`w-full py-3.5 lg:py-4 font-bold text-base lg:text-lg rounded-xl lg:rounded-2xl shadow-xl transition-all hover:-translate-y-0.5 touch-manipulation active:scale-95 ${
-                    isFakeEvent 
+                    isDemo 
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                       : hasRSVPed
-                      ? 'bg-[#15383c] text-white hover:bg-[#1f4d52]'
+                      ? 'bg-[#15383c] text-white hover:bg-[#15383c]/90'
                       : 'bg-[#e35e25] text-white hover:bg-[#cf4d1d] shadow-orange-900/20 hover:shadow-orange-900/30'
                   }`}
                 >
-                  {isFakeEvent ? 'Demo Event (Locked)' : hasRSVPed ? 'Reserved ✓' : 'Reserve Spot'}
+                  {isDemo ? 'Demo Event (Locked)' : hasRSVPed ? 'Reserved ✓' : 'Reserve Spot'}
                 </button>
                 <button 
                   onClick={() => setViewState(ViewState.CHAT)} 
-                  disabled={isFakeEvent || (!isPoperaOwned && !hasRSVPed)}
+                  disabled={isDemo || (isOfficialLaunch && !hasRSVPed) || (!isPoperaOwned && !hasRSVPed)}
                   className={`w-full py-3.5 lg:py-4 font-bold text-base lg:text-lg rounded-xl lg:rounded-2xl border flex items-center justify-center gap-2 touch-manipulation active:scale-95 transition-colors ${
-                    isFakeEvent || (!isPoperaOwned && !hasRSVPed)
+                    isDemo || (isOfficialLaunch && !hasRSVPed) || (!isPoperaOwned && !hasRSVPed)
                       ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
                       : 'bg-[#15383c]/5 text-[#15383c] border-[#15383c]/10 hover:bg-[#15383c]/10'
                   }`}
                 >
                   <MessageCircle size={20} className="lg:w-[22px] lg:h-[22px]" /> 
-                  {isFakeEvent || (!isPoperaOwned && !hasRSVPed) ? 'Chat Locked' : 'Join Group Chat'}
+                  {isDemo || (isOfficialLaunch && !hasRSVPed) || (!isPoperaOwned && !hasRSVPed) ? 'Chat Locked' : 'Join Group Chat'}
                 </button>
               </div>
               <div className="mt-6 lg:mt-8 pt-4 lg:pt-6 border-t border-gray-100 text-center"><p className="text-[10px] lg:text-xs text-gray-400 leading-relaxed">Secure payment powered by Stripe.</p></div>
@@ -170,8 +174,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 md:py-12 border-t border-gray-100">
          <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c] mb-6 sm:mb-8">Other events you might be interested in</h2>
-         <div className="flex overflow-x-auto gap-4 sm:gap-5 md:gap-6 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
-             {recommendedEvents.map(recEvent => (<div key={recEvent.id} className="min-w-[85vw] sm:min-w-[60vw] md:min-w-[300px] lg:min-w-[320px] xl:min-w-[340px] snap-center h-full flex-shrink-0"><EventCard event={recEvent} onClick={onEventClick} onChatClick={(e) => { e.stopPropagation(); setViewState(ViewState.CHAT); }} onReviewsClick={onReviewsClick} isLoggedIn={isLoggedIn} isFavorite={favorites.includes(recEvent.id)} onToggleFavorite={onToggleFavorite} /></div>))}
+         {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
+         <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 overflow-x-auto md:overflow-x-visible gap-4 sm:gap-5 md:gap-6 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+             {recommendedEvents.map(recEvent => (<div key={recEvent.id} className="w-[88vw] sm:min-w-[60vw] md:w-full lg:w-full xl:w-full snap-center h-full flex-shrink-0 md:flex-shrink mr-3 md:mr-0"><EventCard event={recEvent} onClick={onEventClick} onChatClick={(e) => { e.stopPropagation(); setViewState(ViewState.CHAT); }} onReviewsClick={onReviewsClick} isLoggedIn={isLoggedIn} isFavorite={favorites.includes(recEvent.id)} onToggleFavorite={onToggleFavorite} /></div>))}
          </div>
       </section>
 
@@ -189,9 +194,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
            <div className="flex items-center gap-3 sm:gap-3 flex-1 justify-end min-w-0">
              <button 
                onClick={() => setViewState(ViewState.CHAT)} 
-               disabled={isFakeEvent || (!isPoperaOwned && !hasRSVPed)}
+               disabled={isDemo || (isOfficialLaunch && !hasRSVPed) || (!isPoperaOwned && !hasRSVPed)}
                className={`w-12 h-12 sm:w-12 sm:h-12 shrink-0 rounded-full border-2 flex items-center justify-center active:scale-[0.92] transition-transform touch-manipulation shadow-sm ${
-                 isFakeEvent || (!isPoperaOwned && !hasRSVPed)
+                 isDemo || (isOfficialLaunch && !hasRSVPed) || (!isPoperaOwned && !hasRSVPed)
                    ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
                    : 'bg-[#15383c]/5 text-[#15383c] border-[#15383c]/10'
                }`}
@@ -201,16 +206,16 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
              </button>
              <button 
                onClick={handleRSVP}
-               disabled={isFakeEvent}
+               disabled={isDemo}
                className={`flex-1 min-w-0 max-w-[200px] sm:max-w-[200px] h-12 sm:h-12 font-bold text-base sm:text-base rounded-full shadow-lg active:scale-[0.97] transition-transform whitespace-nowrap flex items-center justify-center touch-manipulation px-5 ${
-                 isFakeEvent
+                 isDemo
                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                    : hasRSVPed
                    ? 'bg-[#15383c] text-white'
                    : 'bg-[#e35e25] text-white shadow-orange-900/20'
                }`}
              >
-               {isFakeEvent ? 'Locked' : hasRSVPed ? 'Reserved ✓' : 'Reserve'}
+               {isDemo ? 'Locked' : hasRSVPed ? 'Reserved ✓' : 'Reserve'}
              </button>
            </div>
         </div>

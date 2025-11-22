@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Event } from '../types';
+import { categoryMatches } from '../utils/categoryMapper';
 
 interface EventStore {
   events: Event[];
@@ -133,7 +134,7 @@ export const useEventStore = create<EventStore>((set, get) => ({
 
   filterByCategory: (category) => {
     if (!category || category === 'All') return get().events;
-    return get().events.filter(event => event.category === category);
+    return get().events.filter(event => categoryMatches(event.category, category));
   },
 
   filterByDate: (startDate, endDate) => {
