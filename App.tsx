@@ -48,6 +48,7 @@ const generateMockEvents = (): Event[] => [
     time: '11:00 AM',
     location: 'The Green House, Downtown',
     hostName: 'Sarah Jenkins',
+    host: 'Sarah Jenkins',
     category: 'Workshop',
     imageUrl: 'https://images.unsplash.com/photo-1530836369250-ef72a3f5cda8?q=80&w=2070&auto=format&fit=crop',
     price: '$25.00',
@@ -55,7 +56,12 @@ const generateMockEvents = (): Event[] => [
     rating: 4.9,
     reviewCount: 84,
     attendees: 18,
-    capacity: 25
+    attendeesCount: 18,
+    capacity: 25,
+    city: 'Montreal',
+    address: 'The Green House, Downtown',
+    tags: ['workshop', 'community', 'food'],
+    createdAt: new Date('2024-10-01').toISOString()
   },
   {
     id: '2',
@@ -64,13 +70,20 @@ const generateMockEvents = (): Event[] => [
     time: '7:30 PM',
     location: 'Skyline Lounge, Montreal',
     hostName: 'Marcus Cole',
+    host: 'Marcus Cole',
     category: 'Music',
     imageUrl: 'https://images.unsplash.com/photo-1514525253440-b3933311f725?q=80&w=2078&auto=format&fit=crop',
     price: '$45.00',
+    description: 'Enjoy an evening of smooth jazz on the rooftop with stunning city views.',
     rating: 4.7,
     reviewCount: 126,
     attendees: 85,
-    capacity: 100
+    attendeesCount: 85,
+    capacity: 100,
+    city: 'Montreal',
+    address: 'Skyline Lounge',
+    tags: ['music', 'jazz', 'nightlife'],
+    createdAt: new Date('2024-10-05').toISOString()
   },
   {
     id: '3',
@@ -79,13 +92,20 @@ const generateMockEvents = (): Event[] => [
     time: '10:00 AM',
     location: 'Heritage Hall, Toronto',
     hostName: 'Creative Collective',
+    host: 'Creative Collective',
     category: 'Market',
     imageUrl: 'https://images.unsplash.com/photo-1531058020387-3be344556be6?q=80&w=2070&auto=format&fit=crop',
     price: 'Free',
+    description: 'Discover unique handmade items from local artisans and creators.',
     rating: 4.8,
     reviewCount: 210,
     attendees: 450,
-    capacity: 1000
+    attendeesCount: 450,
+    capacity: 1000,
+    city: 'Toronto',
+    address: 'Heritage Hall',
+    tags: ['market', 'shopping', 'local', 'artisan'],
+    createdAt: new Date('2024-10-01').toISOString()
   },
   {
     id: '4',
@@ -94,13 +114,20 @@ const generateMockEvents = (): Event[] => [
     time: '8:00 AM',
     location: 'Riverfront Park, Vancouver',
     hostName: 'Global Aid Org',
+    host: 'Global Aid Org',
     category: 'Community',
     imageUrl: 'https://images.unsplash.com/photo-1552674605-469523170d9e?q=80&w=2070&auto=format&fit=crop',
     price: 'Donation',
+    description: 'Join us for a charity run to support clean water initiatives worldwide.',
     rating: 5.0,
     reviewCount: 42,
     attendees: 120,
-    capacity: 500
+    attendeesCount: 120,
+    capacity: 500,
+    city: 'Vancouver',
+    address: 'Riverfront Park',
+    tags: ['community', 'charity', 'fitness', 'social'],
+    createdAt: new Date('2024-09-25').toISOString()
   },
   {
     id: '5',
@@ -109,13 +136,20 @@ const generateMockEvents = (): Event[] => [
     time: '6:00 PM',
     location: 'Clay Studio, New York',
     hostName: 'Emma Wright',
+    host: 'Emma Wright',
     category: 'Workshop',
     imageUrl: 'https://images.unsplash.com/photo-1565193566173-7a64eb732e26?q=80&w=2070&auto=format&fit=crop',
     price: '$60.00',
+    description: 'Learn the basics of pottery in this hands-on workshop for beginners.',
     rating: 4.6,
     reviewCount: 35,
     attendees: 8,
-    capacity: 10
+    attendeesCount: 8,
+    capacity: 10,
+    city: 'New York',
+    address: 'Clay Studio',
+    tags: ['workshop', 'art', 'creative'],
+    createdAt: new Date('2024-10-15').toISOString()
   },
   {
     id: '6',
@@ -124,13 +158,20 @@ const generateMockEvents = (): Event[] => [
     time: '6:30 PM',
     location: 'Innovation Hub, San Francisco',
     hostName: 'TechCity',
+    host: 'TechCity',
     category: 'Community',
     imageUrl: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?q=80&w=2070&auto=format&fit=crop',
     price: 'Free',
+    description: 'Connect with fellow tech professionals and entrepreneurs.',
     rating: 4.5,
     reviewCount: 156,
     attendees: 90,
-    capacity: 150
+    attendeesCount: 90,
+    capacity: 150,
+    city: 'San Francisco',
+    address: 'Innovation Hub',
+    tags: ['networking', 'tech', 'community', 'business'],
+    createdAt: new Date('2024-10-10').toISOString()
   },
   {
     id: '7',
@@ -139,13 +180,20 @@ const generateMockEvents = (): Event[] => [
     time: '9:00 AM',
     location: 'City Central Park, Austin',
     hostName: 'Yoga With Anna',
+    host: 'Yoga With Anna',
     category: 'Wellness',
     imageUrl: 'https://images.unsplash.com/photo-1544367563-12123d8965cd?q=80&w=2070&auto=format&fit=crop',
     price: '$15.00',
+    description: 'Start your weekend with a rejuvenating yoga session in the park.',
     rating: 4.9,
     reviewCount: 280,
     attendees: 45,
-    capacity: 60
+    attendeesCount: 45,
+    capacity: 60,
+    city: 'Austin',
+    address: 'City Central Park',
+    tags: ['wellness', 'yoga', 'fitness', 'outdoor'],
+    createdAt: new Date('2024-10-01').toISOString()
   },
   {
     id: '8',
@@ -154,13 +202,20 @@ const generateMockEvents = (): Event[] => [
     time: '8:00 PM',
     location: 'The Old Theater, London',
     hostName: 'Indie Cinema Club',
+    host: 'Indie Cinema Club',
     category: 'Shows',
     imageUrl: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=2070&auto=format&fit=crop',
     price: '$12.00',
+    description: 'Join us for a screening of the independent film "Voices" followed by a Q&A with the director.',
     rating: 4.8,
     reviewCount: 67,
     attendees: 180,
-    capacity: 200
+    attendeesCount: 180,
+    capacity: 200,
+    city: 'London',
+    address: 'The Old Theater',
+    tags: ['shows', 'film', 'cinema', 'art'],
+    createdAt: new Date('2024-10-12').toISOString()
   },
   {
     id: '9',
@@ -169,13 +224,20 @@ const generateMockEvents = (): Event[] => [
     time: '6:00 PM',
     location: 'Culinary Arts Center, Paris',
     hostName: 'Chef Mario',
+    host: 'Chef Mario',
     category: 'Food & Drink',
     imageUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=2070&auto=format&fit=crop',
     price: '$55.00',
+    description: 'Learn to create delicious vegan dishes in this hands-on cooking masterclass.',
     rating: 4.7,
     reviewCount: 92,
     attendees: 12,
-    capacity: 15
+    attendeesCount: 12,
+    capacity: 15,
+    city: 'Paris',
+    address: 'Culinary Arts Center',
+    tags: ['food', 'cooking', 'vegan', 'workshop'],
+    createdAt: new Date('2024-10-18').toISOString()
   },
   {
     id: '10',
@@ -184,13 +246,20 @@ const generateMockEvents = (): Event[] => [
     time: '8:00 PM',
     location: 'The Rustic Barn, Nashville',
     hostName: 'SoundWaves',
+    host: 'SoundWaves',
     category: 'Music',
     imageUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=2070&auto=format&fit=crop',
     price: '$20.00',
+    description: 'Enjoy intimate acoustic performances by local artists in a cozy setting.',
     rating: 4.8,
     reviewCount: 145,
     attendees: 75,
-    capacity: 80
+    attendeesCount: 75,
+    capacity: 80,
+    city: 'Nashville',
+    address: 'The Rustic Barn',
+    tags: ['music', 'acoustic', 'live', 'entertainment'],
+    createdAt: new Date('2024-10-20').toISOString()
   },
   {
     id: '11',
@@ -199,13 +268,20 @@ const generateMockEvents = (): Event[] => [
     time: '7:00 PM',
     location: 'Co-Work Space A, Berlin',
     hostName: 'Venture Connect',
+    host: 'Venture Connect',
     category: 'Community',
     imageUrl: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=2032&auto=format&fit=crop',
     price: 'Free',
+    description: 'Watch local startups pitch their ideas and network with entrepreneurs.',
     rating: 4.6,
     reviewCount: 88,
     attendees: 50,
-    capacity: 100
+    attendeesCount: 50,
+    capacity: 100,
+    city: 'Berlin',
+    address: 'Co-Work Space A',
+    tags: ['networking', 'startup', 'business', 'community'],
+    createdAt: new Date('2024-10-25').toISOString()
   },
   {
     id: '12',
@@ -214,13 +290,20 @@ const generateMockEvents = (): Event[] => [
     time: '6:00 PM',
     location: 'Modern Art Gallery, Amsterdam',
     hostName: 'Art Collective',
+    host: 'Art Collective',
     category: 'Shows',
     imageUrl: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?q=80&w=2071&auto=format&fit=crop',
     price: 'Free',
+    description: 'Experience the opening of our latest abstract art exhibition featuring contemporary artists.',
     rating: 4.9,
     reviewCount: 53,
     attendees: 200,
-    capacity: 300
+    attendeesCount: 200,
+    capacity: 300,
+    city: 'Amsterdam',
+    address: 'Modern Art Gallery',
+    tags: ['art', 'exhibition', 'shows', 'culture'],
+    createdAt: new Date('2024-10-28').toISOString()
   }
 ];
 
@@ -603,7 +686,7 @@ const AppContent: React.FC = () => {
         {viewState === ViewState.MY_POPS && (
           <MyPopsPage 
             setViewState={setViewState} 
-            events={events}
+            events={allEvents}
             onEventClick={handleEventClick}
             onChatClick={handleChatClick}
             onReviewsClick={handleReviewsClick}
@@ -615,7 +698,7 @@ const AppContent: React.FC = () => {
         {viewState === ViewState.FAVORITES && (
           <FavoritesPage 
             setViewState={setViewState} 
-            events={events}
+            events={allEvents}
             onEventClick={handleEventClick}
             onChatClick={handleChatClick}
             onReviewsClick={handleReviewsClick}
