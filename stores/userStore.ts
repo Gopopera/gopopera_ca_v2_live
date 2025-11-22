@@ -2,20 +2,19 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
   auth,
-  db,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
-  FirebaseUser,
   GoogleAuthProvider,
   signInWithPopup,
   doc,
   setDoc,
   serverTimestamp,
 } from '../src/lib/firebase';
-import { FirestoreUser } from '../firebase/types';
-import { createOrUpdateUserProfile, getUserProfile, listUserReservations, createReservation, cancelReservation, listReservationsForUser } from '../firebase/db';
+import type { FirestoreUser } from '../firebase/types';
+// Import db functions dynamically to avoid circular dependency issues
+import type * as DbTypes from '../firebase/db';
 
 // Simplified User interface matching Firebase Auth user
 export interface User {
@@ -91,9 +90,11 @@ export const useUserStore = create<UserStore>()(
             createdAt: Date.now(),
           };
           
-          await setDoc(doc(db, 'users', firebaseUser.uid), {
+          // Dynamic import to avoid circular dependency
+          const firebaseModule = await import('../src/lib/firebase');
+          await firebaseModule.setDoc(firebaseModule.doc(firebaseModule.db, 'users', firebaseUser.uid), {
             ...userDoc,
-            createdAt: serverTimestamp(),
+            createdAt: firebaseModule.serverTimestamp(),
           });
           
           // Update local state with safe defaults
@@ -149,7 +150,9 @@ export const useUserStore = create<UserStore>()(
 
       fetchUserProfile: async (uid: string) => {
         try {
-          const firestoreUser = await getUserProfile(uid);
+          // Dynamic import to avoid circular dependency
+          const dbModule = await import('../firebase/db');
+          const firestoreUser = await dbModule.getUserProfile(uid);
           const firebaseUser = auth.currentUser;
           
           if (!firebaseUser) {
@@ -159,7 +162,7 @@ export const useUserStore = create<UserStore>()(
           
           // Load favorites and RSVPs from Firestore with safe defaults
           const favorites = Array.isArray(firestoreUser?.favorites) ? firestoreUser.favorites : [];
-          const reservationEvents = await listUserReservations(uid);
+          const reservationEvents = await dbModule.listUserReservations(uid);
           const rsvps = Array.isArray(reservationEvents) ? reservationEvents.map(e => e?.id).filter(Boolean) : [];
           
           // Ensure hostedEvents is always an array
@@ -198,7 +201,8 @@ export const useUserStore = create<UserStore>()(
           // Update displayName and preferences
           const currentUser = get().user;
           if (currentUser) {
-            await createOrUpdateUserProfile(currentUser.uid, {
+            const dbModule = await import('../firebase/db');
+            await dbModule.createOrUpdateUserProfile(currentUser.uid, {
               displayName: name,
               name: name,
               preferences,
@@ -222,22 +226,26 @@ export const useUserStore = create<UserStore>()(
           const userCredential = await signInWithPopup(auth, provider);
           const firebaseUser = userCredential.user;
           
+          // Dynamic import to avoid circular dependency
+          const dbModule = await import('../firebase/db');
+          const firebaseModule = await import('../src/lib/firebase');
+          
           // Upsert user profile in Firestore
-          const firestoreUser = await getUserProfile(firebaseUser.uid);
+          const firestoreUser = await dbModule.getUserProfile(firebaseUser.uid);
           if (!firestoreUser) {
-            await setDoc(doc(db, 'users', firebaseUser.uid), {
+            await firebaseModule.setDoc(firebaseModule.doc(firebaseModule.db, 'users', firebaseUser.uid), {
               id: firebaseUser.uid,
               uid: firebaseUser.uid,
               name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
               email: firebaseUser.email || '',
               displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
               photoURL: firebaseUser.photoURL || '',
-              createdAt: serverTimestamp(),
+              createdAt: firebaseModule.serverTimestamp(),
             });
           } else {
             // Update photo if changed
             if (firebaseUser.photoURL && firestoreUser.photoURL !== firebaseUser.photoURL) {
-              await createOrUpdateUserProfile(firebaseUser.uid, {
+              await dbModule.createOrUpdateUserProfile(firebaseUser.uid, {
                 photoURL: firebaseUser.photoURL,
               });
             }
@@ -259,6 +267,9 @@ export const useUserStore = create<UserStore>()(
 
       updateUser: async (userId: string, updates: Partial<User>) => {
         try {
+          // Dynamic import to avoid circular dependency
+          const dbModule = await import('../firebase/db');
+          
           // Update Firestore
           const firestoreUpdates: Partial<FirestoreUser> = {};
           if (updates.name || updates.displayName) {
@@ -270,7 +281,7 @@ export const useUserStore = create<UserStore>()(
             firestoreUpdates.photoURL = updates.profileImageUrl || updates.photoURL || '';
           }
           
-          await createOrUpdateUserProfile(userId, firestoreUpdates);
+          await dbModule.createOrUpdateUserProfile(userId, firestoreUpdates);
           
           // Update local state
           const currentUser = get().user;
@@ -294,8 +305,11 @@ export const useUserStore = create<UserStore>()(
           
           const updatedFavorites = [...currentFavorites, eventId];
           
+          // Dynamic import to avoid circular dependency
+          const dbModule = await import('../firebase/db');
+          
           // Update Firestore
-          await createOrUpdateUserProfile(userId, {
+          await dbModule.createOrUpdateUserProfile(userId, {
             favorites: updatedFavorites,
           });
           
@@ -316,8 +330,11 @@ export const useUserStore = create<UserStore>()(
           const currentFavorites = Array.isArray(currentUser?.favorites) ? currentUser.favorites : [];
           const updatedFavorites = currentFavorites.filter(id => id !== eventId);
           
+          // Dynamic import to avoid circular dependency
+          const dbModule = await import('../firebase/db');
+          
           // Update Firestore
-          await createOrUpdateUserProfile(userId, {
+          await dbModule.createOrUpdateUserProfile(userId, {
             favorites: updatedFavorites,
           });
           
@@ -340,11 +357,14 @@ export const useUserStore = create<UserStore>()(
             return; // Already RSVP'd
           }
           
+          // Dynamic import to avoid circular dependency
+          const dbModule = await import('../firebase/db');
+          
           // Create reservation in Firestore
-          await createReservation(eventId, userId);
+          await dbModule.createReservation(eventId, userId);
           
           // Reload RSVPs from Firestore to get updated list
-          const reservationEvents = await listUserReservations(userId);
+          const reservationEvents = await dbModule.listUserReservations(userId);
           const updatedRSVPs = Array.isArray(reservationEvents) ? reservationEvents.map(e => e?.id).filter(Boolean) : [];
           
           // Update local state
@@ -360,17 +380,20 @@ export const useUserStore = create<UserStore>()(
 
       removeRSVP: async (userId: string, eventId: string) => {
         try {
+          // Dynamic import to avoid circular dependency
+          const dbModule = await import('../firebase/db');
+          
           // Find and cancel reservation in Firestore
-          const reservations = await listReservationsForUser(userId);
+          const reservations = await dbModule.listReservationsForUser(userId);
           const reservation = reservations.find(r => r.eventId === eventId && r.status === "reserved");
           
           if (reservation) {
-            await cancelReservation(reservation.id);
+            await dbModule.cancelReservation(reservation.id);
           }
           
           // Reload RSVPs from Firestore
-          const reservationEvents = await listUserReservations(userId);
-          const updatedRSVPs = Array.isArray(reservationEvents) 
+          const reservationEvents = await dbModule.listUserReservations(userId);
+          const updatedRSVPs = Array.isArray(reservationEvents)
             ? reservationEvents.map(e => e?.id).filter(Boolean) 
             : [];
           

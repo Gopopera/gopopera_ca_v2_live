@@ -14,9 +14,11 @@ import {
 import { FirestoreEvent, FirestoreReservation, FirestoreChatMessage, FirestoreReview, FirestoreUser } from "./types";
 import { Event } from "../types";
 
-const eventsCol = collection(db, "events");
-const reservationsCol = collection(db, "reservations");
-const usersCol = collection(db, "users");
+// Lazy collection references - created when functions are called, not at module load
+// This prevents "Cannot access before initialization" errors
+const getEventsCol = () => collection(db, "events");
+const getReservationsCol = () => collection(db, "reservations");
+const getUsersCol = () => collection(db, "users");
 
 // Helper to convert FirestoreEvent to Event (frontend type)
 const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event => {
@@ -55,7 +57,7 @@ const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event => {
 // Events
 export async function listUpcomingEvents(): Promise<Event[]> {
   try {
-    const q = query(eventsCol, orderBy("date", "asc"));
+    const q = query(getEventsCol(), orderBy("date", "asc"));
     const snap = await getDocs(q);
     const events: FirestoreEvent[] = snap.docs.map(d => ({
       id: d.id,
@@ -86,6 +88,7 @@ export async function getEventById(id: string): Promise<Event | null> {
 
 export async function listEventsByCityAndTag(city?: string, tag?: string): Promise<Event[]> {
   try {
+    const eventsCol = getEventsCol();
     let q;
     if (city && city.trim() && tag && tag !== "All") {
       q = query(
@@ -117,7 +120,7 @@ export async function searchEvents(searchQuery: string): Promise<Event[]> {
   try {
     // Firestore doesn't support full-text search, so we fetch all and filter client-side
     // For production, consider using Algolia or similar
-    const q = query(eventsCol);
+    const q = query(getEventsCol());
     const snap = await getDocs(q);
     const allEvents: FirestoreEvent[] = snap.docs.map(d => ({
       id: d.id,
@@ -152,7 +155,7 @@ export async function createReservation(eventId: string, userId: string): Promis
       reservedAt: Date.now(),
       status: "reserved",
     };
-    const docRef = await addDoc(reservationsCol, reservation);
+    const docRef = await addDoc(getReservationsCol(), reservation);
     return docRef.id;
   } catch (error) {
     console.error("Error creating reservation:", error);
@@ -162,7 +165,7 @@ export async function createReservation(eventId: string, userId: string): Promis
 
 export async function listReservationsForUser(userId: string): Promise<FirestoreReservation[]> {
   try {
-    const q = query(reservationsCol, where("userId", "==", userId), where("status", "==", "reserved"));
+    const q = query(getReservationsCol(), where("userId", "==", userId), where("status", "==", "reserved"));
     const snap = await getDocs(q);
     return snap.docs.map(d => ({
       id: d.id,
@@ -186,7 +189,7 @@ export async function cancelReservation(reservationId: string): Promise<void> {
 
 export async function getReservationCountForEvent(eventId: string): Promise<number> {
   try {
-    const q = query(reservationsCol, where("eventId", "==", eventId), where("status", "==", "reserved"));
+    const q = query(getReservationsCol(), where("eventId", "==", eventId), where("status", "==", "reserved"));
     const snap = await getDocs(q);
     return snap.size;
   } catch (error) {
@@ -284,7 +287,7 @@ export async function createOrUpdateUserProfile(uid: string, userData: Partial<F
 export async function listUserReservations(uid: string): Promise<Event[]> {
   try {
     const q = query(
-      reservationsCol,
+      getReservationsCol(),
       where("userId", "==", uid),
       where("status", "==", "reserved")
     );
