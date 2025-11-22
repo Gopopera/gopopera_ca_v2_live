@@ -1,5 +1,4 @@
-import { db as firebaseDb } from "../src/lib/firebase";
-import { collection, query, orderBy, onSnapshot, DocumentData, Unsubscribe } from "firebase/firestore";
+import { db, collection, query, orderBy, onSnapshot, DocumentData, Unsubscribe } from "../src/lib/firebase";
 import { FirestoreChatMessage } from "./types";
 
 export function subscribeToChat(
@@ -7,7 +6,7 @@ export function subscribeToChat(
   cb: (messages: FirestoreChatMessage[]) => void
 ): Unsubscribe {
   try {
-    const messagesCol = collection(firebaseDb, "events", eventId, "messages");
+    const messagesCol = collection(db, "events", eventId, "messages");
     const q = query(messagesCol, orderBy("createdAt", "asc"));
 
     return onSnapshot(q, (snap) => {
@@ -26,4 +25,3 @@ export function subscribeToChat(
     return () => {};
   }
 }
-

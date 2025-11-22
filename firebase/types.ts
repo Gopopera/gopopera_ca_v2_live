@@ -35,8 +35,11 @@ export interface FirestoreEvent {
 }
 
 export interface FirestoreUser {
+  id: string;
   uid: string;
+  name: string;
   email: string;
+  imageUrl?: string;
   displayName?: string;
   photoURL?: string;
   city?: string;
@@ -85,4 +88,3 @@ export interface FirestoreHostProfile {
   rating?: number;
   reviewCount?: number;
 }
-

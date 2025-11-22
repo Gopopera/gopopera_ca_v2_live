@@ -1,17 +1,19 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { auth } from '../src/lib/firebase';
 import {
+  auth,
+  db,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
-  User as FirebaseUser,
+  FirebaseUser,
   GoogleAuthProvider,
   signInWithPopup,
-} from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../src/lib/firebase';
+  doc,
+  setDoc,
+  serverTimestamp,
+} from '../src/lib/firebase';
 import { FirestoreUser } from '../firebase/types';
 import { createOrUpdateUserProfile, getUserProfile, listUserReservations, createReservation, cancelReservation, listReservationsForUser } from '../firebase/db';
 
@@ -50,15 +52,9 @@ interface UserStore {
   removeFavorite: (userId: string, eventId: string) => Promise<void>;
   addRSVP: (userId: string, eventId: string) => Promise<void>;
   removeRSVP: (userId: string, eventId: string) => Promise<void>;
-  updateUser: (userId: string, updates: Partial<User>) => Promise<void>;
-  addFavorite: (userId: string, eventId: string) => Promise<void>;
-  removeFavorite: (userId: string, eventId: string) => Promise<void>;
-  addRSVP: (userId: string, eventId: string) => Promise<void>;
-  removeRSVP: (userId: string, eventId: string) => Promise<void>;
   getUserFavorites: (userId: string) => string[];
   getUserRSVPs: (userId: string) => string[];
   getUserHostedEvents: (userId: string) => string[];
-  initAuthListener: () => void;
   initAuthListener: () => void;
 }
 
@@ -83,7 +79,9 @@ export const useUserStore = create<UserStore>()(
           
           // Create Firestore user document
           const userDoc: FirestoreUser = {
+            id: firebaseUser.uid,
             uid: firebaseUser.uid,
+            name: '',
             email: firebaseUser.email || '',
             displayName: '',
             photoURL: '',
@@ -194,6 +192,7 @@ export const useUserStore = create<UserStore>()(
           if (currentUser) {
             await createOrUpdateUserProfile(currentUser.uid, {
               displayName: name,
+              name: name,
               preferences,
             });
             
@@ -219,7 +218,9 @@ export const useUserStore = create<UserStore>()(
           const firestoreUser = await getUserProfile(firebaseUser.uid);
           if (!firestoreUser) {
             await setDoc(doc(db, 'users', firebaseUser.uid), {
+              id: firebaseUser.uid,
               uid: firebaseUser.uid,
+              name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
               email: firebaseUser.email || '',
               displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
               photoURL: firebaseUser.photoURL || '',
@@ -252,9 +253,14 @@ export const useUserStore = create<UserStore>()(
         try {
           // Update Firestore
           const firestoreUpdates: Partial<FirestoreUser> = {};
-          if (updates.name || updates.displayName) firestoreUpdates.displayName = updates.name || updates.displayName || '';
+          if (updates.name || updates.displayName) {
+            firestoreUpdates.name = updates.name || updates.displayName || '';
+            firestoreUpdates.displayName = updates.name || updates.displayName || '';
+          }
           if (updates.preferences) firestoreUpdates.preferences = updates.preferences;
-          if (updates.profileImageUrl || updates.photoURL) firestoreUpdates.photoURL = updates.profileImageUrl || updates.photoURL || '';
+          if (updates.profileImageUrl || updates.photoURL) {
+            firestoreUpdates.photoURL = updates.profileImageUrl || updates.photoURL || '';
+          }
           
           await createOrUpdateUserProfile(userId, firestoreUpdates);
           

@@ -1,5 +1,5 @@
-import { db as firebaseDb } from "../src/lib/firebase";
 import {
+  db,
   collection,
   doc,
   getDoc,
@@ -10,14 +10,13 @@ import {
   addDoc,
   updateDoc,
   setDoc,
-  Timestamp,
-} from "firebase/firestore";
-import { FirestoreEvent, FirestoreReservation, FirestoreChatMessage, FirestoreReview } from "./types";
+} from "../src/lib/firebase";
+import { FirestoreEvent, FirestoreReservation, FirestoreChatMessage, FirestoreReview, FirestoreUser } from "./types";
 import { Event } from "../types";
 
-const eventsCol = collection(firebaseDb, "events");
-const reservationsCol = collection(firebaseDb, "reservations");
-const usersCol = collection(firebaseDb, "users");
+const eventsCol = collection(db, "events");
+const reservationsCol = collection(db, "reservations");
+const usersCol = collection(db, "users");
 
 // Helper to convert FirestoreEvent to Event (frontend type)
 const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event => {
@@ -71,8 +70,8 @@ export async function listUpcomingEvents(): Promise<Event[]> {
 
 export async function getEventById(id: string): Promise<Event | null> {
   try {
-    const ref = doc(firebaseDb, "events", id);
-    const snap = await getDoc(ref);
+    const eventRef = doc(db, "events", id);
+    const snap = await getDoc(eventRef);
     if (!snap.exists()) return null;
     const firestoreEvent: FirestoreEvent = {
       id: snap.id,
@@ -177,8 +176,8 @@ export async function listReservationsForUser(userId: string): Promise<Firestore
 
 export async function cancelReservation(reservationId: string): Promise<void> {
   try {
-    const ref = doc(firebaseDb, "reservations", reservationId);
-    await updateDoc(ref, { status: "cancelled" });
+    const reservationRef = doc(db, "reservations", reservationId);
+    await updateDoc(reservationRef, { status: "cancelled" });
   } catch (error) {
     console.error("Error cancelling reservation:", error);
     throw error;
@@ -199,7 +198,7 @@ export async function getReservationCountForEvent(eventId: string): Promise<numb
 // Chat Messages (non-realtime version - use listeners.ts for realtime)
 export async function getChatMessages(eventId: string): Promise<FirestoreChatMessage[]> {
   try {
-    const messagesCol = collection(firebaseDb, "events", eventId, "messages");
+    const messagesCol = collection(db, "events", eventId, "messages");
     const q = query(messagesCol, orderBy("createdAt", "asc"));
     const snap = await getDocs(q);
     return snap.docs.map(d => ({
@@ -221,7 +220,7 @@ export async function addChatMessage(
   isHost: boolean = false
 ): Promise<string> {
   try {
-    const messagesCol = collection(firebaseDb, "events", eventId, "messages");
+    const messagesCol = collection(db, "events", eventId, "messages");
     const message: Omit<FirestoreChatMessage, 'id'> = {
       eventId,
       userId,
@@ -240,12 +239,27 @@ export async function addChatMessage(
 }
 
 // User profiles
-export async function getUserProfile(uid: string) {
+export async function getUserProfile(uid: string): Promise<FirestoreUser | null> {
   try {
-    const ref = doc(firebaseDb, "users", uid);
-    const snap = await getDoc(ref);
+    const userRef = doc(db, "users", uid);
+    const snap = await getDoc(userRef);
     if (!snap.exists()) return null;
-    return { uid: snap.id, ...snap.data() };
+    const data = snap.data();
+    return {
+      id: snap.id,
+      uid: snap.id,
+      name: data.displayName || data.name || '',
+      email: data.email || '',
+      imageUrl: data.photoURL || data.imageUrl,
+      displayName: data.displayName || data.name,
+      photoURL: data.photoURL || data.imageUrl,
+      city: data.city,
+      bio: data.bio,
+      preferences: data.preferences,
+      favorites: data.favorites || [],
+      createdAt: data.createdAt || Date.now(),
+      updatedAt: data.updatedAt,
+    };
   } catch (error) {
     console.error("Error fetching user profile:", error);
     return null;
@@ -254,8 +268,8 @@ export async function getUserProfile(uid: string) {
 
 export async function createOrUpdateUserProfile(uid: string, userData: Partial<FirestoreUser>): Promise<void> {
   try {
-    const ref = doc(firebaseDb, "users", uid);
-    await setDoc(ref, {
+    const userRef = doc(db, "users", uid);
+    await setDoc(userRef, {
       ...userData,
       uid,
       updatedAt: Date.now(),
@@ -300,7 +314,7 @@ export async function addReview(
   comment?: string
 ): Promise<string> {
   try {
-    const reviewsCol = collection(firebaseDb, "events", eventId, "reviews");
+    const reviewsCol = collection(db, "events", eventId, "reviews");
     const review: Omit<FirestoreReview, 'id'> = {
       eventId,
       userId,
@@ -323,7 +337,7 @@ export async function addReview(
 
 export async function listReviews(eventId: string): Promise<FirestoreReview[]> {
   try {
-    const reviewsCol = collection(firebaseDb, "events", eventId, "reviews");
+    const reviewsCol = collection(db, "events", eventId, "reviews");
     const q = query(reviewsCol, orderBy("createdAt", "desc"));
     const snap = await getDocs(q);
     return snap.docs.map(d => ({
@@ -341,7 +355,7 @@ export async function recalculateEventRating(eventId: string): Promise<void> {
     const reviews = await listReviews(eventId);
     if (reviews.length === 0) {
       // Set rating to 0 if no reviews
-      const eventRef = doc(firebaseDb, "events", eventId);
+      const eventRef = doc(db, "events", eventId);
       await updateDoc(eventRef, {
         rating: 0,
         reviewCount: 0,
@@ -356,7 +370,7 @@ export async function recalculateEventRating(eventId: string): Promise<void> {
     // Round to 1 decimal place
     const roundedRating = Math.round(averageRating * 10) / 10;
     
-    const eventRef = doc(firebaseDb, "events", eventId);
+    const eventRef = doc(db, "events", eventId);
     await updateDoc(eventRef, {
       rating: roundedRating,
       reviewCount,
@@ -366,4 +380,3 @@ export async function recalculateEventRating(eventId: string): Promise<void> {
     throw error;
   }
 }
-
