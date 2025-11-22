@@ -321,6 +321,7 @@ const AppContent: React.FC = () => {
   // Use Zustand stores
   const user = useUserStore((state) => state.user);
   const loading = useUserStore((state) => state.loading);
+  const ready = useUserStore((state) => state.ready);
   const addRSVP = useUserStore((state) => state.addRSVP);
   const removeRSVP = useUserStore((state) => state.removeRSVP);
   const addFavorite = useUserStore((state) => state.addFavorite);
@@ -328,10 +329,10 @@ const AppContent: React.FC = () => {
   const updateEvent = useEventStore((state) => state.updateEvent);
   const currentUser = useUserStore((state) => state.getCurrentUser());
   
-  // Backward compatibility with safe defaults
+  // Backward compatibility with safe defaults - use nullish coalescing
   const isLoggedIn = !!user;
-  const favorites = Array.isArray(user?.favorites) ? user.favorites : [];
-  const rsvps = Array.isArray(user?.rsvps) ? user.rsvps : [];
+  const favorites = (user?.favorites ?? []);
+  const rsvps = (user?.rsvps ?? []);
   
   // Use Zustand store for events (for backward compatibility with mock data)
   const storeEvents = useEventStore((state) => state.getEvents());
@@ -351,13 +352,14 @@ const AppContent: React.FC = () => {
   }, []);
 
   // Handle redirect after successful login (including Google login)
+  // Only redirect when userStore is ready and user is loaded
   useEffect(() => {
-    if (!loading && user && viewState === ViewState.AUTH) {
+    if (ready && !loading && user && viewState === ViewState.AUTH) {
       // User just logged in, redirect to intended destination or FEED
       setViewState(redirectAfterLogin || ViewState.FEED);
       setRedirectAfterLogin(null);
     }
-  }, [user, loading, viewState, redirectAfterLogin]);
+  }, [user, loading, ready, viewState, redirectAfterLogin]);
   
   // Load events from Firestore (with fallback to mock data)
   useEffect(() => {
@@ -383,38 +385,41 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (storeEvents.length === 0 && firestoreEvents.length === 0) {
       // 1. First, add official Popera launch events
-      const poperaEvents = generatePoperaEvents() || [];
-      poperaEvents.forEach(event => {
-        useEventStore.getState().addEvent({
-          title: event.title,
-          description: event.description,
-          city: event.city,
-          address: event.address,
-          date: event.date,
-          time: event.time,
-          tags: event.tags,
-          host: event.host,
-          hostId: event.hostId,
-          imageUrl: event.imageUrl,
-          attendeesCount: 0, // Start at 0, will increase with real RSVPs
-          category: event.category,
-          price: event.price,
-          rating: 0,
-          reviewCount: 0,
-          capacity: undefined,
-          lat: event.lat,
-          lng: event.lng,
-          isPoperaOwned: true,
-          isFakeEvent: false,
-          isOfficialLaunch: event.isOfficialLaunch || false,
-          aboutEvent: event.aboutEvent,
-          whatToExpect: event.whatToExpect,
+      const poperaEvents = (generatePoperaEvents() ?? []);
+      if (Array.isArray(poperaEvents)) {
+        poperaEvents.forEach(event => {
+          useEventStore.getState().addEvent({
+            title: event.title,
+            description: event.description,
+            city: event.city,
+            address: event.address,
+            date: event.date,
+            time: event.time,
+            tags: event.tags,
+            host: event.host,
+            hostId: event.hostId,
+            imageUrl: event.imageUrl,
+            attendeesCount: 0, // Start at 0, will increase with real RSVPs
+            category: event.category,
+            price: event.price,
+            rating: 0,
+            reviewCount: 0,
+            capacity: undefined,
+            lat: event.lat,
+            lng: event.lng,
+            isPoperaOwned: true,
+            isFakeEvent: false,
+            isOfficialLaunch: event.isOfficialLaunch || false,
+            aboutEvent: event.aboutEvent,
+            whatToExpect: event.whatToExpect,
+          });
         });
-      });
+      }
       
       // 2. Then, add fake demo events (3 per city, one per value prop)
-      const fakeEvents = generateFakeEvents() || [];
-      fakeEvents.forEach(event => {
+      const fakeEvents = (generateFakeEvents() ?? []);
+      if (Array.isArray(fakeEvents)) {
+        fakeEvents.forEach(event => {
         useEventStore.getState().addEvent({
           title: event.title,
           description: event.description,
@@ -442,6 +447,7 @@ const AppContent: React.FC = () => {
           whatToExpect: event.whatToExpect,
         });
       });
+      }
     }
   }, []); // Only run once on mount
   
@@ -451,22 +457,29 @@ const AppContent: React.FC = () => {
     
     // Count RSVPs per event (using current user's RSVPs only)
     const eventRSVPCounts: Record<string, number> = {};
-    const userRSVPs = user?.rsvps || [];
+    const userRSVPs = (user?.rsvps ?? []);
     
-    userRSVPs.forEach(eventId => {
-      eventRSVPCounts[eventId] = (eventRSVPCounts[eventId] || 0) + 1;
-    });
+    // Safe forEach with array check
+    if (Array.isArray(userRSVPs)) {
+      userRSVPs.forEach(eventId => {
+        if (eventId) {
+          eventRSVPCounts[eventId] = (eventRSVPCounts[eventId] || 0) + 1;
+        }
+      });
+    }
     
     // Update event attendee counts (only for Popera events)
-    const safeStoreEvents = storeEvents || [];
-    safeStoreEvents.forEach(event => {
-      if (event?.isPoperaOwned && eventRSVPCounts[event.id] !== undefined) {
-        const newCount = eventRSVPCounts[event.id];
-        if (event.attendeesCount !== newCount) {
-          updateEvent(event.id, { attendeesCount: newCount });
+    const safeStoreEvents = (storeEvents ?? []);
+    if (Array.isArray(safeStoreEvents)) {
+      safeStoreEvents.forEach(event => {
+        if (event?.isPoperaOwned && event?.id && eventRSVPCounts[event.id] !== undefined) {
+          const newCount = eventRSVPCounts[event.id];
+          if (event.attendeesCount !== newCount) {
+            updateEvent(event.id, { attendeesCount: newCount });
+          }
         }
-      }
-    });
+      });
+    }
   }, [user?.rsvps, storeEvents, updateEvent, user]);
   
   // Get all events from store
@@ -690,7 +703,9 @@ const AppContent: React.FC = () => {
   );
 
   // Show loading screen while auth is initializing
-  if (loading && !user) {
+  // Show loading screen while auth is initializing
+  // Wait for ready flag to ensure auth state is determined
+  if (!ready || (loading && !user)) {
     return (
       <div className="font-sans text-popera-teal bg-gray-50 min-h-screen flex flex-col items-center justify-center w-full">
         <div className="text-center">

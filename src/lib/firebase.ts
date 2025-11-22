@@ -27,7 +27,6 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from "firebase/auth";
-import type { FirestoreUser } from "../../firebase/types";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -80,22 +79,3 @@ export {
   GoogleAuthProvider,
   signInWithPopup,
 };
-
-// Auth listener function
-export function initAuthListener(callback: (user: FirestoreUser | null) => void): () => void {
-  return onAuthStateChanged(auth, (firebaseUser) => {
-    if (firebaseUser) {
-      callback({
-        id: firebaseUser.uid,
-        uid: firebaseUser.uid,
-        name: firebaseUser.displayName || '',
-        email: firebaseUser.email || '',
-        displayName: firebaseUser.displayName,
-        photoURL: firebaseUser.photoURL,
-        imageUrl: firebaseUser.photoURL,
-      });
-    } else {
-      callback(null);
-    }
-  });
-}

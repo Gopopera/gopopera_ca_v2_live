@@ -38,6 +38,7 @@ export interface User {
 interface UserStore {
   user: User | null;
   loading: boolean;
+  ready: boolean; // True when auth state has been determined
   // Core auth functions
   signup: (email: string, password: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
@@ -69,6 +70,7 @@ export const useUserStore = create<UserStore>()(
     (set, get) => ({
       user: null,
       loading: true,
+      ready: false, // Auth state not yet determined
       currentUser: null, // Alias for backward compatibility
 
       // Core auth functions
@@ -110,7 +112,7 @@ export const useUserStore = create<UserStore>()(
             attendingEvents: [],
           };
           
-          set({ user, currentUser: user, loading: false });
+          set({ user, currentUser: user, loading: false, ready: true });
         } catch (error) {
           console.error("Signup error:", error);
           set({ loading: false });
@@ -151,7 +153,7 @@ export const useUserStore = create<UserStore>()(
           const firebaseUser = auth.currentUser;
           
           if (!firebaseUser) {
-            set({ user: null, currentUser: null, loading: false });
+            set({ user: null, currentUser: null, loading: false, ready: true });
             return;
           }
           
@@ -159,6 +161,9 @@ export const useUserStore = create<UserStore>()(
           const favorites = Array.isArray(firestoreUser?.favorites) ? firestoreUser.favorites : [];
           const reservationEvents = await listUserReservations(uid);
           const rsvps = Array.isArray(reservationEvents) ? reservationEvents.map(e => e?.id).filter(Boolean) : [];
+          
+          // Ensure hostedEvents is always an array
+          const hostedEvents = Array.isArray(firestoreUser?.hostedEvents) ? firestoreUser.hostedEvents : [];
           
           const user: User = {
             uid: firebaseUser.uid,
@@ -173,11 +178,11 @@ export const useUserStore = create<UserStore>()(
             preferences: firestoreUser?.preferences || 'both',
             favorites,
             rsvps,
-            hostedEvents: [],
+            hostedEvents,
             attendingEvents: [],
           };
           
-          set({ user, currentUser: user, loading: false });
+          set({ user, currentUser: user, loading: false, ready: true });
         } catch (error) {
           console.error("Error fetching user profile:", error);
           set({ loading: false });
@@ -238,7 +243,7 @@ export const useUserStore = create<UserStore>()(
             }
           }
           
-          // Fetch updated profile
+          // Fetch updated profile (this will set ready: true)
           await get().fetchUserProfile(firebaseUser.uid);
           return get().user || null;
         } catch (error) {
@@ -365,7 +370,9 @@ export const useUserStore = create<UserStore>()(
           
           // Reload RSVPs from Firestore
           const reservationEvents = await listUserReservations(userId);
-          const updatedRSVPs = reservationEvents.map(e => e.id);
+          const updatedRSVPs = Array.isArray(reservationEvents) 
+            ? reservationEvents.map(e => e?.id).filter(Boolean) 
+            : [];
           
           // Update local state
           const currentUser = get().user;
@@ -404,17 +411,17 @@ export const useUserStore = create<UserStore>()(
       },
 
       initAuthListener: () => {
-        set({ loading: true });
+        set({ loading: true, ready: false });
         onAuthStateChanged(auth, async (firebaseUser) => {
           if (firebaseUser) {
             try {
               await get().fetchUserProfile(firebaseUser.uid);
             } catch (error) {
               console.error("Error restoring user session:", error);
-              set({ user: null, currentUser: null, loading: false });
+              set({ user: null, currentUser: null, loading: false, ready: true });
             }
           } else {
-            set({ user: null, currentUser: null, loading: false });
+            set({ user: null, currentUser: null, loading: false, ready: true });
           }
         });
       },
