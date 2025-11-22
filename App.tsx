@@ -345,8 +345,9 @@ const AppContent: React.FC = () => {
   
   // Initialize auth listener on mount
   useEffect(() => {
-    initAuthListener();
-  }, [initAuthListener]);
+    const initAuth = useUserStore.getState().initAuthListener;
+    initAuth();
+  }, []);
   
   // Load events from Firestore (with fallback to mock data)
   useEffect(() => {
