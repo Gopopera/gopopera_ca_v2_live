@@ -319,7 +319,7 @@ const AppContent: React.FC = () => {
   const [location, setLocation] = useState('');
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   // Use Zustand stores
-  const currentUser = useUserStore((state) => state.getCurrentUser());
+  const user = useUserStore((state) => state.user);
   const addRSVP = useUserStore((state) => state.addRSVP);
   const removeRSVP = useUserStore((state) => state.removeRSVP);
   const addFavorite = useUserStore((state) => state.addFavorite);
