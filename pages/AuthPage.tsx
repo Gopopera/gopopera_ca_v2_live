@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChevronLeft, Eye, EyeOff } from 'lucide-react';
 import { ViewState } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useUserStore } from '../stores/userStore';
 
 interface AuthPageProps {
   setViewState: (view: ViewState) => void;
@@ -32,13 +33,24 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
   };
 
   const handleGoogleSignIn = async () => {
-    // Simulate Google sign-in - use demo credentials
-    await onLogin('demo@example.com', 'demo123');
+    try {
+      const userStore = useUserStore.getState();
+      await userStore.signInWithGoogle();
+      // Auth listener will handle redirect
+    } catch (error) {
+      console.error("Google sign-in failed:", error);
+    }
   };
 
   const handleFinalSubmit = async () => {
-    if (selectedPreference && formData.email && formData.password) {
-      await onLogin(formData.email, formData.password);
+    if (selectedPreference && formData.email && formData.password && formData.name) {
+      try {
+        const userStore = useUserStore.getState();
+        await userStore.signUp(formData.email, formData.password, formData.name, selectedPreference);
+        // Auth listener will handle redirect
+      } catch (error) {
+        console.error("Signup failed:", error);
+      }
     }
   };
 

@@ -1,250 +1,412 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { auth } from '../src/lib/firebase';
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  User as FirebaseUser,
+  GoogleAuthProvider,
+  signInWithPopup,
+} from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../src/lib/firebase';
+import { FirestoreUser } from '../firebase/types';
+import { createOrUpdateUserProfile, getUserProfile, listUserReservations, createReservation, cancelReservation, listReservationsForUser } from '../firebase/db';
 
+// Simplified User interface matching Firebase Auth user
 export interface User {
-  id: string;
+  uid: string;
   email: string;
-  name: string;
-  createdAt: string;
-  preferences: 'attend' | 'host' | 'both';
-  favorites: string[]; // Event IDs
-  rsvps: string[]; // Event IDs user has RSVP'd to
-  hostedEvents: string[]; // Event IDs user has created
-  profileImageUrl?: string;
+  photoURL?: string;
+  displayName?: string;
+  // Extended fields for backward compatibility
+  id?: string; // Alias for uid
+  name?: string; // Alias for displayName
+  createdAt?: string;
+  preferences?: 'attend' | 'host' | 'both';
+  favorites?: string[]; // Event IDs
+  rsvps?: string[]; // Event IDs user has RSVP'd to
+  hostedEvents?: string[]; // Event IDs user has created
+  profileImageUrl?: string; // Alias for photoURL
 }
 
 interface UserStore {
+  user: User | null;
+  loading: boolean;
+  // Core auth functions
+  signup: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  fetchUserProfile: (uid: string) => Promise<void>;
+  // Backward compatibility aliases
   currentUser: User | null;
-  users: User[]; // Mock user database
-  login: (email: string, password: string) => Promise<User | null>;
   signUp: (email: string, password: string, name: string, preferences: 'attend' | 'host' | 'both') => Promise<User>;
-  logout: () => void;
+  signInWithGoogle: () => Promise<User | null>;
   getCurrentUser: () => User | null;
-  updateUser: (userId: string, updates: Partial<User>) => void;
-  addFavorite: (userId: string, eventId: string) => void;
-  removeFavorite: (userId: string, eventId: string) => void;
-  addRSVP: (userId: string, eventId: string) => void;
-  removeRSVP: (userId: string, eventId: string) => void;
+  updateUser: (userId: string, updates: Partial<User>) => Promise<void>;
+  addFavorite: (userId: string, eventId: string) => Promise<void>;
+  removeFavorite: (userId: string, eventId: string) => Promise<void>;
+  addRSVP: (userId: string, eventId: string) => Promise<void>;
+  removeRSVP: (userId: string, eventId: string) => Promise<void>;
   getUserFavorites: (userId: string) => string[];
   getUserRSVPs: (userId: string) => string[];
   getUserHostedEvents: (userId: string) => string[];
+  initAuthListener: () => void;
 }
 
-// Official Popera account
-const POPERA_ACCOUNT_ID = 'popera-official';
-const POPERA_EMAIL = 'eatezca@gmail.com';
-const POPERA_USERNAME = 'Gopopera';
-const POPERA_DISPLAY_NAME = 'Popera';
-
-// Mock user database (in real app, this would be Firestore)
-const mockUsers: User[] = [
-  // Official Popera account
-  {
-    id: POPERA_ACCOUNT_ID,
-    email: POPERA_EMAIL,
-    name: POPERA_DISPLAY_NAME,
-    createdAt: new Date('2024-01-01').toISOString(),
-    preferences: 'host',
-    favorites: [],
-    rsvps: [],
-    hostedEvents: [],
-  },
-  {
-    id: 'user-1',
-    email: 'demo@example.com',
-    name: 'Demo User',
-    createdAt: new Date().toISOString(),
-    preferences: 'both',
-    favorites: [],
-    rsvps: [],
-    hostedEvents: [],
-  },
-];
-
-// Export constants for use in other files
-export const POPERA_HOST_ID = POPERA_ACCOUNT_ID;
-export const POPERA_HOST_NAME = POPERA_DISPLAY_NAME;
+// Official Popera account constants
+export const POPERA_HOST_ID = 'popera-official';
+export const POPERA_HOST_NAME = 'Popera';
+export const POPERA_EMAIL = 'eatezca@gmail.com';
 
 export const useUserStore = create<UserStore>()(
   persist(
     (set, get) => ({
-      currentUser: null,
-      users: mockUsers,
+      user: null,
+      loading: true,
+      currentUser: null, // Alias for backward compatibility
+
+      // Core auth functions
+      signup: async (email: string, password: string) => {
+        try {
+          set({ loading: true });
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          const firebaseUser = userCredential.user;
+          
+          // Create Firestore user document
+          const userDoc: FirestoreUser = {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            displayName: '',
+            photoURL: '',
+            createdAt: Date.now(),
+          };
+          
+          await setDoc(doc(db, 'users', firebaseUser.uid), {
+            ...userDoc,
+            createdAt: serverTimestamp(),
+          });
+          
+          // Update local state
+          const user: User = {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            photoURL: firebaseUser.photoURL || '',
+            displayName: firebaseUser.displayName || '',
+            // Backward compatibility aliases
+            id: firebaseUser.uid,
+            name: firebaseUser.displayName || '',
+            profileImageUrl: firebaseUser.photoURL || '',
+            favorites: [],
+            rsvps: [],
+            hostedEvents: [],
+          };
+          
+          set({ user, currentUser: user, loading: false });
+        } catch (error) {
+          console.error("Signup error:", error);
+          set({ loading: false });
+          throw error;
+        }
+      },
 
       login: async (email: string, password: string) => {
-        // Mock login - in real app, verify credentials with Firebase Auth
-        // Special handling for Popera account
-        if (email === POPERA_EMAIL && password === 'AIPMgopopera') {
-          const poperaUser = get().users.find(u => u.id === POPERA_ACCOUNT_ID);
-          if (poperaUser) {
-            set({ currentUser: poperaUser });
-            return poperaUser;
+        try {
+          set({ loading: true });
+          const userCredential = await signInWithEmailAndPassword(auth, email, password);
+          const firebaseUser = userCredential.user;
+          
+          // Fetch user profile from Firestore
+          await get().fetchUserProfile(firebaseUser.uid);
+        } catch (error) {
+          console.error("Login error:", error);
+          set({ loading: false });
+          throw error;
+        }
+      },
+
+      logout: async () => {
+        try {
+          set({ loading: true });
+          await signOut(auth);
+          set({ user: null, currentUser: null, loading: false });
+        } catch (error) {
+          console.error("Logout error:", error);
+          set({ loading: false });
+          throw error;
+        }
+      },
+
+      fetchUserProfile: async (uid: string) => {
+        try {
+          const firestoreUser = await getUserProfile(uid);
+          const firebaseUser = auth.currentUser;
+          
+          if (!firebaseUser) {
+            set({ user: null, currentUser: null, loading: false });
+            return;
           }
+          
+          // Load favorites and RSVPs from Firestore
+          const favorites = firestoreUser?.favorites || [];
+          const reservationEvents = await listUserReservations(uid);
+          const rsvps = reservationEvents.map(e => e.id);
+          
+          const user: User = {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            photoURL: firebaseUser.photoURL || firestoreUser?.photoURL || '',
+            displayName: firebaseUser.displayName || firestoreUser?.displayName || '',
+            // Backward compatibility aliases
+            id: firebaseUser.uid,
+            name: firebaseUser.displayName || firestoreUser?.displayName || '',
+            profileImageUrl: firebaseUser.photoURL || firestoreUser?.photoURL || '',
+            createdAt: firestoreUser?.createdAt ? new Date(firestoreUser.createdAt).toISOString() : new Date().toISOString(),
+            preferences: firestoreUser?.preferences || 'both',
+            favorites,
+            rsvps,
+            hostedEvents: [],
+          };
+          
+          set({ user, currentUser: user, loading: false });
+        } catch (error) {
+          console.error("Error fetching user profile:", error);
+          set({ loading: false });
+          throw error;
         }
-        
-        const user = get().users.find(u => u.email === email);
-        
-        if (user) {
-          set({ currentUser: user });
-          return user;
-        }
-        
-        // If user doesn't exist, create one (for demo purposes)
-        const newUser: User = {
-          id: `user-${Date.now()}`,
-          email,
-          name: email.split('@')[0],
-          createdAt: new Date().toISOString(),
-          preferences: 'both',
-          favorites: [],
-          rsvps: [],
-          hostedEvents: [],
-        };
-        
-        set((state) => ({
-          users: [...state.users, newUser],
-          currentUser: newUser,
-        }));
-        
-        return newUser;
       },
 
       signUp: async (email: string, password: string, name: string, preferences: 'attend' | 'host' | 'both') => {
-        // Check if user already exists
-        const existingUser = get().users.find(u => u.email === email);
-        if (existingUser) {
-          throw new Error('User already exists');
+        try {
+          // Use core signup function
+          await get().signup(email, password);
+          
+          // Update displayName and preferences
+          const currentUser = get().user;
+          if (currentUser) {
+            await createOrUpdateUserProfile(currentUser.uid, {
+              displayName: name,
+              preferences,
+            });
+            
+            // Reload profile
+            await get().fetchUserProfile(currentUser.uid);
+          }
+          
+          return get().user || null;
+        } catch (error) {
+          console.error("Sign up error:", error);
+          throw error;
         }
-
-        const newUser: User = {
-          id: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          email,
-          name,
-          createdAt: new Date().toISOString(),
-          preferences,
-          favorites: [],
-          rsvps: [],
-          hostedEvents: [],
-        };
-
-        set((state) => ({
-          users: [...state.users, newUser],
-          currentUser: newUser,
-        }));
-
-        return newUser;
       },
 
-      logout: () => {
-        set({ currentUser: null });
+      signInWithGoogle: async () => {
+        try {
+          set({ loading: true });
+          const provider = new GoogleAuthProvider();
+          const userCredential = await signInWithPopup(auth, provider);
+          const firebaseUser = userCredential.user;
+          
+          // Upsert user profile in Firestore
+          const firestoreUser = await getUserProfile(firebaseUser.uid);
+          if (!firestoreUser) {
+            await setDoc(doc(db, 'users', firebaseUser.uid), {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+              photoURL: firebaseUser.photoURL || '',
+              createdAt: serverTimestamp(),
+            });
+          } else {
+            // Update photo if changed
+            if (firebaseUser.photoURL && firestoreUser.photoURL !== firebaseUser.photoURL) {
+              await createOrUpdateUserProfile(firebaseUser.uid, {
+                photoURL: firebaseUser.photoURL,
+              });
+            }
+          }
+          
+          // Fetch updated profile
+          await get().fetchUserProfile(firebaseUser.uid);
+          return get().user || null;
+        } catch (error) {
+          console.error("Google sign in error:", error);
+          set({ loading: false });
+          throw error;
+        }
       },
 
       getCurrentUser: () => {
-        return get().currentUser;
+        return get().user || get().currentUser;
       },
 
-      updateUser: (userId: string, updates: Partial<User>) => {
-        set((state) => ({
-          users: state.users.map(user =>
-            user.id === userId ? { ...user, ...updates } : user
-          ),
-          currentUser: state.currentUser?.id === userId
-            ? { ...state.currentUser, ...updates }
-            : state.currentUser,
-        }));
+      updateUser: async (userId: string, updates: Partial<User>) => {
+        try {
+          // Update Firestore
+          const firestoreUpdates: Partial<FirestoreUser> = {};
+          if (updates.name || updates.displayName) firestoreUpdates.displayName = updates.name || updates.displayName || '';
+          if (updates.preferences) firestoreUpdates.preferences = updates.preferences;
+          if (updates.profileImageUrl || updates.photoURL) firestoreUpdates.photoURL = updates.profileImageUrl || updates.photoURL || '';
+          
+          await createOrUpdateUserProfile(userId, firestoreUpdates);
+          
+          // Update local state
+          const currentUser = get().user;
+          if (currentUser && currentUser.uid === userId) {
+            const updatedUser = { ...currentUser, ...updates };
+            set({ user: updatedUser, currentUser: updatedUser });
+          }
+        } catch (error) {
+          console.error("Update user error:", error);
+          throw error;
+        }
       },
 
-      addFavorite: (userId: string, eventId: string) => {
-        set((state) => {
-          const updatedUsers = state.users.map(user => {
-            if (user.id === userId && !user.favorites.includes(eventId)) {
-              return { ...user, favorites: [...user.favorites, eventId] };
-            }
-            return user;
+      addFavorite: async (userId: string, eventId: string) => {
+        try {
+          const currentUser = get().user;
+          const currentFavorites = currentUser?.favorites || [];
+          if (currentFavorites.includes(eventId)) {
+            return; // Already favorited
+          }
+          
+          const updatedFavorites = [...currentFavorites, eventId];
+          
+          // Update Firestore
+          await createOrUpdateUserProfile(userId, {
+            favorites: updatedFavorites,
           });
-
-          return {
-            users: updatedUsers,
-            currentUser: state.currentUser?.id === userId
-              ? { ...state.currentUser, favorites: [...(state.currentUser.favorites || []), eventId] }
-              : state.currentUser,
-          };
-        });
+          
+          // Update local state
+          if (currentUser && currentUser.uid === userId) {
+            const updatedUser = { ...currentUser, favorites: updatedFavorites };
+            set({ user: updatedUser, currentUser: updatedUser });
+          }
+        } catch (error) {
+          console.error("Add favorite error:", error);
+          throw error;
+        }
       },
 
-      removeFavorite: (userId: string, eventId: string) => {
-        set((state) => {
-          const updatedUsers = state.users.map(user => {
-            if (user.id === userId) {
-              return { ...user, favorites: user.favorites.filter(id => id !== eventId) };
-            }
-            return user;
+      removeFavorite: async (userId: string, eventId: string) => {
+        try {
+          const currentUser = get().user;
+          const currentFavorites = currentUser?.favorites || [];
+          const updatedFavorites = currentFavorites.filter(id => id !== eventId);
+          
+          // Update Firestore
+          await createOrUpdateUserProfile(userId, {
+            favorites: updatedFavorites,
           });
-
-          return {
-            users: updatedUsers,
-            currentUser: state.currentUser?.id === userId
-              ? { ...state.currentUser, favorites: state.currentUser.favorites.filter(id => id !== eventId) }
-              : state.currentUser,
-          };
-        });
+          
+          // Update local state
+          if (currentUser && currentUser.uid === userId) {
+            const updatedUser = { ...currentUser, favorites: updatedFavorites };
+            set({ user: updatedUser, currentUser: updatedUser });
+          }
+        } catch (error) {
+          console.error("Remove favorite error:", error);
+          throw error;
+        }
       },
 
-      addRSVP: (userId: string, eventId: string) => {
-        set((state) => {
-          const updatedUsers = state.users.map(user => {
-            if (user.id === userId && !user.rsvps.includes(eventId)) {
-              return { ...user, rsvps: [...user.rsvps, eventId] };
-            }
-            return user;
-          });
-
-          return {
-            users: updatedUsers,
-            currentUser: state.currentUser?.id === userId
-              ? { ...state.currentUser, rsvps: [...(state.currentUser.rsvps || []), eventId] }
-              : state.currentUser,
-          };
-        });
+      addRSVP: async (userId: string, eventId: string) => {
+        try {
+          const currentUser = get().user;
+          const currentRSVPs = currentUser?.rsvps || [];
+          if (currentRSVPs.includes(eventId)) {
+            return; // Already RSVP'd
+          }
+          
+          // Create reservation in Firestore
+          await createReservation(eventId, userId);
+          
+          // Reload RSVPs from Firestore to get updated list
+          const reservationEvents = await listUserReservations(userId);
+          const updatedRSVPs = reservationEvents.map(e => e.id);
+          
+          // Update local state
+          if (currentUser && currentUser.uid === userId) {
+            const updatedUser = { ...currentUser, rsvps: updatedRSVPs };
+            set({ user: updatedUser, currentUser: updatedUser });
+          }
+        } catch (error) {
+          console.error("Add RSVP error:", error);
+          throw error;
+        }
       },
 
-      removeRSVP: (userId: string, eventId: string) => {
-        set((state) => {
-          const updatedUsers = state.users.map(user => {
-            if (user.id === userId) {
-              return { ...user, rsvps: user.rsvps.filter(id => id !== eventId) };
-            }
-            return user;
-          });
-
-          return {
-            users: updatedUsers,
-            currentUser: state.currentUser?.id === userId
-              ? { ...state.currentUser, rsvps: state.currentUser.rsvps.filter(id => id !== eventId) }
-              : state.currentUser,
-          };
-        });
+      removeRSVP: async (userId: string, eventId: string) => {
+        try {
+          // Find and cancel reservation in Firestore
+          const reservations = await listReservationsForUser(userId);
+          const reservation = reservations.find(r => r.eventId === eventId && r.status === "reserved");
+          
+          if (reservation) {
+            await cancelReservation(reservation.id);
+          }
+          
+          // Reload RSVPs from Firestore
+          const reservationEvents = await listUserReservations(userId);
+          const updatedRSVPs = reservationEvents.map(e => e.id);
+          
+          // Update local state
+          const currentUser = get().user;
+          if (currentUser && currentUser.uid === userId) {
+            const updatedUser = { ...currentUser, rsvps: updatedRSVPs };
+            set({ user: updatedUser, currentUser: updatedUser });
+          }
+        } catch (error) {
+          console.error("Remove RSVP error:", error);
+          throw error;
+        }
       },
 
       getUserFavorites: (userId: string) => {
-        const user = get().users.find(u => u.id === userId);
-        return user?.favorites || [];
+        const user = get().user || get().currentUser;
+        if (user && (user.uid === userId || user.id === userId)) {
+          return user.favorites || [];
+        }
+        return [];
       },
 
       getUserRSVPs: (userId: string) => {
-        const user = get().users.find(u => u.id === userId);
-        return user?.rsvps || [];
+        const user = get().user || get().currentUser;
+        if (user && (user.uid === userId || user.id === userId)) {
+          return user.rsvps || [];
+        }
+        return [];
       },
 
       getUserHostedEvents: (userId: string) => {
-        const user = get().users.find(u => u.id === userId);
-        return user?.hostedEvents || [];
+        const user = get().user || get().currentUser;
+        if (user && (user.uid === userId || user.id === userId)) {
+          return user.hostedEvents || [];
+        }
+        return [];
+      },
+
+      initAuthListener: () => {
+        set({ loading: true });
+        onAuthStateChanged(auth, async (firebaseUser) => {
+          if (firebaseUser) {
+            try {
+              await get().fetchUserProfile(firebaseUser.uid);
+            } catch (error) {
+              console.error("Error restoring user session:", error);
+              set({ user: null, currentUser: null, loading: false });
+            }
+          } else {
+            set({ user: null, currentUser: null, loading: false });
+          }
+        });
       },
     }),
     {
       name: 'popera-user-storage',
-      partialize: (state) => ({ currentUser: state.currentUser }),
+      partialize: (state) => ({ user: state.user, currentUser: state.user }),
     }
   )
 );
-

@@ -38,6 +38,7 @@ import { useUserStore } from './stores/userStore';
 import { generatePoperaEvents } from './data/poperaEvents';
 import { generateFakeEvents } from './data/fakeEvents';
 import { categoryMatches } from './utils/categoryMapper';
+import { listUpcomingEvents, listEventsByCityAndTag, searchEvents as searchFirestoreEvents } from './firebase/db';
 
 // Mock Data Generator - Initial seed data
 const generateMockEvents = (): Event[] => [
@@ -318,27 +319,60 @@ const AppContent: React.FC = () => {
   const [location, setLocation] = useState('');
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   // Use Zustand stores
-  const currentUser = useUserStore((state) => state.getCurrentUser());
+  const user = useUserStore((state) => state.user);
+  const loading = useUserStore((state) => state.loading);
+  const initAuthListener = useUserStore((state) => state.initAuthListener);
   const addRSVP = useUserStore((state) => state.addRSVP);
   const removeRSVP = useUserStore((state) => state.removeRSVP);
   const addFavorite = useUserStore((state) => state.addFavorite);
   const removeFavorite = useUserStore((state) => state.removeFavorite);
   const updateEvent = useEventStore((state) => state.updateEvent);
   
-  const isLoggedIn = !!currentUser;
-  const favorites = currentUser?.favorites || [];
-  const rsvps = currentUser?.rsvps || [];
+  // Backward compatibility
+  const currentUser = user || useUserStore((state) => state.getCurrentUser());
+  const isLoggedIn = !!user;
+  const favorites = user?.favorites || [];
+  const rsvps = user?.rsvps || [];
   
-  // Use Zustand store for events
+  // Use Zustand store for events (for backward compatibility with mock data)
   const storeEvents = useEventStore((state) => state.getEvents());
   const searchEvents = useEventStore((state) => state.searchEvents);
   const filterByCity = useEventStore((state) => state.filterByCity);
   const filterByTags = useEventStore((state) => state.filterByTags);
   const getEventsByCity = useEventStore((state) => state.getEventsByCity);
   
-  // Initialize store with Popera events and fake events (first load only)
+  // State for Firestore events
+  const [firestoreEvents, setFirestoreEvents] = useState<Event[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(false);
+  
+  // Initialize auth listener on mount
   useEffect(() => {
-    if (storeEvents.length === 0) {
+    initAuthListener();
+  }, [initAuthListener]);
+  
+  // Load events from Firestore (with fallback to mock data)
+  useEffect(() => {
+    const loadFirestoreEvents = async () => {
+      try {
+        setLoadingEvents(true);
+        const events = await listUpcomingEvents();
+        if (events.length > 0) {
+          setFirestoreEvents(events);
+        }
+      } catch (error) {
+        console.error("Error loading Firestore events:", error);
+        // Fallback to mock data if Firestore fails
+      } finally {
+        setLoadingEvents(false);
+      }
+    };
+    
+    loadFirestoreEvents();
+  }, []);
+  
+  // Initialize store with Popera events and fake events (first load only, as fallback)
+  useEffect(() => {
+    if (storeEvents.length === 0 && firestoreEvents.length === 0) {
       // 1. First, add official Popera launch events
       const poperaEvents = generatePoperaEvents();
       poperaEvents.forEach(event => {
@@ -404,31 +438,15 @@ const AppContent: React.FC = () => {
   
   // Update attendee counts when RSVPs change
   useEffect(() => {
-    if (!currentUser) return;
+    if (!user) return;
     
-    // Count RSVPs per event
-    const eventRSVPCounts: Record<string, number> = {};
-    const allUsers = useUserStore.getState().users;
-    
-    allUsers.forEach(user => {
-      user.rsvps.forEach(eventId => {
-        eventRSVPCounts[eventId] = (eventRSVPCounts[eventId] || 0) + 1;
-      });
-    });
-    
-    // Update event attendee counts (only for Popera events)
-    storeEvents.forEach(event => {
-      if (event.isPoperaOwned && eventRSVPCounts[event.id] !== undefined) {
-        const newCount = eventRSVPCounts[event.id];
-        if (event.attendeesCount !== newCount) {
-          updateEvent(event.id, { attendeesCount: newCount });
-        }
-      }
-    });
-  }, [currentUser?.rsvps, storeEvents, updateEvent]);
+    // Count RSVPs per event from Firestore (handled by Firestore listeners)
+    // This effect is kept for backward compatibility with mock events
+  }, [user?.rsvps, storeEvents, updateEvent]);
   
-  // Get all events from store
-  const allEvents = useEventStore((state) => state.getEvents());
+  // Get all events - prefer Firestore, fallback to store (mock data)
+  const storeEventsList = useEventStore((state) => state.getEvents());
+  const allEvents = firestoreEvents.length > 0 ? firestoreEvents : storeEventsList;
 
   // Filter events based on search, location, category, and tags
   // Apply all filters in sequence for proper combined filtering
@@ -520,22 +538,29 @@ const AppContent: React.FC = () => {
   };
 
   const handleLogin = async (email: string, password: string) => {
-    const userStore = useUserStore.getState();
-    const user = await userStore.login(email, password);
-    if (user) {
+    try {
+      const userStore = useUserStore.getState();
+      await userStore.login(email, password);
+      // Auth listener will update state automatically
       // Redirect to intended destination or default to FEED
       setViewState(redirectAfterLogin || ViewState.FEED);
       setRedirectAfterLogin(null);
+    } catch (error) {
+      console.error("Login failed:", error);
     }
   };
   
-  const handleLogout = () => {
-    useUserStore.getState().logout();
-    setViewState(ViewState.LANDING);
+  const handleLogout = async () => {
+    try {
+      await useUserStore.getState().logout();
+      setViewState(ViewState.LANDING);
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
   };
   
   const handleRSVP = (eventId: string) => {
-    if (!currentUser) {
+    if (!user) {
       // Redirect to auth if not logged in
       setRedirectAfterLogin(ViewState.DETAIL);
       setViewState(ViewState.AUTH);
@@ -543,14 +568,14 @@ const AppContent: React.FC = () => {
     }
     
     if (rsvps.includes(eventId)) {
-      removeRSVP(currentUser.id, eventId);
+      removeRSVP(user.uid || user.id || '', eventId);
       // Decrease attendee count for Popera events
       const event = storeEvents.find(e => e.id === eventId);
       if (event?.isPoperaOwned && event.attendeesCount > 0) {
         updateEvent(eventId, { attendeesCount: event.attendeesCount - 1 });
       }
     } else {
-      addRSVP(currentUser.id, eventId);
+      addRSVP(user.uid || user.id || '', eventId);
       // Increase attendee count for Popera events
       const event = storeEvents.find(e => e.id === eventId);
       if (event?.isPoperaOwned) {
@@ -561,16 +586,16 @@ const AppContent: React.FC = () => {
   
   const handleToggleFavorite = (e: React.MouseEvent, eventId: string) => {
     e.stopPropagation();
-    if (!currentUser) {
+    if (!user) {
       setRedirectAfterLogin(ViewState.FEED);
       setViewState(ViewState.AUTH);
       return;
     }
     
     if (favorites.includes(eventId)) {
-      removeFavorite(currentUser.id, eventId);
+      removeFavorite(user.uid || user.id || '', eventId);
     } else {
-      addFavorite(currentUser.id, eventId);
+      addFavorite(user.uid || user.id || '', eventId);
     }
   };
 
@@ -601,7 +626,7 @@ const AppContent: React.FC = () => {
         onClose={handleCloseChat} 
         onViewDetails={handleViewDetailsFromChat}
         onReserve={() => {
-          if (!currentUser) {
+          if (!user) {
             setRedirectAfterLogin(ViewState.CHAT);
             setViewState(ViewState.AUTH);
           } else {
@@ -670,7 +695,7 @@ const AppContent: React.FC = () => {
 
         {viewState === ViewState.AUTH && <AuthPage setViewState={setViewState} onLogin={handleLogin} />}
         
-        {viewState === ViewState.PROFILE && <ProfilePage setViewState={setViewState} userName={currentUser?.name || ''} onLogout={handleLogout} />}
+        {viewState === ViewState.PROFILE && <ProfilePage setViewState={setViewState} userName={user?.displayName || user?.name || ''} onLogout={handleLogout} />}
         
         {/* PROFILE SUB-PAGES */}
         {viewState === ViewState.PROFILE_BASIC && <BasicDetailsPage setViewState={setViewState} />}
