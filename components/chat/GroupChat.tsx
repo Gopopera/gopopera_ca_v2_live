@@ -58,7 +58,10 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   // Subscribe to Firestore realtime chat updates
   useEffect(() => {
     if (canAccessChat && !isDemo) {
-      subscribeToEventChat(event.id);
+      // subscribeToEventChat is now async due to dynamic imports
+      subscribeToEventChat(event.id).catch(err => {
+        console.error("Error subscribing to chat:", err);
+      });
       return () => {
         unsubscribeFromEventChat(event.id);
       };

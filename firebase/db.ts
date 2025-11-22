@@ -15,6 +15,7 @@ import { FirestoreEvent, FirestoreReservation, FirestoreChatMessage, FirestoreRe
 import { Event } from "../types";
 
 // Lazy collection references - created when functions are called, not at module load
+// These are function definitions, so they don't execute until called
 // This prevents "Cannot access before initialization" errors
 const getEventsCol = () => collection(db, "events");
 const getReservationsCol = () => collection(db, "reservations");
