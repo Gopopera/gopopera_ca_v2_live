@@ -1,23 +1,23 @@
 // @ts-nocheck
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import {
-  collection,
+  getFirestore,
   doc,
   getDoc,
-  getDocs,
+  setDoc,
+  updateDoc,
+  collection,
   query,
   where,
-  orderBy,
-  addDoc,
-  updateDoc,
-  setDoc,
+  getDocs,
   onSnapshot,
   serverTimestamp,
   Timestamp,
+  orderBy,
+  addDoc,
 } from "firebase/firestore";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
