@@ -1,4 +1,4 @@
-import { db, collection, query, orderBy, onSnapshot, DocumentData, Unsubscribe } from "../src/lib/firebase";
+import { db, collection, query, orderBy, onSnapshot, Unsubscribe } from "../src/lib/firebase";
 import { FirestoreChatMessage } from "./types";
 
 export function subscribeToChat(
@@ -12,7 +12,7 @@ export function subscribeToChat(
     return onSnapshot(q, (snap) => {
       const msgs: FirestoreChatMessage[] = snap.docs.map((d) => ({
         id: d.id,
-        ...(d.data() as DocumentData),
+        ...(d.data() as any),
       })) as FirestoreChatMessage[];
       cb(msgs);
     }, (error) => {

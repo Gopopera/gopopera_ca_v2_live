@@ -17,7 +17,6 @@ import {
   onSnapshot,
   serverTimestamp,
   Timestamp,
-  DocumentData,
   Unsubscribe,
 } from "firebase/firestore";
 import {
@@ -65,7 +64,6 @@ export {
   onSnapshot,
   serverTimestamp,
   Timestamp,
-  DocumentData,
   Unsubscribe,
 };
 
