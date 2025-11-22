@@ -319,9 +319,7 @@ const AppContent: React.FC = () => {
   const [location, setLocation] = useState('');
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   // Use Zustand stores
-  const user = useUserStore((state) => state.user);
-  const loading = useUserStore((state) => state.loading);
-  const initAuthListener = useUserStore((state) => state.initAuthListener);
+  const currentUser = useUserStore((state) => state.getCurrentUser());
   const addRSVP = useUserStore((state) => state.addRSVP);
   const removeRSVP = useUserStore((state) => state.removeRSVP);
   const addFavorite = useUserStore((state) => state.addFavorite);
@@ -440,13 +438,29 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (!user) return;
     
-    // Count RSVPs per event from Firestore (handled by Firestore listeners)
-    // This effect is kept for backward compatibility with mock events
-  }, [user?.rsvps, storeEvents, updateEvent]);
+    // Count RSVPs per event
+    const eventRSVPCounts: Record<string, number> = {};
+    const allUsers = useUserStore.getState().users;
+    
+    allUsers.forEach(user => {
+      user.rsvps.forEach(eventId => {
+        eventRSVPCounts[eventId] = (eventRSVPCounts[eventId] || 0) + 1;
+      });
+    });
+    
+    // Update event attendee counts (only for Popera events)
+    storeEvents.forEach(event => {
+      if (event.isPoperaOwned && eventRSVPCounts[event.id] !== undefined) {
+        const newCount = eventRSVPCounts[event.id];
+        if (event.attendeesCount !== newCount) {
+          updateEvent(event.id, { attendeesCount: newCount });
+        }
+      }
+    });
+  }, [currentUser?.rsvps, storeEvents, updateEvent]);
   
-  // Get all events - prefer Firestore, fallback to store (mock data)
-  const storeEventsList = useEventStore((state) => state.getEvents());
-  const allEvents = firestoreEvents.length > 0 ? firestoreEvents : storeEventsList;
+  // Get all events from store
+  const allEvents = useEventStore((state) => state.getEvents());
 
   // Filter events based on search, location, category, and tags
   // Apply all filters in sequence for proper combined filtering

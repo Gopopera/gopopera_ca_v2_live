@@ -50,9 +50,15 @@ interface UserStore {
   removeFavorite: (userId: string, eventId: string) => Promise<void>;
   addRSVP: (userId: string, eventId: string) => Promise<void>;
   removeRSVP: (userId: string, eventId: string) => Promise<void>;
+  updateUser: (userId: string, updates: Partial<User>) => Promise<void>;
+  addFavorite: (userId: string, eventId: string) => Promise<void>;
+  removeFavorite: (userId: string, eventId: string) => Promise<void>;
+  addRSVP: (userId: string, eventId: string) => Promise<void>;
+  removeRSVP: (userId: string, eventId: string) => Promise<void>;
   getUserFavorites: (userId: string) => string[];
   getUserRSVPs: (userId: string) => string[];
   getUserHostedEvents: (userId: string) => string[];
+  initAuthListener: () => void;
   initAuthListener: () => void;
 }
 
