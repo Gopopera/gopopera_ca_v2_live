@@ -17,7 +17,6 @@ import {
   onSnapshot,
   serverTimestamp,
   Timestamp,
-  Unsubscribe,
 } from "firebase/firestore";
 import {
   onAuthStateChanged,
@@ -64,8 +63,12 @@ export {
   onSnapshot,
   serverTimestamp,
   Timestamp,
-  Unsubscribe,
 };
+
+// Type exports - use export type for isolatedModules
+// Unsubscribe is the return type of onSnapshot - a function that unsubscribes
+export type Unsubscribe = () => void;
+export type { User as FirebaseUser };
 
 // Auth exports
 export {
@@ -76,6 +79,3 @@ export {
   GoogleAuthProvider,
   signInWithPopup,
 };
-
-// Type exports - use export type for isolatedModules
-export type { User as FirebaseUser };
