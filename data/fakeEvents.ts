@@ -47,8 +47,8 @@ export const generateFakeEvents = (): Event[] => {
       location: `${location.address}, ${host.city}`,
       category: 'Market',
       price: getRandomPrice(),
-      rating: 4.5 + Math.random() * 0.5,
-      reviewCount: Math.floor(Math.random() * 100) + 20,
+      rating: Math.round((4.5 + Math.random() * 0.5) * 10) / 10, // 4.5-5.0, max 1 decimal
+      reviewCount: Math.floor(Math.random() * 100) + 20, // Integer only
       capacity: 50,
       lat: location.lat,
       lng: location.lng,
@@ -79,8 +79,8 @@ export const generateFakeEvents = (): Event[] => {
       location: `${location.address}, ${host.city}`,
       category: 'Social',
       price: getRandomPrice(),
-      rating: 4.5 + Math.random() * 0.5,
-      reviewCount: Math.floor(Math.random() * 100) + 20,
+      rating: Math.round((4.5 + Math.random() * 0.5) * 10) / 10, // 4.5-5.0, max 1 decimal
+      reviewCount: Math.floor(Math.random() * 100) + 20, // Integer only
       capacity: 50,
       lat: location.lat + 0.01,
       lng: location.lng + 0.01,
@@ -111,8 +111,8 @@ export const generateFakeEvents = (): Event[] => {
       location: `${location.address}, ${host.city}`,
       category: 'Community',
       price: getRandomPrice(),
-      rating: 4.5 + Math.random() * 0.5,
-      reviewCount: Math.floor(Math.random() * 100) + 20,
+      rating: Math.round((4.5 + Math.random() * 0.5) * 10) / 10, // 4.5-5.0, max 1 decimal
+      reviewCount: Math.floor(Math.random() * 100) + 20, // Integer only
       capacity: 50,
       lat: location.lat - 0.01,
       lng: location.lng - 0.01,

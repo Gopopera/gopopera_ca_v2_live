@@ -29,8 +29,8 @@ export const Pillars: React.FC = () => {
   ];
 
   return (
-    <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-white relative overflow-hidden w-full max-w-screen-xl mx-auto">
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+    <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-white relative overflow-hidden w-full lg:w-screen lg:max-w-none lg:mx-0">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 relative z-10">
         {/* Section Header */}
         <div className="text-center mb-6 sm:mb-8 md:mb-10 lg:mb-12">
           <span className="inline-block py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase mb-3 sm:mb-4">

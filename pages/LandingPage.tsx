@@ -220,9 +220,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
         
         {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
-        <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 overflow-x-auto md:overflow-x-visible gap-4 sm:gap-5 md:gap-6 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+        <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 overflow-x-auto md:overflow-x-visible gap-4 sm:gap-5 md:gap-6 lg:gap-6 xl:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
            {filteredEvents.slice(0, 8).map(event => (
-             <div key={event.id} className="w-[88vw] sm:min-w-[60vw] md:w-full lg:w-full xl:w-full snap-center flex-shrink-0 md:flex-shrink mr-3 md:mr-0">
+             <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:w-full lg:w-full xl:w-full snap-center h-full flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
                 <EventCard 
                   event={event} 
                   onClick={onEventClick} 
@@ -248,12 +248,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
       {/* 3. Pop-ups and Crowd Activation section */}
       <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] relative overflow-hidden w-full">
-         {/* Subtle Pattern Overlay */}
-         <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
-              style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '48px 48px' }}>
-         </div>
-         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-white/5 rounded-full blur-[120px] pointer-events-none"></div>
-
          <div className="max-w-5xl md:max-w-6xl lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
             <div className="mb-6 sm:mb-8 md:mb-10 animate-fade-in-up">
               <span className="inline-block py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-white/5 border border-white/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase backdrop-blur-sm">

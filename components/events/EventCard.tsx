@@ -2,6 +2,7 @@ import React from 'react';
 import { MapPin, Calendar, MessageCircle, Star, Heart } from 'lucide-react';
 import { Event } from '@/types';
 import { formatDate } from '@/utils/dateFormatter';
+import { formatRating } from '@/utils/formatRating';
 
 interface EventCardProps {
   event: Event;
@@ -27,17 +28,17 @@ export const EventCard: React.FC<EventCardProps> = ({
       onClick={() => onClick(event)}
       className="group relative bg-white rounded-2xl overflow-visible shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full flex flex-col w-full"
     >
-      {/* Image Container - Consistent aspect ratios across breakpoints */}
+      {/* Image Container - Mobile/Tablet: aspect ratio, Desktop: fixed height */}
       <div
         className="
           relative 
           aspect-[3/2] 
           sm:aspect-[3/2] 
           md:aspect-[3/2]
-          lg:aspect-[3/2]
-          xl:aspect-[3/2]
+          lg:aspect-auto lg:h-[240px]
+          xl:aspect-auto xl:h-[260px]
           overflow-hidden 
-          bg-gradient-to-br from-[#15383c] to-[#1f4d52]
+          bg-gradient-to-br from-popera-teal to-[#1f4d52]
         "
       >
         <img 
@@ -55,7 +56,7 @@ export const EventCard: React.FC<EventCardProps> = ({
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-60" />
         
         {/* Category Badge - Top Left */}
-        <div className="absolute top-4 left-4 bg-[#e35e25] px-3 py-1 rounded-full text-[10px] font-bold text-white shadow-sm uppercase tracking-wider z-10">
+        <div className="absolute top-4 left-4 bg-popera-orange px-3 py-1 rounded-full text-[10px] font-bold text-white shadow-sm uppercase tracking-wider z-10">
           {event.category}
         </div>
 
@@ -75,7 +76,7 @@ export const EventCard: React.FC<EventCardProps> = ({
              >
                <Heart 
                  size={20} 
-                 className={`sm:w-5 sm:h-5 transition-colors ${isFavorite ? 'fill-[#e35e25] text-[#e35e25]' : 'text-popera-teal hover:text-[#e35e25]'}`}
+                 className={`sm:w-5 sm:h-5 transition-colors ${isFavorite ? 'fill-popera-orange text-popera-orange' : 'text-popera-teal hover:text-popera-orange'}`}
                  strokeWidth={2}
                />
              </button>
@@ -93,15 +94,15 @@ export const EventCard: React.FC<EventCardProps> = ({
       </div>
 
       {/* Content */}
-      <div className="p-4 sm:p-4 md:p-4 lg:p-4 flex flex-col flex-grow min-h-0">
+      <div className="p-4 flex flex-col flex-grow min-h-0">
         {/* Host & Rating Row */}
-        <div className="mb-3 sm:mb-2.5 md:mb-3 flex items-center justify-between gap-2">
+        <div className="mb-3 flex items-center justify-between gap-2">
            {/* Host Info */}
-           <div className="flex items-center space-x-2 sm:space-x-2 overflow-hidden min-w-0 flex-1">
-             <span className="w-6 h-6 sm:w-6 sm:h-6 shrink-0 rounded-full bg-gray-200 overflow-hidden ring-1 ring-gray-200">
+           <div className="flex items-center space-x-2 overflow-hidden min-w-0 flex-1">
+             <span className="w-6 h-6 shrink-0 rounded-full bg-gray-200 overflow-hidden ring-1 ring-gray-200">
                <img src={`https://picsum.photos/seed/${event.hostName}/50/50`} alt="host" className="w-full h-full object-cover" />
              </span>
-             <p className="text-xs sm:text-xs font-medium text-gray-600 sm:text-gray-500 uppercase tracking-wide truncate">
+             <p className="text-xs font-medium text-gray-600 sm:text-gray-500 uppercase tracking-wide truncate">
                Hosted by {event.hostName.split(' ')[0]}
              </p>
            </div>
@@ -111,26 +112,26 @@ export const EventCard: React.FC<EventCardProps> = ({
              onClick={(e) => { e.stopPropagation(); onReviewsClick(e, event); }}
              className="flex items-center space-x-1.5 bg-gray-50 hover:bg-orange-50 px-2.5 sm:px-2 py-1.5 sm:py-1 rounded-lg transition-colors border border-gray-100 hover:border-orange-100 group/rating shrink-0 touch-manipulation active:scale-[0.95] min-h-[32px] sm:min-h-0"
            >
-              <Star size={14} className="sm:w-3 sm:h-3 text-gray-300 group-hover/rating:text-[#e35e25] group-hover/rating:fill-[#e35e25] transition-colors" fill="currentColor" />
-              <span className="text-xs sm:text-xs font-bold text-[#15383c]">{event.rating}</span>
-              <span className="text-[10px] sm:text-[10px] text-gray-500 sm:text-gray-400 group-hover/rating:text-orange-400">({event.reviewCount})</span>
+              <Star size={14} className="sm:w-3 sm:h-3 text-gray-300 group-hover/rating:text-popera-orange group-hover/rating:fill-popera-orange transition-colors" fill="currentColor" />
+              <span className="text-xs font-bold text-popera-teal">{formatRating(event.rating)}</span>
+              <span className="text-[10px] text-gray-500 sm:text-gray-400 group-hover/rating:text-orange-400">({event.reviewCount})</span>
            </button>
         </div>
 
-        <h3 className="text-base sm:text-lg md:text-xl font-heading font-semibold text-popera-teal mb-3 sm:mb-2.5 group-hover:text-popera-orange transition-colors line-clamp-2 leading-snug">
+        <h3 className="text-base sm:text-lg md:text-base lg:text-lg font-heading font-semibold text-popera-teal mb-3 sm:mb-2.5 md:mb-3 group-hover:text-popera-orange transition-colors line-clamp-2 leading-snug">
           {event.title}
         </h3>
 
-        <div className="mt-auto space-y-2 sm:space-y-2">
-          <div className="flex items-center text-gray-600 text-sm sm:text-sm">
-            <Calendar size={16} className="sm:w-4 sm:h-4 mr-2 sm:mr-2 text-popera-orange shrink-0" />
+        <div className="mt-auto space-y-2">
+          <div className="flex items-center text-gray-600 text-sm">
+            <Calendar size={16} className="sm:w-4 sm:h-4 mr-2 text-popera-orange shrink-0" />
             <span className="truncate leading-relaxed">{formatDate(event.date)} • {event.time}</span>
           </div>
-          <div className="flex items-center text-gray-600 text-sm sm:text-sm min-w-0">
-            <MapPin size={16} className="sm:w-4 sm:h-4 mr-2 sm:mr-2 text-popera-orange shrink-0" />
+          <div className="flex items-center text-gray-600 text-sm min-w-0">
+            <MapPin size={16} className="sm:w-4 sm:h-4 mr-2 text-popera-orange shrink-0" />
             <div className="flex items-center min-w-0 flex-1 gap-1.5">
               {/* City - always visible, never truncates */}
-              <span className="font-medium text-[#15383c] shrink-0 whitespace-nowrap">{event.city}</span>
+              <span className="font-medium text-popera-teal shrink-0 whitespace-nowrap">{event.city}</span>
               {/* Address/Venue - extract from location if it contains more than just city */}
               {(() => {
                 // If location is just the city, don't show address
