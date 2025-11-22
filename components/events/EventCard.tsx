@@ -26,7 +26,7 @@ export const EventCard: React.FC<EventCardProps> = ({
   return (
     <div 
       onClick={() => onClick(event)}
-      className="group relative bg-white rounded-2xl overflow-visible shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full flex flex-col w-full"
+      className="group relative bg-white rounded-2xl overflow-visible shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full md:h-auto flex flex-col w-full"
     >
       {/* Image Container - Mobile/Tablet: aspect ratio, Desktop: fixed height */}
       <div
