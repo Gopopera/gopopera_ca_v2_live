@@ -22,6 +22,8 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   const currentUser = useUserStore((state) => state.getCurrentUser());
   const getMessagesForEvent = useChatStore((state) => state.getMessagesForEvent);
   const addMessage = useChatStore((state) => state.addMessage);
+  const subscribeToEventChat = useChatStore((state) => state.subscribeToEventChat);
+  const unsubscribeFromEventChat = useChatStore((state) => state.unsubscribeFromEventChat);
   const initializeEventChat = useChatStore((state) => state.initializeEventChat);
   const getPollForEvent = useChatStore((state) => state.getPollForEvent);
   const addPoll = useChatStore((state) => state.addPoll);
@@ -53,17 +55,27 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   const messages = getMessagesForEvent(event.id);
   const poll = getPollForEvent(event.id);
   
-  // Initialize chat for Popera events (including official launch events)
+  // Subscribe to Firestore realtime chat updates
+  useEffect(() => {
+    if (canAccessChat && !isDemo) {
+      subscribeToEventChat(event.id);
+      return () => {
+        unsubscribeFromEventChat(event.id);
+      };
+    }
+  }, [event.id, canAccessChat, isDemo, subscribeToEventChat, unsubscribeFromEventChat]);
+  
+  // Initialize chat for Popera events (including official launch events) - fallback for mock data
   useEffect(() => {
     if (isPoperaOwned && messages.length === 0 && !isDemo) {
       initializeEventChat(event.id, event.hostName);
     }
   }, [event.id, event.hostName, isPoperaOwned, messages.length, initializeEventChat, isDemo]);
   
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!message.trim() || !canSendMessages || !currentUser) return;
     
-    addMessage(event.id, currentUser.id, currentUser.name, message, 'message', isHost);
+    await addMessage(event.id, currentUser.id, currentUser.name, message, 'message', isHost);
     setMessage('');
   };
   

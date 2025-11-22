@@ -1,4 +1,7 @@
 import { create } from 'zustand';
+import { subscribeToChat } from '../firebase/listeners';
+import { addChatMessage as addFirestoreMessage } from '../firebase/db';
+import { FirestoreChatMessage } from '../firebase/types';
 
 export interface ChatMessage {
   id: string;
@@ -23,38 +26,108 @@ export interface Poll {
 interface ChatStore {
   messages: ChatMessage[];
   polls: Poll[];
-  addMessage: (eventId: string, userId: string, userName: string, message: string, type?: ChatMessage['type'], isHost?: boolean) => void;
+  firestoreMessages: Record<string, FirestoreChatMessage[]>; // eventId -> messages
+  unsubscribeCallbacks: Record<string, () => void>; // eventId -> unsubscribe function
+  addMessage: (eventId: string, userId: string, userName: string, message: string, type?: ChatMessage['type'], isHost?: boolean) => Promise<void>;
   getMessagesForEvent: (eventId: string) => ChatMessage[];
+  subscribeToEventChat: (eventId: string) => void;
+  unsubscribeFromEventChat: (eventId: string) => void;
   addPoll: (eventId: string, question: string, options: string[]) => Poll;
   voteOnPoll: (pollId: string, optionIndex: number) => void;
   getPollForEvent: (eventId: string) => Poll | null;
   initializeEventChat: (eventId: string, hostName: string) => void;
 }
 
+// Helper to convert FirestoreChatMessage to ChatMessage
+const mapFirestoreMessageToChatMessage = (msg: FirestoreChatMessage): ChatMessage => {
+  return {
+    id: msg.id,
+    eventId: msg.eventId,
+    userId: msg.userId,
+    userName: msg.userName,
+    message: msg.text,
+    timestamp: new Date(msg.createdAt).toISOString(),
+    type: msg.type || 'message',
+    isHost: msg.isHost || false,
+  };
+};
+
 export const useChatStore = create<ChatStore>((set, get) => ({
   messages: [],
   polls: [],
+  firestoreMessages: {},
+  unsubscribeCallbacks: {},
 
-  addMessage: (eventId, userId, userName, message, type = 'message', isHost = false) => {
-    const newMessage: ChatMessage = {
-      id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      eventId,
-      userId,
-      userName,
-      message,
-      timestamp: new Date().toISOString(),
-      type,
-      isHost,
-    };
+  addMessage: async (eventId, userId, userName, message, type = 'message', isHost = false) => {
+    try {
+      // Add to Firestore
+      await addFirestoreMessage(eventId, userId, userName, message, type, isHost);
+      // The realtime listener will update the messages automatically
+    } catch (error) {
+      console.error("Error adding message to Firestore:", error);
+      // Fallback to local state if Firestore fails
+      const newMessage: ChatMessage = {
+        id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        eventId,
+        userId,
+        userName,
+        message,
+        timestamp: new Date().toISOString(),
+        type,
+        isHost,
+      };
+      set((state) => ({
+        messages: [...state.messages, newMessage],
+      }));
+    }
+  },
+
+  subscribeToEventChat: (eventId: string) => {
+    // Unsubscribe from previous subscription if exists
+    const existingUnsubscribe = get().unsubscribeCallbacks[eventId];
+    if (existingUnsubscribe) {
+      existingUnsubscribe();
+    }
+
+    // Subscribe to Firestore realtime updates
+    const unsubscribe = subscribeToChat(eventId, (firestoreMessages: FirestoreChatMessage[]) => {
+      set((state) => ({
+        firestoreMessages: {
+          ...state.firestoreMessages,
+          [eventId]: firestoreMessages,
+        },
+      }));
+    });
 
     set((state) => ({
-      messages: [...state.messages, newMessage],
+      unsubscribeCallbacks: {
+        ...state.unsubscribeCallbacks,
+        [eventId]: unsubscribe,
+      },
     }));
+  },
 
-    return newMessage;
+  unsubscribeFromEventChat: (eventId: string) => {
+    const unsubscribe = get().unsubscribeCallbacks[eventId];
+    if (unsubscribe) {
+      unsubscribe();
+      set((state) => {
+        const newCallbacks = { ...state.unsubscribeCallbacks };
+        delete newCallbacks[eventId];
+        return { unsubscribeCallbacks: newCallbacks };
+      });
+    }
   },
 
   getMessagesForEvent: (eventId: string) => {
+    // Prefer Firestore messages if available
+    const firestoreMsgs = get().firestoreMessages[eventId];
+    if (firestoreMsgs && firestoreMsgs.length > 0) {
+      return firestoreMsgs.map(mapFirestoreMessageToChatMessage)
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    }
+    
+    // Fallback to local messages
     return get().messages
       .filter(msg => msg.eventId === eventId)
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());

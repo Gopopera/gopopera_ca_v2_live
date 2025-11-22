@@ -38,6 +38,7 @@ import { useUserStore } from './stores/userStore';
 import { generatePoperaEvents } from './data/poperaEvents';
 import { generateFakeEvents } from './data/fakeEvents';
 import { categoryMatches } from './utils/categoryMapper';
+import { listUpcomingEvents, listEventsByCityAndTag, searchEvents as searchFirestoreEvents } from './firebase/db';
 
 // Mock Data Generator - Initial seed data
 const generateMockEvents = (): Event[] => [
@@ -319,6 +320,7 @@ const AppContent: React.FC = () => {
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   // Use Zustand stores
   const currentUser = useUserStore((state) => state.getCurrentUser());
+  const initAuthListener = useUserStore((state) => state.initAuthListener);
   const addRSVP = useUserStore((state) => state.addRSVP);
   const removeRSVP = useUserStore((state) => state.removeRSVP);
   const addFavorite = useUserStore((state) => state.addFavorite);
@@ -329,16 +331,45 @@ const AppContent: React.FC = () => {
   const favorites = currentUser?.favorites || [];
   const rsvps = currentUser?.rsvps || [];
   
-  // Use Zustand store for events
+  // Use Zustand store for events (for backward compatibility with mock data)
   const storeEvents = useEventStore((state) => state.getEvents());
   const searchEvents = useEventStore((state) => state.searchEvents);
   const filterByCity = useEventStore((state) => state.filterByCity);
   const filterByTags = useEventStore((state) => state.filterByTags);
   const getEventsByCity = useEventStore((state) => state.getEventsByCity);
   
-  // Initialize store with Popera events and fake events (first load only)
+  // State for Firestore events
+  const [firestoreEvents, setFirestoreEvents] = useState<Event[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(false);
+  
+  // Initialize auth listener on mount
   useEffect(() => {
-    if (storeEvents.length === 0) {
+    initAuthListener();
+  }, [initAuthListener]);
+  
+  // Load events from Firestore (with fallback to mock data)
+  useEffect(() => {
+    const loadFirestoreEvents = async () => {
+      try {
+        setLoadingEvents(true);
+        const events = await listUpcomingEvents();
+        if (events.length > 0) {
+          setFirestoreEvents(events);
+        }
+      } catch (error) {
+        console.error("Error loading Firestore events:", error);
+        // Fallback to mock data if Firestore fails
+      } finally {
+        setLoadingEvents(false);
+      }
+    };
+    
+    loadFirestoreEvents();
+  }, []);
+  
+  // Initialize store with Popera events and fake events (first load only, as fallback)
+  useEffect(() => {
+    if (storeEvents.length === 0 && firestoreEvents.length === 0) {
       // 1. First, add official Popera launch events
       const poperaEvents = generatePoperaEvents();
       poperaEvents.forEach(event => {
@@ -427,8 +458,9 @@ const AppContent: React.FC = () => {
     });
   }, [currentUser?.rsvps, storeEvents, updateEvent]);
   
-  // Get all events from store
-  const allEvents = useEventStore((state) => state.getEvents());
+  // Get all events - prefer Firestore, fallback to store (mock data)
+  const storeEventsList = useEventStore((state) => state.getEvents());
+  const allEvents = firestoreEvents.length > 0 ? firestoreEvents : storeEventsList;
 
   // Filter events based on search, location, category, and tags
   // Apply all filters in sequence for proper combined filtering
