@@ -124,8 +124,9 @@ export const useEventStore = create<EventStore>((set, get) => ({
     if (!tags || tags.length === 0) return get().events;
     
     return get().events.filter((event) => {
+      const eventTags = Array.isArray(event.tags) ? event.tags : [];
       return tags.some((tag) =>
-        event.tags.some((eventTag) =>
+        eventTags.some((eventTag) =>
           eventTag.toLowerCase().includes(tag.toLowerCase())
         )
       );
@@ -151,14 +152,16 @@ export const useEventStore = create<EventStore>((set, get) => ({
   },
 
   getEventsByCity: () => {
-    const events = get().events;
+    const events = get().events || [];
     const grouped: Record<string, Event[]> = {};
 
     events.forEach((event) => {
-      if (!grouped[event.city]) {
-        grouped[event.city] = [];
+      if (event?.city) {
+        if (!grouped[event.city]) {
+          grouped[event.city] = [];
+        }
+        grouped[event.city].push(event);
       }
-      grouped[event.city].push(event);
     });
 
     return grouped;

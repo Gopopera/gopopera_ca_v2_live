@@ -28,9 +28,10 @@ export interface User {
   name?: string; // Alias for displayName
   createdAt?: string;
   preferences?: 'attend' | 'host' | 'both';
-  favorites?: string[]; // Event IDs
-  rsvps?: string[]; // Event IDs user has RSVP'd to
-  hostedEvents?: string[]; // Event IDs user has created
+  favorites: string[]; // Event IDs - always an array, never undefined
+  rsvps: string[]; // Event IDs user has RSVP'd to - always an array, never undefined
+  hostedEvents: string[]; // Event IDs user has created - always an array, never undefined
+  attendingEvents?: string[]; // Event IDs user is attending
   profileImageUrl?: string; // Alias for photoURL
 }
 
@@ -93,7 +94,7 @@ export const useUserStore = create<UserStore>()(
             createdAt: serverTimestamp(),
           });
           
-          // Update local state
+          // Update local state with safe defaults
           const user: User = {
             uid: firebaseUser.uid,
             email: firebaseUser.email || '',
@@ -106,6 +107,7 @@ export const useUserStore = create<UserStore>()(
             favorites: [],
             rsvps: [],
             hostedEvents: [],
+            attendingEvents: [],
           };
           
           set({ user, currentUser: user, loading: false });
@@ -153,10 +155,10 @@ export const useUserStore = create<UserStore>()(
             return;
           }
           
-          // Load favorites and RSVPs from Firestore
-          const favorites = firestoreUser?.favorites || [];
+          // Load favorites and RSVPs from Firestore with safe defaults
+          const favorites = Array.isArray(firestoreUser?.favorites) ? firestoreUser.favorites : [];
           const reservationEvents = await listUserReservations(uid);
-          const rsvps = reservationEvents.map(e => e.id);
+          const rsvps = Array.isArray(reservationEvents) ? reservationEvents.map(e => e?.id).filter(Boolean) : [];
           
           const user: User = {
             uid: firebaseUser.uid,
@@ -172,6 +174,7 @@ export const useUserStore = create<UserStore>()(
             favorites,
             rsvps,
             hostedEvents: [],
+            attendingEvents: [],
           };
           
           set({ user, currentUser: user, loading: false });
@@ -279,7 +282,7 @@ export const useUserStore = create<UserStore>()(
       addFavorite: async (userId: string, eventId: string) => {
         try {
           const currentUser = get().user;
-          const currentFavorites = currentUser?.favorites || [];
+          const currentFavorites = Array.isArray(currentUser?.favorites) ? currentUser.favorites : [];
           if (currentFavorites.includes(eventId)) {
             return; // Already favorited
           }
@@ -305,7 +308,7 @@ export const useUserStore = create<UserStore>()(
       removeFavorite: async (userId: string, eventId: string) => {
         try {
           const currentUser = get().user;
-          const currentFavorites = currentUser?.favorites || [];
+          const currentFavorites = Array.isArray(currentUser?.favorites) ? currentUser.favorites : [];
           const updatedFavorites = currentFavorites.filter(id => id !== eventId);
           
           // Update Firestore
@@ -327,7 +330,7 @@ export const useUserStore = create<UserStore>()(
       addRSVP: async (userId: string, eventId: string) => {
         try {
           const currentUser = get().user;
-          const currentRSVPs = currentUser?.rsvps || [];
+          const currentRSVPs = Array.isArray(currentUser?.rsvps) ? currentUser.rsvps : [];
           if (currentRSVPs.includes(eventId)) {
             return; // Already RSVP'd
           }
@@ -337,7 +340,7 @@ export const useUserStore = create<UserStore>()(
           
           // Reload RSVPs from Firestore to get updated list
           const reservationEvents = await listUserReservations(userId);
-          const updatedRSVPs = reservationEvents.map(e => e.id);
+          const updatedRSVPs = Array.isArray(reservationEvents) ? reservationEvents.map(e => e?.id).filter(Boolean) : [];
           
           // Update local state
           if (currentUser && currentUser.uid === userId) {
@@ -379,7 +382,7 @@ export const useUserStore = create<UserStore>()(
       getUserFavorites: (userId: string) => {
         const user = get().user || get().currentUser;
         if (user && (user.uid === userId || user.id === userId)) {
-          return user.favorites || [];
+          return Array.isArray(user.favorites) ? user.favorites : [];
         }
         return [];
       },
@@ -387,7 +390,7 @@ export const useUserStore = create<UserStore>()(
       getUserRSVPs: (userId: string) => {
         const user = get().user || get().currentUser;
         if (user && (user.uid === userId || user.id === userId)) {
-          return user.rsvps || [];
+          return Array.isArray(user.rsvps) ? user.rsvps : [];
         }
         return [];
       },
@@ -395,7 +398,7 @@ export const useUserStore = create<UserStore>()(
       getUserHostedEvents: (userId: string) => {
         const user = get().user || get().currentUser;
         if (user && (user.uid === userId || user.id === userId)) {
-          return user.hostedEvents || [];
+          return Array.isArray(user.hostedEvents) ? user.hostedEvents : [];
         }
         return [];
       },

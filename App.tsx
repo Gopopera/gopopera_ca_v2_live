@@ -320,6 +320,7 @@ const AppContent: React.FC = () => {
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   // Use Zustand stores
   const user = useUserStore((state) => state.user);
+  const loading = useUserStore((state) => state.loading);
   const addRSVP = useUserStore((state) => state.addRSVP);
   const removeRSVP = useUserStore((state) => state.removeRSVP);
   const addFavorite = useUserStore((state) => state.addFavorite);
@@ -327,10 +328,10 @@ const AppContent: React.FC = () => {
   const updateEvent = useEventStore((state) => state.updateEvent);
   const currentUser = useUserStore((state) => state.getCurrentUser());
   
-  // Backward compatibility
+  // Backward compatibility with safe defaults
   const isLoggedIn = !!user;
-  const favorites = user?.favorites || [];
-  const rsvps = user?.rsvps || [];
+  const favorites = Array.isArray(user?.favorites) ? user.favorites : [];
+  const rsvps = Array.isArray(user?.rsvps) ? user.rsvps : [];
   
   // Use Zustand store for events (for backward compatibility with mock data)
   const storeEvents = useEventStore((state) => state.getEvents());
@@ -348,6 +349,15 @@ const AppContent: React.FC = () => {
     const initAuth = useUserStore.getState().initAuthListener;
     initAuth();
   }, []);
+
+  // Handle redirect after successful login (including Google login)
+  useEffect(() => {
+    if (!loading && user && viewState === ViewState.AUTH) {
+      // User just logged in, redirect to intended destination or FEED
+      setViewState(redirectAfterLogin || ViewState.FEED);
+      setRedirectAfterLogin(null);
+    }
+  }, [user, loading, viewState, redirectAfterLogin]);
   
   // Load events from Firestore (with fallback to mock data)
   useEffect(() => {
@@ -373,7 +383,7 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (storeEvents.length === 0 && firestoreEvents.length === 0) {
       // 1. First, add official Popera launch events
-      const poperaEvents = generatePoperaEvents();
+      const poperaEvents = generatePoperaEvents() || [];
       poperaEvents.forEach(event => {
         useEventStore.getState().addEvent({
           title: event.title,
@@ -403,7 +413,7 @@ const AppContent: React.FC = () => {
       });
       
       // 2. Then, add fake demo events (3 per city, one per value prop)
-      const fakeEvents = generateFakeEvents();
+      const fakeEvents = generateFakeEvents() || [];
       fakeEvents.forEach(event => {
         useEventStore.getState().addEvent({
           title: event.title,
@@ -439,26 +449,25 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (!user) return;
     
-    // Count RSVPs per event
+    // Count RSVPs per event (using current user's RSVPs only)
     const eventRSVPCounts: Record<string, number> = {};
-    const allUsers = useUserStore.getState().users;
+    const userRSVPs = user?.rsvps || [];
     
-    allUsers.forEach(user => {
-      user.rsvps.forEach(eventId => {
-        eventRSVPCounts[eventId] = (eventRSVPCounts[eventId] || 0) + 1;
-      });
+    userRSVPs.forEach(eventId => {
+      eventRSVPCounts[eventId] = (eventRSVPCounts[eventId] || 0) + 1;
     });
     
     // Update event attendee counts (only for Popera events)
-    storeEvents.forEach(event => {
-      if (event.isPoperaOwned && eventRSVPCounts[event.id] !== undefined) {
+    const safeStoreEvents = storeEvents || [];
+    safeStoreEvents.forEach(event => {
+      if (event?.isPoperaOwned && eventRSVPCounts[event.id] !== undefined) {
         const newCount = eventRSVPCounts[event.id];
         if (event.attendeesCount !== newCount) {
           updateEvent(event.id, { attendeesCount: newCount });
         }
       }
     });
-  }, [currentUser?.rsvps, storeEvents, updateEvent]);
+  }, [user?.rsvps, storeEvents, updateEvent, user]);
   
   // Get all events from store
   const allEvents = useEventStore((state) => state.getEvents());
@@ -679,6 +688,18 @@ const AppContent: React.FC = () => {
       </div>
     </section>
   );
+
+  // Show loading screen while auth is initializing
+  if (loading && !user) {
+    return (
+      <div className="font-sans text-popera-teal bg-gray-50 min-h-screen flex flex-col items-center justify-center w-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#e35e25] mx-auto mb-4"></div>
+          <p className="text-gray-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="font-sans text-popera-teal bg-gray-50 min-h-screen flex flex-col w-full max-w-full overflow-x-hidden">
