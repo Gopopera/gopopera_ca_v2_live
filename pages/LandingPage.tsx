@@ -124,7 +124,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       <Hero setViewState={setViewState} />
       
       {/* 2. Upcoming Events (event feed section) */}
-      <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 w-full max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 bg-[#FAFAFA] overflow-hidden">
+      <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 w-full lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 bg-[#FAFAFA] overflow-hidden">
         {/* Header Content */}
         <div className="flex flex-col gap-4 sm:gap-5 md:gap-6 mb-6 sm:mb-8 md:mb-10 lg:mb-12">
           <div className="max-w-3xl">

@@ -10,11 +10,15 @@ export const formatDate = (dateString: string): string => {
     // Handle different date formats
     let date: Date;
     
-    // Try parsing as ISO string first
-    if (dateString.includes('T') || dateString.includes('-')) {
+    // Handle ISO date format (YYYY-MM-DD) - parse manually to avoid timezone issues
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      const [year, month, day] = dateString.split('-').map(Number);
+      date = new Date(year, month - 1, day); // month is 0-indexed
+    } else if (dateString.includes('T') || dateString.includes('-')) {
+      // Try parsing as ISO string
       date = new Date(dateString);
     } else {
-      // Try parsing formats like "Fri, Feb 1, 2026" or "2026-02-01"
+      // Try parsing other formats
       date = new Date(dateString);
     }
     

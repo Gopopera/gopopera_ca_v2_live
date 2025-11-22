@@ -130,8 +130,8 @@ export const EventCard: React.FC<EventCardProps> = ({
           <div className="flex items-center text-gray-600 text-sm min-w-0">
             <MapPin size={16} className="sm:w-4 sm:h-4 mr-2 text-popera-orange shrink-0" />
             <div className="flex items-center min-w-0 flex-1 gap-1.5">
-              {/* City - always visible, never truncates */}
-              <span className="font-medium text-popera-teal shrink-0 whitespace-nowrap">{event.city}</span>
+              {/* City - always visible, never truncates, in bold */}
+              <span className="font-bold text-popera-teal shrink-0 whitespace-nowrap">{event.city}</span>
               {/* Address/Venue - extract from location if it contains more than just city */}
               {(() => {
                 // If location is just the city, don't show address
@@ -145,16 +145,22 @@ export const EventCard: React.FC<EventCardProps> = ({
                   // Address is everything before the city
                   const address = locationParts.slice(0, cityIndex).join(',').trim();
                   return address ? (
-                    <span className="truncate text-gray-600 leading-relaxed">
-                      {address}
-                    </span>
+                    <>
+                      <span className="text-gray-600 shrink-0">—</span>
+                      <span className="truncate text-gray-600 leading-relaxed">
+                        {address}
+                      </span>
+                    </>
                   ) : null;
                 }
                 // Fallback: use address field if available
                 return event.address ? (
-                  <span className="truncate text-gray-600 leading-relaxed">
-                    {event.address}
-                  </span>
+                  <>
+                    <span className="text-gray-600 shrink-0">—</span>
+                    <span className="truncate text-gray-600 leading-relaxed">
+                      {event.address}
+                    </span>
+                  </>
                 ) : null;
               })()}
             </div>
