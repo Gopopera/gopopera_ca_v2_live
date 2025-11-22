@@ -624,7 +624,7 @@ const AppContent: React.FC = () => {
       {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
       <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 overflow-x-auto md:overflow-x-visible gap-4 sm:gap-5 md:gap-6 lg:gap-6 xl:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
          {events.map(event => (
-           <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:w-full lg:w-full xl:w-full snap-center h-full flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
+           <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:w-full lg:w-full xl:w-full snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
               <EventCard 
                 event={event} 
                 onClick={handleEventClick} 
@@ -838,7 +838,7 @@ const AppContent: React.FC = () => {
                        {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
                        <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 overflow-x-auto md:overflow-x-visible gap-4 sm:gap-5 md:gap-6 lg:gap-6 xl:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
                          {cityEvents.map(event => (
-                           <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:w-full lg:w-full xl:w-full snap-center h-full flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
+                           <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:w-full lg:w-full xl:w-full snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
                              <EventCard
                                event={event}
                                onClick={handleEventClick}
@@ -887,7 +887,7 @@ const AppContent: React.FC = () => {
                               {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
                               <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 overflow-x-auto md:overflow-x-visible gap-4 sm:gap-5 md:gap-6 lg:gap-6 xl:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
                                 {categoryEvents.map(event => (
-                                  <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:w-full lg:w-full xl:w-full snap-center h-full flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
+                                  <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:w-full lg:w-full xl:w-full snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
                                     <EventCard
                                       event={event}
                                       onClick={handleEventClick}

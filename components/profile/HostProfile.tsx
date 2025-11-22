@@ -146,16 +146,17 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
         {activeTab === 'events' ? (
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 lg:gap-6 xl:gap-8">
              {hostEvents.map(event => (
-               <EventCard 
-                 key={event.id} 
-                 event={event} 
-                 onClick={onEventClick} 
-                 onChatClick={() => {}} 
-                 onReviewsClick={() => {}} 
-                 isLoggedIn={isLoggedIn} 
-                 isFavorite={favorites.includes(event.id)} 
-                 onToggleFavorite={onToggleFavorite} 
-               />
+               <div key={event.id} className="h-auto">
+                 <EventCard 
+                   event={event} 
+                   onClick={onEventClick} 
+                   onChatClick={() => {}} 
+                   onReviewsClick={() => {}} 
+                   isLoggedIn={isLoggedIn} 
+                   isFavorite={favorites.includes(event.id)} 
+                   onToggleFavorite={onToggleFavorite} 
+                 />
+               </div>
              ))}
              {hostEvents.length === 0 && (
                <div className="col-span-full py-20 text-center text-gray-400">
