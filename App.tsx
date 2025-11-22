@@ -325,9 +325,9 @@ const AppContent: React.FC = () => {
   const addFavorite = useUserStore((state) => state.addFavorite);
   const removeFavorite = useUserStore((state) => state.removeFavorite);
   const updateEvent = useEventStore((state) => state.updateEvent);
+  const currentUser = useUserStore((state) => state.getCurrentUser());
   
   // Backward compatibility
-  const currentUser = user || useUserStore((state) => state.getCurrentUser());
   const isLoggedIn = !!user;
   const favorites = user?.favorites || [];
   const rsvps = user?.rsvps || [];
