@@ -1,3 +1,13 @@
+/**
+ * CYCLES REMOVED:
+ * - No top-level imports from firebase.ts, db.ts, or listeners.ts
+ * - All Firebase operations use lazy dynamic imports inside methods
+ * - init() method must be called explicitly from App.tsx
+ * 
+ * DEPENDENCY GRAPH:
+ * stores/userStore.ts → lazy imports only (no cycles)
+ */
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { FirestoreUser } from '../firebase/types';
@@ -26,6 +36,7 @@ interface UserStore {
   loading: boolean;
   ready: boolean; // True when auth state has been determined
   _authUnsub: Unsubscribe | null; // Internal unsubscribe function
+  _initialized: boolean; // Track if init() has been called
   // Core auth functions
   signup: (email: string, password: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
@@ -44,7 +55,7 @@ interface UserStore {
   getUserFavorites: (userId: string) => string[];
   getUserRSVPs: (userId: string) => string[];
   getUserHostedEvents: (userId: string) => string[];
-  ensureAuthStarted: () => void;
+  init: () => void; // Explicit initialization method
 }
 
 // Official Popera account constants
@@ -57,17 +68,19 @@ export const useUserStore = create<UserStore>()(
     (set, get) => ({
       user: null,
       loading: true,
-      ready: false, // Auth state not yet determined
-      currentUser: null, // Alias for backward compatibility
+      ready: false,
+      currentUser: null,
       _authUnsub: null,
+      _initialized: false,
 
-      ensureAuthStarted: () => {
-        if (get()._authUnsub) return; // Already started
-        set({ loading: true, ready: false });
+      init: () => {
+        if (get()._initialized) return; // Already initialized
+        set({ _initialized: true, loading: true, ready: false });
+        
         (async () => {
           try {
-            const { initAuthListener } = await import("../firebase/listeners");
-            const unsub = initAuthListener(async (firebaseUser) => {
+            const { attachAuthListener } = await import("../firebase/listeners");
+            const unsub = attachAuthListener(async (firebaseUser) => {
               if (firebaseUser) {
                 try {
                   await get().fetchUserProfile(firebaseUser.uid);
@@ -81,7 +94,7 @@ export const useUserStore = create<UserStore>()(
             });
             set({ _authUnsub: unsub });
           } catch (error) {
-            console.error("Error starting auth listener:", error);
+            console.error("Error initializing auth listener:", error);
             set({ loading: false, ready: true });
           }
         })();
@@ -92,14 +105,14 @@ export const useUserStore = create<UserStore>()(
         try {
           set({ loading: true });
           const { createUserWithEmailAndPassword } = await import("firebase/auth");
-          const { getFirebase } = await import("../src/lib/firebase");
+          const { getAuthInstance, getFirestoreDb } = await import("../src/lib/firebase");
           const { doc, setDoc, serverTimestamp } = await import("firebase/firestore");
-          const { auth, db } = getFirebase();
           
+          const auth = getAuthInstance();
+          const db = getFirestoreDb();
           const userCredential = await createUserWithEmailAndPassword(auth, email, password);
           const firebaseUser = userCredential.user;
           
-          // Create Firestore user document
           const userDoc: FirestoreUser = {
             id: firebaseUser.uid,
             uid: firebaseUser.uid,
@@ -110,19 +123,16 @@ export const useUserStore = create<UserStore>()(
             createdAt: Date.now(),
           };
           
-          // Create user document in Firestore
           await setDoc(doc(db, 'users', firebaseUser.uid), {
             ...userDoc,
             createdAt: serverTimestamp(),
           });
           
-          // Update local state with safe defaults
           const user: User = {
             uid: firebaseUser.uid,
             email: firebaseUser.email || '',
             photoURL: firebaseUser.photoURL || '',
             displayName: firebaseUser.displayName || '',
-            // Backward compatibility aliases
             id: firebaseUser.uid,
             name: firebaseUser.displayName || '',
             profileImageUrl: firebaseUser.photoURL || '',
@@ -144,13 +154,12 @@ export const useUserStore = create<UserStore>()(
         try {
           set({ loading: true });
           const { signInWithEmailAndPassword } = await import("firebase/auth");
-          const { getFirebase } = await import("../src/lib/firebase");
-          const { auth } = getFirebase();
+          const { getAuthInstance } = await import("../src/lib/firebase");
           
+          const auth = getAuthInstance();
           const userCredential = await signInWithEmailAndPassword(auth, email, password);
           const firebaseUser = userCredential.user;
           
-          // Fetch user profile from Firestore
           await get().fetchUserProfile(firebaseUser.uid);
         } catch (error) {
           console.error("Login error:", error);
@@ -163,10 +172,18 @@ export const useUserStore = create<UserStore>()(
         try {
           set({ loading: true });
           const { signOut } = await import("firebase/auth");
-          const { getFirebase } = await import("../src/lib/firebase");
-          const { auth } = getFirebase();
+          const { getAuthInstance } = await import("../src/lib/firebase");
           
+          const auth = getAuthInstance();
           await signOut(auth);
+          
+          // Clean up auth listener
+          const unsub = get()._authUnsub;
+          if (unsub) {
+            unsub();
+            set({ _authUnsub: null });
+          }
+          
           set({ user: null, currentUser: null, loading: false });
         } catch (error) {
           console.error("Logout error:", error);
@@ -177,11 +194,11 @@ export const useUserStore = create<UserStore>()(
 
       fetchUserProfile: async (uid: string) => {
         try {
-          const { fetchUserProfile, listUserReservations } = await import("../firebase/db");
-          const { getFirebase } = await import("../src/lib/firebase");
-          const { auth } = getFirebase();
+          const { getUserProfile, listUserReservations } = await import("../firebase/db");
+          const { getAuthInstance } = await import("../src/lib/firebase");
           
-          const firestoreUser = await fetchUserProfile(uid);
+          const auth = getAuthInstance();
+          const firestoreUser = await getUserProfile(uid);
           const firebaseUser = auth.currentUser;
           
           if (!firebaseUser) {
@@ -189,12 +206,9 @@ export const useUserStore = create<UserStore>()(
             return;
           }
           
-          // Load favorites and RSVPs from Firestore with safe defaults
           const favorites = Array.isArray(firestoreUser?.favorites) ? firestoreUser.favorites : [];
           const reservationEvents = await listUserReservations(uid);
           const rsvps = Array.isArray(reservationEvents) ? reservationEvents.map(e => e?.id).filter(Boolean) : [];
-          
-          // Ensure hostedEvents is always an array
           const hostedEvents = Array.isArray(firestoreUser?.hostedEvents) ? firestoreUser.hostedEvents : [];
           
           const user: User = {
@@ -202,7 +216,6 @@ export const useUserStore = create<UserStore>()(
             email: firebaseUser.email || '',
             photoURL: firebaseUser.photoURL || firestoreUser?.photoURL || '',
             displayName: firebaseUser.displayName || firestoreUser?.displayName || '',
-            // Backward compatibility aliases
             id: firebaseUser.uid,
             name: firebaseUser.displayName || firestoreUser?.displayName || '',
             profileImageUrl: firebaseUser.photoURL || firestoreUser?.photoURL || '',
@@ -224,10 +237,7 @@ export const useUserStore = create<UserStore>()(
 
       signUp: async (email: string, password: string, name: string, preferences: 'attend' | 'host' | 'both') => {
         try {
-          // Use core signup function
           await get().signup(email, password);
-          
-          // Update displayName and preferences
           const currentUser = get().user;
           if (currentUser) {
             const { createOrUpdateUserProfile } = await import("../firebase/db");
@@ -236,11 +246,8 @@ export const useUserStore = create<UserStore>()(
               name: name,
               preferences,
             });
-            
-            // Reload profile
             await get().fetchUserProfile(currentUser.uid);
           }
-          
           return get().user || null;
         } catch (error) {
           console.error("Sign up error:", error);
@@ -252,15 +259,15 @@ export const useUserStore = create<UserStore>()(
         try {
           set({ loading: true });
           const { GoogleAuthProvider, signInWithPopup } = await import("firebase/auth");
-          const { getFirebase } = await import("../src/lib/firebase");
+          const { getAuthInstance, getFirestoreDb } = await import("../src/lib/firebase");
           const { doc, setDoc, serverTimestamp } = await import("firebase/firestore");
-          const { auth, db } = getFirebase();
           
+          const auth = getAuthInstance();
+          const db = getFirestoreDb();
           const provider = new GoogleAuthProvider();
           const userCredential = await signInWithPopup(auth, provider);
           const firebaseUser = userCredential.user;
           
-          // Upsert user profile in Firestore
           const { getUserProfile, createOrUpdateUserProfile } = await import("../firebase/db");
           const firestoreUser = await getUserProfile(firebaseUser.uid);
           if (!firestoreUser) {
@@ -274,7 +281,6 @@ export const useUserStore = create<UserStore>()(
               createdAt: serverTimestamp(),
             });
           } else {
-            // Update photo if changed
             if (firebaseUser.photoURL && firestoreUser.photoURL !== firebaseUser.photoURL) {
               await createOrUpdateUserProfile(firebaseUser.uid, {
                 photoURL: firebaseUser.photoURL,
@@ -282,7 +288,6 @@ export const useUserStore = create<UserStore>()(
             }
           }
           
-          // Fetch updated profile (this will set ready: true)
           await get().fetchUserProfile(firebaseUser.uid);
           return get().user || null;
         } catch (error) {
@@ -298,7 +303,6 @@ export const useUserStore = create<UserStore>()(
 
       updateUser: async (userId: string, updates: Partial<User>) => {
         try {
-          // Update Firestore
           const firestoreUpdates: Partial<FirestoreUser> = {};
           if (updates.name || updates.displayName) {
             firestoreUpdates.name = updates.name || updates.displayName || '';
@@ -312,7 +316,6 @@ export const useUserStore = create<UserStore>()(
           const { createOrUpdateUserProfile } = await import("../firebase/db");
           await createOrUpdateUserProfile(userId, firestoreUpdates);
           
-          // Update local state
           const currentUser = get().user;
           if (currentUser && currentUser.uid === userId) {
             const updatedUser = { ...currentUser, ...updates };
@@ -328,22 +331,14 @@ export const useUserStore = create<UserStore>()(
         try {
           const currentUser = get().user;
           const currentFavorites = Array.isArray(currentUser?.favorites) ? currentUser.favorites : [];
-          if (currentFavorites.includes(eventId)) {
-            return; // Already favorited
-          }
+          if (currentFavorites.includes(eventId)) return;
           
           const updatedFavorites = [...currentFavorites, eventId];
-          
-          // Update Firestore
           const { createOrUpdateUserProfile } = await import("../firebase/db");
-          await createOrUpdateUserProfile(userId, {
-            favorites: updatedFavorites,
-          });
+          await createOrUpdateUserProfile(userId, { favorites: updatedFavorites });
           
-          // Update local state
           if (currentUser && currentUser.uid === userId) {
-            const updatedUser = { ...currentUser, favorites: updatedFavorites };
-            set({ user: updatedUser, currentUser: updatedUser });
+            set({ user: { ...currentUser, favorites: updatedFavorites }, currentUser: { ...currentUser, favorites: updatedFavorites } });
           }
         } catch (error) {
           console.error("Add favorite error:", error);
@@ -357,16 +352,11 @@ export const useUserStore = create<UserStore>()(
           const currentFavorites = Array.isArray(currentUser?.favorites) ? currentUser.favorites : [];
           const updatedFavorites = currentFavorites.filter(id => id !== eventId);
           
-          // Update Firestore
           const { createOrUpdateUserProfile } = await import("../firebase/db");
-          await createOrUpdateUserProfile(userId, {
-            favorites: updatedFavorites,
-          });
+          await createOrUpdateUserProfile(userId, { favorites: updatedFavorites });
           
-          // Update local state
           if (currentUser && currentUser.uid === userId) {
-            const updatedUser = { ...currentUser, favorites: updatedFavorites };
-            set({ user: updatedUser, currentUser: updatedUser });
+            set({ user: { ...currentUser, favorites: updatedFavorites }, currentUser: { ...currentUser, favorites: updatedFavorites } });
           }
         } catch (error) {
           console.error("Remove favorite error:", error);
@@ -378,22 +368,16 @@ export const useUserStore = create<UserStore>()(
         try {
           const currentUser = get().user;
           const currentRSVPs = Array.isArray(currentUser?.rsvps) ? currentUser.rsvps : [];
-          if (currentRSVPs.includes(eventId)) {
-            return; // Already RSVP'd
-          }
+          if (currentRSVPs.includes(eventId)) return;
           
-          // Create reservation in Firestore
           const { createReservation, listUserReservations } = await import("../firebase/db");
           await createReservation(eventId, userId);
           
-          // Reload RSVPs from Firestore to get updated list
           const reservationEvents = await listUserReservations(userId);
           const updatedRSVPs = Array.isArray(reservationEvents) ? reservationEvents.map(e => e?.id).filter(Boolean) : [];
           
-          // Update local state
           if (currentUser && currentUser.uid === userId) {
-            const updatedUser = { ...currentUser, rsvps: updatedRSVPs };
-            set({ user: updatedUser, currentUser: updatedUser });
+            set({ user: { ...currentUser, rsvps: updatedRSVPs }, currentUser: { ...currentUser, rsvps: updatedRSVPs } });
           }
         } catch (error) {
           console.error("Add RSVP error:", error);
@@ -405,7 +389,6 @@ export const useUserStore = create<UserStore>()(
         try {
           const { listReservationsForUser, cancelReservation, listUserReservations } = await import("../firebase/db");
           
-          // Find and cancel reservation in Firestore
           const reservations = await listReservationsForUser(userId);
           const reservation = reservations.find(r => r.eventId === eventId && r.status === "reserved");
           
@@ -413,17 +396,12 @@ export const useUserStore = create<UserStore>()(
             await cancelReservation(reservation.id);
           }
           
-          // Reload RSVPs from Firestore
           const reservationEvents = await listUserReservations(userId);
-          const updatedRSVPs = Array.isArray(reservationEvents)
-            ? reservationEvents.map(e => e?.id).filter(Boolean) 
-            : [];
+          const updatedRSVPs = Array.isArray(reservationEvents) ? reservationEvents.map(e => e?.id).filter(Boolean) : [];
           
-          // Update local state
           const currentUser = get().user;
           if (currentUser && currentUser.uid === userId) {
-            const updatedUser = { ...currentUser, rsvps: updatedRSVPs };
-            set({ user: updatedUser, currentUser: updatedUser });
+            set({ user: { ...currentUser, rsvps: updatedRSVPs }, currentUser: { ...currentUser, rsvps: updatedRSVPs } });
           }
         } catch (error) {
           console.error("Remove RSVP error:", error);

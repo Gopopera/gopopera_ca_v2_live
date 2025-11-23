@@ -4,6 +4,8 @@ import App from "../App";
 import { AppErrorBoundary } from "./utils/AppErrorBoundary";
 import "../index.css";
 
+console.log("BOOT: main.tsx mounted");
+
 const el = document.getElementById("root");
 if (!el) {
   console.error("#BOOT: #root not found");

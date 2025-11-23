@@ -1,4 +1,14 @@
-import { getFirebase } from "../src/lib/firebase";
+/**
+ * CYCLES REMOVED:
+ * - No imports from stores or App
+ * - Only imports from src/lib/firebase.ts (accessors)
+ * - All functions are pure (no side effects at import time)
+ * 
+ * DEPENDENCY GRAPH:
+ * firebase/db.ts → src/lib/firebase.ts (accessors only)
+ */
+
+import { getFirestoreDb } from "../src/lib/firebase";
 import { collection, doc, getDoc, getDocs, query, where, orderBy, addDoc, updateDoc, setDoc } from "firebase/firestore";
 import { FirestoreEvent, FirestoreReservation, FirestoreChatMessage, FirestoreReview, FirestoreUser } from "./types";
 import { Event } from "../types";
@@ -40,7 +50,7 @@ const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event => {
 // Events
 export async function listUpcomingEvents(): Promise<Event[]> {
   try {
-    const { db } = getFirebase();
+    const db = getFirestoreDb();
     const eventsCol = collection(db, "events");
     const q = query(eventsCol, orderBy("date", "asc"));
     const snap = await getDocs(q);
@@ -57,7 +67,7 @@ export async function listUpcomingEvents(): Promise<Event[]> {
 
 export async function getEventById(id: string): Promise<Event | null> {
   try {
-    const { db } = getFirebase();
+    const db = getFirestoreDb();
     const eventRef = doc(db, "events", id);
     const snap = await getDoc(eventRef);
     if (!snap.exists()) return null;
@@ -74,7 +84,7 @@ export async function getEventById(id: string): Promise<Event | null> {
 
 export async function listEventsByCityAndTag(city?: string, tag?: string): Promise<Event[]> {
   try {
-    const { db } = getFirebase();
+    const db = getFirestoreDb();
     const eventsCol = collection(db, "events");
     let q;
     if (city && city.trim() && tag && tag !== "All") {
@@ -105,9 +115,8 @@ export async function listEventsByCityAndTag(city?: string, tag?: string): Promi
 
 export async function searchEvents(searchQuery: string): Promise<Event[]> {
   try {
-    const { db } = getFirebase();
+    const db = getFirestoreDb();
     const eventsCol = collection(db, "events");
-    // Firestore doesn't support full-text search, so we fetch all and filter client-side
     const q = query(eventsCol);
     const snap = await getDocs(q);
     const allEvents: FirestoreEvent[] = snap.docs.map(d => ({
@@ -137,7 +146,7 @@ export async function searchEvents(searchQuery: string): Promise<Event[]> {
 // Reservations
 export async function createReservation(eventId: string, userId: string): Promise<string> {
   try {
-    const { db } = getFirebase();
+    const db = getFirestoreDb();
     const reservationsCol = collection(db, "reservations");
     const reservation: Omit<FirestoreReservation, 'id'> = {
       eventId,
@@ -155,7 +164,7 @@ export async function createReservation(eventId: string, userId: string): Promis
 
 export async function listReservationsForUser(userId: string): Promise<FirestoreReservation[]> {
   try {
-    const { db } = getFirebase();
+    const db = getFirestoreDb();
     const reservationsCol = collection(db, "reservations");
     const q = query(reservationsCol, where("userId", "==", userId), where("status", "==", "reserved"));
     const snap = await getDocs(q);
@@ -171,7 +180,7 @@ export async function listReservationsForUser(userId: string): Promise<Firestore
 
 export async function cancelReservation(reservationId: string): Promise<void> {
   try {
-    const { db } = getFirebase();
+    const db = getFirestoreDb();
     const reservationRef = doc(db, "reservations", reservationId);
     await updateDoc(reservationRef, { status: "cancelled" });
   } catch (error) {
@@ -182,7 +191,7 @@ export async function cancelReservation(reservationId: string): Promise<void> {
 
 export async function getReservationCountForEvent(eventId: string): Promise<number> {
   try {
-    const { db } = getFirebase();
+    const db = getFirestoreDb();
     const reservationsCol = collection(db, "reservations");
     const q = query(reservationsCol, where("eventId", "==", eventId), where("status", "==", "reserved"));
     const snap = await getDocs(q);
@@ -193,10 +202,10 @@ export async function getReservationCountForEvent(eventId: string): Promise<numb
   }
 }
 
-// Chat Messages (non-realtime version - use listeners.ts for realtime)
+// Chat Messages
 export async function getChatMessages(eventId: string): Promise<FirestoreChatMessage[]> {
   try {
-    const { db } = getFirebase();
+    const db = getFirestoreDb();
     const messagesCol = collection(db, "events", eventId, "messages");
     const q = query(messagesCol, orderBy("createdAt", "asc"));
     const snap = await getDocs(q);
@@ -219,7 +228,7 @@ export async function addChatMessage(
   isHost: boolean = false
 ): Promise<string> {
   try {
-    const { db } = getFirebase();
+    const db = getFirestoreDb();
     const messagesCol = collection(db, "events", eventId, "messages");
     const message: Omit<FirestoreChatMessage, 'id'> = {
       eventId,
@@ -241,7 +250,7 @@ export async function addChatMessage(
 // User profiles
 export async function getUserProfile(uid: string): Promise<FirestoreUser | null> {
   try {
-    const { db } = getFirebase();
+    const db = getFirestoreDb();
     const userRef = doc(db, "users", uid);
     const snap = await getDoc(userRef);
     if (!snap.exists()) return null;
@@ -269,7 +278,7 @@ export async function getUserProfile(uid: string): Promise<FirestoreUser | null>
 
 export async function createOrUpdateUserProfile(uid: string, userData: Partial<FirestoreUser>): Promise<void> {
   try {
-    const { db } = getFirebase();
+    const db = getFirestoreDb();
     const userRef = doc(db, "users", uid);
     await setDoc(userRef, {
       ...userData,
@@ -285,7 +294,7 @@ export async function createOrUpdateUserProfile(uid: string, userData: Partial<F
 // Load user reservations and return as Event[]
 export async function listUserReservations(uid: string): Promise<Event[]> {
   try {
-    const { db } = getFirebase();
+    const db = getFirestoreDb();
     const reservationsCol = collection(db, "reservations");
     const q = query(
       reservationsCol,
@@ -318,19 +327,18 @@ export async function addReview(
   comment?: string
 ): Promise<string> {
   try {
-    const { db } = getFirebase();
+    const db = getFirestoreDb();
     const reviewsCol = collection(db, "events", eventId, "reviews");
     const review: Omit<FirestoreReview, 'id'> = {
       eventId,
       userId,
       userName,
-      rating: Math.max(1, Math.min(5, rating)), // Clamp between 1-5
+      rating: Math.max(1, Math.min(5, rating)),
       comment,
       createdAt: Date.now(),
     };
     const docRef = await addDoc(reviewsCol, review);
     
-    // Recalculate event rating (optional, can be done separately)
     await recalculateEventRating(eventId);
     
     return docRef.id;
@@ -342,7 +350,7 @@ export async function addReview(
 
 export async function listReviews(eventId: string): Promise<FirestoreReview[]> {
   try {
-    const { db } = getFirebase();
+    const db = getFirestoreDb();
     const reviewsCol = collection(db, "events", eventId, "reviews");
     const q = query(reviewsCol, orderBy("createdAt", "desc"));
     const snap = await getDocs(q);
@@ -358,10 +366,9 @@ export async function listReviews(eventId: string): Promise<FirestoreReview[]> {
 
 export async function recalculateEventRating(eventId: string): Promise<void> {
   try {
-    const { db } = getFirebase();
+    const db = getFirestoreDb();
     const reviews = await listReviews(eventId);
     if (reviews.length === 0) {
-      // Set rating to 0 if no reviews
       const eventRef = doc(db, "events", eventId);
       await updateDoc(eventRef, {
         rating: 0,
@@ -373,8 +380,6 @@ export async function recalculateEventRating(eventId: string): Promise<void> {
     const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
     const averageRating = totalRating / reviews.length;
     const reviewCount = reviews.length;
-    
-    // Round to 1 decimal place
     const roundedRating = Math.round(averageRating * 10) / 10;
     
     const eventRef = doc(db, "events", eventId);

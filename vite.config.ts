@@ -31,6 +31,9 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
+      },
+      build: {
+        sourcemap: true, // Enable source maps for production debugging
       }
     };
 });
