@@ -93,6 +93,22 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
     );
   }
 
+  // Loading state
+  if (!hostName) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-20 pb-12">
+        <div className="max-w-5xl mx-auto px-6">
+          <button onClick={onBack} className="flex items-center text-gray-500 hover:text-popera-teal transition-colors font-medium mb-6">
+            <ArrowLeft size={20} className="mr-2" /> Back
+          </button>
+          <div className="bg-white rounded-2xl p-8 text-center">
+            <p className="text-gray-500">Loading host profile...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 pt-20 pb-12">
       <div className="bg-white border-b border-gray-200">

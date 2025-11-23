@@ -41,6 +41,36 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const isPoperaOwned = event.isPoperaOwned === true;
   const isOfficialLaunch = event.isOfficialLaunch === true;
   const [showFakeEventModal, setShowFakeEventModal] = useState(false);
+  const [showShareToast, setShowShareToast] = useState(false);
+
+  const handleShare = async () => {
+    const url = window.location.origin + `/event/${event.id}`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: event.title,
+          text: event.description,
+          url: url,
+        });
+      } catch (err) {
+        // User cancelled or error occurred
+        if ((err as Error).name !== 'AbortError') {
+          console.error('Share failed:', err);
+        }
+      }
+    } else {
+      // Fallback: copy to clipboard
+      try {
+        await navigator.clipboard.writeText(url);
+        setShowShareToast(true);
+        setTimeout(() => setShowShareToast(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+        alert('Failed to copy link. Please try again.');
+      }
+    }
+  };
   
   const handleRSVP = () => {
     if (isDemo) {
@@ -70,7 +100,12 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       <div className="fixed top-0 left-0 right-0 z-30 p-4 sm:p-4 flex items-center justify-between lg:hidden pointer-events-none safe-area-inset-top">
          <button onClick={() => setViewState(ViewState.FEED)} className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center text-popera-teal shadow-lg pointer-events-auto hover:scale-105 active:scale-[0.92] transition-transform touch-manipulation border border-white/50"><ChevronLeft size={22} className="sm:w-6 sm:h-6" /></button>
          <div className="flex gap-2.5 sm:gap-3 pointer-events-auto">
-             <button className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center text-popera-teal shadow-lg hover:scale-105 active:scale-[0.92] transition-transform touch-manipulation border border-white/50"><Share2 size={20} className="sm:w-5 sm:h-5" /></button>
+             <button 
+               onClick={handleShare}
+               className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center text-popera-teal shadow-lg hover:scale-105 active:scale-[0.92] transition-transform touch-manipulation border border-white/50"
+             >
+               <Share2 size={20} className="sm:w-5 sm:h-5" />
+             </button>
              {isLoggedIn && onToggleFavorite && (<button onClick={(e) => onToggleFavorite(e, event.id)} className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center text-popera-teal shadow-lg hover:scale-105 active:scale-[0.92] transition-transform touch-manipulation border border-white/50"><Heart size={20} className="sm:w-5 sm:h-5" fill={favorites.includes(event.id) ? "#e35e25" : "none"} style={{ color: favorites.includes(event.id) ? "#e35e25" : "currentColor" }} /></button>)}
          </div>
       </div>
@@ -97,6 +132,22 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10 lg:py-12 grid lg:grid-cols-3 gap-6 sm:gap-8 md:gap-10 lg:gap-12">
         <div className="lg:col-span-2 space-y-6 sm:space-y-8 md:space-y-10">
+          {/* Share Button - Desktop */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleShare}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-[#15383c] hover:bg-gray-50 hover:border-[#e35e25] hover:text-[#e35e25] transition-colors"
+            >
+              <Share2 size={18} />
+              Share
+            </button>
+            {showShareToast && (
+              <div className="bg-[#15383c] text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg animate-fade-in">
+                Link copied!
+              </div>
+            )}
+          </div>
+          
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-5 p-5 sm:p-6 md:p-7 lg:p-8 bg-gray-50 rounded-2xl sm:rounded-3xl border border-gray-100 hover:border-gray-200 transition-colors">
             <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto min-w-0">
                <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-gray-200 overflow-hidden ring-2 sm:ring-4 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick(event.hostName)}><img src={`https://picsum.photos/seed/${event.hostName}/100/100`} alt={event.hostName} className="w-full h-full object-cover"/></div>

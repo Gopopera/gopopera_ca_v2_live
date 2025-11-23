@@ -238,6 +238,7 @@ export const useUserStore = create<UserStore>()(
 
       signInWithGoogle: async () => {
         try {
+          console.log('[AUTH] Starting Google sign-in flow');
           set({ loading: true });
           const authInstance = auth;
           if (authInstance) {
@@ -247,9 +248,11 @@ export const useUserStore = create<UserStore>()(
           const provider = new GoogleAuthProvider();
           const userCredential = await signInWithPopup(auth, provider);
           const firebaseUser = userCredential.user;
+          console.log('[AUTH] Google popup success, user:', firebaseUser.uid);
           
           const firestoreUser = await getUserProfile(firebaseUser.uid);
           if (!firestoreUser) {
+            console.log('[AUTH] Creating new user profile');
             await setDoc(doc(db, 'users', firebaseUser.uid), {
               id: firebaseUser.uid,
               uid: firebaseUser.uid,
@@ -268,9 +271,10 @@ export const useUserStore = create<UserStore>()(
           }
           
           await get().fetchUserProfile(firebaseUser.uid);
+          console.log('[AUTH] User profile loaded, ready for redirect');
           return get().user || null;
         } catch (error) {
-          console.error("Google sign in error:", error);
+          console.error('[AUTH] Google sign in error:', error);
           set({ loading: false, ready: true });
           throw error;
         }
