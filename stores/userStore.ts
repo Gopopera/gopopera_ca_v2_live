@@ -2,19 +2,26 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
   auth,
-  onAuthStateChanged,
+  initAuthListener as firebaseInitAuthListener,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
-  GoogleAuthProvider,
+  googleProvider,
   signInWithPopup,
   doc,
   setDoc,
   serverTimestamp,
+  db,
 } from '../src/lib/firebase';
 import type { FirestoreUser } from '../firebase/types';
-// Import db functions dynamically to avoid circular dependency issues
-import type * as DbTypes from '../firebase/db';
+import {
+  getUserProfile,
+  createOrUpdateUserProfile,
+  listUserReservations,
+  createReservation,
+  cancelReservation,
+  listReservationsForUser,
+} from '../firebase/db';
 
 // Simplified User interface matching Firebase Auth user
 export interface User {
@@ -90,11 +97,10 @@ export const useUserStore = create<UserStore>()(
             createdAt: Date.now(),
           };
           
-          // Dynamic import to avoid circular dependency
-          const firebaseModule = await import('../src/lib/firebase');
-          await firebaseModule.setDoc(firebaseModule.doc(firebaseModule.db, 'users', firebaseUser.uid), {
+          // Create user document in Firestore
+          await setDoc(doc(db, 'users', firebaseUser.uid), {
             ...userDoc,
-            createdAt: firebaseModule.serverTimestamp(),
+            createdAt: serverTimestamp(),
           });
           
           // Update local state with safe defaults
@@ -150,9 +156,7 @@ export const useUserStore = create<UserStore>()(
 
       fetchUserProfile: async (uid: string) => {
         try {
-          // Dynamic import to avoid circular dependency
-          const dbModule = await import('../firebase/db');
-          const firestoreUser = await dbModule.getUserProfile(uid);
+          const firestoreUser = await getUserProfile(uid);
           const firebaseUser = auth.currentUser;
           
           if (!firebaseUser) {
@@ -162,7 +166,7 @@ export const useUserStore = create<UserStore>()(
           
           // Load favorites and RSVPs from Firestore with safe defaults
           const favorites = Array.isArray(firestoreUser?.favorites) ? firestoreUser.favorites : [];
-          const reservationEvents = await dbModule.listUserReservations(uid);
+          const reservationEvents = await listUserReservations(uid);
           const rsvps = Array.isArray(reservationEvents) ? reservationEvents.map(e => e?.id).filter(Boolean) : [];
           
           // Ensure hostedEvents is always an array
@@ -185,11 +189,11 @@ export const useUserStore = create<UserStore>()(
             attendingEvents: [],
           };
           
+          console.log('[Popera] userStore initialized', user);
           set({ user, currentUser: user, loading: false, ready: true });
         } catch (error) {
           console.error("Error fetching user profile:", error);
-          set({ loading: false });
-          throw error;
+          set({ user: null, currentUser: null, loading: false, ready: true });
         }
       },
 
@@ -201,8 +205,7 @@ export const useUserStore = create<UserStore>()(
           // Update displayName and preferences
           const currentUser = get().user;
           if (currentUser) {
-            const dbModule = await import('../firebase/db');
-            await dbModule.createOrUpdateUserProfile(currentUser.uid, {
+            await createOrUpdateUserProfile(currentUser.uid, {
               displayName: name,
               name: name,
               preferences,
@@ -222,30 +225,25 @@ export const useUserStore = create<UserStore>()(
       signInWithGoogle: async () => {
         try {
           set({ loading: true });
-          const provider = new GoogleAuthProvider();
-          const userCredential = await signInWithPopup(auth, provider);
+          const userCredential = await signInWithPopup(auth, googleProvider);
           const firebaseUser = userCredential.user;
           
-          // Dynamic import to avoid circular dependency
-          const dbModule = await import('../firebase/db');
-          const firebaseModule = await import('../src/lib/firebase');
-          
           // Upsert user profile in Firestore
-          const firestoreUser = await dbModule.getUserProfile(firebaseUser.uid);
+          const firestoreUser = await getUserProfile(firebaseUser.uid);
           if (!firestoreUser) {
-            await firebaseModule.setDoc(firebaseModule.doc(firebaseModule.db, 'users', firebaseUser.uid), {
+            await setDoc(doc(db, 'users', firebaseUser.uid), {
               id: firebaseUser.uid,
               uid: firebaseUser.uid,
               name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
               email: firebaseUser.email || '',
               displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
               photoURL: firebaseUser.photoURL || '',
-              createdAt: firebaseModule.serverTimestamp(),
+              createdAt: serverTimestamp(),
             });
           } else {
             // Update photo if changed
             if (firebaseUser.photoURL && firestoreUser.photoURL !== firebaseUser.photoURL) {
-              await dbModule.createOrUpdateUserProfile(firebaseUser.uid, {
+              await createOrUpdateUserProfile(firebaseUser.uid, {
                 photoURL: firebaseUser.photoURL,
               });
             }
@@ -256,7 +254,7 @@ export const useUserStore = create<UserStore>()(
           return get().user || null;
         } catch (error) {
           console.error("Google sign in error:", error);
-          set({ loading: false });
+          set({ loading: false, ready: true });
           throw error;
         }
       },
@@ -267,9 +265,6 @@ export const useUserStore = create<UserStore>()(
 
       updateUser: async (userId: string, updates: Partial<User>) => {
         try {
-          // Dynamic import to avoid circular dependency
-          const dbModule = await import('../firebase/db');
-          
           // Update Firestore
           const firestoreUpdates: Partial<FirestoreUser> = {};
           if (updates.name || updates.displayName) {
@@ -281,7 +276,7 @@ export const useUserStore = create<UserStore>()(
             firestoreUpdates.photoURL = updates.profileImageUrl || updates.photoURL || '';
           }
           
-          await dbModule.createOrUpdateUserProfile(userId, firestoreUpdates);
+          await createOrUpdateUserProfile(userId, firestoreUpdates);
           
           // Update local state
           const currentUser = get().user;
@@ -305,11 +300,8 @@ export const useUserStore = create<UserStore>()(
           
           const updatedFavorites = [...currentFavorites, eventId];
           
-          // Dynamic import to avoid circular dependency
-          const dbModule = await import('../firebase/db');
-          
           // Update Firestore
-          await dbModule.createOrUpdateUserProfile(userId, {
+          await createOrUpdateUserProfile(userId, {
             favorites: updatedFavorites,
           });
           
@@ -330,11 +322,8 @@ export const useUserStore = create<UserStore>()(
           const currentFavorites = Array.isArray(currentUser?.favorites) ? currentUser.favorites : [];
           const updatedFavorites = currentFavorites.filter(id => id !== eventId);
           
-          // Dynamic import to avoid circular dependency
-          const dbModule = await import('../firebase/db');
-          
           // Update Firestore
-          await dbModule.createOrUpdateUserProfile(userId, {
+          await createOrUpdateUserProfile(userId, {
             favorites: updatedFavorites,
           });
           
@@ -357,14 +346,11 @@ export const useUserStore = create<UserStore>()(
             return; // Already RSVP'd
           }
           
-          // Dynamic import to avoid circular dependency
-          const dbModule = await import('../firebase/db');
-          
           // Create reservation in Firestore
-          await dbModule.createReservation(eventId, userId);
+          await createReservation(eventId, userId);
           
           // Reload RSVPs from Firestore to get updated list
-          const reservationEvents = await dbModule.listUserReservations(userId);
+          const reservationEvents = await listUserReservations(userId);
           const updatedRSVPs = Array.isArray(reservationEvents) ? reservationEvents.map(e => e?.id).filter(Boolean) : [];
           
           // Update local state
@@ -380,19 +366,16 @@ export const useUserStore = create<UserStore>()(
 
       removeRSVP: async (userId: string, eventId: string) => {
         try {
-          // Dynamic import to avoid circular dependency
-          const dbModule = await import('../firebase/db');
-          
           // Find and cancel reservation in Firestore
-          const reservations = await dbModule.listReservationsForUser(userId);
+          const reservations = await listReservationsForUser(userId);
           const reservation = reservations.find(r => r.eventId === eventId && r.status === "reserved");
           
           if (reservation) {
-            await dbModule.cancelReservation(reservation.id);
+            await cancelReservation(reservation.id);
           }
           
           // Reload RSVPs from Firestore
-          const reservationEvents = await dbModule.listUserReservations(userId);
+          const reservationEvents = await listUserReservations(userId);
           const updatedRSVPs = Array.isArray(reservationEvents)
             ? reservationEvents.map(e => e?.id).filter(Boolean) 
             : [];
@@ -435,7 +418,8 @@ export const useUserStore = create<UserStore>()(
 
       initAuthListener: () => {
         set({ loading: true, ready: false });
-        onAuthStateChanged(auth, async (firebaseUser) => {
+        // Use initAuthListener from firebase.ts - it doesn't import any stores
+        firebaseInitAuthListener(async (firebaseUser) => {
           if (firebaseUser) {
             try {
               await get().fetchUserProfile(firebaseUser.uid);

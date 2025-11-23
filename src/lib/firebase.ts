@@ -44,6 +44,9 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 
+// Google Auth Provider instance
+export const googleProvider = new GoogleAuthProvider();
+
 // Storage exports - re-export with alias to avoid conflicts
 export const ref = storageRef;
 export { uploadBytes, getDownloadURL };
@@ -79,3 +82,8 @@ export {
   GoogleAuthProvider,
   signInWithPopup,
 };
+
+// Auth listener helper - does not import any stores
+export function initAuthListener(callback: (user: FirebaseUser | null) => void): Unsubscribe {
+  return onAuthStateChanged(auth, callback);
+}

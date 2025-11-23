@@ -38,7 +38,7 @@ import { useUserStore } from './stores/userStore';
 import { generatePoperaEvents } from './data/poperaEvents';
 import { generateFakeEvents } from './data/fakeEvents';
 import { categoryMatches } from './utils/categoryMapper';
-// Note: firebase/db functions are imported dynamically to avoid circular dependencies
+import { listUpcomingEvents, listEventsByCityAndTag, searchEvents as searchFirestoreEvents } from './firebase/db';
 
 // Mock Data Generator - Initial seed data
 const generateMockEvents = (): Event[] => [
@@ -309,6 +309,7 @@ const generateMockEvents = (): Event[] => [
 ];
 
 const AppContent: React.FC = () => {
+  console.log('[Popera] App rendered');
   const { t } = useLanguage();
   const [viewState, setViewState] = useState<ViewState>(ViewState.LANDING);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -366,9 +367,7 @@ const AppContent: React.FC = () => {
     const loadFirestoreEvents = async () => {
       try {
         setLoadingEvents(true);
-        // Dynamic import to avoid circular dependency
-        const dbModule = await import('./firebase/db');
-        const events = await dbModule.listUpcomingEvents();
+        const events = await listUpcomingEvents();
         if (events.length > 0) {
           setFirestoreEvents(events);
         }

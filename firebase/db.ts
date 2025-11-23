@@ -1,30 +1,23 @@
-// Import types only - runtime imports happen inside functions to avoid initialization order issues
-import type { FirestoreEvent, FirestoreReservation, FirestoreChatMessage, FirestoreReview, FirestoreUser } from "./types";
-import type { Event } from "../types";
+import {
+  db,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  addDoc,
+  updateDoc,
+  setDoc,
+} from "../src/lib/firebase";
+import { FirestoreEvent, FirestoreReservation, FirestoreChatMessage, FirestoreReview, FirestoreUser } from "./types";
+import { Event } from "../types";
 
-// Lazy collection references - imports happen inside functions to avoid "Cannot access before initialization" errors
-// This ensures db is fully initialized before we try to use it
-// Using a module-level cache to avoid re-importing on every call
-let firebaseModule: any = null;
-const getFirebaseModule = async () => {
-  if (!firebaseModule) {
-    firebaseModule = await import("../src/lib/firebase");
-  }
-  return firebaseModule;
-};
-
-const getEventsCol = async () => {
-  const { db, collection } = await getFirebaseModule();
-  return collection(db, "events");
-};
-const getReservationsCol = async () => {
-  const { db, collection } = await getFirebaseModule();
-  return collection(db, "reservations");
-};
-const getUsersCol = async () => {
-  const { db, collection } = await getFirebaseModule();
-  return collection(db, "users");
-};
+// Collection references - created at module level (db is already initialized in firebase.ts)
+const eventsCol = collection(db, "events");
+const reservationsCol = collection(db, "reservations");
+const usersCol = collection(db, "users");
 
 // Helper to convert FirestoreEvent to Event (frontend type)
 const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event => {
@@ -63,8 +56,6 @@ const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event => {
 // Events
 export async function listUpcomingEvents(): Promise<Event[]> {
   try {
-    const { query, orderBy, getDocs } = await getFirebaseModule();
-    const eventsCol = await getEventsCol();
     const q = query(eventsCol, orderBy("date", "asc"));
     const snap = await getDocs(q);
     const events: FirestoreEvent[] = snap.docs.map(d => ({
@@ -80,7 +71,6 @@ export async function listUpcomingEvents(): Promise<Event[]> {
 
 export async function getEventById(id: string): Promise<Event | null> {
   try {
-    const { db, doc, getDoc } = await getFirebaseModule();
     const eventRef = doc(db, "events", id);
     const snap = await getDoc(eventRef);
     if (!snap.exists()) return null;
@@ -97,8 +87,6 @@ export async function getEventById(id: string): Promise<Event | null> {
 
 export async function listEventsByCityAndTag(city?: string, tag?: string): Promise<Event[]> {
   try {
-    const { query, where, orderBy, getDocs } = await getFirebaseModule();
-    const eventsCol = await getEventsCol();
     let q;
     if (city && city.trim() && tag && tag !== "All") {
       q = query(
@@ -130,8 +118,6 @@ export async function searchEvents(searchQuery: string): Promise<Event[]> {
   try {
     // Firestore doesn't support full-text search, so we fetch all and filter client-side
     // For production, consider using Algolia or similar
-    const { query, getDocs } = await getFirebaseModule();
-    const eventsCol = await getEventsCol();
     const q = query(eventsCol);
     const snap = await getDocs(q);
     const allEvents: FirestoreEvent[] = snap.docs.map(d => ({
@@ -161,14 +147,12 @@ export async function searchEvents(searchQuery: string): Promise<Event[]> {
 // Reservations
 export async function createReservation(eventId: string, userId: string): Promise<string> {
   try {
-    const { addDoc } = await getFirebaseModule();
     const reservation: Omit<FirestoreReservation, 'id'> = {
       eventId,
       userId,
       reservedAt: Date.now(),
       status: "reserved",
     };
-    const reservationsCol = await getReservationsCol();
     const docRef = await addDoc(reservationsCol, reservation);
     return docRef.id;
   } catch (error) {
@@ -179,8 +163,6 @@ export async function createReservation(eventId: string, userId: string): Promis
 
 export async function listReservationsForUser(userId: string): Promise<FirestoreReservation[]> {
   try {
-    const { query, where, getDocs } = await getFirebaseModule();
-    const reservationsCol = await getReservationsCol();
     const q = query(reservationsCol, where("userId", "==", userId), where("status", "==", "reserved"));
     const snap = await getDocs(q);
     return snap.docs.map(d => ({
@@ -195,7 +177,6 @@ export async function listReservationsForUser(userId: string): Promise<Firestore
 
 export async function cancelReservation(reservationId: string): Promise<void> {
   try {
-    const { db, doc, updateDoc } = await getFirebaseModule();
     const reservationRef = doc(db, "reservations", reservationId);
     await updateDoc(reservationRef, { status: "cancelled" });
   } catch (error) {
@@ -206,8 +187,6 @@ export async function cancelReservation(reservationId: string): Promise<void> {
 
 export async function getReservationCountForEvent(eventId: string): Promise<number> {
   try {
-    const { query, where, getDocs } = await getFirebaseModule();
-    const reservationsCol = await getReservationsCol();
     const q = query(reservationsCol, where("eventId", "==", eventId), where("status", "==", "reserved"));
     const snap = await getDocs(q);
     return snap.size;
@@ -220,7 +199,6 @@ export async function getReservationCountForEvent(eventId: string): Promise<numb
 // Chat Messages (non-realtime version - use listeners.ts for realtime)
 export async function getChatMessages(eventId: string): Promise<FirestoreChatMessage[]> {
   try {
-    const { db, collection, query, orderBy, getDocs } = await getFirebaseModule();
     const messagesCol = collection(db, "events", eventId, "messages");
     const q = query(messagesCol, orderBy("createdAt", "asc"));
     const snap = await getDocs(q);
@@ -243,7 +221,6 @@ export async function addChatMessage(
   isHost: boolean = false
 ): Promise<string> {
   try {
-    const { db, collection, addDoc } = await getFirebaseModule();
     const messagesCol = collection(db, "events", eventId, "messages");
     const message: Omit<FirestoreChatMessage, 'id'> = {
       eventId,
@@ -265,7 +242,6 @@ export async function addChatMessage(
 // User profiles
 export async function getUserProfile(uid: string): Promise<FirestoreUser | null> {
   try {
-    const { db, doc, getDoc } = await getFirebaseModule();
     const userRef = doc(db, "users", uid);
     const snap = await getDoc(userRef);
     if (!snap.exists()) return null;
@@ -293,7 +269,6 @@ export async function getUserProfile(uid: string): Promise<FirestoreUser | null>
 
 export async function createOrUpdateUserProfile(uid: string, userData: Partial<FirestoreUser>): Promise<void> {
   try {
-    const { db, doc, setDoc } = await getFirebaseModule();
     const userRef = doc(db, "users", uid);
     await setDoc(userRef, {
       ...userData,
@@ -309,8 +284,6 @@ export async function createOrUpdateUserProfile(uid: string, userData: Partial<F
 // Load user reservations and return as Event[]
 export async function listUserReservations(uid: string): Promise<Event[]> {
   try {
-    const { query, where, getDocs } = await getFirebaseModule();
-    const reservationsCol = await getReservationsCol();
     const q = query(
       reservationsCol,
       where("userId", "==", uid),
@@ -342,7 +315,6 @@ export async function addReview(
   comment?: string
 ): Promise<string> {
   try {
-    const { db, collection, addDoc } = await getFirebaseModule();
     const reviewsCol = collection(db, "events", eventId, "reviews");
     const review: Omit<FirestoreReview, 'id'> = {
       eventId,
@@ -366,7 +338,6 @@ export async function addReview(
 
 export async function listReviews(eventId: string): Promise<FirestoreReview[]> {
   try {
-    const { db, collection, query, orderBy, getDocs } = await getFirebaseModule();
     const reviewsCol = collection(db, "events", eventId, "reviews");
     const q = query(reviewsCol, orderBy("createdAt", "desc"));
     const snap = await getDocs(q);
@@ -383,7 +354,6 @@ export async function listReviews(eventId: string): Promise<FirestoreReview[]> {
 export async function recalculateEventRating(eventId: string): Promise<void> {
   try {
     const reviews = await listReviews(eventId);
-    const { db, doc, updateDoc } = await getFirebaseModule();
     if (reviews.length === 0) {
       // Set rating to 0 if no reviews
       const eventRef = doc(db, "events", eventId);

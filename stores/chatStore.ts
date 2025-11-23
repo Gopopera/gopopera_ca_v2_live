@@ -1,6 +1,7 @@
 import { create } from 'zustand';
+import { subscribeToChat } from '../firebase/listeners';
+import { addChatMessage as addFirestoreMessage } from '../firebase/db';
 import type { FirestoreChatMessage } from '../firebase/types';
-// Note: firebase/listeners and firebase/db are imported dynamically to avoid circular dependencies
 
 export interface ChatMessage {
   id: string;
@@ -29,7 +30,7 @@ interface ChatStore {
   unsubscribeCallbacks: Record<string, () => void>; // eventId -> unsubscribe function
   addMessage: (eventId: string, userId: string, userName: string, message: string, type?: ChatMessage['type'], isHost?: boolean) => Promise<void>;
   getMessagesForEvent: (eventId: string) => ChatMessage[];
-  subscribeToEventChat: (eventId: string) => Promise<void>;
+  subscribeToEventChat: (eventId: string) => void;
   unsubscribeFromEventChat: (eventId: string) => void;
   addPoll: (eventId: string, question: string, options: string[]) => Poll;
   voteOnPoll: (pollId: string, optionIndex: number) => void;
@@ -59,10 +60,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   addMessage: async (eventId, userId, userName, message, type = 'message', isHost = false) => {
     try {
-      // Dynamic import to avoid circular dependency
-      const dbModule = await import('../firebase/db');
       // Add to Firestore
-      await dbModule.addChatMessage(eventId, userId, userName, message, type, isHost);
+      await addFirestoreMessage(eventId, userId, userName, message, type, isHost);
       // The realtime listener will update the messages automatically
     } catch (error) {
       console.error("Error adding message to Firestore:", error);
@@ -83,18 +82,15 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     }
   },
 
-  subscribeToEventChat: async (eventId: string) => {
+  subscribeToEventChat: (eventId: string) => {
     // Unsubscribe from previous subscription if exists
     const existingUnsubscribe = get().unsubscribeCallbacks[eventId];
     if (existingUnsubscribe) {
       existingUnsubscribe();
     }
 
-    // Dynamic import to avoid circular dependency
-    const listenersModule = await import('../firebase/listeners');
-    
     // Subscribe to Firestore realtime updates
-    const unsubscribe = listenersModule.subscribeToChat(eventId, (firestoreMessages: FirestoreChatMessage[]) => {
+    const unsubscribe = subscribeToChat(eventId, (firestoreMessages: FirestoreChatMessage[]) => {
       set((state) => ({
         firestoreMessages: {
           ...state.firestoreMessages,
