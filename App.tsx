@@ -742,6 +742,13 @@ const AppContent: React.FC = () => {
   };
 
   if (viewState === ViewState.CHAT && selectedEvent) {
+    // Ensure user is logged in before showing chat
+    if (!user) {
+      useUserStore.getState().setRedirectAfterLogin(ViewState.CHAT);
+      setViewState(ViewState.AUTH);
+      return null;
+    }
+    
     return (
       <React.Suspense fallback={<PageSkeleton />}>
         <GroupChat 

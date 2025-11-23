@@ -5,16 +5,10 @@ import { persist } from "zustand/middleware";
 export type City =
   | "montreal" | "ottawa" | "gatineau" | "quebec" | "toronto" | "vancouver";
 
-// Defensive guard: validate and fallback to 'montreal' if invalid
-const validateCity = (city: string): City => {
-  const validCities: City[] = ['montreal', 'ottawa', 'gatineau', 'quebec', 'toronto', 'vancouver'];
-  const normalized = city.toLowerCase().trim() as City;
-  return validCities.includes(normalized) ? normalized : 'montreal';
-};
-
+// Allow arbitrary city names as strings, but keep City union for backward compatibility
 type CityState = {
-  selectedCity: City; // Strict union type
-  setCity: (c: City | string) => void; // Accept string but validate to City
+  selectedCity: string; // Now accepts any string, defaults to "montreal"
+  setCity: (c: string) => void; // Accept any string
   resetCity: () => void;
 };
 
@@ -22,19 +16,19 @@ type CityState = {
 export const useCityStore = create<CityState>()(
   persist(
     (set) => ({
-      selectedCity: "montreal",
-      setCity: (c: City | string) => {
-        const validated = validateCity(c);
-        set({ selectedCity: validated });
+      selectedCity: "montreal", // Default to Montreal
+      setCity: (c: string) => {
+        const normalized = c.trim() || "montreal";
+        set({ selectedCity: normalized });
       },
       resetCity: () => set({ selectedCity: "montreal" }),
     }),
     { 
       name: "popera:selectedCity",
-      // Validate persisted value on rehydration
+      // Ensure we have a valid default on rehydration
       onRehydrateStorage: () => (state) => {
-        if (state) {
-          state.selectedCity = validateCity(state.selectedCity);
+        if (state && !state.selectedCity) {
+          state.selectedCity = "montreal";
         }
       },
     }
@@ -42,6 +36,6 @@ export const useCityStore = create<CityState>()(
 );
 
 // Lightweight selector hooks (avoid accidental re-renders)
-export const useSelectedCity = (): City => useCityStore((s) => s.selectedCity);
+export const useSelectedCity = (): string => useCityStore((s) => s.selectedCity);
 export const useSetCity = () => useCityStore((s) => s.setCity);
 export const resetCity = () => useCityStore.getState().resetCity();

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Event, ViewState } from '../types';
-import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info, Star, Sparkles } from 'lucide-react';
+import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info, Star, Sparkles, X } from 'lucide-react';
 import { EventCard } from '../components/events/EventCard';
 import { MockMap } from '../components/map/MockMap';
 import { FakeEventReservationModal } from '../components/events/FakeEventReservationModal';
@@ -42,6 +42,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const isOfficialLaunch = event.isOfficialLaunch === true;
   const [showFakeEventModal, setShowFakeEventModal] = useState(false);
   const [showShareToast, setShowShareToast] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   
   const handleRSVP = () => {
     if (isDemo) {
@@ -89,6 +90,18 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     }
   };
 
+  const handleConversationClick = () => {
+    if (!isLoggedIn) {
+      // Show auth modal for logged-out users
+      setShowAuthModal(true);
+      return;
+    }
+    
+    // If logged in, check access and navigate to chat
+    // GroupChat component will handle blocked state
+    setViewState(ViewState.CHAT);
+  };
+
   return (
     <div className="min-h-screen bg-white pt-0">
       <FakeEventReservationModal
@@ -108,6 +121,50 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
            </div>
          )}
       </div>
+
+      {/* Auth Modal for Chat Access */}
+      {showAuthModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowAuthModal(false)}>
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 sm:p-8 animate-fade-in" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setShowAuthModal(false)}
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-[#eef4f5] rounded-full flex items-center justify-center mx-auto mb-4">
+                <MessageCircle size={32} className="text-[#e35e25]" />
+              </div>
+              <h2 className="text-2xl font-heading font-bold text-[#15383c] mb-2">
+                Sign In to Join Conversations
+              </h2>
+              <p className="text-gray-600 text-sm">
+                Conversations are only available after signing up or logging in.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  setShowAuthModal(false);
+                  setViewState(ViewState.AUTH);
+                }}
+                className="w-full px-6 py-3 bg-[#e35e25] text-white rounded-full font-medium hover:bg-[#d14e1a] transition-colors"
+              >
+                Sign In / Sign Up
+              </button>
+              <button
+                onClick={() => setShowAuthModal(false)}
+                className="w-full px-6 py-3 bg-gray-100 text-[#15383c] rounded-full font-medium hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="hidden lg:block max-w-7xl mx-auto px-6 py-6 mt-20">
         <button onClick={() => setViewState(ViewState.FEED)} className="flex items-center text-gray-500 hover:text-popera-teal transition-colors font-medium"><ChevronLeft size={20} className="mr-1" /> Back to Events</button>
@@ -196,16 +253,16 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   <Share2 size={18} /> Share Event
                 </button>
                 <button 
-                  onClick={() => setViewState(ViewState.CHAT)} 
-                  disabled={isDemo || (isOfficialLaunch && !hasRSVPed) || (!isPoperaOwned && !hasRSVPed)}
+                  onClick={handleConversationClick}
+                  disabled={isDemo}
                   className={`w-full py-3.5 lg:py-4 font-bold text-base lg:text-lg rounded-full border flex items-center justify-center gap-2 touch-manipulation active:scale-95 transition-colors ${
-                    isDemo || (isOfficialLaunch && !hasRSVPed) || (!isPoperaOwned && !hasRSVPed)
+                    isDemo
                       ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
                       : 'bg-popera-teal/5 text-popera-teal border-popera-teal/10 hover:bg-popera-teal/10'
                   }`}
                 >
                   <MessageCircle size={20} className="lg:w-[22px] lg:h-[22px]" /> 
-                  {isDemo || (isOfficialLaunch && !hasRSVPed) || (!isPoperaOwned && !hasRSVPed) ? 'Chat Locked' : 'Join Group Chat'}
+                  {isDemo ? 'Chat Locked' : 'Join Group Chat'}
                 </button>
               </div>
               <div className="mt-6 lg:mt-8 pt-4 lg:pt-6 border-t border-gray-100 text-center"><p className="text-[10px] lg:text-xs text-gray-400 leading-relaxed">Secure payment powered by Stripe.</p></div>
@@ -217,7 +274,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
          <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-popera-teal mb-6 sm:mb-8">Other events you might be interested in</h2>
          {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
          <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 overflow-x-auto md:overflow-x-visible gap-4 sm:gap-5 md:gap-6 lg:gap-6 xl:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
-             {recommendedEvents.map(recEvent => (<div key={recEvent.id} className="w-[85vw] sm:min-w-[60vw] md:w-full lg:w-full xl:w-full snap-center h-full flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0"><EventCard event={recEvent} onClick={onEventClick} onChatClick={(e) => { e.stopPropagation(); setViewState(ViewState.CHAT); }} onReviewsClick={onReviewsClick} isLoggedIn={isLoggedIn} isFavorite={favorites.includes(recEvent.id)} onToggleFavorite={onToggleFavorite} /></div>))}
+             {recommendedEvents.map(recEvent => (<div key={recEvent.id} className="w-[85vw] sm:min-w-[60vw] md:w-full lg:w-full xl:w-full snap-center h-full flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0"><EventCard event={recEvent} onClick={onEventClick} onChatClick={(e) => { e.stopPropagation(); if (!isLoggedIn) { setShowAuthModal(true); } else { setViewState(ViewState.CHAT); } }} onReviewsClick={onReviewsClick} isLoggedIn={isLoggedIn} isFavorite={favorites.includes(recEvent.id)} onToggleFavorite={onToggleFavorite} /></div>))}
          </div>
       </section>
 
@@ -234,10 +291,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
            <div className="flex flex-col shrink-0 min-w-0"><span className="text-xl sm:text-xl md:text-2xl font-heading font-bold text-popera-teal truncate">{event.price}</span><span className="text-xs sm:text-xs text-gray-600 sm:text-gray-500 font-bold uppercase tracking-wide">per person</span></div>
            <div className="flex items-center gap-3 sm:gap-3 flex-1 justify-end min-w-0">
              <button 
-               onClick={() => setViewState(ViewState.CHAT)} 
-               disabled={isDemo || (isOfficialLaunch && !hasRSVPed) || (!isPoperaOwned && !hasRSVPed)}
+               onClick={handleConversationClick}
+               disabled={isDemo}
                className={`w-12 h-12 sm:w-12 sm:h-12 shrink-0 rounded-full border-2 flex items-center justify-center active:scale-[0.92] transition-transform touch-manipulation shadow-sm ${
-                 isDemo || (isOfficialLaunch && !hasRSVPed) || (!isPoperaOwned && !hasRSVPed)
+                 isDemo
                    ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
                    : 'bg-popera-teal/5 text-popera-teal border-popera-teal/10'
                }`}
@@ -261,6 +318,50 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
            </div>
         </div>
       </div>
+
+      {/* Auth Modal for Chat Access */}
+      {showAuthModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowAuthModal(false)}>
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 sm:p-8 animate-fade-in" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setShowAuthModal(false)}
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-[#eef4f5] rounded-full flex items-center justify-center mx-auto mb-4">
+                <MessageCircle size={32} className="text-[#e35e25]" />
+              </div>
+              <h2 className="text-2xl font-heading font-bold text-[#15383c] mb-2">
+                Sign In to Join Conversations
+              </h2>
+              <p className="text-gray-600 text-sm">
+                Conversations are only available after signing up or logging in.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  setShowAuthModal(false);
+                  setViewState(ViewState.AUTH);
+                }}
+                className="w-full px-6 py-3 bg-[#e35e25] text-white rounded-full font-medium hover:bg-[#d14e1a] transition-colors"
+              >
+                Sign In / Sign Up
+              </button>
+              <button
+                onClick={() => setShowAuthModal(false)}
+                className="w-full px-6 py-3 bg-gray-100 text-[#15383c] rounded-full font-medium hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

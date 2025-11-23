@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Menu, X, Search, User, Bell, PlusCircle, Heart } from 'lucide-react';
 import { ViewState } from '@/types';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useUserStore } from '../../stores/userStore';
 
 interface HeaderProps {
   setViewState: (view: ViewState) => void;
@@ -16,6 +17,8 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { language, setLanguage, t } = useLanguage();
+  const user = useUserStore((state) => state.user);
+  const userPhoto = user?.photoURL || user?.profileImageUrl;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -115,9 +118,13 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
 
                <button 
                  onClick={onProfileClick}
-                 className="w-10 h-10 rounded-full bg-[#e35e25] flex items-center justify-center text-white font-bold text-sm shadow-md hover:scale-105 transition-transform ring-2 ring-white"
+                 className="w-10 h-10 rounded-full bg-[#e35e25] flex items-center justify-center text-white font-bold text-sm shadow-md hover:scale-105 transition-transform ring-2 ring-white overflow-hidden"
                >
-                 P
+                 {userPhoto ? (
+                   <img src={userPhoto} alt="Profile" className="w-full h-full object-cover" />
+                 ) : (
+                   <span>{user?.displayName?.[0] || user?.name?.[0] || 'P'}</span>
+                 )}
                </button>
              </>
           ) : (

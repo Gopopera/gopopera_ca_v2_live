@@ -71,8 +71,8 @@ export const EventCard: React.FC<EventCardProps> = ({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-60" />
         
-        {/* Category Badge - Top Left with circular/pill background */}
-        <div className="absolute top-4 left-4 inline-flex items-center justify-center rounded-full px-3 py-1 bg-[#15383c]/90 backdrop-blur-sm text-[10px] font-medium text-white shadow-sm uppercase tracking-wider z-10">
+        {/* Category Badge - Top Left matching Hero badge style */}
+        <div className="absolute top-4 left-4 inline-block py-1 sm:py-1.5 px-3.5 sm:px-4 rounded-full bg-white/5 border border-white/10 text-[#e35e25] text-[9px] sm:text-[10px] font-bold tracking-[0.2em] uppercase backdrop-blur-sm z-10">
           {event.category}
         </div>
 

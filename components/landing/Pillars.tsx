@@ -65,13 +65,6 @@ export const Pillars: React.FC = () => {
               
               {/* Content */}
               <div className="absolute inset-0 p-5 sm:p-6 md:p-7 lg:p-8 flex flex-col justify-end z-20">
-                {/* Number - High contrast with Popera brand styling - improved visibility */}
-                <div className="absolute top-4 right-4 sm:top-5 sm:right-5 md:top-6 md:right-6 lg:top-7 lg:right-7">
-                  <span className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-heading font-black text-white drop-shadow-[0_6px_16px_rgba(0,0,0,1)] bg-[#15383c] backdrop-blur-md px-3 py-2 sm:px-4 sm:py-2.5 md:px-5 md:py-3 lg:px-6 lg:py-4 rounded-lg sm:rounded-xl md:rounded-2xl border-[2px] sm:border-[3px] border-[#e35e25] shadow-2xl">
-                    {pillar.id}
-                  </span>
-                </div>
-                
                 {/* Category Badge - High contrast with Popera orange accent - improved readability */}
                 <span className="text-white font-heading font-black tracking-[0.15em] sm:tracking-[0.2em] uppercase text-xs sm:text-sm md:text-base lg:text-lg mb-2 sm:mb-2.5 md:mb-3 bg-[#e35e25] px-3 py-1.5 sm:px-4 sm:py-2 md:px-5 md:py-2.5 lg:px-6 lg:py-3 rounded-full w-fit border-[2px] sm:border-[3px] border-white drop-shadow-[0_4px_10px_rgba(0,0,0,0.9)] shadow-xl">
                   {pillar.category}

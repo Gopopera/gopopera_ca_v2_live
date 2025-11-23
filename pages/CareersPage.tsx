@@ -11,11 +11,17 @@ interface CareersPageProps {
 export const CareersPage: React.FC<CareersPageProps> = ({ setViewState }) => {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '', message: '' });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setSelectedFile(file);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,32 +31,46 @@ export const CareersPage: React.FC<CareersPageProps> = ({ setViewState }) => {
     setIsSubmitting(true);
     try {
       // Save to Firestore
-      await addDoc(collection(db, 'career_inquiries'), {
+      const inquiryData: any = {
         name: formData.name,
         email: formData.email,
         message: formData.message,
         createdAt: new Date().toISOString(),
-      });
+      };
+      if (selectedFile) {
+        inquiryData.fileName = selectedFile.name;
+        inquiryData.fileSize = selectedFile.size;
+        inquiryData.fileType = selectedFile.type;
+      }
+      await addDoc(collection(db, 'career_inquiries'), inquiryData);
 
       // Open mailto with prefilled content
       const subject = encodeURIComponent('Career Inquiry - ' + formData.name);
-      const body = encodeURIComponent(`Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`);
-      window.location.href = `mailto:support@gopopera.ca?subject=${subject}&body=${body}`;
+      let body = `Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`;
+      if (selectedFile) {
+        body += `\n\nAttached file: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(2)} KB)`;
+      }
+      window.location.href = `mailto:support@gopopera.ca?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
       setSubmitSuccess(true);
       setTimeout(() => {
         setShowEmailModal(false);
         setFormData({ name: '', email: '', message: '' });
+        setSelectedFile(null);
         setSubmitSuccess(false);
       }, 2000);
     } catch (error) {
       console.error('Error submitting career inquiry:', error);
       // Still open mailto as fallback
       const subject = encodeURIComponent('Career Inquiry - ' + formData.name);
-      const body = encodeURIComponent(`Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`);
-      window.location.href = `mailto:support@gopopera.ca?subject=${subject}&body=${body}`;
+      let body = `Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`;
+      if (selectedFile) {
+        body += `\n\nAttached file: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(2)} KB)`;
+      }
+      window.location.href = `mailto:support@gopopera.ca?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       setShowEmailModal(false);
       setFormData({ name: '', email: '', message: '' });
+      setSelectedFile(null);
     } finally {
       setIsSubmitting(false);
     }
@@ -180,7 +200,7 @@ export const CareersPage: React.FC<CareersPageProps> = ({ setViewState }) => {
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-[#e35e25] font-bold">•</span>
-                <span>Your résumé</span>
+                <span>Your resume</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-[#e35e25] font-bold">•</span>
@@ -248,6 +268,18 @@ export const CareersPage: React.FC<CareersPageProps> = ({ setViewState }) => {
                     rows={5}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#15383c] focus:border-transparent resize-none"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Resume (Optional)</label>
+                  <input
+                    type="file"
+                    onChange={handleFileChange}
+                    accept=".pdf,.doc,.docx"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#15383c] focus:border-transparent text-sm"
+                  />
+                  {selectedFile && (
+                    <p className="mt-2 text-xs text-gray-500">Selected: {selectedFile.name}</p>
+                  )}
                 </div>
                 <button
                   type="submit"

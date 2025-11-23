@@ -1,14 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MapPin } from 'lucide-react';
-import { useSelectedCity, useSetCity, type City } from '../../src/stores/cityStore';
+import { useSelectedCity, useSetCity } from '../../src/stores/cityStore';
 
-const CITY_OPTIONS: Array<{ slug: City; label: string }> = [
-  { slug: 'montreal', label: 'Montreal, CA' },
-  { slug: 'toronto', label: 'Toronto, CA' },
-  { slug: 'ottawa', label: 'Ottawa, CA' },
-  { slug: 'quebec', label: 'Quebec City, CA' },
-  { slug: 'gatineau', label: 'Gatineau, CA' },
-  { slug: 'vancouver', label: 'Vancouver, CA' },
+const POPULAR_CITIES = [
+  'Montreal, CA',
+  'Toronto, CA',
+  'Ottawa, CA',
+  'Quebec City, CA',
+  'Gatineau, CA',
+  'Vancouver, CA',
 ];
 
 interface CityInputProps {
@@ -18,49 +18,54 @@ interface CityInputProps {
 export const CityInput: React.FC<CityInputProps> = ({ className = '' }) => {
   const selectedCity = useSelectedCity();
   const setCity = useSetCity();
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, setInputValue] = useState(selectedCity || 'Montreal');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Initialize input value from selected city
   useEffect(() => {
-    const cityOption = CITY_OPTIONS.find(c => c.slug === selectedCity);
-    setInputValue(cityOption?.label || '');
+    setInputValue(selectedCity || 'Montreal');
   }, [selectedCity]);
 
   // Filter suggestions based on input
-  const filteredCities = CITY_OPTIONS.filter(city =>
-    city.label.toLowerCase().includes(inputValue.toLowerCase()) ||
-    city.slug.toLowerCase().includes(inputValue.toLowerCase())
+  const filteredCities = POPULAR_CITIES.filter(city =>
+    city.toLowerCase().includes(inputValue.toLowerCase())
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setInputValue(value);
-    setShowSuggestions(true);
+    setShowSuggestions(value.length > 0);
   };
 
-  const handleSelectCity = (citySlug: City) => {
-    const cityOption = CITY_OPTIONS.find(c => c.slug === citySlug);
-    setInputValue(cityOption?.label || '');
-    setCity(citySlug);
+  const handleInputSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (inputValue.trim()) {
+      setCity(inputValue.trim());
+      setShowSuggestions(false);
+      inputRef.current?.blur();
+    }
+  };
+
+  const handleSelectCity = (city: string) => {
+    setInputValue(city);
+    setCity(city);
     setShowSuggestions(false);
     inputRef.current?.blur();
   };
 
   const handleInputFocus = () => {
-    setShowSuggestions(true);
+    setShowSuggestions(inputValue.length > 0);
   };
 
   const handleInputBlur = () => {
     // Delay to allow click on suggestion
     setTimeout(() => {
       setShowSuggestions(false);
-      // Reset to selected city label if input doesn't match
-      const cityOption = CITY_OPTIONS.find(c => c.slug === selectedCity);
-      if (inputValue !== cityOption?.label) {
-        setInputValue(cityOption?.label || '');
+      // If input is empty, reset to selected city
+      if (!inputValue.trim()) {
+        setInputValue(selectedCity || 'Montreal');
       }
     }, 200);
   };
@@ -77,7 +82,7 @@ export const CityInput: React.FC<CityInputProps> = ({ className = '' }) => {
   }, []);
 
   return (
-    <div ref={containerRef} className={`relative w-full ${className}`}>
+    <form ref={containerRef} onSubmit={handleInputSubmit} className={`relative w-full ${className}`}>
       <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
           <MapPin size={18} className="text-[#e35e25]" />
@@ -89,7 +94,7 @@ export const CityInput: React.FC<CityInputProps> = ({ className = '' }) => {
           onChange={handleInputChange}
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
-          placeholder="City, Country (e.g. Montreal, CA)"
+          placeholder="City (e.g. Montreal)"
           className="w-full pl-11 pr-4 py-3 sm:py-3.5 bg-white border border-gray-200 rounded-full text-sm sm:text-base font-bold text-[#15383c] focus:outline-none focus:border-[#15383c] focus:ring-2 focus:ring-[#15383c]/10 shadow-sm hover:shadow-md transition-all placeholder-gray-400"
         />
       </div>
@@ -100,21 +105,22 @@ export const CityInput: React.FC<CityInputProps> = ({ className = '' }) => {
           <div className="px-4 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50">
             Popular Cities
           </div>
-          {filteredCities.map((cityOption) => (
+          {filteredCities.map((city) => (
             <button
-              key={cityOption.slug}
+              key={city}
+              type="button"
               onMouseDown={(e) => {
                 e.preventDefault();
-                handleSelectCity(cityOption.slug);
+                handleSelectCity(city);
               }}
               className="w-full text-left px-4 py-3 text-sm font-medium text-[#15383c] hover:bg-[#eef4f5] hover:text-[#e35e25] transition-colors border-b border-gray-50 last:border-0"
             >
-              {cityOption.label}
+              {city}
             </button>
           ))}
         </div>
       )}
-    </div>
+    </form>
   );
 };
 

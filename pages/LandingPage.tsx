@@ -138,8 +138,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   Happening Now
                </span>
             </div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-[#15383c] mb-2 sm:mb-3 md:mb-4">Upcoming Pop-ups</h2>
-            <p className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-500 font-light leading-relaxed">See where the crowd is going. Discover the moments bringing people together this week.</p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-[#15383c] mb-2 sm:mb-3 md:mb-4 px-4 sm:px-0">Upcoming Pop-ups</h2>
+            <p className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-500 font-light leading-relaxed px-4 sm:px-0">See where the crowd is going. Discover the moments bringing people together this week.</p>
           </div>
 
           {/* SEARCH BAR & FILTERS */}
@@ -218,7 +218,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* 3. Pop-ups and Crowd Activation section */}
-      <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] relative overflow-hidden w-full">
+      <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] relative overflow-hidden w-full rounded-t-[2rem] sm:rounded-t-[2.5rem] md:rounded-t-[3rem]">
          <div className="max-w-5xl md:max-w-6xl lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
             <div className="mb-6 sm:mb-8 md:mb-10 animate-fade-in-up">
               <span className="inline-block py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-white/5 border border-white/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase backdrop-blur-sm">
