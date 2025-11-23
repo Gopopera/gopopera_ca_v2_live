@@ -309,7 +309,7 @@ const generateMockEvents = (): Event[] => [
 ];
 
 const AppContent: React.FC = () => {
-  console.log('[Popera] App rendered');
+  console.log('[Popera] App mounted');
   const { t } = useLanguage();
   const [viewState, setViewState] = useState<ViewState>(ViewState.LANDING);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -704,15 +704,12 @@ const AppContent: React.FC = () => {
   );
 
   // Show loading screen while auth is initializing
-  // Show loading screen while auth is initializing
   // Wait for ready flag to ensure auth state is determined
-  if (!ready || (loading && !user)) {
+  if (loading || !ready) {
     return (
-      <div className="font-sans text-popera-teal bg-gray-50 min-h-screen flex flex-col items-center justify-center w-full">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#e35e25] mx-auto mb-4"></div>
-          <p className="text-gray-500">Loading...</p>
-        </div>
+      <div style={{ padding: 16, textAlign: 'center', fontFamily: 'sans-serif', color: '#15383c' }}>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#e35e25] mx-auto mb-4"></div>
+        <p className="text-gray-500">Loading...</p>
       </div>
     );
   }

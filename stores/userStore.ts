@@ -189,7 +189,7 @@ export const useUserStore = create<UserStore>()(
             attendingEvents: [],
           };
           
-          console.log('[Popera] userStore initialized', user);
+          console.log('[Popera] userStore initialized', { userId: user.uid });
           set({ user, currentUser: user, loading: false, ready: true });
         } catch (error) {
           console.error("Error fetching user profile:", error);
