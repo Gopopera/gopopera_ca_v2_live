@@ -3,10 +3,14 @@
  */
 
 import { createNotification } from '../firebase/notifications';
-import { sendEmailNotification, notifyNewEventFromHost, notifyAnnouncement, notifyPoll, notifyNewMessage } from './emailNotifications';
 import { sendSMSNotification, notifyNewEventSMS, notifyAnnouncementSMS, notifyPollSMS, notifyNewMessageSMS } from './smsNotifications';
 import { getDbSafe } from '../src/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { sendEmail } from '../src/lib/email';
+import { AnnouncementEmailTemplate } from '../src/emails/templates/AnnouncementEmail';
+import { PollEmailTemplate } from '../src/emails/templates/PollEmail';
+import { FollowNotificationTemplate } from '../src/emails/templates/FollowNotification';
+import { RSVPHostNotificationTemplate } from '../src/emails/templates/RSVPHostNotification';
 
 interface UserNotificationPreferences {
   email_opt_in?: boolean;
@@ -136,13 +140,45 @@ export async function notifyFollowersOfNewEvent(
 
     // Email
     if (preferences.email_opt_in && contactInfo.email) {
-      await notifyNewEventFromHost(
-        contactInfo.email,
-        contactInfo.name || 'there',
-        'Host', // Could fetch host name
-        eventTitle,
-        eventId
-      );
+      try {
+        // Get host info
+        const hostInfo = await getUserContactInfo(hostId);
+        const hostName = hostInfo.name || 'Host';
+        
+        // Get event details for template
+        const db = getDbSafe();
+        let eventDescription = '';
+        let eventImageUrl = '';
+        if (db) {
+          try {
+            const eventDoc = await getDoc(doc(db, 'events', eventId));
+            if (eventDoc.exists()) {
+              const eventData = eventDoc.data();
+              eventDescription = eventData.description || '';
+              eventImageUrl = eventData.imageUrl || '';
+            }
+          } catch (error) {
+            console.error('Error fetching event details:', error);
+          }
+        }
+
+        const emailHtml = FollowNotificationTemplate({
+          userName: contactInfo.name || 'there',
+          hostName,
+          eventTitle,
+          eventDescription,
+          eventUrl: `${window.location.origin}/event/${eventId}`, // Adjust based on your routing
+          eventImageUrl,
+        });
+
+        await sendEmail({
+          to: contactInfo.email,
+          subject: `New Pop-up from ${hostName} on Popera`,
+          html: emailHtml,
+        });
+      } catch (error) {
+        console.error('Error sending follow notification email:', error);
+      }
     }
 
     // SMS
@@ -181,13 +217,23 @@ export async function notifyAttendeesOfAnnouncement(
 
     // Email
     if (preferences.email_opt_in && contactInfo.email) {
-      await notifyAnnouncement(
-        contactInfo.email,
-        contactInfo.name || 'there',
-        eventTitle,
-        announcementTitle,
-        announcementMessage
-      );
+      try {
+        const emailHtml = AnnouncementEmailTemplate({
+          userName: contactInfo.name || 'there',
+          eventTitle,
+          announcementTitle,
+          announcementMessage,
+          eventUrl: `${window.location.origin}/event/${eventId}`, // Adjust based on your routing
+        });
+
+        await sendEmail({
+          to: contactInfo.email,
+          subject: `Update: ${announcementTitle} - ${eventTitle}`,
+          html: emailHtml,
+        });
+      } catch (error) {
+        console.error('Error sending announcement email:', error);
+      }
     }
 
     // SMS
@@ -226,13 +272,28 @@ export async function notifyAttendeesOfPoll(
 
     // Email
     if (preferences.email_opt_in && contactInfo.email) {
-      await notifyPoll(
-        contactInfo.email,
-        contactInfo.name || 'there',
-        eventTitle,
-        pollTitle,
-        pollMessage
-      );
+      try {
+        // Parse poll options from message if available
+        const pollOptions = pollMessage.includes('Vote:') 
+          ? pollMessage.split('Vote:')[1]?.split(' or ').map(opt => opt.trim()).filter(Boolean)
+          : undefined;
+
+        const emailHtml = PollEmailTemplate({
+          userName: contactInfo.name || 'there',
+          eventTitle,
+          pollQuestion: pollTitle,
+          pollOptions,
+          eventUrl: `${window.location.origin}/event/${eventId}`, // Adjust based on your routing
+        });
+
+        await sendEmail({
+          to: contactInfo.email,
+          subject: `New Poll: ${pollTitle} - ${eventTitle}`,
+          html: emailHtml,
+        });
+      } catch (error) {
+        console.error('Error sending poll email:', error);
+      }
     }
 
     // SMS

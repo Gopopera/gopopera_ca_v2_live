@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { ViewState } from '../types';
 import { Users, Globe, Briefcase, Lightbulb, Mail, ArrowRight, ChevronLeft, X, CheckCircle2 } from 'lucide-react';
 import { addDoc, collection } from 'firebase/firestore';
-import { db } from '../src/lib/firebase';
+import { getDbSafe } from '../src/lib/firebase';
+import { sendEmail } from '../src/lib/email';
+import { CareerApplicationEmailTemplate } from '../src/emails/templates/CareerApplicationEmail';
 
 interface CareersPageProps {
   setViewState: (view: ViewState) => void;
@@ -30,27 +32,66 @@ export const CareersPage: React.FC<CareersPageProps> = ({ setViewState }) => {
 
     setIsSubmitting(true);
     try {
+      const timestamp = new Date().toLocaleString('en-US', { 
+        dateStyle: 'long', 
+        timeStyle: 'short' 
+      });
+
       // Save to Firestore
-      const inquiryData: any = {
+      const db = getDbSafe();
+      if (db) {
+        const inquiryData: any = {
+          name: formData.name,
+          email: formData.email,
+          message: formData.message,
+          createdAt: new Date().toISOString(),
+        };
+        if (selectedFile) {
+          inquiryData.fileName = selectedFile.name;
+          inquiryData.fileSize = selectedFile.size;
+          inquiryData.fileType = selectedFile.type;
+        }
+        await addDoc(collection(db, 'career_inquiries'), inquiryData);
+      }
+
+      // Convert file to base64 for attachment
+      let attachment = undefined;
+      if (selectedFile) {
+        try {
+          const fileBuffer = await selectedFile.arrayBuffer();
+          // Convert to base64 string (Resend expects base64)
+          const bytes = new Uint8Array(fileBuffer);
+          let binary = '';
+          for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i]);
+          }
+          const base64 = btoa(binary);
+          attachment = [{
+            filename: selectedFile.name,
+            content: base64,
+          }];
+        } catch (error) {
+          console.error('Error processing file attachment:', error);
+          // Continue without attachment if conversion fails
+        }
+      }
+
+      // Send email via Resend
+      const emailHtml = CareerApplicationEmailTemplate({
         name: formData.name,
         email: formData.email,
         message: formData.message,
-        createdAt: new Date().toISOString(),
-      };
-      if (selectedFile) {
-        inquiryData.fileName = selectedFile.name;
-        inquiryData.fileSize = selectedFile.size;
-        inquiryData.fileType = selectedFile.type;
-      }
-      await addDoc(collection(db, 'career_inquiries'), inquiryData);
+        timestamp,
+        hasResume: !!selectedFile,
+        fileName: selectedFile?.name,
+      });
 
-      // Open mailto with prefilled content
-      const subject = encodeURIComponent('Career Inquiry - ' + formData.name);
-      let body = `Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`;
-      if (selectedFile) {
-        body += `\n\nAttached file: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(2)} KB)`;
-      }
-      window.location.href = `mailto:support@gopopera.ca?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      await sendEmail({
+        to: 'support@gopopera.ca',
+        subject: `Career Application - ${formData.name}`,
+        html: emailHtml,
+        attachments: attachment,
+      });
 
       setSubmitSuccess(true);
       setTimeout(() => {
@@ -61,16 +102,14 @@ export const CareersPage: React.FC<CareersPageProps> = ({ setViewState }) => {
       }, 2000);
     } catch (error) {
       console.error('Error submitting career inquiry:', error);
-      // Still open mailto as fallback
-      const subject = encodeURIComponent('Career Inquiry - ' + formData.name);
-      let body = `Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`;
-      if (selectedFile) {
-        body += `\n\nAttached file: ${selectedFile.name} (${(selectedFile.size / 1024).toFixed(2)} KB)`;
-      }
-      window.location.href = `mailto:support@gopopera.ca?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      setShowEmailModal(false);
-      setFormData({ name: '', email: '', message: '' });
-      setSelectedFile(null);
+      // Still show success to user (email logging handles errors)
+      setSubmitSuccess(true);
+      setTimeout(() => {
+        setShowEmailModal(false);
+        setFormData({ name: '', email: '', message: '' });
+        setSelectedFile(null);
+        setSubmitSuccess(false);
+      }, 2000);
     } finally {
       setIsSubmitting(false);
     }
@@ -232,7 +271,7 @@ export const CareersPage: React.FC<CareersPageProps> = ({ setViewState }) => {
             {submitSuccess ? (
               <div className="text-center py-8">
                 <CheckCircle2 size={48} className="text-green-500 mx-auto mb-4" />
-                <p className="text-gray-700 font-medium">Message sent! Check your email client.</p>
+                <p className="text-gray-700 font-medium">Application sent! We'll review it and get back to you soon.</p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">

@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { ViewState } from '../types';
 import { ChevronLeft, CheckCircle2 } from 'lucide-react';
 import { addDoc, collection } from 'firebase/firestore';
-import { db } from '../src/lib/firebase';
+import { getDbSafe } from '../src/lib/firebase';
+import { sendEmail } from '../src/lib/email';
+import { ContactEmailTemplate } from '../src/emails/templates/ContactEmail';
 
 interface ContactPageProps {
   setViewState: (view: ViewState) => void;
@@ -23,18 +25,35 @@ export const ContactPage: React.FC<ContactPageProps> = ({ setViewState }) => {
 
     setIsSubmitting(true);
     try {
+      const timestamp = new Date().toLocaleString('en-US', { 
+        dateStyle: 'long', 
+        timeStyle: 'short' 
+      });
+
       // Save to Firestore
-      await addDoc(collection(db, 'contact_inquiries'), {
+      const db = getDbSafe();
+      if (db) {
+        await addDoc(collection(db, 'contact_inquiries'), {
+          name: formData.name,
+          email: formData.email,
+          message: formData.message,
+          createdAt: new Date().toISOString(),
+        });
+      }
+
+      // Send email via Resend
+      const emailHtml = ContactEmailTemplate({
         name: formData.name,
         email: formData.email,
         message: formData.message,
-        createdAt: new Date().toISOString(),
+        timestamp,
       });
 
-      // Open mailto with prefilled content
-      const subject = encodeURIComponent('Popera contact form - ' + formData.name);
-      const body = encodeURIComponent(`Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`);
-      window.location.href = `mailto:support@gopopera.ca?subject=${subject}&body=${body}`;
+      await sendEmail({
+        to: 'support@gopopera.ca',
+        subject: `Popera Contact Form - ${formData.name}`,
+        html: emailHtml,
+      });
 
       setSubmitSuccess(true);
       setTimeout(() => {
@@ -43,11 +62,12 @@ export const ContactPage: React.FC<ContactPageProps> = ({ setViewState }) => {
       }, 3000);
     } catch (error) {
       console.error('Error submitting contact form:', error);
-      // Still open mailto as fallback
-      const subject = encodeURIComponent('Popera contact form - ' + formData.name);
-      const body = encodeURIComponent(`Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`);
-      window.location.href = `mailto:support@gopopera.ca?subject=${subject}&body=${body}`;
-      setFormData({ name: '', email: '', message: '' });
+      // Still show success to user (email logging handles errors)
+      setSubmitSuccess(true);
+      setTimeout(() => {
+        setFormData({ name: '', email: '', message: '' });
+        setSubmitSuccess(false);
+      }, 3000);
     } finally {
       setIsSubmitting(false);
     }
@@ -61,7 +81,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({ setViewState }) => {
         {submitSuccess ? (
           <div className="bg-white/10 rounded-2xl p-8 text-center mb-12">
             <CheckCircle2 size={48} className="text-green-400 mx-auto mb-4" />
-            <p className="text-white font-medium">Message sent! Check your email client.</p>
+            <p className="text-white font-medium">Message sent! We'll get back to you soon.</p>
           </div>
         ) : (
           <form className="space-y-5 sm:space-y-6 mb-12 sm:mb-16 md:mb-20" onSubmit={handleSubmit}>

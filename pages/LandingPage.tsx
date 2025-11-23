@@ -6,10 +6,13 @@ import { EventCard } from '../components/events/EventCard';
 import { ChatMockupSection } from '../components/landing/ChatMockupSection';
 import { CityInput } from '../components/layout/CityInput';
 import { Event, ViewState } from '../types';
-import { ArrowRight, Sparkles, Check, ChevronDown, Search, MapPin, PlusCircle } from 'lucide-react';
+import { ArrowRight, Sparkles, Check, ChevronDown, Search, MapPin, PlusCircle, CheckCircle2 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { categoryMatches } from '../utils/categoryMapper';
 import { useSelectedCity, useSetCity, type City } from '../src/stores/cityStore';
+import { getDbSafe } from '../src/lib/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { sendEmail } from '../src/lib/email';
 
 interface LandingPageProps {
   setViewState: (view: ViewState) => void;
@@ -37,6 +40,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
+  const [newsletterSuccess, setNewsletterSuccess] = useState(false);
   const city = useSelectedCity();
   const setCity = useSetCity();
   const location = city;
@@ -352,19 +358,89 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             Join the waitlist before launch on the 15th of May 2026.
           </p>
 
-          <form className="max-w-2xl mx-auto relative flex items-center mb-4 sm:mb-6" onSubmit={(e) => e.preventDefault()}>
+          <form 
+            className="max-w-2xl mx-auto relative flex items-center mb-4 sm:mb-6" 
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!newsletterEmail.trim() || newsletterSubmitting) return;
+
+              setNewsletterSubmitting(true);
+              try {
+                const email = newsletterEmail.trim();
+                const timestamp = new Date().toLocaleString('en-US', { 
+                  dateStyle: 'long', 
+                  timeStyle: 'short' 
+                });
+
+                // Store to Firestore
+                const db = getDbSafe();
+                if (db) {
+                  await addDoc(collection(db, 'newsletter_subscribers'), {
+                    email,
+                    subscribedAt: serverTimestamp(),
+                    createdAt: Date.now(),
+                  });
+                }
+
+                // Send notification email to support
+                const emailHtml = `
+                  <h2 style="margin: 0 0 24px 0; color: #15383c; font-size: 24px; font-weight: bold;">New Newsletter Subscription</h2>
+                  <div style="background-color: #f8fafb; padding: 24px; border-radius: 12px;">
+                    <p style="margin: 0 0 12px 0; color: #374151; font-size: 16px; line-height: 1.6;">
+                      <strong style="color: #15383c;">Email:</strong> <a href="mailto:${email}" style="color: #e35e25; text-decoration: none;">${email}</a>
+                    </p>
+                    <p style="margin: 0; color: #374151; font-size: 16px; line-height: 1.6;">
+                      <strong style="color: #15383c;">Subscribed:</strong> ${timestamp}
+                    </p>
+                  </div>
+                `;
+
+                await sendEmail({
+                  to: 'support@gopopera.ca',
+                  subject: `Newsletter Subscription - ${email}`,
+                  html: emailHtml,
+                });
+
+                setNewsletterSuccess(true);
+                setNewsletterEmail('');
+                setTimeout(() => setNewsletterSuccess(false), 3000);
+              } catch (error) {
+                console.error('Error subscribing to newsletter:', error);
+                // Still show success (logging handles errors)
+                setNewsletterSuccess(true);
+                setNewsletterEmail('');
+                setTimeout(() => setNewsletterSuccess(false), 3000);
+              } finally {
+                setNewsletterSubmitting(false);
+              }
+            }}
+          >
               <input 
                   type="email" 
+                  value={newsletterEmail}
+                  onChange={(e) => setNewsletterEmail(e.target.value)}
                   placeholder="email" 
-                  className="w-full bg-transparent border border-gray-500/50 rounded-full py-3 sm:py-4 md:py-5 pl-6 sm:pl-8 pr-32 sm:pr-40 text-white placeholder-gray-500 focus:outline-none focus:border-[#e35e25] focus:ring-1 focus:ring-[#e35e25] transition-all text-sm sm:text-base md:text-lg"
+                  required
+                  disabled={newsletterSubmitting}
+                  className="w-full bg-transparent border border-gray-500/50 rounded-full py-3 sm:py-4 md:py-5 pl-6 sm:pl-8 pr-32 sm:pr-40 text-white placeholder-gray-500 focus:outline-none focus:border-[#e35e25] focus:ring-1 focus:ring-[#e35e25] transition-all text-sm sm:text-base md:text-lg disabled:opacity-50"
               />
               <button 
                   type="submit" 
-                  className="absolute right-1.5 sm:right-2 top-1.5 sm:top-2 bottom-1.5 sm:bottom-2 bg-white text-[#15383c] px-6 sm:px-8 rounded-full font-bold hover:bg-gray-100 transition-colors shadow-lg text-xs sm:text-sm md:text-base touch-manipulation active:scale-95"
+                  disabled={newsletterSubmitting || !newsletterEmail.trim()}
+                  className="absolute right-1.5 sm:right-2 top-1.5 sm:top-2 bottom-1.5 sm:bottom-2 bg-white text-[#15383c] px-6 sm:px-8 rounded-full font-bold hover:bg-gray-100 transition-colors shadow-lg text-xs sm:text-sm md:text-base touch-manipulation active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                  Submit
+                  {newsletterSubmitting ? '...' : 'Submit'}
               </button>
           </form>
+          
+          {newsletterSuccess && (
+            <div className="max-w-2xl mx-auto mb-4">
+              <div className="bg-green-500/20 border border-green-500/50 rounded-full px-4 py-2 flex items-center justify-center gap-2">
+                <CheckCircle2 size={18} className="text-green-400" />
+                <p className="text-green-400 text-sm font-medium">Subscribed! Check your email.</p>
+              </div>
+            </div>
+          )}
           
           <p className="text-xs sm:text-sm text-gray-500 opacity-60">
               By clicking submit, you agree to our <button 

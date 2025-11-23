@@ -100,32 +100,17 @@ export async function getHostFollowers(hostId: string): Promise<string[]> {
 
 /**
  * Notify all followers when a host creates a new event
+ * This is now handled by notificationHelpers.ts for comprehensive notifications (in-app + email + SMS)
  */
 export async function notifyFollowersOfNewEvent(
   hostId: string,
   eventId: string,
   eventTitle: string
 ): Promise<void> {
-  const db = getDbSafe();
-  if (!db) return;
-
+  // Delegate to notificationHelpers for comprehensive notifications
   try {
-    const followers = await getHostFollowers(hostId);
-    
-    // Create notifications for all followers
-    const { createNotification } = await import('./notifications');
-    const notifications = followers.map(followerId =>
-      createNotification(followerId, {
-        userId: followerId,
-        type: 'followed-host-event',
-        title: 'New Event from Host You Follow',
-        body: `${eventTitle} - Check it out!`,
-        eventId,
-        hostId,
-      })
-    );
-
-    await Promise.all(notifications);
+    const { notifyFollowersOfNewEvent: notifyFollowers } = await import('../utils/notificationHelpers');
+    await notifyFollowers(hostId, eventId, eventTitle);
   } catch (error) {
     console.error('Error notifying followers:', error);
   }

@@ -13,6 +13,8 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, Go
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { attachAuthListener } from '../firebase/listeners';
 import { getUserProfile, createOrUpdateUserProfile, listUserReservations, createReservation, cancelReservation, listReservationsForUser } from '../firebase/db';
+import { doc, getDoc } from 'firebase/firestore';
+import { getDbSafe } from '../src/lib/firebase';
 import type { FirestoreUser } from '../firebase/types';
 import type { Unsubscribe } from '../src/lib/firebase';
 import type { ViewState } from '../types';
@@ -360,6 +362,25 @@ export const useUserStore = create<UserStore>()(
           
           if (currentUser && currentUser.uid === userId) {
             set({ user: { ...currentUser, rsvps: updatedRSVPs }, currentUser: { ...currentUser, rsvps: updatedRSVPs } });
+          }
+
+          // Notify host of new RSVP (non-blocking)
+          try {
+            const db = getDbSafe();
+            if (db) {
+              const eventDoc = await getDoc(doc(db, 'events', eventId));
+              if (eventDoc.exists()) {
+                const eventData = eventDoc.data();
+                const hostId = eventData.hostId;
+                if (hostId) {
+                  const { notifyHostOfRSVP } = await import('../utils/notificationHelpers');
+                  await notifyHostOfRSVP(hostId, userId, eventId, eventData.title || 'Event');
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error notifying host of RSVP:', error);
+            // Don't fail RSVP if notification fails
           }
         } catch (error) {
           console.error("Add RSVP error:", error);
