@@ -46,6 +46,10 @@ export interface FirestoreUser {
   bio?: string;
   preferences?: 'attend' | 'host' | 'both';
   favorites?: string[]; // Event IDs
+  hostedEvents?: string[]; // Event IDs user has created
+  preferredCity?: string; // User's preferred city
+  phoneVerified?: boolean; // SMS verification status
+  signupIntent?: 'attend' | 'host' | 'both'; // First-run signup intent
   createdAt: number;
   updatedAt?: number;
 }

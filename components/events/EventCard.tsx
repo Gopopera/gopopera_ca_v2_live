@@ -26,17 +26,15 @@ export const EventCard: React.FC<EventCardProps> = ({
   return (
     <div 
       onClick={() => onClick(event)}
-      className="group relative bg-white rounded-2xl overflow-visible shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full md:h-auto flex flex-col w-full"
+      className="group relative bg-white rounded-2xl overflow-visible shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full flex flex-col w-full min-h-[420px] lg:min-h-[460px]"
     >
-      {/* Image Container - Mobile/Tablet: aspect ratio, Desktop: fixed height */}
+      {/* Image Container - Desktop: aspect-[16/10], Mobile: keep existing */}
       <div
         className="
           relative 
           aspect-[3/2] 
           sm:aspect-[3/2] 
-          md:aspect-[3/2]
-          lg:aspect-auto lg:h-[240px]
-          xl:aspect-auto xl:h-[260px]
+          md:aspect-[16/10]
           overflow-hidden 
           bg-gradient-to-br from-popera-teal to-[#1f4d52]
         "
@@ -94,7 +92,7 @@ export const EventCard: React.FC<EventCardProps> = ({
       </div>
 
       {/* Content */}
-      <div className="p-4 flex flex-col flex-grow min-h-0">
+      <div className="p-5 lg:p-6 flex flex-col flex-grow min-h-0">
         {/* Host & Rating Row */}
         <div className="mb-3 flex items-center justify-between gap-2">
            {/* Host Info */}
@@ -118,16 +116,16 @@ export const EventCard: React.FC<EventCardProps> = ({
            </button>
         </div>
 
-        <h3 className="text-base sm:text-lg md:text-base lg:text-lg font-heading font-semibold text-popera-teal mb-3 sm:mb-2.5 md:mb-3 group-hover:text-popera-orange transition-colors line-clamp-2 leading-snug">
+        <h3 className="text-lg lg:text-xl font-heading font-semibold text-popera-teal mb-3 group-hover:text-popera-orange transition-colors line-clamp-2 leading-snug">
           {event.title}
         </h3>
 
         <div className="mt-auto space-y-2">
-          <div className="flex items-center text-gray-600 text-sm">
+          <div className="flex items-center text-gray-600 text-sm lg:text-base">
             <Calendar size={16} className="sm:w-4 sm:h-4 mr-2 text-popera-orange shrink-0" />
             <span className="truncate leading-relaxed">{formatDate(event.date)} • {event.time}</span>
           </div>
-          <div className="flex items-center text-gray-600 text-sm min-w-0">
+          <div className="flex items-center text-gray-600 text-sm lg:text-base min-w-0">
             <MapPin size={16} className="sm:w-4 sm:h-4 mr-2 text-popera-orange shrink-0" />
             <div className="flex items-center min-w-0 flex-1 gap-1.5">
               {/* City - always visible, never truncates, in bold */}

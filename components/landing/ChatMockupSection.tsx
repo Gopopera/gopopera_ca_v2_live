@@ -22,8 +22,13 @@ export const ChatMockupSection: React.FC = () => {
                Every great pop-up starts with <span className="text-[#e35e25]">real connection.</span>
              </h2>
              
-             <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-600 font-light mb-6 sm:mb-7 md:mb-8 leading-relaxed px-4 lg:px-0">
+             <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-600 font-light mb-4 sm:mb-5 md:mb-6 leading-relaxed px-4 lg:px-0">
                Keep your community engaged before, during, and after the event. No more scattered DMs or lost emails.
+             </p>
+             
+             {/* Mobile-only: extra spacing and subtitle */}
+             <p className="text-xs sm:text-sm text-gray-500 font-light mb-6 md:hidden leading-relaxed px-4">
+               the simplest way to gather your crowd and keep them connected.
              </p>
 
              <div className="space-y-3 sm:space-y-4 text-left max-w-lg mx-auto lg:mx-0">
@@ -73,7 +78,8 @@ export const ChatMockupSection: React.FC = () => {
                    </div>
                 </div>
 
-                <div className="bg-[#f8fafb] p-3 sm:p-4 md:p-5 space-y-2.5 sm:space-y-3 md:space-y-4 h-auto min-h-[360px] sm:h-[420px] md:h-[460px] lg:h-[500px] overflow-y-auto overflow-x-hidden relative">
+                {/* Desktop: max-height with scroll, Mobile: auto height */}
+                <div className="bg-[#f8fafb] p-4 lg:p-6 space-y-2.5 sm:space-y-3 md:space-y-4 h-auto min-h-[360px] sm:h-[420px] md:h-[460px] md:max-h-[520px] overflow-y-auto overflow-x-hidden relative rounded-2xl border border-gray-100">
                    <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-[#f8fafb] to-transparent z-10 pointer-events-none"></div>
                    
                    <div className="flex justify-center"><span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider bg-white px-3 py-1 rounded-full shadow-sm border border-gray-100">Today</span></div>

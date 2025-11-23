@@ -18,6 +18,8 @@ import { CancellationPage } from './pages/CancellationPage';
 import { GuidelinesPage } from './pages/GuidelinesPage';
 import { ReportPage } from './pages/ReportPage';
 import { HelpPage } from './pages/HelpPage';
+import { SafetyPage } from './pages/SafetyPage';
+import { PressPage } from './pages/PressPage';
 import { AuthPage } from './pages/AuthPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { NotificationsPage } from './pages/NotificationsPage';
@@ -39,6 +41,9 @@ import { generatePoperaEvents } from './data/poperaEvents';
 import { generateFakeEvents } from './data/fakeEvents';
 import { categoryMatches } from './utils/categoryMapper';
 import { listUpcomingEvents } from './firebase/db';
+import { useDebouncedFavorite } from './hooks/useDebouncedFavorite';
+import { ConversationButtonModal } from './components/chat/ConversationButtonModal';
+import { useSelectedCity, useSetCity, type City } from './src/stores/cityStore';
 
 // Mock Data Generator - Initial seed data
 const generateMockEvents = (): Event[] => [
@@ -311,14 +316,23 @@ const generateMockEvents = (): Event[] => [
 const AppContent: React.FC = () => {
   console.log("#BOOT: App mounted");
   const { t } = useLanguage();
+  const city = useSelectedCity();
+  
+  // Dev guard for city state (no side effects, just for sanity)
+  if (typeof window !== "undefined") {
+    (window as any).__POPERA_CITY__ = city;
+  }
   const [viewState, setViewState] = useState<ViewState>(ViewState.LANDING);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [reviewEvent, setReviewEvent] = useState<Event | null>(null); 
   const [selectedHost, setSelectedHost] = useState<string | null>(null); 
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [location, setLocation] = useState('');
+  const setCity = useSetCity();
+  const location = city;
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+  const [showConversationModal, setShowConversationModal] = useState(false);
+  const [conversationModalEvent, setConversationModalEvent] = useState<Event | null>(null);
   // Use Zustand stores
   const user = useUserStore((state) => state.user);
   const loading = useUserStore((state) => state.loading);
@@ -499,12 +513,15 @@ const AppContent: React.FC = () => {
     filteredEvents = searchEvents(searchQuery);
   }
   
-  // Apply city filter (works with category and tags)
-  if (location.trim()) {
-    const cityName = location.split(',')[0].trim();
-    filteredEvents = filteredEvents.filter(event => 
-      event.city.toLowerCase().includes(cityName.toLowerCase())
-    );
+  // Apply city filter - match by city slug or city name
+  if (location && location.trim() && location !== 'montreal') {
+    const citySlug = location.toLowerCase();
+    filteredEvents = filteredEvents.filter(event => {
+      const eventCityLower = event.city.toLowerCase();
+      // Match by slug (e.g., "montreal" matches "Montreal, CA")
+      return eventCityLower.includes(citySlug) || 
+             eventCityLower.includes(citySlug.replace('-', ' '));
+    });
   }
   
   // Apply category filter (e.g., "Sports", "Community") - works with city and tags
@@ -534,14 +551,18 @@ const AppContent: React.FC = () => {
     'All', 'Community', 'Music', 'Workshops', 'Markets', 'Sports', 'Social', 'Shows', 'Food & Drink', 'Wellness'
   ];
 
-  const popularCities = [
-    "Montreal, CA", "Toronto, CA", "Vancouver, CA", "Ottawa, CA", "Quebec City, CA", "Calgary, CA", "Edmonton, CA",
-    "New York, US", "Los Angeles, US", "Chicago, US", "Houston, US", "Phoenix, US", "Philadelphia, US", "San Antonio, US", "San Diego, US", "Dallas, US", "San Jose, US", "Austin, US", "Jacksonville, US", "San Francisco, US", "Columbus, US", "Fort Worth, US", "Indianapolis, US", "Charlotte, US", "Seattle, US", "Denver, US", "Washington, US", "Boston, US", "El Paso, US", "Nashville, US", "Detroit, US", "Oklahoma City, US", "Portland, US", "Las Vegas, US", "Memphis, US", "Louisville, US", "Baltimore, US", "Milwaukee, US", "Albuquerque, US", "Tucson, US", "Fresno, US", "Mesa, US", "Sacramento, US", "Atlanta, US", "Kansas City, US", "Colorado Springs, US", "Omaha, US", "Raleigh, US", "Miami, US",
-    "London, UK", "Paris, FR", "Berlin, DE", "Madrid, ES", "Rome, IT", "Amsterdam, NL", "Vienna, AT", "Brussels, BE", "Lisbon, PT", "Dublin, IE", "Zurich, CH", "Barcelona, ES", "Munich, DE", "Milan, IT", "Prague, CZ", "Warsaw, PL", "Budapest, HU", "Stockholm, SE", "Copenhagen, DK", "Oslo, NO", "Helsinki, FI", "Athens, GR", "Istanbul, TR"
+  const popularCities: Array<{ slug: City; label: string }> = [
+    { slug: 'montreal', label: 'Montreal, CA' },
+    { slug: 'toronto', label: 'Toronto, CA' },
+    { slug: 'ottawa', label: 'Ottawa, CA' },
+    { slug: 'quebec', label: 'Quebec City, CA' },
+    { slug: 'gatineau', label: 'Gatineau, CA' },
+    { slug: 'vancouver', label: 'Vancouver, CA' },
   ];
 
-  const filteredCities = popularCities.filter(city => 
-    city.toLowerCase().includes(location.toLowerCase())
+  const filteredCities = popularCities.filter(cityOption => 
+    cityOption.slug.toLowerCase().includes(location.toLowerCase()) ||
+    cityOption.label.toLowerCase().includes(location.toLowerCase())
   );
 
   const handleEventClick = (event: Event) => {
@@ -552,8 +573,26 @@ const AppContent: React.FC = () => {
 
   const handleChatClick = (e: React.MouseEvent, event: Event) => {
     e.stopPropagation();
-    setSelectedEvent(event);
-    setViewState(ViewState.CHAT);
+    
+    if (!user) {
+      useUserStore.getState().setRedirectAfterLogin(ViewState.CHAT);
+      setViewState(ViewState.AUTH);
+      return;
+    }
+
+    // Check if user RSVP'd or is host
+    const hasRSVPed = rsvps.includes(event.id);
+    const isHost = event.hostId === user.uid;
+
+    if (hasRSVPed || isHost) {
+      // User can access chat - open directly
+      setSelectedEvent(event);
+      setViewState(ViewState.CHAT);
+    } else {
+      // Show modal to prompt RSVP
+      setConversationModalEvent(event);
+      setShowConversationModal(true);
+    }
   };
   
   const handleReviewsClick = (e: React.MouseEvent, event: Event) => {
@@ -624,6 +663,9 @@ const AppContent: React.FC = () => {
     }
   };
   
+  // Use debounced favorite hook
+  const { toggleFavorite: debouncedToggleFavorite } = useDebouncedFavorite();
+  
   const handleToggleFavorite = (e: React.MouseEvent, eventId: string) => {
     e.stopPropagation();
     if (!user) {
@@ -631,12 +673,7 @@ const AppContent: React.FC = () => {
       setViewState(ViewState.AUTH);
       return;
     }
-    
-    if (favorites.includes(eventId)) {
-      removeFavorite(user.uid || user.id || '', eventId);
-    } else {
-      addFavorite(user.uid || user.id || '', eventId);
-    }
+    debouncedToggleFavorite(e, eventId);
   };
 
   const handleProfileClick = () => {
@@ -649,8 +686,10 @@ const AppContent: React.FC = () => {
     window.scrollTo(0, 0);
   };
 
-  const handleLocationSelect = (city: string) => {
-      setLocation(city);
+  const handleLocationSelect = (citySlug: string) => {
+      if (citySlug === 'montreal' || citySlug === 'ottawa' || citySlug === 'toronto' || citySlug === 'quebec' || citySlug === 'gatineau' || citySlug === 'vancouver') {
+        setCity(citySlug as City);
+      }
       setShowLocationSuggestions(false);
   }
 
@@ -686,8 +725,8 @@ const AppContent: React.FC = () => {
           View All <ArrowRight size={14} className="sm:w-4 sm:h-4" />
         </button>
       </div>
-      {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
-      <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 overflow-x-auto md:overflow-x-visible gap-4 sm:gap-5 md:gap-6 lg:gap-6 xl:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+      {/* Mobile: Horizontal scroll, Desktop: Grid layout - matches Landing */}
+      <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 overflow-x-auto md:overflow-x-visible gap-6 lg:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
          {events.map(event => (
            <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:w-full lg:w-full xl:w-full snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
               <EventCard 
@@ -793,6 +832,8 @@ const AppContent: React.FC = () => {
         {viewState === ViewState.GUIDELINES && <GuidelinesPage setViewState={setViewState} />}
         {viewState === ViewState.REPORT_EVENT && <ReportPage setViewState={setViewState} />}
         {viewState === ViewState.HELP && <HelpPage setViewState={setViewState} />}
+        {viewState === ViewState.SAFETY && <SafetyPage setViewState={setViewState} />}
+        {viewState === ViewState.PRESS && <PressPage setViewState={setViewState} />}
 
         {viewState === ViewState.HOST_PROFILE && selectedHost && (
           <HostProfile 
@@ -831,7 +872,12 @@ const AppContent: React.FC = () => {
                             <input
                                 type="text"
                                 value={location}
-                                onChange={(e) => setLocation(e.target.value)}
+                                onChange={(e) => {
+                                  const value = e.target.value.toLowerCase();
+                                  if (value === 'montreal' || value === 'ottawa' || value === 'toronto' || value === 'quebec' || value === 'gatineau' || value === 'vancouver') {
+                                    setCity(value as City);
+                                  }
+                                }}
                                 onFocus={() => setShowLocationSuggestions(true)}
                                 onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 200)}
                                 placeholder="City, Country (e.g. Montreal, CA)"
@@ -845,13 +891,13 @@ const AppContent: React.FC = () => {
                                         Popular Cities
                                     </div>
                                     {filteredCities.length > 0 ? (
-                                        filteredCities.map((city) => (
+                                        filteredCities.map((cityOption) => (
                                             <button
-                                                key={city}
-                                                onMouseDown={() => handleLocationSelect(city)}
+                                                key={cityOption.slug}
+                                                onMouseDown={() => handleLocationSelect(cityOption.slug)}
                                                 className="w-full text-left px-4 py-3 text-sm font-medium text-[#15383c] hover:bg-[#eef4f5] hover:text-[#e35e25] transition-colors border-b border-gray-50 last:border-0"
                                             >
-                                                {city}
+                                                {cityOption.label}
                                             </button>
                                         ))
                                     ) : (
@@ -902,7 +948,7 @@ const AppContent: React.FC = () => {
             </div>
 
             {/* Conditional Render: Horizontal Lists vs Grid */}
-            {searchQuery === '' && activeCategory === 'All' && location === '' ? (
+            {searchQuery === '' && activeCategory === 'All' && !location ? (
               <div className="space-y-4 animate-fade-in">
                  {/* Show events grouped by city if available */}
                  {Object.keys(eventsByCity).length > 0 ? (
@@ -911,8 +957,8 @@ const AppContent: React.FC = () => {
                        <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">
                          {city}
                        </h2>
-                       {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
-                       <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 overflow-x-auto md:overflow-x-visible gap-4 sm:gap-5 md:gap-6 lg:gap-6 xl:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+                       {/* Mobile: Horizontal scroll, Desktop: Grid layout - matches Landing */}
+                       <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 overflow-x-auto md:overflow-x-visible gap-6 lg:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
                          {cityEvents.map(event => (
                            <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:w-full lg:w-full xl:w-full snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
                              <EventCard
@@ -941,7 +987,7 @@ const AppContent: React.FC = () => {
               <div className="animate-fade-in">
                  <div className="mb-6 text-gray-500 text-sm font-medium">
                    Showing {filteredEvents.length} results 
-                   {location && ` in ${location.split(',')[0]}`}
+                   {location && location !== 'montreal' && ` in ${popularCities.find(c => c.slug === location)?.label || location}`}
                  </div>
                  {filteredEvents.length > 0 ? (
                     // Group search results by category
@@ -960,8 +1006,8 @@ const AppContent: React.FC = () => {
                               <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">
                                 {category}
                               </h2>
-                              {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
-                              <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 overflow-x-auto md:overflow-x-visible gap-4 sm:gap-5 md:gap-6 lg:gap-6 xl:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+                              {/* Mobile: Horizontal scroll, Desktop: Grid layout - matches Landing */}
+                              <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 overflow-x-auto md:overflow-x-visible gap-6 lg:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
                                 {categoryEvents.map(event => (
                                   <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:w-full lg:w-full xl:w-full snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
                                     <EventCard
@@ -987,7 +1033,7 @@ const AppContent: React.FC = () => {
                        <button 
                          onClick={() => { 
                            setSearchQuery(''); 
-                           setLocation(''); 
+                           setCity('montreal'); 
                            setActiveCategory('All');
                          }}
                          className="mt-4 text-[#e35e25] font-bold hover:underline"
@@ -1029,6 +1075,23 @@ const AppContent: React.FC = () => {
       </div>
 
       {reviewEvent && <ReviewsModal event={reviewEvent} onClose={() => setReviewEvent(null)} />}
+
+      {/* Conversation Button Modal */}
+      {showConversationModal && conversationModalEvent && (
+        <ConversationButtonModal
+          isOpen={showConversationModal}
+          onClose={() => {
+            setShowConversationModal(false);
+            setConversationModalEvent(null);
+          }}
+          onRSVP={() => {
+            if (conversationModalEvent) {
+              handleRSVP(conversationModalEvent.id);
+            }
+          }}
+          eventTitle={conversationModalEvent.title}
+        />
+      )}
 
       {viewState !== ViewState.AUTH && <Footer setViewState={setViewState} isLoggedIn={isLoggedIn} onProtectedNav={handleProtectedNav} />}
       

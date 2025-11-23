@@ -8,6 +8,7 @@ import { Event, ViewState } from '../types';
 import { ArrowRight, Sparkles, Check, ChevronDown, Search, MapPin, PlusCircle } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { categoryMatches } from '../utils/categoryMapper';
+import { useSelectedCity, useSetCity, type City } from '../src/stores/cityStore';
 
 interface LandingPageProps {
   setViewState: (view: ViewState) => void;
@@ -35,7 +36,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [location, setLocation] = useState('Montreal, CA');
+  const city = useSelectedCity();
+  const setCity = useSetCity();
+  const location = city;
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   
   // Filter events based on category and location
@@ -50,12 +53,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       );
     }
     
-    // Apply city filter
-    if (location.trim()) {
-      const cityName = location.split(',')[0].trim();
-      filtered = filtered.filter(event => 
-        event.city.toLowerCase().includes(cityName.toLowerCase())
-      );
+    // Apply city filter - match by city slug or city name
+    if (location && location.trim() && location !== 'montreal') {
+      const citySlug = location.toLowerCase();
+      filtered = filtered.filter(event => {
+        const eventCityLower = event.city.toLowerCase();
+        // Match by slug (e.g., "montreal" matches "Montreal, CA")
+        return eventCityLower.includes(citySlug) || 
+               eventCityLower.includes(citySlug.replace('-', ' '));
+      });
     }
     
     // Apply search filter
@@ -80,15 +86,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     'All', 'Community', 'Music', 'Workshops', 'Markets', 'Sports', 'Social', 'Shows', 'Food & Drink', 'Wellness'
   ];
 
-  const popularCities = [
-    "Montreal, CA", "Toronto, CA", "Vancouver, CA", "Ottawa, CA", "Quebec City, CA", "Calgary, CA", "Edmonton, CA",
-    "New York, US", "Los Angeles, US", "Miami, US", "Austin, US", "Chicago, US", "San Francisco, US", "Boston, US", "Seattle, US",
-    "London, UK", "Paris, FR", "Berlin, DE", "Amsterdam, NL", "Barcelona, ES", "Madrid, ES",
-    "Rome, IT", "Lisbon, PT", "Dublin, IE", "Vienna, AT", "Zurich, CH"
+  const popularCities: Array<{ slug: City; label: string }> = [
+    { slug: 'montreal', label: 'Montreal, CA' },
+    { slug: 'toronto', label: 'Toronto, CA' },
+    { slug: 'ottawa', label: 'Ottawa, CA' },
+    { slug: 'quebec', label: 'Quebec City, CA' },
+    { slug: 'gatineau', label: 'Gatineau, CA' },
+    { slug: 'vancouver', label: 'Vancouver, CA' },
   ];
 
-  const filteredCities = popularCities.filter(city => 
-    city.toLowerCase().includes(location.toLowerCase())
+  const filteredCities = popularCities.filter(cityOption => 
+    cityOption.slug.toLowerCase().includes(location.toLowerCase()) ||
+    cityOption.label.toLowerCase().includes(location.toLowerCase())
   );
 
   const faqs = [
@@ -151,7 +160,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     <input
                         type="text"
                         value={location}
-                        onChange={(e) => setLocation(e.target.value)}
+                        onChange={(e) => {
+                          const value = e.target.value.toLowerCase();
+                          if (value === 'montreal' || value === 'ottawa' || value === 'toronto' || value === 'quebec' || value === 'gatineau' || value === 'vancouver') {
+                            setCity(value as City);
+                          }
+                        }}
                         onFocus={() => setShowLocationSuggestions(true)}
                         onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 200)}
                         placeholder="City, Country"
@@ -163,13 +177,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                                 Popular Cities
                             </div>
                             {filteredCities.length > 0 ? (
-                                filteredCities.map((city) => (
+                                filteredCities.map((cityOption) => (
                                     <button
-                                        key={city}
-                                        onClick={() => setLocation(city)}
+                                        key={cityOption.slug}
+                                        onClick={() => setCity(cityOption.slug)}
                                         className="w-full text-left px-4 py-3 text-sm font-medium text-[#15383c] hover:bg-[#eef4f5] hover:text-[#e35e25] transition-colors border-b border-gray-50 last:border-0"
                                     >
-                                        {city}
+                                        {cityOption.label}
                                     </button>
                                 ))
                             ) : (
@@ -219,8 +233,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         </div>
         
-        {/* Mobile: Horizontal scroll, Desktop: Grid layout - matches EventFeed exactly */}
-        <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 overflow-x-auto md:overflow-x-visible gap-4 sm:gap-5 md:gap-6 lg:gap-6 xl:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+        {/* Mobile: Horizontal scroll, Desktop: Grid layout - matches Explore (FEED) exactly */}
+        <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 overflow-x-auto md:overflow-x-visible gap-6 lg:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
            {filteredEvents.slice(0, 8).map(event => (
              <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:w-full lg:w-full xl:w-full snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
                 <EventCard 

@@ -254,6 +254,10 @@ export async function getUserProfile(uid: string): Promise<FirestoreUser | null>
       bio: data.bio,
       preferences: data.preferences,
       favorites: Array.isArray(data.favorites) ? data.favorites : [],
+      hostedEvents: Array.isArray(data.hostedEvents) ? data.hostedEvents : [],
+      preferredCity: data.preferredCity,
+      phoneVerified: data.phoneVerified || false,
+      signupIntent: data.signupIntent,
       createdAt: data.createdAt || Date.now(),
       updatedAt: data.updatedAt,
     };
