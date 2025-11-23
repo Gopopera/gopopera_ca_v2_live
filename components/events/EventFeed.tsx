@@ -26,9 +26,9 @@ export const EventFeed: React.FC<EventFeedProps> = ({
   const displayEvents = limit ? events.slice(0, limit) : events;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 lg:gap-6 xl:gap-8">
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 xl:gap-8">
       {displayEvents.map(event => (
-        <div key={event.id} className="h-auto">
+        <div key={event.id} className="md:col-span-6 lg:col-span-4 h-auto">
           <EventCard 
             event={event} 
             onClick={onEventClick}

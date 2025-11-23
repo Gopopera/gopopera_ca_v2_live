@@ -46,6 +46,54 @@ const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event => {
 };
 
 // Events
+export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'location' | 'hostName' | 'attendees'>): Promise<Event> {
+  const db = getDbSafe();
+  if (!db) {
+    throw new Error('Firestore not available');
+  }
+  try {
+    const eventsCol = collection(db, "events");
+    const now = Date.now();
+    const firestoreEvent: Omit<FirestoreEvent, 'id'> = {
+      title: eventData.title,
+      description: eventData.description,
+      date: eventData.date,
+      time: eventData.time,
+      price: eventData.price || 'Free',
+      category: eventData.category || 'Community',
+      city: eventData.city,
+      address: eventData.address || '',
+      location: eventData.address ? `${eventData.address}, ${eventData.city}` : eventData.city,
+      tags: Array.isArray(eventData.tags) ? eventData.tags : [],
+      host: eventData.host || 'Unknown',
+      hostName: eventData.host || 'Unknown',
+      hostId: eventData.hostId || '',
+      imageUrl: eventData.imageUrl,
+      rating: eventData.rating || 0,
+      reviewCount: eventData.reviewCount || 0,
+      attendeesCount: eventData.attendeesCount || 0,
+      createdAt: now,
+      lat: eventData.lat,
+      lng: eventData.lng,
+      isPoperaOwned: eventData.isPoperaOwned || false,
+      isDemo: eventData.isDemo || false,
+      isOfficialLaunch: eventData.isOfficialLaunch || false,
+      aboutEvent: eventData.aboutEvent,
+      whatToExpect: eventData.whatToExpect,
+      capacity: eventData.capacity,
+    };
+    const docRef = await addDoc(eventsCol, firestoreEvent);
+    const createdEvent: FirestoreEvent = {
+      id: docRef.id,
+      ...firestoreEvent,
+    };
+    return mapFirestoreEventToEvent(createdEvent);
+  } catch (error) {
+    console.error("Error creating event:", error);
+    throw error;
+  }
+}
+
 export async function listUpcomingEvents(): Promise<Event[]> {
   const db = getDbSafe();
   if (!db) {

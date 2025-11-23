@@ -51,7 +51,7 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
 
   return (
     <div className="min-h-screen bg-[#f8fafb] pt-24 pb-20 font-sans">
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="md:container md:mx-auto md:px-6 lg:px-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center">
@@ -112,9 +112,9 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6 lg:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 xl:gap-8">
             {currentEvents.map((event) => (
-              <div key={event.id} className="relative">
+              <div key={event.id} className="md:col-span-6 lg:col-span-4 relative">
                 <EventCard
                   event={event}
                   onClick={() => onEventClick(event)}

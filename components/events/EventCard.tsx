@@ -26,16 +26,25 @@ export const EventCard: React.FC<EventCardProps> = ({
   return (
     <div 
       onClick={() => onClick(event)}
-      className="group relative bg-white rounded-2xl overflow-visible shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer h-full flex flex-col w-full min-h-[420px] lg:min-h-[460px]"
+      role="button"
+      tabIndex={0}
+      aria-label={`View event: ${event.title}`}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick(event);
+        }
+      }}
+      className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer h-full flex flex-col w-full focus:outline-none focus:ring-2 focus:ring-[#15383c] focus:ring-offset-2"
     >
-      {/* Image Container - Desktop: aspect-[16/10], Mobile: keep existing */}
+      {/* Image Container - Fixed aspect ratio */}
       <div
         className="
           relative 
-          aspect-[3/2] 
-          sm:aspect-[3/2] 
-          md:aspect-[16/10]
+          aspect-[4/3]
+          w-full
           overflow-hidden 
+          rounded-xl
           bg-gradient-to-br from-popera-teal to-[#1f4d52]
         "
       >

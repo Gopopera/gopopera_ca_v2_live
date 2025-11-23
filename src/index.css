@@ -2,11 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
+/* UI Tokens - Base spacing and typography */
+:root {
+  --container-max-width: 1200px;
+  --section-padding-y: 2rem; /* py-8 */
+  --section-padding-y-md: 3rem; /* md:py-12 */
+  --section-padding-y-lg: 4rem; /* lg:py-16 */
+  --card-radius: 1rem; /* rounded-2xl */
+  --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --card-shadow-hover: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
 html, body, #root {
   height: 100%;
 }
 
 body {
   background: #f9fafb;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* Section spacing utilities */
+.section-padding {
+  padding-top: var(--section-padding-y);
+  padding-bottom: var(--section-padding-y);
+}
+
+@media (min-width: 768px) {
+  .section-padding {
+    padding-top: var(--section-padding-y-md);
+    padding-bottom: var(--section-padding-y-md);
+  }
+}
+
+@media (min-width: 1024px) {
+  .section-padding {
+    padding-top: var(--section-padding-y-lg);
+    padding-bottom: var(--section-padding-y-lg);
+  }
+}
+
+/* Card base styles */
+.card-base {
+  border-radius: var(--card-radius);
+  overflow: hidden;
+  background: white;
+  box-shadow: var(--card-shadow);
+  transition: box-shadow 0.2s ease;
+}
+
+.card-base:hover {
+  box-shadow: var(--card-shadow-hover);
 }
 

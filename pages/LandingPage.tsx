@@ -39,7 +39,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const city = useSelectedCity();
   const setCity = useSetCity();
   const location = city;
-  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   
   // Filter events based on category and location
   const filteredEvents = useMemo(() => {
@@ -95,11 +94,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     { slug: 'vancouver', label: 'Vancouver, CA' },
   ];
 
-  const filteredCities = popularCities.filter(cityOption => 
-    cityOption.slug.toLowerCase().includes(location.toLowerCase()) ||
-    cityOption.label.toLowerCase().includes(location.toLowerCase())
-  );
-
   const faqs = [
     {
       question: "1. What is Popera?",
@@ -133,7 +127,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       <Hero setViewState={setViewState} />
       
       {/* 2. Upcoming Events (event feed section) */}
-      <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 w-full lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 bg-[#FAFAFA] overflow-hidden">
+      <section className="section-padding md:container md:mx-auto md:px-6 lg:px-8 bg-[#FAFAFA] overflow-hidden">
         {/* Header Content */}
         <div className="flex flex-col gap-4 sm:gap-5 md:gap-6 mb-6 sm:mb-8 md:mb-10 lg:mb-12">
           <div className="max-w-3xl">
@@ -152,47 +146,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({
              {/* Search Inputs Row */}
              <div className="flex flex-col md:flex-row gap-3 w-full md:max-w-3xl relative z-30">
                 
-                {/* Location Input with Autocomplete */}
-                <div className="relative w-full md:w-1/3 group z-50">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <MapPin size={18} className="text-[#e35e25]" />
-                    </div>
-                    <input
-                        type="text"
-                        value={location}
-                        onChange={(e) => {
-                          const value = e.target.value.toLowerCase();
-                          if (value === 'montreal' || value === 'ottawa' || value === 'toronto' || value === 'quebec' || value === 'gatineau' || value === 'vancouver') {
-                            setCity(value as City);
-                          }
-                        }}
-                        onFocus={() => setShowLocationSuggestions(true)}
-                        onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 200)}
-                        placeholder="City, Country"
-                        className="w-full pl-11 pr-4 py-3.5 md:py-4 min-h-[48px] sm:min-h-0 bg-white border border-gray-200 rounded-full text-base sm:text-sm md:text-base font-bold text-[#15383c] focus:outline-none focus:border-[#15383c] focus:ring-2 focus:ring-[#15383c]/10 shadow-sm hover:shadow-md transition-all placeholder-gray-400"
-                    />
-                    {showLocationSuggestions && (
-                        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden max-h-60 overflow-y-auto animate-fade-in z-50">
-                            <div className="px-4 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50">
-                                Popular Cities
-                            </div>
-                            {filteredCities.length > 0 ? (
-                                filteredCities.map((cityOption) => (
-                                    <button
-                                        key={cityOption.slug}
-                                        onClick={() => setCity(cityOption.slug)}
-                                        className="w-full text-left px-4 py-3 text-sm font-medium text-[#15383c] hover:bg-[#eef4f5] hover:text-[#e35e25] transition-colors border-b border-gray-50 last:border-0"
-                                    >
-                                        {cityOption.label}
-                                    </button>
-                                ))
-                            ) : (
-                                <div className="px-4 py-3 text-sm text-gray-500 italic">
-                                    Type to search...
-                                </div>
-                            )}
-                        </div>
-                    )}
+                {/* City Pills Selector */}
+                <div className="w-full md:w-1/3">
+                  <div className="flex items-center gap-2 overflow-x-auto pb-2 hide-scrollbar scroll-smooth w-full touch-pan-x">
+                    {popularCities.map((cityOption) => (
+                      <button
+                        key={cityOption.slug}
+                        onClick={() => setCity(cityOption.slug)}
+                        aria-pressed={city === cityOption.slug}
+                        className={`
+                          px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border flex-shrink-0 touch-manipulation active:scale-95
+                          ${city === cityOption.slug
+                            ? 'bg-[#15383c] text-white border-[#15383c] shadow-md'
+                            : 'bg-white text-gray-600 border-gray-200 hover:border-[#e35e25] hover:text-[#e35e25]'}
+                        `}
+                      >
+                        {cityOption.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Search Bar */}
@@ -233,10 +205,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         </div>
         
-        {/* Mobile: Horizontal scroll, Desktop: Grid layout - matches Explore (FEED) exactly */}
-        <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 overflow-x-auto md:overflow-x-visible gap-6 lg:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+        {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
+        <div className="flex md:grid md:grid-cols-12 overflow-x-auto md:overflow-x-visible gap-6 xl:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
            {filteredEvents.slice(0, 8).map(event => (
-             <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:w-full lg:w-full xl:w-full snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
+             <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:col-span-6 lg:col-span-4 snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
                 <EventCard 
                   event={event} 
                   onClick={onEventClick} 

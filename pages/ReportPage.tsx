@@ -1,61 +1,29 @@
 import React, { useState } from 'react';
 import { ViewState } from '../types';
-import { ChevronLeft, Upload, X, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, CheckCircle2 } from 'lucide-react';
 import { useUserStore } from '../stores/userStore';
+import { getDbSafe } from '../src/lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
-import { db } from '../src/lib/firebase';
-import { uploadImage } from '../firebase/storage';
 
 interface ReportPageProps {
   setViewState: (view: ViewState) => void;
 }
 
-type ReportCategory = 'Bug' | 'Abuse/Safety' | 'Payment/RSVP' | 'Host issue' | 'Other';
-
 export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
   const user = useUserStore((state) => state.user);
-  const [category, setCategory] = useState<ReportCategory>('Bug');
+  const [name, setName] = useState(user?.displayName || user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
   const [subject, setSubject] = useState('');
-  const [description, setDescription] = useState('');
-  const [eventUrl, setEventUrl] = useState('');
-  const [contactEmail, setContactEmail] = useState(user?.email || '');
-  const [screenshot, setScreenshot] = useState<File | null>(null);
-  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleScreenshotChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Screenshot must be less than 5MB');
-        return;
-      }
-      setScreenshot(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setScreenshotPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const removeScreenshot = () => {
-    setScreenshot(null);
-    setScreenshotPreview(null);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!subject.trim() || !description.trim()) {
-      setError('Subject and description are required');
-      return;
-    }
-
-    if (description.length > 5000) {
-      setError('Description must be 5000 characters or less');
+    if (!name.trim() || !email.trim() || !subject.trim() || !message.trim()) {
+      setError('All fields are required');
       return;
     }
 
@@ -63,68 +31,37 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
     setError(null);
 
     try {
-      // Upload screenshot if provided
-      let screenshotUrl: string | undefined;
-      if (screenshot) {
-        const path = `reports/${Date.now()}-${screenshot.name}`;
-        screenshotUrl = await uploadImage(path, screenshot);
-      }
-
+      const db = getDbSafe();
+      
       // Write to Firestore
       const reportData = {
-        id: '', // Will be set by Firestore
-        uid: user?.uid || null,
-        displayName: user?.displayName || user?.name || null,
-        category,
+        userId: user?.uid || null,
+        name: name.trim(),
+        email: email.trim(),
         subject: subject.trim(),
-        description: description.trim(),
-        contactEmail: contactEmail.trim() || user?.email || null,
-        eventUrl: eventUrl.trim() || null,
-        screenshotUrl: screenshotUrl || null,
-        userAgent: navigator.userAgent,
-        path: window.location.pathname,
+        message: message.trim(),
         createdAt: Date.now(),
       };
 
-      const docRef = await addDoc(collection(db, 'reports'), reportData);
-      
-      // Call email API endpoint
-      // TODO: Create /api/report endpoint that:
-      // - Accepts POST with report data
-      // - Sends email to support@gopopera.ca using mail provider (e.g., SendGrid, Resend, etc.)
-      // - Implements basic rate limiting by uid/ip
-      // - Uses env vars: SUPPORT_EMAIL, MAIL_API_KEY
-      try {
-        const response = await fetch('/api/report', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            reportId: docRef.id,
-            ...reportData,
-          }),
-        });
-
-        if (!response.ok) {
-          console.warn('Email API call failed, but report was saved to Firestore');
-        }
-      } catch (emailError) {
-        console.warn('Email API error (report still saved):', emailError);
-        // Don't fail the whole submission if email fails
+      if (db) {
+        await addDoc(collection(db, 'reports'), reportData);
       }
+
+      // Open mailto link
+      const encodedSubject = encodeURIComponent(`Popera Report - ${subject.trim()}`);
+      const encodedBody = encodeURIComponent(
+        `${message.trim()}\n\n---\nReported by: ${name.trim()}\nEmail: ${email.trim()}\nUser ID: ${user?.uid || 'anonymous'}\nTimestamp: ${new Date().toISOString()}`
+      );
+      window.location.href = `mailto:support@gopopera.ca?subject=${encodedSubject}&body=${encodedBody}`;
 
       setSubmitted(true);
       
-      // Reset form
+      // Reset form after delay
       setTimeout(() => {
-        setCategory('Bug');
+        setName(user?.displayName || user?.name || '');
+        setEmail(user?.email || '');
         setSubject('');
-        setDescription('');
-        setEventUrl('');
-        setContactEmail(user?.email || '');
-        setScreenshot(null);
-        setScreenshotPreview(null);
+        setMessage('');
         setSubmitted(false);
       }, 3000);
     } catch (err) {
@@ -154,7 +91,7 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
               Report Submitted
             </h2>
             <p className="text-gray-600 mb-6">
-              Thank you for your report. We'll review it and get back to you at {contactEmail || user?.email}.
+              Thank you for your report. We'll review it and get back to you at {email || user?.email}.
             </p>
             <button
               onClick={() => setViewState(ViewState.LANDING)}
@@ -194,23 +131,34 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
             </div>
           )}
 
-          {/* Category */}
+          {/* Name */}
           <div>
             <label className="block text-sm font-medium text-[#15383c] mb-2">
-              Category <span className="text-red-500">*</span>
+              Name <span className="text-red-500">*</span>
             </label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value as ReportCategory)}
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               required
+              placeholder="Your name"
               className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-[#15383c] transition-all"
-            >
-              <option value="Bug">Bug</option>
-              <option value="Abuse/Safety">Abuse/Safety</option>
-              <option value="Payment/RSVP">Payment/RSVP</option>
-              <option value="Host issue">Host issue</option>
-              <option value="Other">Other</option>
-            </select>
+            />
+          </div>
+
+          {/* Email */}
+          <div>
+            <label className="block text-sm font-medium text-[#15383c] mb-2">
+              Email <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              placeholder="your@email.com"
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-[#15383c] transition-all"
+            />
           </div>
 
           {/* Subject */}
@@ -223,95 +171,24 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               required
-              maxLength={200}
               placeholder="Brief description of the issue"
               className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-[#15383c] transition-all"
             />
           </div>
 
-          {/* Description */}
+          {/* Message */}
           <div>
             <label className="block text-sm font-medium text-[#15383c] mb-2">
-              Description <span className="text-red-500">*</span>
+              Message <span className="text-red-500">*</span>
             </label>
             <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
               required
-              maxLength={5000}
               rows={6}
               placeholder="Please provide as much detail as possible..."
               className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-[#15383c] transition-all resize-none"
             />
-            <div className="text-xs text-gray-500 mt-1 text-right">
-              {description.length} / 5000 characters
-            </div>
-          </div>
-
-          {/* Event URL */}
-          <div>
-            <label className="block text-sm font-medium text-[#15383c] mb-2">
-              Event URL (optional)
-            </label>
-            <input
-              type="url"
-              value={eventUrl}
-              onChange={(e) => setEventUrl(e.target.value)}
-              placeholder="https://gopopera.ca/events/..."
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-[#15383c] transition-all"
-            />
-          </div>
-
-          {/* Contact Email */}
-          <div>
-            <label className="block text-sm font-medium text-[#15383c] mb-2">
-              Contact Email <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="email"
-              value={contactEmail}
-              onChange={(e) => setContactEmail(e.target.value)}
-              required
-              placeholder="your@email.com"
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-[#15383c] transition-all"
-            />
-          </div>
-
-          {/* Screenshot */}
-          <div>
-            <label className="block text-sm font-medium text-[#15383c] mb-2">
-              Screenshot (optional, max 5MB)
-            </label>
-            {screenshotPreview ? (
-              <div className="relative">
-                <img
-                  src={screenshotPreview}
-                  alt="Screenshot preview"
-                  className="w-full max-w-md rounded-xl border border-gray-200"
-                />
-                <button
-                  type="button"
-                  onClick={removeScreenshot}
-                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            ) : (
-              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
-                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                  <Upload size={24} className="text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-500">Click to upload or drag and drop</p>
-                  <p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF up to 5MB</p>
-                </div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleScreenshotChange}
-                  className="hidden"
-                />
-              </label>
-            )}
           </div>
 
           {/* Submit Button */}
