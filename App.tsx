@@ -1015,9 +1015,9 @@ const AppContent: React.FC = () => {
                          {city}
                        </h2>
                        {/* Mobile: Horizontal scroll, Desktop: Grid layout - matches Landing */}
-                       <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 overflow-x-auto md:overflow-x-visible gap-6 lg:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+                       <div className="flex md:grid md:grid-cols-12 overflow-x-auto md:overflow-x-visible gap-6 xl:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
                          {cityEvents.map(event => (
-                           <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:w-full lg:w-full xl:w-full snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
+                           <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:col-span-6 lg:col-span-4 snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
                              <EventCard
                                event={event}
                                onClick={handleEventClick}
@@ -1064,9 +1064,9 @@ const AppContent: React.FC = () => {
                                 {category}
                               </h2>
                               {/* Mobile: Horizontal scroll, Desktop: Grid layout - matches Landing */}
-                              <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 overflow-x-auto md:overflow-x-visible gap-6 lg:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+                              <div className="flex md:grid md:grid-cols-12 overflow-x-auto md:overflow-x-visible gap-6 xl:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
                                 {categoryEvents.map(event => (
-                                  <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:w-full lg:w-full xl:w-full snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
+                                  <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:col-span-6 lg:col-span-4 snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
                                     <EventCard
                                       event={event}
                                       onClick={handleEventClick}
