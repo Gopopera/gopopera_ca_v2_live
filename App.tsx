@@ -378,6 +378,7 @@ const AppContent: React.FC = () => {
   const [loadingEvents, setLoadingEvents] = useState(false);
   
   // Initialize auth listener on mount
+  // City store auto-initializes via Zustand persist middleware
   useEffect(() => {
     useUserStore.getState().init();
   }, []);
@@ -710,9 +711,43 @@ const AppContent: React.FC = () => {
       setShowLocationSuggestions(false);
   }
 
+  // Scroll restore for list pages
+  useEffect(() => {
+    const listPages = [ViewState.LANDING, ViewState.FEED];
+    if (listPages.includes(viewState)) {
+      const scrollKey = `scroll_${viewState}`;
+      const savedScroll = sessionStorage.getItem(scrollKey);
+      if (savedScroll) {
+        window.scrollTo({ top: parseInt(savedScroll, 10), behavior: 'auto' });
+      }
+    }
+  }, [viewState]);
+
+  // Save scroll position before navigating away from list pages
+  useEffect(() => {
+    const listPages = [ViewState.LANDING, ViewState.FEED];
+    const handleScroll = () => {
+      if (listPages.includes(viewState)) {
+        const scrollKey = `scroll_${viewState}`;
+        sessionStorage.setItem(scrollKey, window.scrollY.toString());
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [viewState]);
+
   const handleNav = (view: ViewState) => {
+    // Save current scroll if on list page
+    const listPages = [ViewState.LANDING, ViewState.FEED];
+    if (listPages.includes(viewState)) {
+      const scrollKey = `scroll_${viewState}`;
+      sessionStorage.setItem(scrollKey, window.scrollY.toString());
+    }
     setViewState(view);
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    // Only scroll to top if not a list page
+    if (!listPages.includes(view)) {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
   };
 
   if (viewState === ViewState.CHAT && selectedEvent) {
@@ -744,10 +779,10 @@ const AppContent: React.FC = () => {
           View All <ArrowRight size={14} className="sm:w-4 sm:h-4" />
         </button>
       </div>
-      {/* Mobile: Horizontal scroll, Desktop: Grid layout - matches Landing */}
-      <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 overflow-x-auto md:overflow-x-visible gap-6 lg:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+      {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
+      <div className="flex md:grid md:grid-cols-12 overflow-x-auto md:overflow-x-visible gap-6 xl:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
          {events.map(event => (
-           <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:w-full lg:w-full xl:w-full snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
+           <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:col-span-6 lg:col-span-4 snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
               <EventCard 
                 event={event} 
                 onClick={handleEventClick} 
@@ -868,7 +903,7 @@ const AppContent: React.FC = () => {
             )}
 
             {viewState === ViewState.FEED && (
-          <main className="min-h-screen pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-12 sm:pb-16 md:pb-20 lg:pb-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <main className="min-h-screen pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-12 sm:pb-16 md:pb-20 lg:pb-24 md:container md:mx-auto md:px-6 lg:px-8">
             
             {/* Header Section with Search */}
             <div className="mb-8 sm:mb-10 md:mb-12">

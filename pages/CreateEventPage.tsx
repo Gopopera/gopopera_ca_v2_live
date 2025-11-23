@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ViewState } from '../types';
-import { ChevronLeft, Upload, MapPin, Calendar, Clock, Plus, X } from 'lucide-react';
+import { ChevronLeft, Upload, MapPin, Calendar, Clock, Plus, X, Phone } from 'lucide-react';
 import { useEventStore } from '../stores/eventStore';
+import { useUserStore } from '../stores/userStore';
+import { getDbSafe } from '../src/lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 interface CreateEventPageProps {
   setViewState: (view: ViewState) => void;
@@ -15,6 +18,9 @@ const POPULAR_CITIES = [
 
 export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }) => {
   const addEvent = useEventStore((state) => state.addEvent);
+  const user = useUserStore((state) => state.user);
+  const [phoneVerified, setPhoneVerified] = useState<boolean | null>(null);
+  const [showSMSModal, setShowSMSModal] = useState(false);
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -30,6 +36,56 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
   const [host, setHost] = useState('You'); // Default host name
   const [price, setPrice] = useState('Free');
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+
+  // Check phone verification status on mount
+  useEffect(() => {
+    const checkPhoneVerification = async () => {
+      if (!user?.uid) {
+        setPhoneVerified(false);
+        return;
+      }
+      
+      const db = getDbSafe();
+      if (!db) {
+        setPhoneVerified(false);
+        return;
+      }
+
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        const verified = userDoc.data()?.phone_verified ?? false;
+        setPhoneVerified(verified);
+        
+        // Show modal if not verified and user tries to create event
+        if (!verified) {
+          setShowSMSModal(true);
+        }
+      } catch (err) {
+        console.warn('Error checking phone verification:', err);
+        setPhoneVerified(false);
+        setShowSMSModal(true);
+      }
+    };
+
+    checkPhoneVerification();
+  }, [user]);
+
+  const handleBypassSMS = async () => {
+    if (!user?.uid) return;
+    
+    const db = getDbSafe();
+    if (!db) return;
+
+    try {
+      await setDoc(doc(db, 'users', user.uid), {
+        phone_verified: false,
+      }, { merge: true });
+      setPhoneVerified(false);
+      setShowSMSModal(false);
+    } catch (err) {
+      console.error('Error bypassing SMS:', err);
+    }
+  };
 
   const handleAddTag = () => {
     if (tagInput.trim() && !tags.includes(tagInput.trim())) {
@@ -56,6 +112,12 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check phone verification
+    if (phoneVerified === false && !showSMSModal) {
+      setShowSMSModal(true);
+      return;
+    }
     
     if (!title || !description || !city || !date || !time || !category) {
       alert('Please fill in all required fields');
@@ -381,6 +443,46 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
           </div>
         </form>
       </div>
+
+      {/* SMS Verification Modal */}
+      {showSMSModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 sm:p-8 animate-fade-in">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-[#eef4f5] rounded-full flex items-center justify-center mx-auto mb-4">
+                <Phone size={32} className="text-[#e35e25]" />
+              </div>
+              <h2 className="text-2xl font-heading font-bold text-[#15383c] mb-2">
+                SMS Verification Required
+              </h2>
+              <p className="text-gray-600 text-sm mb-4">
+                We require SMS verification to host events. This helps ensure safety and trust in our community.
+              </p>
+              <p className="text-gray-500 text-xs mb-4">
+                If SMS verification is not configured in your environment, you can bypass this requirement for development purposes.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  // Placeholder: In production, this would trigger real phone auth
+                  alert('SMS verification requires Firebase Phone Auth setup. Please configure in Firebase Console.');
+                }}
+                className="w-full px-6 py-3 bg-[#e35e25] text-white rounded-full font-medium hover:bg-[#d14e1a] transition-colors"
+              >
+                Verify Now
+              </button>
+              <button
+                onClick={handleBypassSMS}
+                className="w-full px-6 py-3 bg-gray-100 text-[#15383c] rounded-full font-medium hover:bg-gray-200 transition-colors"
+              >
+                Bypass for Now (Dev Only)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
