@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Event, ViewState } from '../types';
-import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info, Star, Sparkles, X } from 'lucide-react';
+import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info, Star, Sparkles, X, UserPlus, UserCheck } from 'lucide-react';
+import { followHost, unfollowHost, isFollowing } from '../firebase/follow';
+import { useUserStore } from '../stores/userStore';
 import { EventCard } from '../components/events/EventCard';
 import { MockMap } from '../components/map/MockMap';
 import { FakeEventReservationModal } from '../components/events/FakeEventReservationModal';
@@ -43,6 +45,42 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const [showFakeEventModal, setShowFakeEventModal] = useState(false);
   const [showShareToast, setShowShareToast] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isFollowingHost, setIsFollowingHost] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+  const user = useUserStore((state) => state.user);
+
+  // Check if user is following the host
+  useEffect(() => {
+    if (user?.uid && event.hostId) {
+      const checkFollowStatus = async () => {
+        const following = await isFollowing(user.uid, event.hostId);
+        setIsFollowingHost(following);
+      };
+      checkFollowStatus();
+    }
+  }, [user?.uid, event.hostId]);
+
+  const handleFollowToggle = async () => {
+    if (!user?.uid || !event.hostId) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    setFollowLoading(true);
+    try {
+      if (isFollowingHost) {
+        await unfollowHost(user.uid, event.hostId);
+        setIsFollowingHost(false);
+      } else {
+        await followHost(user.uid, event.hostId);
+        setIsFollowingHost(true);
+      }
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+    } finally {
+      setFollowLoading(false);
+    }
+  };
   
   const handleRSVP = () => {
     if (isDemo) {
@@ -193,7 +231,30 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-gray-200 overflow-hidden ring-2 sm:ring-4 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick(event.hostName)}><img src={`https://picsum.photos/seed/${event.hostName}/100/100`} alt={event.hostName} className="w-full h-full object-cover"/></div>
                <div className="min-w-0 flex-1"><p className="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">Hosted by</p><h3 className="text-base sm:text-lg md:text-xl font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(event.hostName)}>{event.hostName}</h3><button onClick={(e) => onReviewsClick(e, event)} className="flex items-center space-x-1 mt-1.5 bg-white hover:bg-orange-50 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-colors border border-gray-200 hover:border-orange-100 group/rating shrink-0 w-fit touch-manipulation active:scale-95"><Star size={11} className="sm:w-3 sm:h-3 text-gray-300 group-hover/rating:text-popera-orange group-hover/rating:fill-popera-orange transition-colors" fill="currentColor" /><span className="text-[10px] sm:text-xs font-bold text-popera-teal">{formatRating(event.rating)}</span><span className="text-[9px] sm:text-[10px] text-gray-400 group-hover/rating:text-orange-400">({event.reviewCount})</span></button></div>
             </div>
-            <button onClick={() => onHostClick(event.hostName)} className="w-full sm:w-auto px-5 sm:px-6 md:px-8 py-2.5 sm:py-3 bg-white border border-gray-200 rounded-full text-sm md:text-base font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange transition-colors shadow-sm whitespace-nowrap touch-manipulation active:scale-95">View Profile</button>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+              <button onClick={() => onHostClick(event.hostName)} className="w-full sm:w-auto px-5 sm:px-6 md:px-8 py-2.5 sm:py-3 bg-white border border-gray-200 rounded-full text-sm md:text-base font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange transition-colors shadow-sm whitespace-nowrap touch-manipulation active:scale-95">View Profile</button>
+              {isLoggedIn && (
+                <button
+                  onClick={handleFollowToggle}
+                  disabled={followLoading}
+                  className={`w-full sm:w-auto px-5 sm:px-6 md:px-8 py-2.5 sm:py-3 rounded-full text-sm md:text-base font-bold transition-colors shadow-sm whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2 ${
+                    isFollowingHost
+                      ? 'bg-popera-teal text-white hover:bg-[#1f4d52]'
+                      : 'bg-white border border-gray-200 text-popera-teal hover:border-popera-orange hover:text-popera-orange'
+                  } disabled:opacity-50`}
+                >
+                  {isFollowingHost ? (
+                    <>
+                      <UserCheck size={18} /> Following
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus size={18} /> Follow Host
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4 sm:gap-5">

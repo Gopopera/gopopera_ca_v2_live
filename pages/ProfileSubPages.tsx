@@ -5,6 +5,8 @@ import { X, DollarSign, ArrowRight, Star, Camera } from 'lucide-react';
 import { useUserStore } from '../stores/userStore';
 import { uploadImage } from '../firebase/storage';
 import { createOrUpdateUserProfile } from '../firebase/db';
+import { getDbSafe } from '../src/lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 interface SubPageProps {
   setViewState: (view: ViewState) => void;
@@ -142,17 +144,65 @@ export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
 
 // --- Notification Settings Page ---
 export const NotificationSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => {
+  const user = useUserStore((state) => state.user);
   const [toggles, setToggles] = useState({
-    eventLive: true,
-    attendeeReservation: true,
-    groupMessages: true,
-    cancellations: true,
-    email: true,
-    sms: true
+    email_opt_in: true,
+    sms_opt_in: false,
+    notification_opt_in: true,
   });
+  const [loading, setLoading] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-  const handleToggle = (key: keyof typeof toggles) => {
-    setToggles(prev => ({ ...prev, [key]: !prev[key] }));
+  // Load current settings
+  React.useEffect(() => {
+    if (user?.uid) {
+      const settings = user.notification_settings || {};
+      setToggles({
+        email_opt_in: settings.email_opt_in ?? true,
+        sms_opt_in: settings.sms_opt_in ?? false,
+        notification_opt_in: settings.notification_opt_in ?? true,
+      });
+    }
+  }, [user]);
+
+  const handleToggle = async (key: keyof typeof toggles) => {
+    const newValue = !toggles[key];
+    setToggles(prev => ({ ...prev, [key]: newValue }));
+
+    // Save to Firestore
+    if (user?.uid) {
+      setLoading(true);
+      try {
+        const { getDbSafe } = await import('../src/lib/firebase');
+        const { doc, setDoc } = await import('firebase/firestore');
+        const db = getDbSafe();
+        if (db) {
+          await setDoc(doc(db, 'users', user.uid), {
+            notification_settings: {
+              ...toggles,
+              [key]: newValue,
+            },
+          }, { merge: true });
+
+          // Update user store
+          useUserStore.getState().updateUser(user.uid, {
+            notification_settings: {
+              ...toggles,
+              [key]: newValue,
+            },
+          });
+
+          setSaved(true);
+          setTimeout(() => setSaved(false), 2000);
+        }
+      } catch (error) {
+        console.error('Error saving notification settings:', error);
+        // Revert on error
+        setToggles(prev => ({ ...prev, [key]: !newValue }));
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
   const ToggleItem = ({ label, description, isOn, onToggle }: any) => (
@@ -176,13 +226,30 @@ export const NotificationSettingsPage: React.FC<SubPageProps> = ({ setViewState 
              <X size={18} className="sm:w-5 sm:h-5" />
            </button>
         </div>
+        {saved && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+            Settings saved!
+          </div>
+        )}
         <div className="space-y-1 sm:space-y-2">
-           <ToggleItem label="Event gets live" description="Do you want to be notified when your event becomes public?" isOn={toggles.eventLive} onToggle={() => handleToggle('eventLive')} />
-           <ToggleItem label="Attendee Reservation" description="Do you want to be notified when someone becomes your attendee?" isOn={toggles.attendeeReservation} onToggle={() => handleToggle('attendeeReservation')} />
-           <ToggleItem label="Event Group Messages" description="Do you want to be notified when a message is sent in the group chat?" isOn={toggles.groupMessages} onToggle={() => handleToggle('groupMessages')} />
-           <ToggleItem label="Cancellation Notifications" description="Do you want to be notified when someone cancels their reservation?" isOn={toggles.cancellations} onToggle={() => handleToggle('cancellations')} />
-           <ToggleItem label="Email Notifications" description="Do you want to be notified by email?" isOn={toggles.email} onToggle={() => handleToggle('email')} />
-           <ToggleItem label="SMS Notifications" description="Do you want to be notified by sms?" isOn={toggles.sms} onToggle={() => handleToggle('sms')} />
+           <ToggleItem 
+             label="In-App Notifications" 
+             description="Receive notifications in the app" 
+             isOn={toggles.notification_opt_in} 
+             onToggle={() => handleToggle('notification_opt_in')} 
+           />
+           <ToggleItem 
+             label="Email Notifications" 
+             description="Receive notifications via email (requires email address)" 
+             isOn={toggles.email_opt_in} 
+             onToggle={() => handleToggle('email_opt_in')} 
+           />
+           <ToggleItem 
+             label="SMS Notifications" 
+             description="Receive notifications via SMS (requires phone verification)" 
+             isOn={toggles.sms_opt_in} 
+             onToggle={() => handleToggle('sms_opt_in')} 
+           />
         </div>
       </div>
     </div>

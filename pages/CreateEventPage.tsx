@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ViewState } from '../types';
-import { ChevronLeft, Upload, MapPin, Calendar, Clock, Plus, X, Phone } from 'lucide-react';
+import { ChevronLeft, Upload, MapPin, Calendar, Clock, Plus } from 'lucide-react';
 import { useEventStore } from '../stores/eventStore';
 import { useUserStore } from '../stores/userStore';
-import { getDbSafe, getAuthSafe } from '../src/lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult, PhoneAuthProvider, signInWithCredential } from 'firebase/auth';
+import { getDbSafe } from '../src/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { PhoneVerificationModal } from '../components/auth/PhoneVerificationModal';
 
 interface CreateEventPageProps {
   setViewState: (view: ViewState) => void;
@@ -22,13 +22,6 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
   const user = useUserStore((state) => state.user);
   const [phoneVerified, setPhoneVerified] = useState<boolean | null>(null);
   const [showSMSModal, setShowSMSModal] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-  const [smsStep, setSmsStep] = useState<'phone' | 'code'>('phone');
-  const [smsError, setSmsError] = useState<string | null>(null);
-  const [smsLoading, setSmsLoading] = useState(false);
-  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -78,126 +71,10 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
     checkPhoneVerification();
   }, [user]);
 
-  const handleBypassSMS = async () => {
-    if (!user?.uid) return;
-    
-    const db = getDbSafe();
-    if (!db) return;
-
-    try {
-      await setDoc(doc(db, 'users', user.uid), {
-        phone_verified: false,
-      }, { merge: true });
-      setPhoneVerified(false);
-      setShowSMSModal(false);
-    } catch (err) {
-      console.error('Error bypassing SMS:', err);
-    }
+  const handlePhoneVerificationSuccess = () => {
+    setPhoneVerified(true);
+    setShowSMSModal(false);
   };
-
-  const initializeRecaptcha = () => {
-    const authInstance = getAuthSafe();
-    if (!authInstance || recaptchaVerifierRef.current) return;
-    
-    try {
-      recaptchaVerifierRef.current = new RecaptchaVerifier(authInstance, 'recaptcha-container', {
-        size: 'invisible',
-        callback: () => {
-          // reCAPTCHA solved
-        },
-        'expired-callback': () => {
-          console.error('reCAPTCHA expired');
-        }
-      });
-    } catch (error) {
-      console.error('Error initializing reCAPTCHA:', error);
-    }
-  };
-
-  const handleSendVerificationCode = async () => {
-    if (!phoneNumber.trim()) return;
-    
-    const authInstance = getAuthSafe();
-    if (!authInstance) {
-      setSmsError('Authentication not available. Please refresh the page.');
-      return;
-    }
-    
-    setSmsLoading(true);
-    setSmsError(null);
-    
-    try {
-      initializeRecaptcha();
-      if (!recaptchaVerifierRef.current) {
-        throw new Error('reCAPTCHA not initialized');
-      }
-      
-      const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+1${phoneNumber.replace(/\D/g, '')}`;
-      const confirmation = await signInWithPhoneNumber(authInstance, formattedPhone, recaptchaVerifierRef.current);
-      setConfirmationResult(confirmation);
-      setSmsStep('code');
-    } catch (error: any) {
-      console.error('Error sending verification code:', error);
-      setSmsError(error?.message || 'Failed to send verification code. Please try again.');
-      // Clean up on error
-      if (recaptchaVerifierRef.current) {
-        try {
-          recaptchaVerifierRef.current.clear();
-        } catch (e) {
-          // Ignore cleanup errors
-        }
-        recaptchaVerifierRef.current = null;
-      }
-    } finally {
-      setSmsLoading(false);
-    }
-  };
-
-  const handleVerifyCode = async () => {
-    if (!verificationCode.trim() || !confirmationResult || !user?.uid) return;
-    
-    setSmsLoading(true);
-    setSmsError(null);
-    
-    try {
-      await confirmationResult.confirm(verificationCode);
-      
-      // Mark user as phone verified
-      const db = getDbSafe();
-      if (db) {
-        await setDoc(doc(db, 'users', user.uid), {
-          phone_verified: true,
-        }, { merge: true });
-      }
-      
-      setPhoneVerified(true);
-      setShowSMSModal(false);
-      setSmsStep('phone');
-      setPhoneNumber('');
-      setVerificationCode('');
-      
-      // Clean up reCAPTCHA
-      if (recaptchaVerifierRef.current) {
-        recaptchaVerifierRef.current.clear();
-        recaptchaVerifierRef.current = null;
-      }
-    } catch (error: any) {
-      console.error('Error verifying code:', error);
-      setSmsError(error?.message || 'Invalid verification code. Please try again.');
-    } finally {
-      setSmsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      // Cleanup reCAPTCHA on unmount
-      if (recaptchaVerifierRef.current) {
-        recaptchaVerifierRef.current.clear();
-        recaptchaVerifierRef.current = null;
-      }
-    };
-  }, []);
 
   const handleAddTag = () => {
     if (tagInput.trim() && !tags.includes(tagInput.trim())) {
@@ -562,108 +439,13 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         </form>
       </div>
 
-      {/* SMS Verification Modal */}
-      {showSMSModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => {
-          if (smsStep === 'phone') {
-            setShowSMSModal(false);
-            setPhoneNumber('');
-            setSmsError(null);
-          }
-        }}>
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 sm:p-8 animate-fade-in" onClick={(e) => e.stopPropagation()}>
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-[#eef4f5] rounded-full flex items-center justify-center mx-auto mb-4">
-                <Phone size={32} className="text-[#e35e25]" />
-              </div>
-              <h2 className="text-2xl font-heading font-bold text-[#15383c] mb-2">
-                {smsStep === 'phone' ? 'SMS Verification Required' : 'Enter Verification Code'}
-              </h2>
-              <p className="text-gray-600 text-sm mb-4">
-                {smsStep === 'phone' 
-                  ? 'We require SMS verification to host events. This helps ensure safety and trust in our community.'
-                  : 'Enter the 6-digit code sent to your phone.'}
-              </p>
-            </div>
-
-            {/* reCAPTCHA container (invisible) */}
-            <div id="recaptcha-container"></div>
-
-            {smsStep === 'phone' ? (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                  <input
-                    type="tel"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="+1234567890"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#15383c] focus:border-transparent"
-                  />
-                </div>
-                {smsError && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                    {smsError}
-                  </div>
-                )}
-                <div className="space-y-3">
-                  <button
-                    onClick={handleSendVerificationCode}
-                    disabled={!phoneNumber.trim() || smsLoading}
-                    className="w-full px-6 py-3 bg-[#e35e25] text-white rounded-full font-medium hover:bg-[#d14e1a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {smsLoading ? 'Sending...' : 'Send Verification Code'}
-                  </button>
-                  <button
-                    onClick={handleBypassSMS}
-                    className="w-full px-6 py-3 bg-gray-100 text-[#15383c] rounded-full font-medium hover:bg-gray-200 transition-colors"
-                  >
-                    Bypass for Now (Dev Only)
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Verification Code</label>
-                  <input
-                    type="text"
-                    value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder="123456"
-                    maxLength={6}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#15383c] focus:border-transparent text-center text-2xl tracking-widest"
-                  />
-                </div>
-                {smsError && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                    {smsError}
-                  </div>
-                )}
-                <div className="space-y-3">
-                  <button
-                    onClick={handleVerifyCode}
-                    disabled={verificationCode.length !== 6 || smsLoading}
-                    className="w-full px-6 py-3 bg-[#e35e25] text-white rounded-full font-medium hover:bg-[#d14e1a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {smsLoading ? 'Verifying...' : 'Verify Code'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSmsStep('phone');
-                      setVerificationCode('');
-                      setSmsError(null);
-                    }}
-                    className="w-full px-6 py-3 bg-gray-100 text-[#15383c] rounded-full font-medium hover:bg-gray-200 transition-colors"
-                  >
-                    Back
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Phone Verification Modal */}
+      <PhoneVerificationModal
+        isOpen={showSMSModal}
+        onClose={() => setShowSMSModal(false)}
+        onSuccess={handlePhoneVerificationSuccess}
+        required={true}
+      />
     </div>
   );
 };

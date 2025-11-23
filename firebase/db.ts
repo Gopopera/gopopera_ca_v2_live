@@ -87,6 +87,18 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
       id: docRef.id,
       ...firestoreEvent,
     };
+    
+    // Notify followers of new event
+    if (eventData.hostId) {
+      try {
+        const { notifyFollowersOfNewEvent } = await import('./follow');
+        await notifyFollowersOfNewEvent(eventData.hostId, docRef.id, eventData.title);
+      } catch (error) {
+        console.error('Error notifying followers:', error);
+        // Don't fail event creation if notification fails
+      }
+    }
+    
     return mapFirestoreEventToEvent(createdEvent);
   } catch (error) {
     console.error("Error creating event:", error);

@@ -51,6 +51,7 @@ import { listUpcomingEvents } from './firebase/db';
 import { useDebouncedFavorite } from './hooks/useDebouncedFavorite';
 import { ConversationButtonModal } from './components/chat/ConversationButtonModal';
 import { useSelectedCity, useSetCity, type City } from './src/stores/cityStore';
+import { NotificationsModal } from './components/notifications/NotificationsModal';
 
 // Mock Data Generator - Initial seed data
 const generateMockEvents = (): Event[] => [
@@ -350,6 +351,7 @@ const AppContent: React.FC = () => {
   const location = city;
   const [showConversationModal, setShowConversationModal] = useState(false);
   const [conversationModalEvent, setConversationModalEvent] = useState<Event | null>(null);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   // Use Zustand stores
   const user = useUserStore((state) => state.user);
   const loading = useUserStore((state) => state.loading);
@@ -697,8 +699,19 @@ const AppContent: React.FC = () => {
   };
 
   const handleNotificationsClick = () => {
-    setViewState(ViewState.NOTIFICATIONS);
-    window.scrollTo(0, 0);
+    setShowNotificationsModal(true);
+  };
+
+  const handleNotificationNavigate = (view: ViewState, eventId?: string) => {
+    if (eventId) {
+      const event = allEvents.find(e => e.id === eventId);
+      if (event) {
+        setSelectedEvent(event);
+        setViewState(ViewState.DETAIL);
+      }
+    } else {
+      setViewState(view);
+    }
   };
 
 
@@ -1104,6 +1117,15 @@ const AppContent: React.FC = () => {
             }
           }}
           eventTitle={conversationModalEvent.title}
+        />
+      )}
+
+      {/* Notifications Modal */}
+      {isLoggedIn && (
+        <NotificationsModal
+          isOpen={showNotificationsModal}
+          onClose={() => setShowNotificationsModal(false)}
+          onNavigate={handleNotificationNavigate}
         />
       )}
 

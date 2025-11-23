@@ -49,7 +49,17 @@ export interface FirestoreUser {
   hostedEvents?: string[]; // Event IDs user has created
   preferredCity?: string; // User's preferred city
   phoneVerified?: boolean; // SMS verification status
+  phone_number?: string; // Verified phone number
   signupIntent?: 'attend' | 'host' | 'both'; // First-run signup intent
+  // Follow system
+  following?: string[]; // Host IDs user is following
+  followers?: string[]; // User IDs following this host
+  // Notification preferences
+  notification_settings?: {
+    email_opt_in?: boolean;
+    sms_opt_in?: boolean;
+    notification_opt_in?: boolean;
+  };
   createdAt: number;
   updatedAt?: number;
 }
@@ -91,4 +101,37 @@ export interface FirestoreHostProfile {
   followerCount: number;
   rating?: number;
   reviewCount?: number;
+}
+
+// Notification system types
+export interface FirestoreNotification {
+  id: string;
+  userId: string;
+  type: 'new-event' | 'new-rsvp' | 'announcement' | 'poll' | 'new-message' | 'followed-host-event';
+  title: string;
+  body: string;
+  timestamp: number; // serverTimestamp
+  eventId?: string;
+  hostId?: string;
+  read: boolean;
+  createdAt?: number;
+}
+
+// Announcements & Polls
+export interface FirestoreAnnouncement {
+  id: string;
+  eventId: string;
+  type: 'announcement' | 'poll';
+  title: string;
+  message: string;
+  options?: string[]; // For polls
+  timestamp: number; // serverTimestamp
+  createdBy: string; // hostId
+  createdAt?: number;
+}
+
+export interface FirestorePollVote {
+  userId: string;
+  option: string; // Selected option index or text
+  timestamp: number;
 }

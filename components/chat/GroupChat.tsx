@@ -75,8 +75,42 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   const handleSendMessage = async () => {
     if (!message.trim() || !canSendMessages || !currentUser) return;
     
-    await addMessage(event.id, currentUser.id, currentUser.name, message, 'message', isHost);
+    const messageText = message.trim();
+    await addMessage(event.id, currentUser.id, currentUser.name, messageText, 'message', isHost);
     setMessage('');
+
+    // Notify attendees of new message (except sender)
+    try {
+      const { notifyAttendeesOfNewMessage } = await import('../../utils/notificationHelpers');
+      const { getDocs, collection, query, where } = await import('firebase/firestore');
+      const { getDbSafe } = await import('../../src/lib/firebase');
+      const db = getDbSafe();
+      
+      if (db) {
+        // Get all RSVPs for this event
+        const rsvpsRef = collection(db, 'reservations');
+        const rsvpsQuery = query(rsvpsRef, where('eventId', '==', event.id));
+        const rsvpsSnapshot = await getDocs(rsvpsQuery);
+        const attendeeIds = rsvpsSnapshot.docs.map(doc => doc.data().userId).filter(Boolean);
+        
+        // Also include host
+        if (event.hostId && !attendeeIds.includes(event.hostId)) {
+          attendeeIds.push(event.hostId);
+        }
+
+        await notifyAttendeesOfNewMessage(
+          event.id,
+          event.title,
+          currentUser.id,
+          currentUser.name,
+          messageText.slice(0, 100), // Snippet
+          attendeeIds
+        );
+      }
+    } catch (error) {
+      console.error('Error sending message notifications:', error);
+      // Don't block message sending if notification fails
+    }
   };
   
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -210,14 +244,53 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     const question = prompt('Enter poll question:');
-                    if (question) {
-                      const option1 = prompt('Option 1:');
-                      const option2 = prompt('Option 2:');
-                      if (option1 && option2) {
-                        addPoll(event.id, question, [option1, option2]);
+                    if (!question) return;
+                    const option1 = prompt('Option 1:');
+                    const option2 = prompt('Option 2:');
+                    if (!option1 || !option2) return;
+
+                    try {
+                      // Create announcement/poll in Firestore
+                      const { createAnnouncement } = await import('../../firebase/notifications');
+                      const announcementId = await createAnnouncement(event.id, {
+                        type: 'poll',
+                        title: question,
+                        message: `Vote: ${option1} or ${option2}`,
+                        options: [option1, option2],
+                        createdBy: event.hostId,
+                      });
+
+                      // Also add to chat store for display
+                      addPoll(event.id, question, [option1, option2]);
+
+                      // Notify attendees
+                      const { notifyAttendeesOfPoll } = await import('../../utils/notificationHelpers');
+                      const { getDocs, collection, query, where } = await import('firebase/firestore');
+                      const { getDbSafe } = await import('../../src/lib/firebase');
+                      const db = getDbSafe();
+                      
+                      if (db) {
+                        const rsvpsRef = collection(db, 'reservations');
+                        const rsvpsQuery = query(rsvpsRef, where('eventId', '==', event.id));
+                        const rsvpsSnapshot = await getDocs(rsvpsQuery);
+                        const attendeeIds = rsvpsSnapshot.docs.map(doc => doc.data().userId).filter(Boolean);
+                        if (event.hostId && !attendeeIds.includes(event.hostId)) {
+                          attendeeIds.push(event.hostId);
+                        }
+
+                        await notifyAttendeesOfPoll(
+                          event.id,
+                          question,
+                          `Vote: ${option1} or ${option2}`,
+                          event.title,
+                          attendeeIds
+                        );
                       }
+                    } catch (error) {
+                      console.error('Error creating poll:', error);
+                      alert('Failed to create poll. Please try again.');
                     }
                   }}
                   className="flex flex-col items-center gap-2 p-3 rounded-lg border border-gray-200 hover:border-[#e35e25] hover:bg-[#e35e25]/5 transition-colors touch-manipulation active:scale-95"
@@ -226,10 +299,51 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                   <span className="text-xs font-medium text-gray-700">Create Poll</span>
                 </button>
                 <button
-                  onClick={() => {
-                    const announcement = prompt('Enter announcement:');
-                    if (announcement && currentUser) {
-                      addMessage(event.id, currentUser.id, currentUser.name, announcement, 'announcement', true);
+                  onClick={async () => {
+                    const title = prompt('Announcement title:');
+                    if (!title) return;
+                    const message = prompt('Announcement message:');
+                    if (!message || !currentUser) return;
+
+                    try {
+                      // Create announcement in Firestore
+                      const { createAnnouncement } = await import('../../firebase/notifications');
+                      await createAnnouncement(event.id, {
+                        type: 'announcement',
+                        title,
+                        message,
+                        createdBy: event.hostId,
+                      });
+
+                      // Also add to chat
+                      await addMessage(event.id, currentUser.id, currentUser.name, `${title}: ${message}`, 'announcement', true);
+
+                      // Notify attendees
+                      const { notifyAttendeesOfAnnouncement } = await import('../../utils/notificationHelpers');
+                      const { getDocs, collection, query, where } = await import('firebase/firestore');
+                      const { getDbSafe } = await import('../../src/lib/firebase');
+                      const db = getDbSafe();
+                      
+                      if (db) {
+                        const rsvpsRef = collection(db, 'reservations');
+                        const rsvpsQuery = query(rsvpsRef, where('eventId', '==', event.id));
+                        const rsvpsSnapshot = await getDocs(rsvpsQuery);
+                        const attendeeIds = rsvpsSnapshot.docs.map(doc => doc.data().userId).filter(Boolean);
+                        if (event.hostId && !attendeeIds.includes(event.hostId)) {
+                          attendeeIds.push(event.hostId);
+                        }
+
+                        await notifyAttendeesOfAnnouncement(
+                          event.id,
+                          title,
+                          message,
+                          event.title,
+                          attendeeIds
+                        );
+                      }
+                    } catch (error) {
+                      console.error('Error creating announcement:', error);
+                      alert('Failed to create announcement. Please try again.');
                     }
                   }}
                   className="flex flex-col items-center gap-2 p-3 rounded-lg border border-gray-200 hover:border-[#e35e25] hover:bg-[#e35e25]/5 transition-colors touch-manipulation active:scale-95"

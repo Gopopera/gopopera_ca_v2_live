@@ -3,6 +3,7 @@ import { Menu, X, Search, User, Bell, PlusCircle, Heart } from 'lucide-react';
 import { ViewState } from '@/types';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useUserStore } from '../../stores/userStore';
+import { getUnreadNotificationCount } from '../../firebase/notifications';
 
 interface HeaderProps {
   setViewState: (view: ViewState) => void;
@@ -19,6 +20,23 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
   const { language, setLanguage, t } = useLanguage();
   const user = useUserStore((state) => state.user);
   const userPhoto = user?.photoURL || user?.profileImageUrl;
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Load unread notification count
+  useEffect(() => {
+    if (user?.uid) {
+      const loadUnreadCount = async () => {
+        const count = await getUnreadNotificationCount(user.uid);
+        setUnreadCount(count);
+      };
+      loadUnreadCount();
+      // Refresh every 30 seconds
+      const interval = setInterval(loadUnreadCount, 30000);
+      return () => clearInterval(interval);
+    } else {
+      setUnreadCount(0);
+    }
+  }, [user?.uid]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -113,7 +131,11 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
                  className={`p-2 rounded-full hover:bg-black/5 transition-colors relative group ${getTextColor(false)}`}
                >
                  <Bell size={20} />
-                 <span className="absolute top-1 right-2 w-2 h-2 bg-[#e35e25] rounded-full border-2 border-white"></span>
+                 {unreadCount > 0 && (
+                   <span className="absolute top-0 right-0 w-5 h-5 bg-[#e35e25] text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                     {unreadCount > 9 ? '9+' : unreadCount}
+                   </span>
+                 )}
                </button>
 
                <button 
