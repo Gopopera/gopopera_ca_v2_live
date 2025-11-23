@@ -33,7 +33,17 @@ export default defineConfig(({ mode }) => {
         }
       },
       build: {
-        sourcemap: true, // Enable source maps for production debugging
+        sourcemap: false, // Disable source maps in production for smaller bundles
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              'react-vendor': ['react', 'react-dom'],
+              'firebase-vendor': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
+              'zustand-vendor': ['zustand'],
+            },
+          },
+        },
+        chunkSizeWarningLimit: 600, // Increase limit to 600KB
       }
     };
 });

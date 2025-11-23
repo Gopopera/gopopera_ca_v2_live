@@ -3,34 +3,39 @@ import React, { useState, useEffect } from 'react';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
-import { LandingPage } from './pages/LandingPage';
-import { EventDetailPage } from './pages/EventDetailPage';
-import { EventFeed } from './components/events/EventFeed';
-import { GroupChat } from './components/chat/GroupChat';
-import { ReviewsModal } from './components/events/ReviewsModal';
-import { HostProfile } from './components/profile/HostProfile';
-import { AboutPage } from './pages/AboutPage';
-import { CareersPage } from './pages/CareersPage';
-import { ContactPage } from './pages/ContactPage';
-import { TermsPage } from './pages/TermsPage';
-import { PrivacyPage } from './pages/PrivacyPage';
-import { CancellationPage } from './pages/CancellationPage';
-import { GuidelinesPage } from './pages/GuidelinesPage';
-import { ReportPage } from './pages/ReportPage';
-import { HelpPage } from './pages/HelpPage';
-import { SafetyPage } from './pages/SafetyPage';
-import { PressPage } from './pages/PressPage';
-import { AuthPage } from './pages/AuthPage';
-import { ProfilePage } from './pages/ProfilePage';
-import { NotificationsPage } from './pages/NotificationsPage';
-import { MyPopsPage } from './pages/MyPopsPage';
-import { FavoritesPage } from './pages/FavoritesPage';
-import { MyCalendarPage } from './pages/MyCalendarPage';
-import { DeleteAccountPage } from './pages/DeleteAccountPage';
-import { CreateEventPage } from './pages/CreateEventPage';
+// Route-level code splitting for performance
+const LandingPage = React.lazy(() => import('./pages/LandingPage').then(m => ({ default: m.LandingPage })));
+const EventDetailPage = React.lazy(() => import('./pages/EventDetailPage').then(m => ({ default: m.EventDetailPage })));
+const EventFeed = React.lazy(() => import('./components/events/EventFeed').then(m => ({ default: m.EventFeed })));
+const GroupChat = React.lazy(() => import('./components/chat/GroupChat').then(m => ({ default: m.GroupChat })));
+const ReviewsModal = React.lazy(() => import('./components/events/ReviewsModal').then(m => ({ default: m.ReviewsModal })));
+const HostProfile = React.lazy(() => import('./components/profile/HostProfile').then(m => ({ default: m.HostProfile })));
+const AboutPage = React.lazy(() => import('./pages/AboutPage').then(m => ({ default: m.AboutPage })));
+const CareersPage = React.lazy(() => import('./pages/CareersPage').then(m => ({ default: m.CareersPage })));
+const ContactPage = React.lazy(() => import('./pages/ContactPage').then(m => ({ default: m.ContactPage })));
+const TermsPage = React.lazy(() => import('./pages/TermsPage').then(m => ({ default: m.TermsPage })));
+const PrivacyPage = React.lazy(() => import('./pages/PrivacyPage').then(m => ({ default: m.PrivacyPage })));
+const CancellationPage = React.lazy(() => import('./pages/CancellationPage').then(m => ({ default: m.CancellationPage })));
+const GuidelinesPage = React.lazy(() => import('./pages/GuidelinesPage').then(m => ({ default: m.GuidelinesPage })));
+const ReportPage = React.lazy(() => import('./pages/ReportPage').then(m => ({ default: m.ReportPage })));
+const HelpPage = React.lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })));
+const SafetyPage = React.lazy(() => import('./pages/SafetyPage').then(m => ({ default: m.SafetyPage })));
+const PressPage = React.lazy(() => import('./pages/PressPage').then(m => ({ default: m.PressPage })));
+const AuthPage = React.lazy(() => import('./pages/AuthPage').then(m => ({ default: m.AuthPage })));
+const ProfilePage = React.lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
+const NotificationsPage = React.lazy(() => import('./pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
+const MyPopsPage = React.lazy(() => import('./pages/MyPopsPage').then(m => ({ default: m.MyPopsPage })));
+const FavoritesPage = React.lazy(() => import('./pages/FavoritesPage').then(m => ({ default: m.FavoritesPage })));
+const MyCalendarPage = React.lazy(() => import('./pages/MyCalendarPage').then(m => ({ default: m.MyCalendarPage })));
+const DeleteAccountPage = React.lazy(() => import('./pages/DeleteAccountPage').then(m => ({ default: m.DeleteAccountPage })));
+const CreateEventPage = React.lazy(() => import('./pages/CreateEventPage').then(m => ({ default: m.CreateEventPage })));
 
-// Consoldiated Imports
-import { BasicDetailsPage, NotificationSettingsPage, PrivacySettingsPage, StripeSettingsPage, MyReviewsPage } from './pages/ProfileSubPages';
+// Consolidated Imports - lazy loaded
+const BasicDetailsPage = React.lazy(() => import('./pages/ProfileSubPages').then(m => ({ default: m.BasicDetailsPage })));
+const NotificationSettingsPage = React.lazy(() => import('./pages/ProfileSubPages').then(m => ({ default: m.NotificationSettingsPage })));
+const PrivacySettingsPage = React.lazy(() => import('./pages/ProfileSubPages').then(m => ({ default: m.PrivacySettingsPage })));
+const StripeSettingsPage = React.lazy(() => import('./pages/ProfileSubPages').then(m => ({ default: m.StripeSettingsPage })));
+const MyReviewsPage = React.lazy(() => import('./pages/ProfileSubPages').then(m => ({ default: m.MyReviewsPage })));
 
 import { Event, ViewState } from './types';
 import { Search, ArrowRight, MapPin, PlusCircle } from 'lucide-react';
@@ -312,6 +317,17 @@ const generateMockEvents = (): Event[] => [
     createdAt: new Date('2024-10-28').toISOString()
   }
 ];
+
+// Loading skeleton component
+const PageSkeleton: React.FC = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="animate-pulse space-y-4 w-full max-w-md px-4">
+      <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+      <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+      <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+    </div>
+  </div>
+);
 
 const AppContent: React.FC = () => {
   console.log("#BOOT: App mounted");
@@ -700,20 +716,22 @@ const AppContent: React.FC = () => {
 
   if (viewState === ViewState.CHAT && selectedEvent) {
     return (
-      <GroupChat 
-        event={selectedEvent} 
-        onClose={handleCloseChat} 
-        onViewDetails={handleViewDetailsFromChat}
-        onReserve={() => {
-          if (!user) {
-            useUserStore.getState().setRedirectAfterLogin(ViewState.CHAT);
-            setViewState(ViewState.AUTH);
-          } else {
-            handleRSVP(selectedEvent.id);
-          }
-        }}
-        isLoggedIn={isLoggedIn}
-      />
+      <React.Suspense fallback={<PageSkeleton />}>
+        <GroupChat 
+          event={selectedEvent} 
+          onClose={handleCloseChat} 
+          onViewDetails={handleViewDetailsFromChat}
+          onReserve={() => {
+            if (!user) {
+              useUserStore.getState().setRedirectAfterLogin(ViewState.CHAT);
+              setViewState(ViewState.AUTH);
+            } else {
+              handleRSVP(selectedEvent.id);
+            }
+          }}
+          isLoggedIn={isLoggedIn}
+        />
+      </React.Suspense>
     );
   }
 
@@ -744,16 +762,9 @@ const AppContent: React.FC = () => {
     </section>
   );
 
-  // Show loading screen while auth is initializing
-  // Wait for ready flag to ensure auth state is determined
-  if (loading || !ready) {
-    return (
-      <div style={{ padding: 16, textAlign: 'center', fontFamily: 'sans-serif', color: '#15383c' }}>
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#e35e25] mx-auto mb-4"></div>
-        <p className="text-gray-500">Loading...</p>
-      </div>
-    );
-  }
+  // Render shell immediately; auth/profile loading happens in background
+  // Show minimal loading only if absolutely necessary (first mount)
+  const isFirstMount = loading && !ready;
 
   return (
     <div className="font-sans text-popera-teal bg-gray-50 min-h-screen flex flex-col w-full max-w-full overflow-x-hidden">
@@ -769,19 +780,25 @@ const AppContent: React.FC = () => {
       )}
 
       <div className="flex-grow">
-        {viewState === ViewState.LANDING && (
-          <LandingPage 
-            setViewState={setViewState} 
-            events={allEvents} 
-            onEventClick={handleEventClick}
-            onChatClick={handleChatClick}
-            onReviewsClick={handleReviewsClick}
-            onHostClick={handleHostClick}
-            isLoggedIn={isLoggedIn}
-            favorites={favorites}
-            onToggleFavorite={handleToggleFavorite}
-          />
-        )}
+        {isFirstMount ? (
+          <PageSkeleton />
+        ) : (
+          <>
+            {viewState === ViewState.LANDING && (
+              <React.Suspense fallback={<PageSkeleton />}>
+                <LandingPage 
+                  setViewState={setViewState} 
+                  events={allEvents} 
+                  onEventClick={handleEventClick}
+                  onChatClick={handleChatClick}
+                  onReviewsClick={handleReviewsClick}
+                  onHostClick={handleHostClick}
+                  isLoggedIn={isLoggedIn}
+                  favorites={favorites}
+                  onToggleFavorite={handleToggleFavorite}
+                />
+              </React.Suspense>
+            )}
 
         {viewState === ViewState.AUTH && <AuthPage setViewState={setViewState} onLogin={handleLogin} />}
         
@@ -835,19 +852,21 @@ const AppContent: React.FC = () => {
         {viewState === ViewState.SAFETY && <SafetyPage setViewState={setViewState} />}
         {viewState === ViewState.PRESS && <PressPage setViewState={setViewState} />}
 
-        {viewState === ViewState.HOST_PROFILE && selectedHost && (
-          <HostProfile 
-            hostName={selectedHost}
-            onBack={() => setViewState(ViewState.FEED)}
-            onEventClick={handleEventClick}
-            allEvents={allEvents}
-            isLoggedIn={isLoggedIn}
-            favorites={favorites}
-            onToggleFavorite={handleToggleFavorite}
-          />
-        )}
+            {viewState === ViewState.HOST_PROFILE && selectedHost && (
+              <React.Suspense fallback={<PageSkeleton />}>
+                <HostProfile 
+                  hostName={selectedHost}
+                  onBack={() => setViewState(ViewState.FEED)}
+                  onEventClick={handleEventClick}
+                  allEvents={allEvents}
+                  isLoggedIn={isLoggedIn}
+                  favorites={favorites}
+                  onToggleFavorite={handleToggleFavorite}
+                />
+              </React.Suspense>
+            )}
 
-        {viewState === ViewState.FEED && (
+            {viewState === ViewState.FEED && (
           <main className="min-h-screen pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-12 sm:pb-16 md:pb-20 lg:pb-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             
             {/* Header Section with Search */}
@@ -1057,24 +1076,32 @@ const AppContent: React.FC = () => {
           </main>
         )}
 
-        {viewState === ViewState.DETAIL && selectedEvent && (
-          <EventDetailPage 
-            event={selectedEvent} 
-            setViewState={setViewState} 
-            onReviewsClick={handleReviewsClick}
-            onHostClick={handleHostClick}
-            allEvents={allEvents}
-            onEventClick={handleEventClick}
-            isLoggedIn={isLoggedIn}
-            favorites={favorites}
-            onToggleFavorite={handleToggleFavorite}
-            onRSVP={handleRSVP}
-            rsvps={rsvps}
-          />
+            {viewState === ViewState.DETAIL && selectedEvent && (
+              <React.Suspense fallback={<PageSkeleton />}>
+                <EventDetailPage 
+                  event={selectedEvent} 
+                  setViewState={setViewState} 
+                  onReviewsClick={handleReviewsClick}
+                  onHostClick={handleHostClick}
+                  allEvents={allEvents}
+                  onEventClick={handleEventClick}
+                  isLoggedIn={isLoggedIn}
+                  favorites={favorites}
+                  onToggleFavorite={handleToggleFavorite}
+                  onRSVP={handleRSVP}
+                  rsvps={rsvps}
+                />
+              </React.Suspense>
+            )}
+          </>
         )}
       </div>
 
-      {reviewEvent && <ReviewsModal event={reviewEvent} onClose={() => setReviewEvent(null)} />}
+      {reviewEvent && (
+        <React.Suspense fallback={null}>
+          <ReviewsModal event={reviewEvent} onClose={() => setReviewEvent(null)} />
+        </React.Suspense>
+      )}
 
       {/* Conversation Button Modal */}
       {showConversationModal && conversationModalEvent && (
