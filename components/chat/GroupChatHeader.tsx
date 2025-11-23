@@ -1,5 +1,5 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, ArrowLeft } from 'lucide-react';
 import { FAKE_HOSTS } from '@/data/fakeHosts';
 import { POPERA_HOST_NAME } from '@/stores/userStore';
 
@@ -8,10 +8,11 @@ import { Event } from '@/types';
 interface GroupChatHeaderProps {
   event: Event;
   onClose: () => void;
+  onViewDetails?: () => void;
   isMobile?: boolean;
 }
 
-export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({ event, onClose, isMobile = false }) => {
+export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({ event, onClose, onViewDetails, isMobile = false }) => {
   // Get host profile image
   const getHostImage = () => {
     if (event.hostId) {
@@ -29,6 +30,15 @@ export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({ event, onClose
     return (
       <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3 min-w-0 flex-1">
+          {onViewDetails && (
+            <button
+              onClick={onViewDetails}
+              className="w-10 h-10 flex items-center justify-center text-[#15383c] hover:bg-gray-100 rounded-full transition-colors shrink-0 touch-manipulation active:scale-95"
+              aria-label="Back to Event"
+            >
+              <ArrowLeft size={20} />
+            </button>
+          )}
           <img
             src={getHostImage()}
             alt={event.hostName}
@@ -57,6 +67,16 @@ export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({ event, onClose
   return (
     <div className="bg-white border-b border-gray-200 px-6 lg:px-8 py-5 flex items-center justify-between shrink-0">
       <div className="flex items-center gap-4 min-w-0 flex-1">
+        {onViewDetails && (
+          <button
+            onClick={onViewDetails}
+            className="flex items-center gap-2 px-4 py-2 text-[#15383c] hover:bg-gray-100 rounded-full transition-colors shrink-0 font-medium text-sm"
+            aria-label="Back to Event"
+          >
+            <ArrowLeft size={18} />
+            <span>Back to Event</span>
+          </button>
+        )}
         <img
           src={getHostImage()}
           alt={event.hostName}

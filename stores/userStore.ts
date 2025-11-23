@@ -180,6 +180,13 @@ export const useUserStore = create<UserStore>()(
 
       fetchUserProfile: async (uid: string) => {
         try {
+          // Avoid redundant fetches if user is already loaded
+          const currentUser = get().user;
+          if (currentUser && currentUser.uid === uid && get().ready) {
+            console.log('[Popera] User already loaded, skipping fetch');
+            return;
+          }
+
           const firestoreUser = await getUserProfile(uid);
           const firebaseUser = auth.currentUser;
           

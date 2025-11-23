@@ -60,6 +60,8 @@ export interface FirestoreUser {
     sms_opt_in?: boolean;
     notification_opt_in?: boolean;
   };
+  // Ban system
+  bannedEvents?: string[]; // Event IDs user is banned from
   createdAt: number;
   updatedAt?: number;
 }

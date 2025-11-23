@@ -173,8 +173,6 @@ export const NotificationSettingsPage: React.FC<SubPageProps> = ({ setViewState 
     if (user?.uid) {
       setLoading(true);
       try {
-        const { getDbSafe } = await import('../src/lib/firebase');
-        const { doc, setDoc } = await import('firebase/firestore');
         const db = getDbSafe();
         if (db) {
           await setDoc(doc(db, 'users', user.uid), {

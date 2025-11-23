@@ -44,7 +44,7 @@ export const EventCard: React.FC<EventCardProps> = ({
           onClick(event);
         }
       }}
-      className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer h-full flex flex-col w-full focus:outline-none focus:ring-2 focus:ring-[#15383c] focus:ring-offset-2"
+      className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer h-full flex flex-col w-full max-w-full focus:outline-none focus:ring-2 focus:ring-[#15383c] focus:ring-offset-2"
     >
       {/* Image Container - Fixed aspect ratio */}
       <div

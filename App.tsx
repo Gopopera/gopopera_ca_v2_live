@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 console.log('[BOOT] App module loaded');
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
@@ -379,6 +379,16 @@ const AppContent: React.FC = () => {
   const [firestoreEvents, setFirestoreEvents] = useState<Event[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
   
+  // Memoize allEvents to avoid unnecessary recalculations
+  const allEvents = useMemo(() => {
+    const merged = [...storeEvents, ...firestoreEvents];
+    // Deduplicate by ID
+    const unique = merged.filter((event, index, self) => 
+      index === self.findIndex(e => e.id === event.id)
+    );
+    return unique;
+  }, [storeEvents, firestoreEvents]);
+  
   // Initialize auth listener on mount
   // City store auto-initializes via Zustand persist middleware
   useEffect(() => {
@@ -400,8 +410,11 @@ const AppContent: React.FC = () => {
     }
   }, [user, loading, viewState, redirectAfterLogin, setRedirectAfterLogin]);
   
-  // Load events from Firestore (with fallback to mock data)
+  // Load events from Firestore (with fallback to mock data) - memoized to avoid redundant fetches
+  const [eventsLoaded, setEventsLoaded] = useState(false);
   useEffect(() => {
+    if (eventsLoaded) return; // Only load once
+    
     const loadFirestoreEvents = async () => {
       try {
         setLoadingEvents(true);
@@ -409,16 +422,18 @@ const AppContent: React.FC = () => {
         if (events.length > 0) {
           setFirestoreEvents(events);
         }
+        setEventsLoaded(true);
       } catch (error) {
         console.error("Error loading Firestore events:", error);
         // Fallback to mock data if Firestore fails
+        setEventsLoaded(true);
       } finally {
         setLoadingEvents(false);
       }
     };
     
     loadFirestoreEvents();
-  }, []);
+  }, [eventsLoaded]);
   
   // Initialize store with Popera events and fake events (first load only, as fallback)
   useEffect(() => {
@@ -522,9 +537,6 @@ const AppContent: React.FC = () => {
       });
     }
   }, [user?.rsvps, storeEvents, updateEvent, user]);
-  
-  // Get all events from store
-  const allEvents = useEventStore((state) => state.getEvents());
 
   // Filter events based on search, location, category, and tags
   // Apply all filters in sequence for proper combined filtering
