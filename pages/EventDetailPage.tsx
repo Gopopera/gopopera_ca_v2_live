@@ -41,6 +41,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const isPoperaOwned = event.isPoperaOwned === true;
   const isOfficialLaunch = event.isOfficialLaunch === true;
   const [showFakeEventModal, setShowFakeEventModal] = useState(false);
+  const [showShareToast, setShowShareToast] = useState(false);
   
   const handleRSVP = () => {
     if (isDemo) {
@@ -60,6 +61,34 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     setViewState(ViewState.FEED);
   };
 
+  const handleShare = async () => {
+    const url = window.location.origin + `/event/${event.id}`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: event.title,
+          text: event.description,
+          url: url,
+        });
+      } catch (err) {
+        // User cancelled or error occurred
+        if ((err as Error).name !== 'AbortError') {
+          console.error('Share failed:', err);
+        }
+      }
+    } else {
+      // Fallback: copy to clipboard
+      try {
+        await navigator.clipboard.writeText(url);
+        setShowShareToast(true);
+        setTimeout(() => setShowShareToast(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white pt-0">
       <FakeEventReservationModal
@@ -70,9 +99,14 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       <div className="fixed top-0 left-0 right-0 z-30 p-4 sm:p-4 flex items-center justify-between lg:hidden pointer-events-none safe-area-inset-top">
          <button onClick={() => setViewState(ViewState.FEED)} className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center text-popera-teal shadow-lg pointer-events-auto hover:scale-105 active:scale-[0.92] transition-transform touch-manipulation border border-white/50"><ChevronLeft size={22} className="sm:w-6 sm:h-6" /></button>
          <div className="flex gap-2.5 sm:gap-3 pointer-events-auto">
-             <button className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center text-popera-teal shadow-lg hover:scale-105 active:scale-[0.92] transition-transform touch-manipulation border border-white/50"><Share2 size={20} className="sm:w-5 sm:h-5" /></button>
+             <button onClick={handleShare} className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center text-popera-teal shadow-lg hover:scale-105 active:scale-[0.92] transition-transform touch-manipulation border border-white/50" aria-label="Share Event"><Share2 size={20} className="sm:w-5 sm:h-5" /></button>
              {isLoggedIn && onToggleFavorite && (<button onClick={(e) => onToggleFavorite(e, event.id)} className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center text-popera-teal shadow-lg hover:scale-105 active:scale-[0.92] transition-transform touch-manipulation border border-white/50"><Heart size={20} className="sm:w-5 sm:h-5" fill={favorites.includes(event.id) ? "#e35e25" : "none"} style={{ color: favorites.includes(event.id) ? "#e35e25" : "currentColor" }} /></button>)}
          </div>
+         {showShareToast && (
+           <div className="fixed bottom-4 right-4 bg-[#15383c] text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg z-50 animate-fade-in pointer-events-none">
+             Link copied!
+           </div>
+         )}
       </div>
 
       <div className="hidden lg:block max-w-7xl mx-auto px-6 py-6 mt-20">
@@ -154,6 +188,12 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   }`}
                 >
                   {isDemo ? 'Demo Event (Locked)' : hasRSVPed ? 'Reserved ✓' : 'Reserve Spot'}
+                </button>
+                <button
+                  onClick={handleShare}
+                  className="w-full py-3.5 lg:py-4 bg-popera-teal text-white rounded-full text-base lg:text-lg font-bold hover:bg-[#1f4d52] transition-colors shadow-md whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <Share2 size={18} /> Share Event
                 </button>
                 <button 
                   onClick={() => setViewState(ViewState.CHAT)} 

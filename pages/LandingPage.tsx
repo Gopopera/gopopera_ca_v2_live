@@ -4,6 +4,7 @@ import { Pillars } from '../components/landing/Pillars';
 import { EventFeed } from '../components/events/EventFeed';
 import { EventCard } from '../components/events/EventCard';
 import { ChatMockupSection } from '../components/landing/ChatMockupSection';
+import { CityInput } from '../components/layout/CityInput';
 import { Event, ViewState } from '../types';
 import { ArrowRight, Sparkles, Check, ChevronDown, Search, MapPin, PlusCircle } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -146,25 +147,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
              {/* Search Inputs Row */}
              <div className="flex flex-col md:flex-row gap-3 w-full md:max-w-3xl relative z-30">
                 
-                {/* City Pills Selector */}
+                {/* City Input with Autocomplete */}
                 <div className="w-full md:w-1/3">
-                  <div className="flex items-center gap-2 overflow-x-auto pb-2 hide-scrollbar scroll-smooth w-full touch-pan-x">
-                    {popularCities.map((cityOption) => (
-                      <button
-                        key={cityOption.slug}
-                        onClick={() => setCity(cityOption.slug)}
-                        aria-pressed={city === cityOption.slug}
-                        className={`
-                          px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border flex-shrink-0 touch-manipulation active:scale-95
-                          ${city === cityOption.slug
-                            ? 'bg-[#15383c] text-white border-[#15383c] shadow-md'
-                            : 'bg-white text-gray-600 border-gray-200 hover:border-[#e35e25] hover:text-[#e35e25]'}
-                        `}
-                      >
-                        {cityOption.label}
-                      </button>
-                    ))}
-                  </div>
+                  <CityInput />
                 </div>
 
                 {/* Search Bar */}

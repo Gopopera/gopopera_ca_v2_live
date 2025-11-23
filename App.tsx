@@ -4,6 +4,7 @@ console.log('[BOOT] App module loaded');
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
+import { CityInput } from './components/layout/CityInput';
 // Route-level code splitting for performance
 const LandingPage = React.lazy(() => import('./pages/LandingPage').then(m => ({ default: m.LandingPage })));
 const EventDetailPage = React.lazy(() => import('./pages/EventDetailPage').then(m => ({ default: m.EventDetailPage })));
@@ -347,7 +348,6 @@ const AppContent: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const setCity = useSetCity();
   const location = city;
-  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [showConversationModal, setShowConversationModal] = useState(false);
   const [conversationModalEvent, setConversationModalEvent] = useState<Event | null>(null);
   // Use Zustand stores
@@ -384,18 +384,19 @@ const AppContent: React.FC = () => {
   }, []);
 
   // Handle redirect after successful login (including Google login)
-  // Only redirect when userStore is ready and user is loaded
+  // Redirect immediately when user is detected after auth
   const redirectAfterLogin = useUserStore((state) => state.redirectAfterLogin);
   const setRedirectAfterLogin = useUserStore((state) => state.setRedirectAfterLogin);
   
   useEffect(() => {
-    if (ready && !loading && user && viewState === ViewState.AUTH) {
-      // User just logged in, redirect to intended destination or FEED
+    if (user && viewState === ViewState.AUTH && !loading) {
+      // User just logged in, redirect immediately to intended destination or FEED
       const redirect = redirectAfterLogin || ViewState.FEED;
+      console.log('[AUTH] Login success, navigating to:', redirect);
       setViewState(redirect);
       setRedirectAfterLogin(null);
     }
-  }, [user, loading, ready, viewState, redirectAfterLogin, setRedirectAfterLogin]);
+  }, [user, loading, viewState, redirectAfterLogin, setRedirectAfterLogin]);
   
   // Load events from Firestore (with fallback to mock data)
   useEffect(() => {
@@ -571,19 +572,6 @@ const AppContent: React.FC = () => {
     'All', 'Community', 'Music', 'Workshops', 'Markets', 'Sports', 'Social', 'Shows', 'Food & Drink', 'Wellness'
   ];
 
-  const popularCities: Array<{ slug: City; label: string }> = [
-    { slug: 'montreal', label: 'Montreal, CA' },
-    { slug: 'toronto', label: 'Toronto, CA' },
-    { slug: 'ottawa', label: 'Ottawa, CA' },
-    { slug: 'quebec', label: 'Quebec City, CA' },
-    { slug: 'gatineau', label: 'Gatineau, CA' },
-    { slug: 'vancouver', label: 'Vancouver, CA' },
-  ];
-
-  const filteredCities = popularCities.filter(cityOption => 
-    cityOption.slug.toLowerCase().includes(location.toLowerCase()) ||
-    cityOption.label.toLowerCase().includes(location.toLowerCase())
-  );
 
   const handleEventClick = (event: Event) => {
     setSelectedEvent(event);
@@ -631,6 +619,13 @@ const AppContent: React.FC = () => {
   const handleViewDetailsFromChat = () => setViewState(ViewState.DETAIL);
 
   const handleProtectedNav = (view: ViewState) => {
+    // Save current scroll position and view state before navigating to auth
+    const listPages = [ViewState.LANDING, ViewState.FEED];
+    if (listPages.includes(viewState)) {
+      const scrollKey = `scroll_${viewState}`;
+      sessionStorage.setItem(scrollKey, window.scrollY.toString());
+      sessionStorage.setItem('prevViewState', viewState);
+    }
     useUserStore.getState().setRedirectAfterLogin(view);
     setViewState(ViewState.AUTH);
   };
@@ -706,12 +701,6 @@ const AppContent: React.FC = () => {
     window.scrollTo(0, 0);
   };
 
-  const handleLocationSelect = (citySlug: string) => {
-      if (citySlug === 'montreal' || citySlug === 'ottawa' || citySlug === 'toronto' || citySlug === 'quebec' || citySlug === 'gatineau' || citySlug === 'vancouver') {
-        setCity(citySlug as City);
-      }
-      setShowLocationSuggestions(false);
-  }
 
   // Scroll restore for list pages
   useEffect(() => {
@@ -801,8 +790,7 @@ const AppContent: React.FC = () => {
   );
 
   // Render shell immediately; auth/profile loading happens in background
-  // Show minimal loading only if absolutely necessary (first mount)
-  const isFirstMount = loading && !ready;
+  // Never block initial render - show content immediately
 
   return (
     <div className="font-sans text-popera-teal bg-gray-50 min-h-screen flex flex-col w-full max-w-full overflow-x-hidden">
@@ -818,10 +806,7 @@ const AppContent: React.FC = () => {
       )}
 
       <div className="flex-grow">
-        {isFirstMount ? (
-          <PageSkeleton />
-        ) : (
-          <>
+        <>
             {viewState === ViewState.LANDING && (
               <React.Suspense fallback={<PageSkeleton />}>
                 <LandingPage 
@@ -921,50 +906,8 @@ const AppContent: React.FC = () => {
                   {/* Search Inputs Row - Location + Keyword */}
                   <div className="flex flex-col gap-3 w-full md:max-w-xl relative z-30">
                         
-                        {/* Location Input */}
-                        <div className="relative w-full group z-50">
-                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <MapPin size={18} className="text-[#e35e25]" />
-                            </div>
-                            <input
-                                type="text"
-                                value={location}
-                                onChange={(e) => {
-                                  const value = e.target.value.toLowerCase();
-                                  if (value === 'montreal' || value === 'ottawa' || value === 'toronto' || value === 'quebec' || value === 'gatineau' || value === 'vancouver') {
-                                    setCity(value as City);
-                                  }
-                                }}
-                                onFocus={() => setShowLocationSuggestions(true)}
-                                onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 200)}
-                                placeholder="City, Country (e.g. Montreal, CA)"
-                                className="w-full pl-11 pr-4 py-3 sm:py-3.5 bg-white border border-gray-200 rounded-full text-sm sm:text-base font-bold text-[#15383c] focus:outline-none focus:border-[#15383c] focus:ring-2 focus:ring-[#15383c]/10 shadow-sm hover:shadow-md transition-all placeholder-gray-400"
-                            />
-                            
-                            {/* Suggestions Dropdown */}
-                            {showLocationSuggestions && (
-                                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden max-h-60 overflow-y-auto animate-fade-in z-50">
-                                    <div className="px-4 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50">
-                                        Popular Cities
-                                    </div>
-                                    {filteredCities.length > 0 ? (
-                                        filteredCities.map((cityOption) => (
-                                            <button
-                                                key={cityOption.slug}
-                                                onMouseDown={() => handleLocationSelect(cityOption.slug)}
-                                                className="w-full text-left px-4 py-3 text-sm font-medium text-[#15383c] hover:bg-[#eef4f5] hover:text-[#e35e25] transition-colors border-b border-gray-50 last:border-0"
-                                            >
-                                                {cityOption.label}
-                                            </button>
-                                        ))
-                                    ) : (
-                                        <div className="px-4 py-3 text-sm text-gray-500 italic">
-                                            Type to search...
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
+                        {/* City Input with Autocomplete */}
+                        <CityInput />
 
                         {/* Keyword Search Bar */}
                         <div className="relative w-full group z-40">
@@ -1044,7 +987,7 @@ const AppContent: React.FC = () => {
               <div className="animate-fade-in">
                  <div className="mb-6 text-gray-500 text-sm font-medium">
                    Showing {filteredEvents.length} results 
-                   {location && location !== 'montreal' && ` in ${popularCities.find(c => c.slug === location)?.label || location}`}
+                   {location && location !== 'montreal' && ` in ${location.charAt(0).toUpperCase() + location.slice(1)}`}
                  </div>
                  {filteredEvents.length > 0 ? (
                     // Group search results by category
@@ -1131,8 +1074,7 @@ const AppContent: React.FC = () => {
                 />
               </React.Suspense>
             )}
-          </>
-        )}
+        </>
       </div>
 
       {reviewEvent && (
