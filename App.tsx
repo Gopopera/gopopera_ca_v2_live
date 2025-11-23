@@ -424,6 +424,7 @@ const AppContent: React.FC = () => {
       const poperaEvents = (generatePoperaEvents() ?? []);
       if (Array.isArray(poperaEvents)) {
         poperaEvents?.forEach?.(event => {
+          // Fire-and-forget for mock data initialization
           useEventStore.getState().addEvent({
             title: event.title,
             description: event.description,
@@ -448,7 +449,7 @@ const AppContent: React.FC = () => {
             isOfficialLaunch: event.isOfficialLaunch || false,
             aboutEvent: event.aboutEvent,
             whatToExpect: event.whatToExpect,
-          });
+          }).catch(err => console.warn('Failed to add Popera event to Firestore:', err));
         });
       }
       
@@ -456,6 +457,7 @@ const AppContent: React.FC = () => {
       const fakeEvents = (generateFakeEvents() ?? []);
       if (Array.isArray(fakeEvents)) {
         fakeEvents?.forEach?.(event => {
+        // Fire-and-forget for mock data initialization
         useEventStore.getState().addEvent({
           title: event.title,
           description: event.description,
@@ -481,7 +483,7 @@ const AppContent: React.FC = () => {
           isOfficialLaunch: false,
           aboutEvent: event.aboutEvent,
           whatToExpect: event.whatToExpect,
-        });
+        }).catch(err => console.warn('Failed to add fake event to Firestore:', err));
       });
       }
     }

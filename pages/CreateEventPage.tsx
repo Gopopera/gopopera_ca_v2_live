@@ -110,7 +110,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Check phone verification
@@ -124,40 +124,46 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       return;
     }
 
-    // Create event with all required fields
-    addEvent({
-      title,
-      description,
-      city,
-      address,
-      date,
-      time,
-      tags,
-      host,
-      imageUrl: imageUrl || `https://picsum.photos/seed/${title}/800/600`,
-      attendeesCount,
-      category: category as typeof CATEGORIES[number],
-      price,
-      rating: 0,
-      reviewCount: 0,
-      capacity: attendeesCount || undefined,
-    });
+    try {
+      // Create event with all required fields
+      await addEvent({
+        title,
+        description,
+        city,
+        address,
+        date,
+        time,
+        tags,
+        host,
+        hostId: user?.uid || '',
+        imageUrl: imageUrl || `https://picsum.photos/seed/${title}/800/600`,
+        attendeesCount,
+        category: category as typeof CATEGORIES[number],
+        price,
+        rating: 0,
+        reviewCount: 0,
+        capacity: attendeesCount || undefined,
+      });
 
-    // Reset form
-    setTitle('');
-    setDescription('');
-    setCity('');
-    setAddress('');
-    setDate('');
-    setTime('');
-    setCategory('');
-    setTags([]);
-    setImageUrl('');
-    setAttendeesCount(0);
-    setPrice('Free');
+      // Reset form
+      setTitle('');
+      setDescription('');
+      setCity('');
+      setAddress('');
+      setDate('');
+      setTime('');
+      setCategory('');
+      setTags([]);
+      setImageUrl('');
+      setAttendeesCount(0);
+      setPrice('Free');
 
-    // Redirect to feed
-    setViewState(ViewState.FEED);
+      // Redirect to feed
+      setViewState(ViewState.FEED);
+    } catch (error) {
+      console.error('Error creating event:', error);
+      alert('Failed to create event. Please try again.');
+    }
   };
 
   const filteredCities = POPULAR_CITIES.filter(c => 

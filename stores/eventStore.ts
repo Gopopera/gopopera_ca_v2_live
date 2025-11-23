@@ -1,10 +1,11 @@
 import { create } from 'zustand';
 import { Event } from '../types';
 import { categoryMatches } from '../utils/categoryMapper';
+import { createEvent as createFirestoreEvent } from '../firebase/db';
 
 interface EventStore {
   events: Event[];
-  addEvent: (event: Omit<Event, 'id' | 'createdAt' | 'location' | 'hostName' | 'attendees'>) => Event;
+  addEvent: (event: Omit<Event, 'id' | 'createdAt' | 'location' | 'hostName' | 'attendees'>) => Promise<Event>;
   updateEvent: (eventId: string, updates: Partial<Omit<Event, 'id' | 'createdAt'>>) => void;
   deleteEvent: (eventId: string) => void;
   getEvent: (eventId: string) => Event | undefined;
@@ -44,12 +45,29 @@ const createEvent = (
 export const useEventStore = create<EventStore>((set, get) => ({
   events: [],
 
-  addEvent: (eventData) => {
+  addEvent: async (eventData) => {
+    // Create event in local state first (for immediate UI update)
     const newEvent = createEvent(eventData);
     set((state) => ({
       events: [...state.events, newEvent],
     }));
-    return newEvent;
+    
+    // Try to write to Firestore (non-blocking, fails gracefully)
+    try {
+      const firestoreEvent = await createFirestoreEvent(eventData);
+      // Update local event with Firestore ID if successful
+      set((state) => ({
+        events: state.events.map(e => 
+          e.id === newEvent.id ? { ...e, id: firestoreEvent.id } : e
+        ),
+      }));
+      return { ...newEvent, id: firestoreEvent.id };
+    } catch (error) {
+      // Firestore write failed, but local state is updated
+      // Event will still appear in UI, just won't persist across sessions
+      console.warn('Failed to write event to Firestore, using local ID:', error);
+      return newEvent;
+    }
   },
 
   updateEvent: (eventId, updates) => {
