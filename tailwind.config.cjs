@@ -2,19 +2,17 @@
 module.exports = {
   content: [
     "./index.html",
-    "./src/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx,js,jsx}",
     "./App.tsx",
-    "./components/**/*.{ts,tsx}",
-    "./pages/**/*.{ts,tsx}"
+    "./components/**/*.{ts,tsx,js,jsx}",
+    "./pages/**/*.{ts,tsx,js,jsx}",
   ],
   theme: {
     extend: {
       colors: {
-        popera: {
-          teal: '#15383c',
-          orange: '#e35e25',
-          softTeal: '#eef4f5',
-          softRose: '#fff0eb',
+        brand: {
+          DEFAULT: "#15383c",
+          accent: "#e35e25",
         }
       },
       fontFamily: {
@@ -29,4 +27,3 @@ module.exports = {
   },
   plugins: [],
 };
-
