@@ -91,6 +91,7 @@ export const CareersPage: React.FC<CareersPageProps> = ({ setViewState }) => {
         subject: `Career Application - ${formData.name}`,
         html: emailHtml,
         attachments: attachment,
+        templateName: 'career-application',
       });
 
       setSubmitSuccess(true);

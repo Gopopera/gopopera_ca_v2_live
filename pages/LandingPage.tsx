@@ -399,6 +399,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   to: 'support@gopopera.ca',
                   subject: `Newsletter Subscription - ${email}`,
                   html: emailHtml,
+                  templateName: 'newsletter-subscription',
                 });
 
                 setNewsletterSuccess(true);

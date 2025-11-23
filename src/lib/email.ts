@@ -22,6 +22,7 @@ interface SendEmailOptions {
     contentType?: string;
   }>;
   metadata?: Record<string, string>;
+  templateName?: string; // For logging purposes
 }
 
 /**
@@ -41,6 +42,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<{ success: b
         subject: options.subject,
         status: 'skipped',
         error: 'Resend API key not configured',
+        templateName: options.templateName,
         timestamp: Date.now(),
       });
       return { success: false, error: 'Email service not configured' };
@@ -67,6 +69,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<{ success: b
       subject: options.subject,
       status: 'sent',
       messageId: result.data?.id,
+      templateName: options.templateName,
       timestamp: Date.now(),
     });
 
@@ -81,6 +84,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<{ success: b
       subject: options.subject,
       status: 'failed',
       error: error.message || 'Unknown error',
+      templateName: options.templateName,
       timestamp: Date.now(),
     });
 
@@ -98,6 +102,7 @@ async function logEmailToFirestore(log: {
   status: 'sent' | 'failed' | 'skipped';
   messageId?: string;
   error?: string;
+  templateName?: string;
   timestamp: number;
 }): Promise<void> {
   try {

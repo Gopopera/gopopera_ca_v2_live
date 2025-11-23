@@ -12,6 +12,9 @@ import { PollEmailTemplate } from '../src/emails/templates/PollEmail';
 import { FollowNotificationTemplate } from '../src/emails/templates/FollowNotification';
 import { RSVPHostNotificationTemplate } from '../src/emails/templates/RSVPHostNotification';
 
+// Base URL for event links (fallback to window.location.origin if not set)
+const BASE_URL = import.meta.env.VITE_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://gopopera.ca');
+
 interface UserNotificationPreferences {
   email_opt_in?: boolean;
   sms_opt_in?: boolean;
@@ -87,11 +90,26 @@ export async function sendComprehensiveNotification(
   // Send email if enabled
   if (preferences.email_opt_in && contactInfo.email && emailContent) {
     try {
-      await sendEmailNotification({
+      // Use simple HTML email for generic notifications
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #15383c;">${emailContent.subject}</h2>
+          <p>Hello ${contactInfo.name || 'there'},</p>
+          <div style="color: #333; line-height: 1.6;">
+            ${emailContent.body.replace(/\n/g, '<br>')}
+          </div>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+          <p style="color: #666; font-size: 12px;">
+            Popera Team<br>
+            <a href="mailto:support@gopopera.ca" style="color: #e35e25;">support@gopopera.ca</a>
+          </p>
+        </div>
+      `;
+      await sendEmail({
         to: contactInfo.email,
-        name: contactInfo.name,
         subject: emailContent.subject,
-        body: emailContent.body,
+        html: emailHtml,
+        templateName: 'generic-notification',
       });
     } catch (error) {
       console.error('Error sending email notification:', error);
@@ -167,7 +185,7 @@ export async function notifyFollowersOfNewEvent(
           hostName,
           eventTitle,
           eventDescription,
-          eventUrl: `${window.location.origin}/event/${eventId}`, // Adjust based on your routing
+          eventUrl: `${BASE_URL}/event/${eventId}`,
           eventImageUrl,
         });
 
@@ -175,6 +193,7 @@ export async function notifyFollowersOfNewEvent(
           to: contactInfo.email,
           subject: `New Pop-up from ${hostName} on Popera`,
           html: emailHtml,
+          templateName: 'follow-notification',
         });
       } catch (error) {
         console.error('Error sending follow notification email:', error);
@@ -223,13 +242,14 @@ export async function notifyAttendeesOfAnnouncement(
           eventTitle,
           announcementTitle,
           announcementMessage,
-          eventUrl: `${window.location.origin}/event/${eventId}`, // Adjust based on your routing
+          eventUrl: `${BASE_URL}/event/${eventId}`,
         });
 
         await sendEmail({
           to: contactInfo.email,
           subject: `Update: ${announcementTitle} - ${eventTitle}`,
           html: emailHtml,
+          templateName: 'announcement',
         });
       } catch (error) {
         console.error('Error sending announcement email:', error);
@@ -283,13 +303,14 @@ export async function notifyAttendeesOfPoll(
           eventTitle,
           pollQuestion: pollTitle,
           pollOptions,
-          eventUrl: `${window.location.origin}/event/${eventId}`, // Adjust based on your routing
+          eventUrl: `${BASE_URL}/event/${eventId}`,
         });
 
         await sendEmail({
           to: contactInfo.email,
           subject: `New Poll: ${pollTitle} - ${eventTitle}`,
           html: emailHtml,
+          templateName: 'poll',
         });
       } catch (error) {
         console.error('Error sending poll email:', error);
@@ -334,13 +355,32 @@ export async function notifyAttendeesOfNewMessage(
 
     // Email (optional, can be disabled for high-volume chats)
     if (preferences.email_opt_in && contactInfo.email) {
-      await notifyNewMessage(
-        contactInfo.email,
-        contactInfo.name || 'there',
-        eventTitle,
-        senderName,
-        messageSnippet
-      );
+      try {
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #15383c;">New message in ${eventTitle}</h2>
+            <p>Hello ${contactInfo.name || 'there'},</p>
+            <div style="background-color: #f8fafb; padding: 16px; border-radius: 8px; margin: 20px 0;">
+              <p style="margin: 0 0 8px 0; color: #666; font-size: 14px;"><strong>${senderName}</strong> sent a message:</p>
+              <p style="margin: 0; color: #333; line-height: 1.6;">"${messageSnippet}"</p>
+            </div>
+            <a href="${BASE_URL}/event/${eventId}" style="display: inline-block; background-color: #e35e25; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin: 20px 0;">View Event</a>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #666; font-size: 12px;">
+              Popera Team<br>
+              <a href="mailto:support@gopopera.ca" style="color: #e35e25;">support@gopopera.ca</a>
+            </p>
+          </div>
+        `;
+        await sendEmail({
+          to: contactInfo.email,
+          subject: `New message in ${eventTitle}`,
+          html: emailHtml,
+          templateName: 'new-message',
+        });
+      } catch (error) {
+        console.error('Error sending new message email:', error);
+      }
     }
 
     // SMS (usually disabled for messages to avoid spam)

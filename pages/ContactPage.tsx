@@ -53,6 +53,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({ setViewState }) => {
         to: 'support@gopopera.ca',
         subject: `Popera Contact Form - ${formData.name}`,
         html: emailHtml,
+        templateName: 'contact-form',
       });
 
       setSubmitSuccess(true);

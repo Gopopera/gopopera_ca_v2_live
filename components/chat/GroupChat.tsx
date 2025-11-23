@@ -94,38 +94,40 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
     await addMessage(event.id, currentUser.id, currentUser.name, messageText, 'message', isHost);
     setMessage('');
 
-    // Notify attendees of new message (except sender)
-    try {
-      const { notifyAttendeesOfNewMessage } = await import('../../utils/notificationHelpers');
+    // Notify attendees of new message (non-blocking, fire-and-forget)
+    import('../../utils/notificationHelpers').then(async ({ notifyAttendeesOfNewMessage }) => {
       const { getDocs, collection, query, where } = await import('firebase/firestore');
       const { getDbSafe } = await import('../../src/lib/firebase');
       const db = getDbSafe();
       
-      if (db) {
-        // Get all RSVPs for this event
-        const rsvpsRef = collection(db, 'reservations');
-        const rsvpsQuery = query(rsvpsRef, where('eventId', '==', event.id));
-        const rsvpsSnapshot = await getDocs(rsvpsQuery);
-        const attendeeIds = rsvpsSnapshot.docs.map(doc => doc.data().userId).filter(Boolean);
-        
-        // Also include host
-        if (event.hostId && !attendeeIds.includes(event.hostId)) {
-          attendeeIds.push(event.hostId);
-        }
+      if (db && currentUser) {
+        try {
+          // Get all RSVPs for this event
+          const rsvpsRef = collection(db, 'reservations');
+          const rsvpsQuery = query(rsvpsRef, where('eventId', '==', event.id));
+          const rsvpsSnapshot = await getDocs(rsvpsQuery);
+          const attendeeIds = rsvpsSnapshot.docs.map(doc => doc.data().userId).filter(Boolean);
+          
+          // Also include host
+          if (event.hostId && !attendeeIds.includes(event.hostId)) {
+            attendeeIds.push(event.hostId);
+          }
 
-        await notifyAttendeesOfNewMessage(
-          event.id,
-          event.title,
-          currentUser.id,
-          currentUser.name,
-          messageText.slice(0, 100), // Snippet
-          attendeeIds
-        );
+          await notifyAttendeesOfNewMessage(
+            event.id,
+            event.title,
+            currentUser.id,
+            currentUser.name,
+            messageText.slice(0, 100), // Snippet
+            attendeeIds
+          );
+        } catch (error) {
+          console.error('Error sending message notifications:', error);
+        }
       }
-    } catch (error) {
-      console.error('Error sending message notifications:', error);
-      // Don't block message sending if notification fails
-    }
+    }).catch((error) => {
+      console.error('Error loading notification helpers for new message:', error);
+    });
   };
   
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -462,29 +464,36 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                       // Also add to chat store for display
                       addPoll(event.id, question, [option1, option2]);
 
-                      // Notify attendees
-                      const { notifyAttendeesOfPoll } = await import('../../utils/notificationHelpers');
-                      const { getDocs, collection, query, where } = await import('firebase/firestore');
-                      const { getDbSafe } = await import('../../src/lib/firebase');
-                      const db = getDbSafe();
-                      
-                      if (db) {
-                        const rsvpsRef = collection(db, 'reservations');
-                        const rsvpsQuery = query(rsvpsRef, where('eventId', '==', event.id));
-                        const rsvpsSnapshot = await getDocs(rsvpsQuery);
-                        const attendeeIds = rsvpsSnapshot.docs.map(doc => doc.data().userId).filter(Boolean);
-                        if (event.hostId && !attendeeIds.includes(event.hostId)) {
-                          attendeeIds.push(event.hostId);
-                        }
+                      // Notify attendees (non-blocking)
+                      import('../../utils/notificationHelpers').then(async ({ notifyAttendeesOfPoll }) => {
+                        const { getDocs, collection, query, where } = await import('firebase/firestore');
+                        const { getDbSafe } = await import('../../src/lib/firebase');
+                        const db = getDbSafe();
+                        
+                        if (db) {
+                          try {
+                            const rsvpsRef = collection(db, 'reservations');
+                            const rsvpsQuery = query(rsvpsRef, where('eventId', '==', event.id));
+                            const rsvpsSnapshot = await getDocs(rsvpsQuery);
+                            const attendeeIds = rsvpsSnapshot.docs.map(doc => doc.data().userId).filter(Boolean);
+                            if (event.hostId && !attendeeIds.includes(event.hostId)) {
+                              attendeeIds.push(event.hostId);
+                            }
 
-                        await notifyAttendeesOfPoll(
-                          event.id,
-                          question,
-                          `Vote: ${option1} or ${option2}`,
-                          event.title,
-                          attendeeIds
-                        );
-                      }
+                            await notifyAttendeesOfPoll(
+                              event.id,
+                              question,
+                              `Vote: ${option1} or ${option2}`,
+                              event.title,
+                              attendeeIds
+                            );
+                          } catch (error) {
+                            console.error('Error notifying attendees of poll:', error);
+                          }
+                        }
+                      }).catch((error) => {
+                        console.error('Error loading notification helpers for poll:', error);
+                      });
                     } catch (error) {
                       console.error('Error creating poll:', error);
                       alert('Failed to create poll. Please try again.');
@@ -515,29 +524,36 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                       // Also add to chat
                       await addMessage(event.id, currentUser.id, currentUser.name, `${title}: ${message}`, 'announcement', true);
 
-                      // Notify attendees
-                      const { notifyAttendeesOfAnnouncement } = await import('../../utils/notificationHelpers');
-                      const { getDocs, collection, query, where } = await import('firebase/firestore');
-                      const { getDbSafe } = await import('../../src/lib/firebase');
-                      const db = getDbSafe();
-                      
-                      if (db) {
-                        const rsvpsRef = collection(db, 'reservations');
-                        const rsvpsQuery = query(rsvpsRef, where('eventId', '==', event.id));
-                        const rsvpsSnapshot = await getDocs(rsvpsQuery);
-                        const attendeeIds = rsvpsSnapshot.docs.map(doc => doc.data().userId).filter(Boolean);
-                        if (event.hostId && !attendeeIds.includes(event.hostId)) {
-                          attendeeIds.push(event.hostId);
-                        }
+                      // Notify attendees (non-blocking)
+                      import('../../utils/notificationHelpers').then(async ({ notifyAttendeesOfAnnouncement }) => {
+                        const { getDocs, collection, query, where } = await import('firebase/firestore');
+                        const { getDbSafe } = await import('../../src/lib/firebase');
+                        const db = getDbSafe();
+                        
+                        if (db) {
+                          try {
+                            const rsvpsRef = collection(db, 'reservations');
+                            const rsvpsQuery = query(rsvpsRef, where('eventId', '==', event.id));
+                            const rsvpsSnapshot = await getDocs(rsvpsQuery);
+                            const attendeeIds = rsvpsSnapshot.docs.map(doc => doc.data().userId).filter(Boolean);
+                            if (event.hostId && !attendeeIds.includes(event.hostId)) {
+                              attendeeIds.push(event.hostId);
+                            }
 
-                        await notifyAttendeesOfAnnouncement(
-                          event.id,
-                          title,
-                          message,
-                          event.title,
-                          attendeeIds
-                        );
-                      }
+                            await notifyAttendeesOfAnnouncement(
+                              event.id,
+                              title,
+                              message,
+                              event.title,
+                              attendeeIds
+                            );
+                          } catch (error) {
+                            console.error('Error notifying attendees of announcement:', error);
+                          }
+                        }
+                      }).catch((error) => {
+                        console.error('Error loading notification helpers for announcement:', error);
+                      });
                     } catch (error) {
                       console.error('Error creating announcement:', error);
                       alert('Failed to create announcement. Please try again.');
