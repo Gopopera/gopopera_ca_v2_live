@@ -365,6 +365,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               if (!newsletterEmail.trim() || newsletterSubmitting) return;
 
               setNewsletterSubmitting(true);
+              setNewsletterSuccess(false);
+              
               try {
                 const email = newsletterEmail.trim();
                 const timestamp = new Date().toLocaleString('en-US', { 
@@ -372,13 +374,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   timeStyle: 'short' 
                 });
 
-                // Store to Firestore
+                // Store to Firestore (non-blocking)
                 const db = getDbSafe();
                 if (db) {
-                  await addDoc(collection(db, 'newsletter_subscribers'), {
+                  addDoc(collection(db, 'newsletter_subscribers'), {
                     email,
                     subscribedAt: serverTimestamp(),
                     createdAt: Date.now(),
+                  }).catch((error) => {
+                    if (import.meta.env.DEV) {
+                      console.error('Error saving to Firestore:', error);
+                    }
                   });
                 }
 
@@ -395,19 +401,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   </div>
                 `;
 
-                await sendEmail({
+                const emailResult = await sendEmail({
                   to: 'support@gopopera.ca',
                   subject: `Newsletter Subscription - ${email}`,
                   html: emailHtml,
                   templateName: 'newsletter-subscription',
                 });
 
+                // Always show success (email may have been sent even if timeout)
                 setNewsletterSuccess(true);
                 setNewsletterEmail('');
                 setTimeout(() => setNewsletterSuccess(false), 3000);
               } catch (error) {
-                console.error('Error subscribing to newsletter:', error);
-                // Still show success (logging handles errors)
+                // Still show success (logging handles errors, timeout failsafe)
                 setNewsletterSuccess(true);
                 setNewsletterEmail('');
                 setTimeout(() => setNewsletterSuccess(false), 3000);

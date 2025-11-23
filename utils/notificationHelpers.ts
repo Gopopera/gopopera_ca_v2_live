@@ -23,18 +23,35 @@ interface UserNotificationPreferences {
 
 /**
  * Get user notification preferences
+ * Backward compatible: defaults to opt-in if no preference exists
  */
 async function getUserNotificationPreferences(userId: string): Promise<UserNotificationPreferences> {
   const db = getDbSafe();
-  if (!db) return {};
+  if (!db) {
+    // Default to opt-in if no DB
+    return { email_opt_in: true, sms_opt_in: false, notification_opt_in: true };
+  }
 
   try {
     const userRef = doc(db, 'users', userId);
     const userDoc = await getDoc(userRef);
-    return userDoc.data()?.notification_settings || {};
+    const data = userDoc.data();
+    
+    // Check both notification_settings and notificationPreferences (backward compatibility)
+    const settings = data?.notification_settings || data?.notificationPreferences || {};
+    
+    // Default to opt-in if preference doesn't exist (backward compatible)
+    return {
+      email_opt_in: settings.email_opt_in !== undefined ? settings.email_opt_in : (settings.email !== undefined ? settings.email : true),
+      sms_opt_in: settings.sms_opt_in !== undefined ? settings.sms_opt_in : (settings.sms !== undefined ? settings.sms : false),
+      notification_opt_in: settings.notification_opt_in !== undefined ? settings.notification_opt_in : true,
+    };
   } catch (error) {
-    console.error('Error fetching notification preferences:', error);
-    return {};
+    if (import.meta.env.DEV) {
+      console.error('Error fetching notification preferences:', error);
+    }
+    // Default to opt-in on error
+    return { email_opt_in: true, sms_opt_in: false, notification_opt_in: true };
   }
 }
 
@@ -194,6 +211,9 @@ export async function notifyFollowersOfNewEvent(
           subject: `New Pop-up from ${hostName} on Popera`,
           html: emailHtml,
           templateName: 'follow-notification',
+          eventId,
+          notificationType: 'follow_new_event',
+          skippedByPreference: !preferences.email_opt_in,
         });
       } catch (error) {
         console.error('Error sending follow notification email:', error);
@@ -250,9 +270,29 @@ export async function notifyAttendeesOfAnnouncement(
           subject: `Update: ${announcementTitle} - ${eventTitle}`,
           html: emailHtml,
           templateName: 'announcement',
+          eventId,
+          notificationType: 'announcement_created',
+          skippedByPreference: false,
         });
       } catch (error) {
-        console.error('Error sending announcement email:', error);
+        if (import.meta.env.DEV) {
+          console.error('Error sending announcement email:', error);
+        }
+      }
+    } else if (contactInfo.email) {
+      // Log skipped email due to preference
+      try {
+        await sendEmail({
+          to: contactInfo.email,
+          subject: `Update: ${announcementTitle} - ${eventTitle}`,
+          html: '',
+          templateName: 'announcement',
+          eventId,
+          notificationType: 'announcement_created',
+          skippedByPreference: true,
+        });
+      } catch (error) {
+        // Silent fail for skipped emails
       }
     }
 
@@ -311,6 +351,9 @@ export async function notifyAttendeesOfPoll(
           subject: `New Poll: ${pollTitle} - ${eventTitle}`,
           html: emailHtml,
           templateName: 'poll',
+          eventId,
+          notificationType: 'poll_created',
+          skippedByPreference: false,
         });
       } catch (error) {
         console.error('Error sending poll email:', error);
@@ -391,5 +434,98 @@ export async function notifyAttendeesOfNewMessage(
   });
 
   await Promise.all(notifications);
+}
+
+/**
+ * Notify host when a user RSVPs to their event
+ */
+export async function notifyHostOfRSVP(
+  hostId: string,
+  attendeeId: string,
+  eventId: string,
+  eventTitle: string
+): Promise<void> {
+  try {
+    const hostInfo = await getUserContactInfo(hostId);
+    const attendeeInfo = await getUserContactInfo(attendeeId);
+    const preferences = await getUserNotificationPreferences(hostId);
+
+    // In-app notification
+    if (preferences.notification_opt_in !== false) {
+      try {
+        await createNotification(hostId, {
+          userId: hostId,
+          type: 'new-rsvp',
+          title: 'New RSVP',
+          body: `${attendeeInfo.name || 'Someone'} RSVP'd to ${eventTitle}`,
+          eventId,
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('Error creating RSVP notification:', error);
+        }
+      }
+    }
+
+    // Email notification
+    if (preferences.email_opt_in && hostInfo.email) {
+      try {
+        const emailHtml = RSVPHostNotificationTemplate({
+          hostName: hostInfo.name || 'Host',
+          attendeeName: attendeeInfo.name || 'Someone',
+          eventTitle,
+          eventUrl: `${BASE_URL}/event/${eventId}`,
+        });
+
+        await sendEmail({
+          to: hostInfo.email,
+          subject: `New RSVP: ${eventTitle}`,
+          html: emailHtml,
+          templateName: 'rsvp-host-notification',
+          eventId,
+          notificationType: 'rsvp_host',
+          skippedByPreference: false,
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('Error sending RSVP email to host:', error);
+        }
+      }
+    } else if (hostInfo.email) {
+      // Log skipped email due to preference
+      try {
+        await sendEmail({
+          to: hostInfo.email,
+          subject: `New RSVP: ${eventTitle}`,
+          html: '',
+          templateName: 'rsvp-host-notification',
+          eventId,
+          notificationType: 'rsvp_host',
+          skippedByPreference: true,
+        });
+      } catch (error) {
+        // Silent fail for skipped emails
+      }
+    }
+
+    // SMS (optional)
+    if (preferences.sms_opt_in && hostInfo.phone) {
+      try {
+        await sendSMSNotification({
+          to: hostInfo.phone,
+          message: `New RSVP: ${attendeeInfo.name || 'Someone'} joined ${eventTitle}`,
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('Error sending RSVP SMS to host:', error);
+        }
+      }
+    }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error notifying host of RSVP:', error);
+    }
+    // Don't throw - RSVP should succeed even if notification fails
+  }
 }
 

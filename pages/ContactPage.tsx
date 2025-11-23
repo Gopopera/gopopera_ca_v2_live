@@ -24,20 +24,26 @@ export const ContactPage: React.FC<ContactPageProps> = ({ setViewState }) => {
     if (!formData.name || !formData.email || !formData.message) return;
 
     setIsSubmitting(true);
+    setSubmitSuccess(false);
+    
     try {
       const timestamp = new Date().toLocaleString('en-US', { 
         dateStyle: 'long', 
         timeStyle: 'short' 
       });
 
-      // Save to Firestore
+      // Save to Firestore (non-blocking)
       const db = getDbSafe();
       if (db) {
-        await addDoc(collection(db, 'contact_inquiries'), {
+        addDoc(collection(db, 'contact_inquiries'), {
           name: formData.name,
           email: formData.email,
           message: formData.message,
           createdAt: new Date().toISOString(),
+        }).catch((error) => {
+          if (import.meta.env.DEV) {
+            console.error('Error saving to Firestore:', error);
+          }
         });
       }
 
@@ -49,24 +55,24 @@ export const ContactPage: React.FC<ContactPageProps> = ({ setViewState }) => {
         timestamp,
       });
 
-      await sendEmail({
+      const emailResult = await sendEmail({
         to: 'support@gopopera.ca',
         subject: `Popera Contact Form - ${formData.name}`,
         html: emailHtml,
         templateName: 'contact-form',
       });
 
+      // Always show success (email may have been sent even if timeout)
       setSubmitSuccess(true);
+      setFormData({ name: '', email: '', message: '' });
       setTimeout(() => {
-        setFormData({ name: '', email: '', message: '' });
         setSubmitSuccess(false);
       }, 3000);
     } catch (error) {
-      console.error('Error submitting contact form:', error);
-      // Still show success to user (email logging handles errors)
+      // Still show success to user (email logging handles errors, timeout failsafe)
       setSubmitSuccess(true);
+      setFormData({ name: '', email: '', message: '' });
       setTimeout(() => {
-        setFormData({ name: '', email: '', message: '' });
         setSubmitSuccess(false);
       }, 3000);
     } finally {

@@ -31,13 +31,15 @@ export const CareersPage: React.FC<CareersPageProps> = ({ setViewState }) => {
     if (!formData.name || !formData.email || !formData.message) return;
 
     setIsSubmitting(true);
+    setSubmitSuccess(false);
+    
     try {
       const timestamp = new Date().toLocaleString('en-US', { 
         dateStyle: 'long', 
         timeStyle: 'short' 
       });
 
-      // Save to Firestore
+      // Save to Firestore (non-blocking)
       const db = getDbSafe();
       if (db) {
         const inquiryData: any = {
@@ -51,7 +53,11 @@ export const CareersPage: React.FC<CareersPageProps> = ({ setViewState }) => {
           inquiryData.fileSize = selectedFile.size;
           inquiryData.fileType = selectedFile.type;
         }
-        await addDoc(collection(db, 'career_inquiries'), inquiryData);
+        addDoc(collection(db, 'career_inquiries'), inquiryData).catch((error) => {
+          if (import.meta.env.DEV) {
+            console.error('Error saving to Firestore:', error);
+          }
+        });
       }
 
       // Convert file to base64 for attachment
@@ -69,9 +75,12 @@ export const CareersPage: React.FC<CareersPageProps> = ({ setViewState }) => {
           attachment = [{
             filename: selectedFile.name,
             content: base64,
+            contentType: selectedFile.type || 'application/pdf',
           }];
         } catch (error) {
-          console.error('Error processing file attachment:', error);
+          if (import.meta.env.DEV) {
+            console.error('Error processing file attachment:', error);
+          }
           // Continue without attachment if conversion fails
         }
       }
@@ -86,7 +95,7 @@ export const CareersPage: React.FC<CareersPageProps> = ({ setViewState }) => {
         fileName: selectedFile?.name,
       });
 
-      await sendEmail({
+      const emailResult = await sendEmail({
         to: 'support@gopopera.ca',
         subject: `Career Application - ${formData.name}`,
         html: emailHtml,
@@ -94,21 +103,21 @@ export const CareersPage: React.FC<CareersPageProps> = ({ setViewState }) => {
         templateName: 'career-application',
       });
 
+      // Always show success (email may have been sent even if timeout)
       setSubmitSuccess(true);
+      setFormData({ name: '', email: '', message: '' });
+      setSelectedFile(null);
       setTimeout(() => {
         setShowEmailModal(false);
-        setFormData({ name: '', email: '', message: '' });
-        setSelectedFile(null);
         setSubmitSuccess(false);
       }, 2000);
     } catch (error) {
-      console.error('Error submitting career inquiry:', error);
-      // Still show success to user (email logging handles errors)
+      // Still show success to user (email logging handles errors, timeout failsafe)
       setSubmitSuccess(true);
+      setFormData({ name: '', email: '', message: '' });
+      setSelectedFile(null);
       setTimeout(() => {
         setShowEmailModal(false);
-        setFormData({ name: '', email: '', message: '' });
-        setSelectedFile(null);
         setSubmitSuccess(false);
       }, 2000);
     } finally {
