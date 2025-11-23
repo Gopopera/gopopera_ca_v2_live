@@ -8,7 +8,7 @@
 
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
-import { auth, db, type Unsubscribe } from "../src/lib/firebase";
+import { getAuthSafe, getDbSafe, type Unsubscribe } from "../src/lib/firebase";
 import { FirestoreChatMessage } from "./types";
 
 /**
@@ -17,6 +17,12 @@ import { FirestoreChatMessage } from "./types";
  * @returns Unsubscribe function
  */
 export function attachAuthListener(onChange: (user: FirebaseUser | null) => void): Unsubscribe {
+  const auth = getAuthSafe();
+  if (!auth) {
+    console.warn('[FIREBASE] Auth not available, returning no-op unsubscribe');
+    onChange(null);
+    return () => {};
+  }
   return onAuthStateChanged(auth, onChange);
 }
 
@@ -24,6 +30,12 @@ export function subscribeToChat(
   eventId: string,
   cb: (messages: FirestoreChatMessage[]) => void
 ): Unsubscribe {
+  const db = getDbSafe();
+  if (!db) {
+    console.warn('[FIREBASE] Firestore not available, returning no-op unsubscribe');
+    cb([]);
+    return () => {};
+  }
   try {
     const messagesCol = collection(db, "events", eventId, "messages");
     const q = query(messagesCol, orderBy("createdAt", "asc"));

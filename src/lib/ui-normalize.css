@@ -1,0 +1,15 @@
+.container {
+  margin-inline: auto;
+  padding-inline: 1rem;
+  max-width: 1200px;
+}
+
+.chip {
+  @apply inline-flex items-center rounded-full border px-3 py-1 text-sm;
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center rounded-2xl border px-6 py-3 font-semibold;
+  border-color: var(--brand-accent);
+}
+

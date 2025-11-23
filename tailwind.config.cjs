@@ -2,9 +2,10 @@
 module.exports = {
   content: [
     "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-    "./pages/**/*.{js,ts,jsx,tsx}",
-    "./components/**/*.{js,ts,jsx,tsx}",
+    "./src/**/*.{ts,tsx}",
+    "./App.tsx",
+    "./components/**/*.{ts,tsx}",
+    "./pages/**/*.{ts,tsx}"
   ],
   theme: {
     extend: {
@@ -17,10 +18,14 @@ module.exports = {
         }
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        heading: ['Outfit', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        heading: ['Outfit', 'Inter', 'sans-serif'],
+      },
+      borderRadius: {
+        'xl': '1rem',
+        '2xl': '1.5rem',
       }
-    }
+    },
   },
   plugins: [],
 };

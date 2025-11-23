@@ -6,7 +6,7 @@
  * Pure helper functions only
  */
 
-import { db } from "../src/lib/firebase";
+import { getDbSafe } from "../src/lib/firebase";
 import { collection, doc, getDoc, getDocs, query, where, orderBy, addDoc, updateDoc, setDoc } from "firebase/firestore";
 import { FirestoreEvent, FirestoreReservation, FirestoreChatMessage, FirestoreReview, FirestoreUser } from "./types";
 import { Event } from "../types";
@@ -47,6 +47,11 @@ const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event => {
 
 // Events
 export async function listUpcomingEvents(): Promise<Event[]> {
+  const db = getDbSafe();
+  if (!db) {
+    console.warn('[FIREBASE] Firestore not available, returning empty array');
+    return [];
+  }
   try {
     const eventsCol = collection(db, "events");
     const q = query(eventsCol, orderBy("date", "asc"));
@@ -63,6 +68,11 @@ export async function listUpcomingEvents(): Promise<Event[]> {
 }
 
 export async function getEventById(id: string): Promise<Event | null> {
+  const db = getDbSafe();
+  if (!db) {
+    console.warn('[FIREBASE] Firestore not available, returning null');
+    return null;
+  }
   try {
     const eventRef = doc(db, "events", id);
     const snap = await getDoc(eventRef);
@@ -79,6 +89,11 @@ export async function getEventById(id: string): Promise<Event | null> {
 }
 
 export async function listEventsByCityAndTag(city?: string, tag?: string): Promise<Event[]> {
+  const db = getDbSafe();
+  if (!db) {
+    console.warn('[FIREBASE] Firestore not available, returning empty array');
+    return [];
+  }
   try {
     const eventsCol = collection(db, "events");
     let q;
@@ -109,6 +124,11 @@ export async function listEventsByCityAndTag(city?: string, tag?: string): Promi
 }
 
 export async function searchEvents(searchQuery: string): Promise<Event[]> {
+  const db = getDbSafe();
+  if (!db) {
+    console.warn('[FIREBASE] Firestore not available, returning empty array');
+    return [];
+  }
   try {
     const eventsCol = collection(db, "events");
     const q = query(eventsCol);
@@ -139,6 +159,10 @@ export async function searchEvents(searchQuery: string): Promise<Event[]> {
 
 // Reservations
 export async function createReservation(eventId: string, userId: string): Promise<string> {
+  const db = getDbSafe();
+  if (!db) {
+    throw new Error('Firestore not available');
+  }
   try {
     const reservationsCol = collection(db, "reservations");
     const reservation: Omit<FirestoreReservation, 'id'> = {
@@ -156,6 +180,11 @@ export async function createReservation(eventId: string, userId: string): Promis
 }
 
 export async function listReservationsForUser(userId: string): Promise<FirestoreReservation[]> {
+  const db = getDbSafe();
+  if (!db) {
+    console.warn('[FIREBASE] Firestore not available, returning empty array');
+    return [];
+  }
   try {
     const reservationsCol = collection(db, "reservations");
     const q = query(reservationsCol, where("userId", "==", userId), where("status", "==", "reserved"));
@@ -171,6 +200,10 @@ export async function listReservationsForUser(userId: string): Promise<Firestore
 }
 
 export async function cancelReservation(reservationId: string): Promise<void> {
+  const db = getDbSafe();
+  if (!db) {
+    throw new Error('Firestore not available');
+  }
   try {
     const reservationRef = doc(db, "reservations", reservationId);
     await updateDoc(reservationRef, { status: "cancelled" });
@@ -181,6 +214,11 @@ export async function cancelReservation(reservationId: string): Promise<void> {
 }
 
 export async function getReservationCountForEvent(eventId: string): Promise<number> {
+  const db = getDbSafe();
+  if (!db) {
+    console.warn('[FIREBASE] Firestore not available, returning 0');
+    return 0;
+  }
   try {
     const reservationsCol = collection(db, "reservations");
     const q = query(reservationsCol, where("eventId", "==", eventId), where("status", "==", "reserved"));
@@ -194,6 +232,11 @@ export async function getReservationCountForEvent(eventId: string): Promise<numb
 
 // Chat Messages
 export async function getChatMessages(eventId: string): Promise<FirestoreChatMessage[]> {
+  const db = getDbSafe();
+  if (!db) {
+    console.warn('[FIREBASE] Firestore not available, returning empty array');
+    return [];
+  }
   try {
     const messagesCol = collection(db, "events", eventId, "messages");
     const q = query(messagesCol, orderBy("createdAt", "asc"));
@@ -216,6 +259,10 @@ export async function addChatMessage(
   type: FirestoreChatMessage['type'] = 'message',
   isHost: boolean = false
 ): Promise<string> {
+  const db = getDbSafe();
+  if (!db) {
+    throw new Error('Firestore not available');
+  }
   try {
     const messagesCol = collection(db, "events", eventId, "messages");
     const message: Omit<FirestoreChatMessage, 'id'> = {
@@ -237,6 +284,11 @@ export async function addChatMessage(
 
 // User profiles
 export async function getUserProfile(uid: string): Promise<FirestoreUser | null> {
+  const db = getDbSafe();
+  if (!db) {
+    console.warn('[FIREBASE] Firestore not available, returning null');
+    return null;
+  }
   try {
     const userRef = doc(db, "users", uid);
     const snap = await getDoc(userRef);
@@ -268,6 +320,10 @@ export async function getUserProfile(uid: string): Promise<FirestoreUser | null>
 }
 
 export async function createOrUpdateUserProfile(uid: string, userData: Partial<FirestoreUser>): Promise<void> {
+  const db = getDbSafe();
+  if (!db) {
+    throw new Error('Firestore not available');
+  }
   try {
     const userRef = doc(db, "users", uid);
     await setDoc(userRef, {
@@ -283,6 +339,11 @@ export async function createOrUpdateUserProfile(uid: string, userData: Partial<F
 
 // Load user reservations and return as Event[]
 export async function listUserReservations(uid: string): Promise<Event[]> {
+  const db = getDbSafe();
+  if (!db) {
+    console.warn('[FIREBASE] Firestore not available, returning empty array');
+    return [];
+  }
   try {
     const reservationsCol = collection(db, "reservations");
     const q = query(
@@ -315,6 +376,10 @@ export async function addReview(
   rating: number,
   comment?: string
 ): Promise<string> {
+  const db = getDbSafe();
+  if (!db) {
+    throw new Error('Firestore not available');
+  }
   try {
     const reviewsCol = collection(db, "events", eventId, "reviews");
     const review: Omit<FirestoreReview, 'id'> = {
@@ -337,6 +402,11 @@ export async function addReview(
 }
 
 export async function listReviews(eventId: string): Promise<FirestoreReview[]> {
+  const db = getDbSafe();
+  if (!db) {
+    console.warn('[FIREBASE] Firestore not available, returning empty array');
+    return [];
+  }
   try {
     const reviewsCol = collection(db, "events", eventId, "reviews");
     const q = query(reviewsCol, orderBy("createdAt", "desc"));
@@ -352,6 +422,10 @@ export async function listReviews(eventId: string): Promise<FirestoreReview[]> {
 }
 
 export async function recalculateEventRating(eventId: string): Promise<void> {
+  const db = getDbSafe();
+  if (!db) {
+    throw new Error('Firestore not available');
+  }
   try {
     const reviews = await listReviews(eventId);
     if (reviews.length === 0) {

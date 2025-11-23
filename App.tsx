@@ -1,5 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
+
+console.log('[BOOT] App module loaded');
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
@@ -1128,6 +1129,13 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  // TODO: remove after boot fixed
+  const DEBUG_BOOT = false;
+  
+  if (DEBUG_BOOT) {
+    return <div data-boot="ok">Popera UI (boot check)</div>;
+  }
+  
   return (
     <LanguageProvider>
       <AppContent />
