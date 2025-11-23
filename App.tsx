@@ -309,7 +309,7 @@ const generateMockEvents = (): Event[] => [
 ];
 
 const AppContent: React.FC = () => {
-  console.log('[Popera] App mounted');
+  console.log("#BOOT: App mounted");
   const { t } = useLanguage();
   const [viewState, setViewState] = useState<ViewState>(ViewState.LANDING);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -348,8 +348,7 @@ const AppContent: React.FC = () => {
   
   // Initialize auth listener on mount
   useEffect(() => {
-    const initAuth = useUserStore.getState().initAuthListener;
-    initAuth();
+    useUserStore.getState().ensureAuthStarted();
   }, []);
 
   // Handle redirect after successful login (including Google login)
@@ -388,7 +387,7 @@ const AppContent: React.FC = () => {
       // 1. First, add official Popera launch events
       const poperaEvents = (generatePoperaEvents() ?? []);
       if (Array.isArray(poperaEvents)) {
-        poperaEvents.forEach(event => {
+        poperaEvents?.forEach?.(event => {
           useEventStore.getState().addEvent({
             title: event.title,
             description: event.description,
@@ -420,7 +419,7 @@ const AppContent: React.FC = () => {
       // 2. Then, add fake demo events (3 per city, one per value prop)
       const fakeEvents = (generateFakeEvents() ?? []);
       if (Array.isArray(fakeEvents)) {
-        fakeEvents.forEach(event => {
+        fakeEvents?.forEach?.(event => {
         useEventStore.getState().addEvent({
           title: event.title,
           description: event.description,
@@ -462,7 +461,7 @@ const AppContent: React.FC = () => {
     
     // Safe forEach with array check
     if (Array.isArray(userRSVPs)) {
-      userRSVPs.forEach(eventId => {
+      userRSVPs?.forEach?.(eventId => {
         if (eventId) {
           eventRSVPCounts[eventId] = (eventRSVPCounts[eventId] || 0) + 1;
         }
@@ -472,7 +471,7 @@ const AppContent: React.FC = () => {
     // Update event attendee counts (only for Popera events)
     const safeStoreEvents = (storeEvents ?? []);
     if (Array.isArray(safeStoreEvents)) {
-      safeStoreEvents.forEach(event => {
+      safeStoreEvents?.forEach?.(event => {
         if (event?.isPoperaOwned && event?.id && eventRSVPCounts[event.id] !== undefined) {
           const newCount = eventRSVPCounts[event.id];
           if (event.attendeesCount !== newCount) {

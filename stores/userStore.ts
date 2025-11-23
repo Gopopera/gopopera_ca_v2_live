@@ -1,27 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import {
-  auth,
-  initAuthListener as firebaseInitAuthListener,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
-  googleProvider,
-  signInWithPopup,
-  doc,
-  setDoc,
-  serverTimestamp,
-  db,
-} from '../src/lib/firebase';
 import type { FirestoreUser } from '../firebase/types';
-import {
-  getUserProfile,
-  createOrUpdateUserProfile,
-  listUserReservations,
-  createReservation,
-  cancelReservation,
-  listReservationsForUser,
-} from '../firebase/db';
+import type { Unsubscribe } from '../src/lib/firebase';
 
 // Simplified User interface matching Firebase Auth user
 export interface User {
@@ -45,6 +25,7 @@ interface UserStore {
   user: User | null;
   loading: boolean;
   ready: boolean; // True when auth state has been determined
+  _authUnsub: Unsubscribe | null; // Internal unsubscribe function
   // Core auth functions
   signup: (email: string, password: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
@@ -63,7 +44,7 @@ interface UserStore {
   getUserFavorites: (userId: string) => string[];
   getUserRSVPs: (userId: string) => string[];
   getUserHostedEvents: (userId: string) => string[];
-  initAuthListener: () => void;
+  ensureAuthStarted: () => void;
 }
 
 // Official Popera account constants
@@ -78,11 +59,43 @@ export const useUserStore = create<UserStore>()(
       loading: true,
       ready: false, // Auth state not yet determined
       currentUser: null, // Alias for backward compatibility
+      _authUnsub: null,
+
+      ensureAuthStarted: () => {
+        if (get()._authUnsub) return; // Already started
+        set({ loading: true, ready: false });
+        (async () => {
+          try {
+            const { initAuthListener } = await import("../firebase/listeners");
+            const unsub = initAuthListener(async (firebaseUser) => {
+              if (firebaseUser) {
+                try {
+                  await get().fetchUserProfile(firebaseUser.uid);
+                } catch (error) {
+                  console.error("Error restoring user session:", error);
+                  set({ user: null, currentUser: null, loading: false, ready: true });
+                }
+              } else {
+                set({ user: null, currentUser: null, loading: false, ready: true });
+              }
+            });
+            set({ _authUnsub: unsub });
+          } catch (error) {
+            console.error("Error starting auth listener:", error);
+            set({ loading: false, ready: true });
+          }
+        })();
+      },
 
       // Core auth functions
       signup: async (email: string, password: string) => {
         try {
           set({ loading: true });
+          const { createUserWithEmailAndPassword } = await import("firebase/auth");
+          const { getFirebase } = await import("../src/lib/firebase");
+          const { doc, setDoc, serverTimestamp } = await import("firebase/firestore");
+          const { auth, db } = getFirebase();
+          
           const userCredential = await createUserWithEmailAndPassword(auth, email, password);
           const firebaseUser = userCredential.user;
           
@@ -130,6 +143,10 @@ export const useUserStore = create<UserStore>()(
       login: async (email: string, password: string) => {
         try {
           set({ loading: true });
+          const { signInWithEmailAndPassword } = await import("firebase/auth");
+          const { getFirebase } = await import("../src/lib/firebase");
+          const { auth } = getFirebase();
+          
           const userCredential = await signInWithEmailAndPassword(auth, email, password);
           const firebaseUser = userCredential.user;
           
@@ -145,6 +162,10 @@ export const useUserStore = create<UserStore>()(
       logout: async () => {
         try {
           set({ loading: true });
+          const { signOut } = await import("firebase/auth");
+          const { getFirebase } = await import("../src/lib/firebase");
+          const { auth } = getFirebase();
+          
           await signOut(auth);
           set({ user: null, currentUser: null, loading: false });
         } catch (error) {
@@ -156,7 +177,11 @@ export const useUserStore = create<UserStore>()(
 
       fetchUserProfile: async (uid: string) => {
         try {
-          const firestoreUser = await getUserProfile(uid);
+          const { fetchUserProfile, listUserReservations } = await import("../firebase/db");
+          const { getFirebase } = await import("../src/lib/firebase");
+          const { auth } = getFirebase();
+          
+          const firestoreUser = await fetchUserProfile(uid);
           const firebaseUser = auth.currentUser;
           
           if (!firebaseUser) {
@@ -205,6 +230,7 @@ export const useUserStore = create<UserStore>()(
           // Update displayName and preferences
           const currentUser = get().user;
           if (currentUser) {
+            const { createOrUpdateUserProfile } = await import("../firebase/db");
             await createOrUpdateUserProfile(currentUser.uid, {
               displayName: name,
               name: name,
@@ -225,10 +251,17 @@ export const useUserStore = create<UserStore>()(
       signInWithGoogle: async () => {
         try {
           set({ loading: true });
-          const userCredential = await signInWithPopup(auth, googleProvider);
+          const { GoogleAuthProvider, signInWithPopup } = await import("firebase/auth");
+          const { getFirebase } = await import("../src/lib/firebase");
+          const { doc, setDoc, serverTimestamp } = await import("firebase/firestore");
+          const { auth, db } = getFirebase();
+          
+          const provider = new GoogleAuthProvider();
+          const userCredential = await signInWithPopup(auth, provider);
           const firebaseUser = userCredential.user;
           
           // Upsert user profile in Firestore
+          const { getUserProfile, createOrUpdateUserProfile } = await import("../firebase/db");
           const firestoreUser = await getUserProfile(firebaseUser.uid);
           if (!firestoreUser) {
             await setDoc(doc(db, 'users', firebaseUser.uid), {
@@ -276,6 +309,7 @@ export const useUserStore = create<UserStore>()(
             firestoreUpdates.photoURL = updates.profileImageUrl || updates.photoURL || '';
           }
           
+          const { createOrUpdateUserProfile } = await import("../firebase/db");
           await createOrUpdateUserProfile(userId, firestoreUpdates);
           
           // Update local state
@@ -301,6 +335,7 @@ export const useUserStore = create<UserStore>()(
           const updatedFavorites = [...currentFavorites, eventId];
           
           // Update Firestore
+          const { createOrUpdateUserProfile } = await import("../firebase/db");
           await createOrUpdateUserProfile(userId, {
             favorites: updatedFavorites,
           });
@@ -323,6 +358,7 @@ export const useUserStore = create<UserStore>()(
           const updatedFavorites = currentFavorites.filter(id => id !== eventId);
           
           // Update Firestore
+          const { createOrUpdateUserProfile } = await import("../firebase/db");
           await createOrUpdateUserProfile(userId, {
             favorites: updatedFavorites,
           });
@@ -347,6 +383,7 @@ export const useUserStore = create<UserStore>()(
           }
           
           // Create reservation in Firestore
+          const { createReservation, listUserReservations } = await import("../firebase/db");
           await createReservation(eventId, userId);
           
           // Reload RSVPs from Firestore to get updated list
@@ -366,6 +403,8 @@ export const useUserStore = create<UserStore>()(
 
       removeRSVP: async (userId: string, eventId: string) => {
         try {
+          const { listReservationsForUser, cancelReservation, listUserReservations } = await import("../firebase/db");
+          
           // Find and cancel reservation in Firestore
           const reservations = await listReservationsForUser(userId);
           const reservation = reservations.find(r => r.eventId === eventId && r.status === "reserved");
@@ -414,23 +453,6 @@ export const useUserStore = create<UserStore>()(
           return Array.isArray(user.hostedEvents) ? user.hostedEvents : [];
         }
         return [];
-      },
-
-      initAuthListener: () => {
-        set({ loading: true, ready: false });
-        // Use initAuthListener from firebase.ts - it doesn't import any stores
-        firebaseInitAuthListener(async (firebaseUser) => {
-          if (firebaseUser) {
-            try {
-              await get().fetchUserProfile(firebaseUser.uid);
-            } catch (error) {
-              console.error("Error restoring user session:", error);
-              set({ user: null, currentUser: null, loading: false, ready: true });
-            }
-          } else {
-            set({ user: null, currentUser: null, loading: false, ready: true });
-          }
-        });
       },
     }),
     {
