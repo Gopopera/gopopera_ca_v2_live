@@ -1,5 +1,5 @@
-import React from 'react';
-import { MapPin, Calendar, MessageCircle, Star, Heart } from 'lucide-react';
+import React, { useState } from 'react';
+import { MapPin, Calendar, MessageCircle, Star, Heart, Share2 } from 'lucide-react';
 import { Event } from '@/types';
 import { formatDate } from '@/utils/dateFormatter';
 import { formatRating } from '@/utils/formatRating';
@@ -23,6 +23,46 @@ export const EventCard: React.FC<EventCardProps> = ({
   isFavorite,
   onToggleFavorite 
 }) => {
+  const [showShareToast, setShowShareToast] = useState(false);
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const url = window.location.origin + `/event/${event.id}`;
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: event.title,
+          text: event.description,
+          url: url,
+        });
+      } catch (err) {
+        // User cancelled or error occurred
+        if ((err as Error).name !== 'AbortError') {
+          console.error('Share failed:', err);
+        }
+      }
+    } else {
+      // Fallback: copy to clipboard
+      try {
+        await navigator.clipboard.writeText(url);
+        setShowShareToast(true);
+        setTimeout(() => setShowShareToast(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
+    }
+  };
+
+  const handleFavoriteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isLoggedIn && onToggleFavorite) {
+      // Trigger login - the parent should handle this
+      onToggleFavorite(e, event.id);
+    } else if (onToggleFavorite) {
+      onToggleFavorite(e, event.id);
+    }
+  };
   return (
     <div 
       onClick={() => onClick(event)}
@@ -74,10 +114,10 @@ export const EventCard: React.FC<EventCardProps> = ({
 
         {/* ACTION BUTTONS */}
         <div className="absolute top-3 sm:top-4 right-3 sm:right-4 flex items-center gap-2 sm:gap-2 z-20">
-           {/* FEATURE: Favorite Heart (Logged In Only) */}
-           {isLoggedIn && onToggleFavorite && (
+           {/* FEATURE: Favorite Heart (Always visible, triggers login if not logged in) */}
+           {onToggleFavorite && (
              <button
-               onClick={(e) => onToggleFavorite(e, event.id)}
+               onClick={handleFavoriteClick}
                className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center transition-colors shadow-lg hover:bg-white active:scale-[0.92] touch-manipulation border border-white/50 shrink-0"
                aria-label="Toggle Favorite"
              >
@@ -89,6 +129,15 @@ export const EventCard: React.FC<EventCardProps> = ({
              </button>
            )}
 
+           {/* FEATURE: Share Button */}
+           <button
+             onClick={handleShare}
+             className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center text-popera-teal hover:bg-popera-orange hover:text-white transition-colors shadow-lg active:scale-[0.92] touch-manipulation border border-white/50 shrink-0"
+             aria-label="Share Event"
+           >
+             <Share2 size={20} className="sm:w-5 sm:h-5" strokeWidth={2} />
+           </button>
+
            {/* FEATURE: Conversation Icon */}
            <button
              onClick={(e) => onChatClick(e, event)}
@@ -98,6 +147,13 @@ export const EventCard: React.FC<EventCardProps> = ({
              <MessageCircle size={20} className="sm:w-5 sm:h-5" strokeWidth={2} />
            </button>
         </div>
+
+        {/* Share Toast */}
+        {showShareToast && (
+          <div className="absolute bottom-4 right-4 bg-[#15383c] text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg z-30 animate-fade-in">
+            Link copied!
+          </div>
+        )}
       </div>
 
       {/* Content */}

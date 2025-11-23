@@ -20,12 +20,16 @@ interface HostProfileProps {
 
 export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEventClick, allEvents, isLoggedIn, favorites = [], onToggleFavorite }) => {
   const [activeTab, setActiveTab] = useState<'events' | 'reviews'>('events');
+  const [error, setError] = useState<string | null>(null);
   const currentUser = useUserStore((state) => state.getCurrentUser());
   const isPoperaProfile = hostName === POPERA_HOST_NAME;
   
   // Get host ID from events (first event with this hostName)
   const hostEvent = allEvents.find(e => e.hostName === hostName);
   const hostId = hostEvent?.hostId || (isPoperaProfile ? POPERA_HOST_ID : null);
+  
+  // Safe fallback if hostName is missing
+  const displayName = hostName || 'Unknown Host';
   
   // Get real data from profile store
   const isFollowing = hostId ? useProfileStore((state) => state.isFollowing(currentUser?.id || '', hostId)) : false;
@@ -73,6 +77,22 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
     }
   };
 
+  // Show error state if critical data is missing
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-20 pb-12">
+        <div className="max-w-5xl mx-auto px-6">
+          <button onClick={onBack} className="flex items-center text-gray-500 hover:text-popera-teal transition-colors font-medium mb-6">
+            <ArrowLeft size={20} className="mr-2" /> Back
+          </button>
+          <div className="bg-white rounded-2xl p-8 text-center">
+            <p className="text-gray-500">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 pt-20 pb-12">
       <div className="bg-white border-b border-gray-200">
@@ -85,7 +105,15 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
                 ) : (
                   <>
                     <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gray-200 p-1 ring-4 ring-white shadow-lg">
-                      <img src={`https://picsum.photos/seed/${hostName}/200/200`} alt={hostName} className="w-full h-full rounded-full object-cover"/>
+                      <img 
+                        src={`https://picsum.photos/seed/${displayName}/200/200`} 
+                        alt={displayName} 
+                        className="w-full h-full rounded-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2U1ZTdlYiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iNDAiIGZpbGw9IiM5Y2EzYWYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5IPC90ZXh0Pjwvc3ZnPg==';
+                        }}
+                      />
                     </div>
                     <div className="absolute bottom-1 right-1 w-8 h-8 bg-popera-orange text-white rounded-full flex items-center justify-center ring-4 ring-white">
                       <Check size={16} strokeWidth={3} />
@@ -96,7 +124,7 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
              <div className="flex-1">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                    <div>
-                     <h1 className="text-3xl md:text-4xl font-heading font-bold text-popera-teal mb-1">{hostName}</h1>
+                     <h1 className="text-3xl md:text-4xl font-heading font-bold text-popera-teal mb-1">{displayName}</h1>
                      <p className="text-gray-500 flex items-center text-sm">
                        <MapPin size={14} className="mr-1 text-popera-orange" /> {primaryCity}
                      </p>

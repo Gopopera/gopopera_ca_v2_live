@@ -1,7 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { ViewState } from '../types';
-import { X, DollarSign, ArrowRight, Star } from 'lucide-react';
+import { X, DollarSign, ArrowRight, Star, Camera } from 'lucide-react';
+import { useUserStore } from '../stores/userStore';
+import { uploadImage } from '../firebase/storage';
+import { createOrUpdateUserProfile } from '../firebase/db';
 
 interface SubPageProps {
   setViewState: (view: ViewState) => void;
@@ -9,6 +12,58 @@ interface SubPageProps {
 
 // --- Basic Details Page ---
 export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
+  const user = useUserStore((state) => state.user);
+  const [profileImage, setProfileImage] = useState<string | null>(user?.photoURL || user?.profileImageUrl || null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.uid) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size must be less than 5MB');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const path = `users/${user.uid}/avatar.jpg`;
+      const imageUrl = await uploadImage(path, file);
+      
+      // Update user profile in Firestore
+      await createOrUpdateUserProfile(user.uid, {
+        photoURL: imageUrl,
+        imageUrl: imageUrl,
+      });
+
+      // Update local state
+      setProfileImage(imageUrl);
+      
+      // Update user store
+      useUserStore.getState().updateUser(user.uid, {
+        photoURL: imageUrl,
+        profileImageUrl: imageUrl,
+      });
+    } catch (error) {
+      console.error('Error uploading profile picture:', error);
+      alert('Failed to upload profile picture. Please try again.');
+    } finally {
+      setUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white pt-20 sm:pt-24 pb-8 sm:pb-12 font-sans">
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
@@ -22,8 +77,47 @@ export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
            </button>
         </div>
         <div className="space-y-5 sm:space-y-6">
+           {/* Profile Picture Upload */}
            <div className="space-y-2">
-              <div className="w-full bg-gray-100 rounded-xl sm:rounded-2xl py-3 sm:py-4 px-4 sm:px-6 text-sm sm:text-base text-[#15383c]">Jason</div>
+              <label className="block text-xs sm:text-sm font-light text-gray-600 pl-1">Profile Picture</label>
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gray-200 overflow-hidden ring-2 ring-gray-200">
+                    {profileImage ? (
+                      <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 text-2xl font-bold">
+                        {user?.displayName?.[0] || user?.name?.[0] || 'U'}
+                      </div>
+                    )}
+                  </div>
+                  {uploading && (
+                    <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                      <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    id="profile-picture-input"
+                  />
+                  <label
+                    htmlFor="profile-picture-input"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#15383c] text-white rounded-full text-sm font-medium hover:bg-[#1f4d52] transition-colors cursor-pointer touch-manipulation active:scale-95"
+                  >
+                    <Camera size={16} />
+                    {uploading ? 'Uploading...' : 'Change Photo'}
+                  </label>
+                </div>
+              </div>
+           </div>
+           <div className="space-y-2">
+              <div className="w-full bg-gray-100 rounded-xl sm:rounded-2xl py-3 sm:py-4 px-4 sm:px-6 text-sm sm:text-base text-[#15383c]">{user?.displayName || user?.name || 'User'}</div>
            </div>
            <div className="space-y-2">
               <label className="block text-xs sm:text-sm font-light text-gray-600 pl-1">Full Name</label>

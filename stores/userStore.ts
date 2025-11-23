@@ -9,7 +9,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { auth, db } from '../src/lib/firebase';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { attachAuthListener } from '../firebase/listeners';
 import { getUserProfile, createOrUpdateUserProfile, listUserReservations, createReservation, cancelReservation, listReservationsForUser } from '../firebase/db';
@@ -239,6 +239,11 @@ export const useUserStore = create<UserStore>()(
       signInWithGoogle: async () => {
         try {
           set({ loading: true });
+          const authInstance = auth;
+          if (authInstance) {
+            // Set persistence before sign in
+            await setPersistence(authInstance, browserLocalPersistence);
+          }
           const provider = new GoogleAuthProvider();
           const userCredential = await signInWithPopup(auth, provider);
           const firebaseUser = userCredential.user;
