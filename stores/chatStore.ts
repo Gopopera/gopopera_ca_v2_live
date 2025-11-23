@@ -1,6 +1,13 @@
+/**
+ * CYCLES DETECTED BY MADGE: None
+ * 
+ * Static imports from firebase/listeners.ts and firebase/db.ts
+ * No dynamic imports of Firebase modules
+ */
+
 import { create } from 'zustand';
 import { subscribeToChat } from '../firebase/listeners';
-import { addChatMessage as addFirestoreMessage } from '../firebase/db';
+import { addChatMessage } from '../firebase/db';
 import type { FirestoreChatMessage } from '../firebase/types';
 
 export interface ChatMessage {
@@ -60,8 +67,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   addMessage: async (eventId, userId, userName, message, type = 'message', isHost = false) => {
     try {
-      // Add to Firestore
-      await addFirestoreMessage(eventId, userId, userName, message, type, isHost);
+      await addChatMessage(eventId, userId, userName, message, type, isHost);
       // The realtime listener will update the messages automatically
     } catch (error) {
       console.error("Error adding message to Firestore:", error);
@@ -201,5 +207,3 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     );
   },
 }));
-
-

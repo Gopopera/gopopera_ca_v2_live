@@ -1,74 +1,34 @@
 /**
- * CYCLES REMOVED:
- * - No imports from stores, App, or other app modules
- * - Only imports from Firebase SDK
- * - Exports factory accessors only (no top-level initialization)
+ * CYCLES DETECTED BY MADGE: None (verified with npx madge --circular)
  * 
- * DEPENDENCY GRAPH:
- * firebase.ts (base) → only Firebase SDK
- *   ↓
- * firebase/db.ts, firebase/listeners.ts → firebase.ts
- *   ↓
- * stores/userStore.ts → lazy imports of db/listeners
- *   ↓
- * App.tsx → stores only
+ * This is the ONLY source of Firebase singletons.
+ * All firebase/* modules import from here statically.
+ * Stores import from firebase/* statically.
+ * No dynamic imports of this module allowed.
  */
 
-import { initializeApp, type FirebaseApp, getApps } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
-import { getFirestore, type Firestore, serverTimestamp, Timestamp } from "firebase/firestore";
-import { getStorage, type FirebaseStorage } from "firebase/storage";
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
+import { serverTimestamp, Timestamp } from 'firebase/firestore';
 
-// Singleton instances (lazy initialization)
-let _app: FirebaseApp | null = null;
-let _auth: Auth | null = null;
-let _db: Firestore | null = null;
-let _storage: FirebaseStorage | null = null;
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+};
 
-/**
- * Factory accessor for Firebase App instance (idempotent)
- */
-export function getFirebaseApp(): FirebaseApp {
-  if (_app) return _app;
-  const cfg = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  };
-  _app = getApps().length ? getApps()[0]! : initializeApp(cfg);
-  return _app;
-}
+const app = initializeApp(firebaseConfig);
 
-/**
- * Factory accessor for Auth instance (idempotent)
- */
-export function getAuthInstance(): Auth {
-  if (_auth) return _auth;
-  _auth = getAuth(getFirebaseApp());
-  return _auth;
-}
+// Static exports - initialized at module load
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const storage = getStorage(app);
 
-/**
- * Factory accessor for Firestore instance (idempotent)
- */
-export function getFirestoreDb(): Firestore {
-  if (_db) return _db;
-  _db = getFirestore(getFirebaseApp());
-  return _db;
-}
-
-/**
- * Factory accessor for Storage instance (idempotent)
- */
-export function getStorageInstance(): FirebaseStorage {
-  if (_storage) return _storage;
-  _storage = getStorage(getFirebaseApp());
-  return _storage;
-}
-
-// Re-export common helpers
+// Re-export helpers
 export { serverTimestamp, Timestamp };
 export type Unsubscribe = () => void;

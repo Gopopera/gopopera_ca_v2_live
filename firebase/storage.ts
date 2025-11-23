@@ -1,4 +1,12 @@
-import { storage, ref, uploadBytes, getDownloadURL } from "../src/lib/firebase";
+/**
+ * CYCLES DETECTED BY MADGE: None
+ * 
+ * Static imports only from src/lib/firebase.ts
+ * No imports from stores or App
+ */
+
+import { storage } from "../src/lib/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export async function uploadImage(path: string, file: File): Promise<string> {
   try {

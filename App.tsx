@@ -38,7 +38,7 @@ import { useUserStore } from './stores/userStore';
 import { generatePoperaEvents } from './data/poperaEvents';
 import { generateFakeEvents } from './data/fakeEvents';
 import { categoryMatches } from './utils/categoryMapper';
-// Firebase db functions imported lazily inside useEffect to avoid cycles
+import { listUpcomingEvents } from './firebase/db';
 
 // Mock Data Generator - Initial seed data
 const generateMockEvents = (): Event[] => [
@@ -348,7 +348,6 @@ const AppContent: React.FC = () => {
   
   // Initialize auth listener on mount
   useEffect(() => {
-    console.log("#BOOT: App.tsx mounted");
     useUserStore.getState().init();
   }, []);
 

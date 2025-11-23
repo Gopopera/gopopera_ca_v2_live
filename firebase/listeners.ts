@@ -1,16 +1,14 @@
 /**
- * CYCLES REMOVED:
- * - No imports from stores or App
- * - Only imports from src/lib/firebase.ts (accessors)
- * - Pure subscription functions (no side effects at import time)
+ * CYCLES DETECTED BY MADGE: None
  * 
- * DEPENDENCY GRAPH:
- * firebase/listeners.ts → src/lib/firebase.ts (accessors only)
+ * Static imports only from src/lib/firebase.ts
+ * No imports from stores or App
+ * Pure subscription functions only
  */
 
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
-import { getAuthInstance, getFirestoreDb, type Unsubscribe } from "../src/lib/firebase";
+import { auth, db, type Unsubscribe } from "../src/lib/firebase";
 import { FirestoreChatMessage } from "./types";
 
 /**
@@ -19,7 +17,6 @@ import { FirestoreChatMessage } from "./types";
  * @returns Unsubscribe function
  */
 export function attachAuthListener(onChange: (user: FirebaseUser | null) => void): Unsubscribe {
-  const auth = getAuthInstance();
   return onAuthStateChanged(auth, onChange);
 }
 
@@ -28,7 +25,6 @@ export function subscribeToChat(
   cb: (messages: FirestoreChatMessage[]) => void
 ): Unsubscribe {
   try {
-    const db = getFirestoreDb();
     const messagesCol = collection(db, "events", eventId, "messages");
     const q = query(messagesCol, orderBy("createdAt", "asc"));
 

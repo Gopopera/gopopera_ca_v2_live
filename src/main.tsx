@@ -1,24 +1,10 @@
-import { StrictMode, Suspense } from "react";
-import { createRoot } from "react-dom/client";
-import App from "../App";
-import { AppErrorBoundary } from "./utils/AppErrorBoundary";
-import "../index.css";
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from '../App';
+import { AppErrorBoundary } from './utils/AppErrorBoundary';
 
-console.log("BOOT: main.tsx mounted");
-
-const el = document.getElementById("root");
-if (!el) {
-  console.error("#BOOT: #root not found");
-  throw new Error("Root element missing");
-}
-
-createRoot(el).render(
-  <StrictMode>
-    <AppErrorBoundary>
-      <Suspense fallback={null}>
-        <App />
-      </Suspense>
-    </AppErrorBoundary>
-  </StrictMode>
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <AppErrorBoundary>
+    <App />
+  </AppErrorBoundary>
 );
-
