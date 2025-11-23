@@ -353,13 +353,17 @@ const AppContent: React.FC = () => {
 
   // Handle redirect after successful login (including Google login)
   // Only redirect when userStore is ready and user is loaded
+  const redirectAfterLogin = useUserStore((state) => state.redirectAfterLogin);
+  const setRedirectAfterLogin = useUserStore((state) => state.setRedirectAfterLogin);
+  
   useEffect(() => {
     if (ready && !loading && user && viewState === ViewState.AUTH) {
       // User just logged in, redirect to intended destination or FEED
-      setViewState(redirectAfterLogin || ViewState.FEED);
+      const redirect = redirectAfterLogin || ViewState.FEED;
+      setViewState(redirect);
       setRedirectAfterLogin(null);
     }
-  }, [user, loading, ready, viewState, redirectAfterLogin]);
+  }, [user, loading, ready, viewState, redirectAfterLogin, setRedirectAfterLogin]);
   
   // Load events from Firestore (with fallback to mock data)
   useEffect(() => {
@@ -567,10 +571,8 @@ const AppContent: React.FC = () => {
   const handleCloseChat = () => setViewState(ViewState.FEED);
   const handleViewDetailsFromChat = () => setViewState(ViewState.DETAIL);
 
-  const [redirectAfterLogin, setRedirectAfterLogin] = useState<ViewState | null>(null);
-
   const handleProtectedNav = (view: ViewState) => {
-    setRedirectAfterLogin(view);
+    useUserStore.getState().setRedirectAfterLogin(view);
     setViewState(ViewState.AUTH);
   };
 
@@ -580,8 +582,9 @@ const AppContent: React.FC = () => {
       await userStore.login(email, password);
       // Auth listener will update state automatically
       // Redirect to intended destination or default to FEED
-      setViewState(redirectAfterLogin || ViewState.FEED);
-      setRedirectAfterLogin(null);
+      const redirect = userStore.getRedirectAfterLogin() || ViewState.FEED;
+      setViewState(redirect);
+      userStore.setRedirectAfterLogin(null);
     } catch (error) {
       console.error("Login failed:", error);
     }
@@ -599,7 +602,7 @@ const AppContent: React.FC = () => {
   const handleRSVP = (eventId: string) => {
     if (!user) {
       // Redirect to auth if not logged in
-      setRedirectAfterLogin(ViewState.DETAIL);
+      useUserStore.getState().setRedirectAfterLogin(ViewState.DETAIL);
       setViewState(ViewState.AUTH);
       return;
     }
@@ -624,7 +627,7 @@ const AppContent: React.FC = () => {
   const handleToggleFavorite = (e: React.MouseEvent, eventId: string) => {
     e.stopPropagation();
     if (!user) {
-      setRedirectAfterLogin(ViewState.FEED);
+      useUserStore.getState().setRedirectAfterLogin(ViewState.FEED);
       setViewState(ViewState.AUTH);
       return;
     }
@@ -664,7 +667,7 @@ const AppContent: React.FC = () => {
         onViewDetails={handleViewDetailsFromChat}
         onReserve={() => {
           if (!user) {
-            setRedirectAfterLogin(ViewState.CHAT);
+            useUserStore.getState().setRedirectAfterLogin(ViewState.CHAT);
             setViewState(ViewState.AUTH);
           } else {
             handleRSVP(selectedEvent.id);

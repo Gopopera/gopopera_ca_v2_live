@@ -15,6 +15,7 @@ import { attachAuthListener } from '../firebase/listeners';
 import { getUserProfile, createOrUpdateUserProfile, listUserReservations, createReservation, cancelReservation, listReservationsForUser } from '../firebase/db';
 import type { FirestoreUser } from '../firebase/types';
 import type { Unsubscribe } from '../src/lib/firebase';
+import type { ViewState } from '../types';
 
 // Simplified User interface matching Firebase Auth user
 export interface User {
@@ -40,6 +41,7 @@ interface UserStore {
   ready: boolean; // True when auth state has been determined
   _authUnsub: Unsubscribe | null; // Internal unsubscribe function
   _initialized: boolean; // Track if init() has been called
+  redirectAfterLogin: ViewState | null; // Redirect destination after login
   // Core auth functions
   signup: (email: string, password: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
@@ -59,6 +61,8 @@ interface UserStore {
   getUserRSVPs: (userId: string) => string[];
   getUserHostedEvents: (userId: string) => string[];
   init: () => void; // Explicit initialization method
+  setRedirectAfterLogin: (view: ViewState | null) => void;
+  getRedirectAfterLogin: () => ViewState | null;
 }
 
 // Official Popera account constants
@@ -75,6 +79,7 @@ export const useUserStore = create<UserStore>()(
       currentUser: null,
       _authUnsub: null,
       _initialized: false,
+      redirectAfterLogin: null,
 
       init: () => {
         if (get()._initialized) return; // Already initialized
@@ -394,6 +399,14 @@ export const useUserStore = create<UserStore>()(
           return Array.isArray(user.hostedEvents) ? user.hostedEvents : [];
         }
         return [];
+      },
+
+      setRedirectAfterLogin: (view: ViewState | null) => {
+        set({ redirectAfterLogin: view });
+      },
+
+      getRedirectAfterLogin: () => {
+        return get().redirectAfterLogin;
       },
     }),
     {
