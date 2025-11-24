@@ -73,10 +73,11 @@ export interface FirestoreUser {
   bannedEvents?: string[]; // Event IDs user is banned from
   // Demo host flag
   isDemoHost?: boolean; // True for Popera demo host profile
+  isOfficialHost?: boolean; // Official Popera host flag
   username?: string; // Username for the user
   isVerified?: boolean; // Whether the account is verified
   createdAt: number;
-  updatedAt?: number;
+  updatedAt?: number | unknown;
 }
 
 export interface FirestoreReview {

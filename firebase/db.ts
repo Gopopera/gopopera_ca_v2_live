@@ -547,7 +547,7 @@ export async function createOrUpdateUserProfile(uid: string, userData: Partial<F
     const userDataRaw: any = {
       ...userData,
       uid,
-      updatedAt: Date.now(),
+      updatedAt: userData?.updatedAt ?? Date.now(),
     };
     
     // Remove undefined values (merge: true allows partial updates)

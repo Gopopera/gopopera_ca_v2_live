@@ -8,10 +8,10 @@ import React, { useState, useEffect } from 'react';
 import { ViewState } from '../types';
 import { ChevronLeft, CheckCircle, XCircle, Loader } from 'lucide-react';
 import { useUserStore, POPERA_EMAIL } from '../stores/userStore';
-import { seedDemoEventsForPoperaHost } from '../firebase/demoSeed';
-import { ensurePoperaProfile, seedPoperaLaunchEvents } from '../firebase/poperaProfile';
+import { getPoperaDemoEventsSnapshot } from '../firebase/demoSeed';
+import { ensurePoperaProfileAndSeed } from '../firebase/poperaProfile';
 import { getDbSafe } from '../src/lib/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { Timestamp } from 'firebase/firestore';
 
 interface DebugSeedDemoEventsPageProps {
   setViewState: (view: ViewState) => void;
@@ -23,40 +23,45 @@ export const DebugSeedDemoEventsPage: React.FC<DebugSeedDemoEventsPageProps> = (
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
   const [seededEvents, setSeededEvents] = useState<any[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
+  const normalizedEmail = user?.email?.toLowerCase().trim();
 
   // Only show if user is authenticated and is eatezca@gmail.com
-  const isAuthorized = user?.email === POPERA_EMAIL;
+  const isAuthorized = normalizedEmail === POPERA_EMAIL;
 
   // Load seeded events on mount
   useEffect(() => {
-    if (isAuthorized && user?.uid) {
-      loadSeededEvents();
+    if (isAuthorized && user?.uid && normalizedEmail) {
+      loadSeededEvents(normalizedEmail);
     }
-  }, [isAuthorized, user?.uid]);
+  }, [isAuthorized, normalizedEmail, user?.uid]);
 
-  const loadSeededEvents = async () => {
+  const loadSeededEvents = async (poperaEmail: string) => {
     setLoadingEvents(true);
     try {
       const db = getDbSafe();
       if (!db) {
         setLoadingEvents(false);
-        return;
+        return 0;
       }
 
-      const eventsCol = collection(db, "events");
-      const q = query(
-        eventsCol,
-        where("managedBy", "==", POPERA_EMAIL),
-        where("demoType", "==", "city-launch")
-      );
-      const snap = await getDocs(q);
-      const events = snap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      const snap = await getPoperaDemoEventsSnapshot(db, poperaEmail);
+      const events = snap.docs.map(doc => {
+        const data = doc.data();
+        const startDate = data?.startDate instanceof Timestamp 
+          ? data.startDate.toDate().toISOString()
+          : (data?.startDate || data?.date);
+
+        return {
+          id: doc.id,
+          ...data,
+          startDateText: startDate,
+        };
+      });
       setSeededEvents(events);
+      return events.length;
     } catch (error: any) {
       console.error('[DEBUG] Error loading seeded events:', error);
+      return 0;
     } finally {
       setLoadingEvents(false);
     }
@@ -73,15 +78,14 @@ export const DebugSeedDemoEventsPage: React.FC<DebugSeedDemoEventsPageProps> = (
 
     try {
       // Use the same function as login flow
-      await ensurePoperaProfile(user.uid, user.email || '');
-      await seedPoperaLaunchEvents(user.uid);
-      
+      await ensurePoperaProfileAndSeed(user);
+
       // Reload events after seeding
-      await loadSeededEvents();
-      
+      const count = await loadSeededEvents(normalizedEmail || POPERA_EMAIL);
+
       setResult({ 
         success: true, 
-        message: `Popera launch events seeded successfully! ${seededEvents.length} events found.` 
+        message: `Popera launch events seeded successfully! ${count} events found.` 
       });
     } catch (error: any) {
       console.error('[DEBUG SEED] Error:', error);
@@ -159,7 +163,8 @@ export const DebugSeedDemoEventsPage: React.FC<DebugSeedDemoEventsPageProps> = (
 
           {/* Seeded Events List */}
           <div className="pt-4 border-t border-white/20">
-            <h3 className="text-lg font-bold mb-3">Seeded Launch Events ({seededEvents.length})</h3>
+            <h3 className="text-lg font-bold mb-1">Seeded Launch Events ({seededEvents.length})</h3>
+            <p className="text-gray-300 text-sm mb-2">Found {seededEvents.length} demo events</p>
             {loadingEvents ? (
               <div className="text-gray-300 text-sm">Loading events...</div>
             ) : seededEvents.length === 0 ? (
@@ -170,7 +175,10 @@ export const DebugSeedDemoEventsPage: React.FC<DebugSeedDemoEventsPageProps> = (
                   <div key={event.id} className="bg-white/5 rounded-lg p-3 text-sm">
                     <div className="font-medium text-white">{event.title}</div>
                     <div className="text-gray-300 text-xs mt-1">
-                      City: {event.city} | isPublic: {String(event.isPublic)} | Created: {event.createdAt ? new Date(event.createdAt).toLocaleString() : 'N/A'}
+                      City: {event.city} | status: {event.status || 'unknown'} | isPublic: {String(event.isPublic ?? false)}
+                    </div>
+                    <div className="text-gray-400 text-xs mt-1">
+                      Start: {event.startDateText ? new Date(event.startDateText).toLocaleString() : 'N/A'}
                     </div>
                   </div>
                 ))}
@@ -212,4 +220,3 @@ export const DebugSeedDemoEventsPage: React.FC<DebugSeedDemoEventsPageProps> = (
     </div>
   );
 };
-

@@ -4,14 +4,15 @@
  * Only accessible to eatezca@gmail.com
  */
 
-import { auth } from '../src/lib/firebase';
 import { getDbSafe } from '../src/lib/firebase';
-import { collection, doc, getDoc, setDoc, query, where, getDocs } from 'firebase/firestore';
-import { createEvent } from './db';
+import { addDoc, collection, doc, getDoc, getDocs, query, where, setDoc, Timestamp, type Firestore } from 'firebase/firestore';
 import { createOrUpdateUserProfile } from './db';
 import { POPERA_EMAIL, POPERA_HOST_ID, POPERA_HOST_NAME } from '../stores/userStore';
 import type { FirestoreEvent } from './types';
 import type { Event } from '../types';
+import type { User } from 'firebase/auth';
+import type { City } from '../src/stores/cityStore';
+import { sanitizeFirestoreData } from '../utils/firestoreValidation';
 
 interface DemoEventConfig {
   title: string;
@@ -24,6 +25,130 @@ interface DemoEventConfig {
   tags: string[];
   demoPurpose: string;
   theme: 'early-user' | 'sell-shop' | 'connect-promote' | 'mobilize-support';
+}
+
+/**
+ * Debug helper to inspect Popera demo events in Firestore
+ */
+export async function getPoperaDemoEventsSnapshot(db: Firestore, poperaEmail: string) {
+  console.log('[POPERA_DEMO_DEBUG] Fetching demo events for', poperaEmail);
+
+  const eventsRef = collection(db, 'events');
+  const q = query(
+    eventsRef,
+    where('managedBy', '==', poperaEmail),
+    where('demoType', '==', 'city-launch')
+  );
+
+  const snap = await getDocs(q);
+  console.log('[POPERA_DEMO_DEBUG] Found demo events count:', snap.size);
+  snap.forEach(doc => {
+    console.log('[POPERA_DEMO_DEBUG] Event doc', doc.id, doc.data());
+  });
+
+  return snap;
+}
+
+const cityLabels: Record<City, string> = {
+  montreal: 'Montreal',
+  ottawa: 'Ottawa',
+  gatineau: 'Gatineau',
+  quebec: 'Quebec City',
+  toronto: 'Toronto',
+  vancouver: 'Vancouver',
+};
+
+const cityLabelFromId = (city: City): string => cityLabels[city] || city;
+const normalizeCityValue = (value: string): string =>
+  value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+export async function seedPoperaLaunchEventsForUser(user: User) {
+  const db = getDbSafe();
+  if (!db) {
+    console.error('[POPERA_SEED] No Firestore db, aborting');
+    return;
+  }
+
+  const poperaEmail = user.email?.toLowerCase().trim();
+  if (!poperaEmail) return;
+
+  console.log('[POPERA_SEED] Checking existing demo events for', poperaEmail);
+
+  const existing = await getPoperaDemoEventsSnapshot(db, poperaEmail);
+  if (existing.size >= 5) {
+    console.log('[POPERA_SEED] Demo events already exist, skipping creation');
+    return;
+  }
+
+  const existingCities = new Set(
+    existing.docs.map(docSnap => {
+      const data = docSnap.data() as Record<string, any>;
+      return normalizeCityValue((data?.city || '').toString());
+    })
+  );
+
+  const cities: City[] = ['ottawa', 'montreal', 'toronto', 'vancouver', 'quebec'];
+  const now = new Date();
+  const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const endDate = new Date(nextWeek.getTime() + 2 * 60 * 60 * 1000);
+  const dateString = nextWeek.toISOString().split('T')[0];
+  const timeString = `${String(nextWeek.getHours()).padStart(2, '0')}:${String(nextWeek.getMinutes()).padStart(2, '0')}`;
+  let createdCount = 0;
+
+  for (const city of cities) {
+    const cityLabel = cityLabelFromId(city);
+    const normalizedCity = normalizeCityValue(cityLabel);
+    if (existingCities.has(normalizedCity)) {
+      console.log('[POPERA_SEED] Demo event already exists for city', cityLabel);
+      continue;
+    }
+
+    const event = {
+      title: `Popera City Launch: ${cityLabel}`,
+      subtitle: 'Join other early members and ask us anything about Popera.',
+      description:
+        'This is a live example pop-up created by the Popera team. Come meet other curious locals, share ideas, and help us shape pop-up culture in your city.',
+      city: cityLabel,
+      host: 'Popera',
+      hostName: 'Popera',
+      hostId: user.uid,
+      hostEmail: poperaEmail,
+      isPublic: true,
+      status: 'published',
+      category: 'Community' as Event['category'],
+      tags: ['launch', 'popera', 'meetup'],
+      isDemo: true,
+      demoType: 'city-launch',
+      managedBy: poperaEmail,
+      allowChat: true,
+      allowRsvp: true,
+      startDate: Timestamp.fromDate(nextWeek),
+      endDate: Timestamp.fromDate(endDate),
+      date: dateString,
+      time: timeString,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      location: cityLabel,
+      address: '',
+      isPoperaOwned: false,
+      isOfficialLaunch: false,
+      price: 'Free',
+      attendeesCount: 0,
+      rating: 0,
+      reviewCount: 0,
+      imageUrl: `https://picsum.photos/seed/popera-${city}/800/600`,
+    };
+
+    console.log('[POPERA_SEED] Creating demo event for city', city, 'with payload', event);
+
+    const sanitizedEvent = sanitizeFirestoreData(event);
+    const docRef = await addDoc(collection(db, 'events'), sanitizedEvent);
+
+    console.log('[POPERA_SEED] Created demo event', docRef.id, 'for city', city);
+    createdCount++;
+  }
+
+  console.log('[POPERA_SEED] Completed seeding run. Created', createdCount, 'new demo events. Existing snapshot size:', existing.size);
 }
 
 /**
@@ -251,4 +376,3 @@ export async function seedDemoEventsForPoperaHost(options?: { dryRun?: boolean }
     throw error;
   }
 }
-

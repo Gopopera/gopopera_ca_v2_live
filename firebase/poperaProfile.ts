@@ -4,15 +4,55 @@
  */
 
 import { getDbSafe } from "../src/lib/firebase";
-import { collection, doc, getDoc, getDocs, query, where, setDoc, addDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where, setDoc, addDoc, serverTimestamp } from "firebase/firestore";
 import { FirestoreUser, FirestoreEvent } from "./types";
 import { POPERA_EMAIL } from "../stores/userStore";
 import { sanitizeFirestoreData } from "../utils/firestoreValidation";
+import { createOrUpdateUserProfile } from "./db";
+import type { User } from "firebase/auth";
+import { seedPoperaLaunchEventsForUser } from "./demoSeed";
 
 /**
  * Ensure Popera profile has correct fields
  * Called after successful login for eatezca@gmail.com
  */
+export async function ensurePoperaProfileAndSeed(user: User) {
+  console.log('[POPERA_SEED] ensurePoperaProfileAndSeed called for', user.uid, user.email);
+
+  if (!user.email) {
+    console.log('[POPERA_SEED] No email on user, skipping');
+    return;
+  }
+
+  const email = user.email.toLowerCase().trim();
+  const poperaEmail = 'eatezca@gmail.com';
+
+  if (email !== poperaEmail) {
+    console.log('[POPERA_SEED] Not Popera account, skipping seeding');
+    return;
+  }
+
+  await createOrUpdateUserProfile(user.uid, {
+    uid: user.uid,
+    email,
+    displayName: "Popera",
+    name: "Popera",
+    isOfficialHost: true,
+    isDemoHost: true,
+    isVerified: true,
+    updatedAt: serverTimestamp(),
+  });
+
+  console.log('[POPERA_SEED] Profile ensured for Popera user', user.uid);
+
+  try {
+    await seedPoperaLaunchEventsForUser(user);
+    console.log('[POPERA_SEED] Seeding completed for Popera user', user.uid);
+  } catch (error) {
+    console.error('[POPERA_SEED] Seeding failed for Popera user', user.uid, error);
+  }
+}
+
 export async function ensurePoperaProfile(uid: string, email: string): Promise<void> {
   if (email !== POPERA_EMAIL) {
     return; // Only update Popera account
@@ -162,4 +202,3 @@ export async function seedPoperaLaunchEvents(hostUid: string): Promise<void> {
     // Don't throw - this should not block login
   }
 }
-

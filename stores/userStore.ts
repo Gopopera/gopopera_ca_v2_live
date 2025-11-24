@@ -157,13 +157,9 @@ export const useUserStore = create<UserStore>()(
               
               // Ensure Popera profile is updated and seed launch events (non-blocking)
               if (firebaseUser.email === POPERA_EMAIL) {
-                import('../firebase/poperaProfile').then(({ ensurePoperaProfile, seedPoperaLaunchEvents }) => {
-                  ensurePoperaProfile(firebaseUser.uid, firebaseUser.email || '').then(() => {
-                    seedPoperaLaunchEvents(firebaseUser.uid).catch(err => {
-                      console.error('[AUTH] Error seeding Popera launch events:', err);
-                    });
-                  }).catch(err => {
-                    console.error('[AUTH] Error ensuring Popera profile:', err);
+                import('../firebase/poperaProfile').then(({ ensurePoperaProfileAndSeed }) => {
+                  ensurePoperaProfileAndSeed(firebaseUser).catch(err => {
+                    console.error('[AUTH] Error ensuring Popera profile or seeding:', err);
                   });
                 }).catch(err => {
                   console.error('[AUTH] Error loading poperaProfile module:', err);
@@ -255,13 +251,9 @@ export const useUserStore = create<UserStore>()(
           
           // Ensure Popera profile is updated and seed launch events (non-blocking)
           if (firebaseUser.email === POPERA_EMAIL) {
-            import('../firebase/poperaProfile').then(({ ensurePoperaProfile, seedPoperaLaunchEvents }) => {
-              ensurePoperaProfile(firebaseUser.uid, firebaseUser.email || '').then(() => {
-                seedPoperaLaunchEvents(firebaseUser.uid).catch(err => {
-                  console.error('[AUTH] Error seeding Popera launch events:', err);
-                });
-              }).catch(err => {
-                console.error('[AUTH] Error ensuring Popera profile:', err);
+            import('../firebase/poperaProfile').then(({ ensurePoperaProfileAndSeed }) => {
+              ensurePoperaProfileAndSeed(firebaseUser).catch(err => {
+                console.error('[AUTH] Error ensuring Popera profile or seeding:', err);
               });
             }).catch(err => {
               console.error('[AUTH] Error loading poperaProfile module:', err);
@@ -487,13 +479,9 @@ export const useUserStore = create<UserStore>()(
               
               // Ensure Popera profile is updated and seed launch events (non-blocking)
               if (firebaseUser.email === POPERA_EMAIL) {
-                import('../firebase/poperaProfile').then(({ ensurePoperaProfile, seedPoperaLaunchEvents }) => {
-                  ensurePoperaProfile(firebaseUser.uid, firebaseUser.email || '').then(() => {
-                    seedPoperaLaunchEvents(firebaseUser.uid).catch(err => {
-                      console.error('[AUTH] Error seeding Popera launch events:', err);
-                    });
-                  }).catch(err => {
-                    console.error('[AUTH] Error ensuring Popera profile:', err);
+                import('../firebase/poperaProfile').then(({ ensurePoperaProfileAndSeed }) => {
+                  ensurePoperaProfileAndSeed(firebaseUser).catch(err => {
+                    console.error('[AUTH] Error ensuring Popera profile or seeding:', err);
                   });
                 }).catch(err => {
                   console.error('[AUTH] Error loading poperaProfile module:', err);
