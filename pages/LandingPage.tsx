@@ -364,8 +364,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               e.preventDefault();
               if (!newsletterEmail.trim() || newsletterSubmitting) return;
 
+              // Check for missing config before starting
+              const db = getDbSafe();
+              const resendKey = import.meta.env.VITE_RESEND_API_KEY;
+              
+              if (!db && !resendKey) {
+                alert('⚠️ Configuration error: Firebase and Resend are not configured.');
+                return;
+              }
+
               setNewsletterSubmitting(true);
               setNewsletterSuccess(false);
+              
+              // Timeout fallback - never stay stuck on "Sending..."
+              const timeoutId = setTimeout(() => {
+                setNewsletterSubmitting(false);
+                if (!newsletterSuccess) {
+                  alert('⚠️ Request timed out. Your subscription may have been processed. Please try again.');
+                }
+              }, 10000); // 10 second timeout
               
               try {
                 const email = newsletterEmail.trim();
@@ -375,48 +392,53 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 });
 
                 // Store to Firestore (non-blocking)
-                const db = getDbSafe();
                 if (db) {
                   addDoc(collection(db, 'newsletter_subscribers'), {
                     email,
                     subscribedAt: serverTimestamp(),
                     createdAt: Date.now(),
                   }).catch((error) => {
-                    if (import.meta.env.DEV) {
-                      console.error('Error saving to Firestore:', error);
-                    }
+                    console.error('Error saving to Firestore:', error);
                   });
                 }
 
                 // Send notification email to support
-                const emailHtml = `
-                  <h2 style="margin: 0 0 24px 0; color: #15383c; font-size: 24px; font-weight: bold;">New Newsletter Subscription</h2>
-                  <div style="background-color: #f8fafb; padding: 24px; border-radius: 12px;">
-                    <p style="margin: 0 0 12px 0; color: #374151; font-size: 16px; line-height: 1.6;">
-                      <strong style="color: #15383c;">Email:</strong> <a href="mailto:${email}" style="color: #e35e25; text-decoration: none;">${email}</a>
-                    </p>
-                    <p style="margin: 0; color: #374151; font-size: 16px; line-height: 1.6;">
-                      <strong style="color: #15383c;">Subscribed:</strong> ${timestamp}
-                    </p>
-                  </div>
-                `;
+                if (resendKey) {
+                  const emailHtml = `
+                    <h2 style="margin: 0 0 24px 0; color: #15383c; font-size: 24px; font-weight: bold;">New Newsletter Subscription</h2>
+                    <div style="background-color: #f8fafb; padding: 24px; border-radius: 12px;">
+                      <p style="margin: 0 0 12px 0; color: #374151; font-size: 16px; line-height: 1.6;">
+                        <strong style="color: #15383c;">Email:</strong> <a href="mailto:${email}" style="color: #e35e25; text-decoration: none;">${email}</a>
+                      </p>
+                      <p style="margin: 0; color: #374151; font-size: 16px; line-height: 1.6;">
+                        <strong style="color: #15383c;">Subscribed:</strong> ${timestamp}
+                      </p>
+                    </div>
+                  `;
 
-                const emailResult = await sendEmail({
-                  to: 'support@gopopera.ca',
-                  subject: `Newsletter Subscription - ${email}`,
-                  html: emailHtml,
-                  templateName: 'newsletter-subscription',
-                });
+                  const emailResult = await sendEmail({
+                    to: 'support@gopopera.ca',
+                    subject: `Newsletter Subscription - ${email}`,
+                    html: emailHtml,
+                    templateName: 'newsletter-subscription',
+                  });
 
-                // Always show success (email may have been sent even if timeout)
+                  if (!emailResult.success && emailResult.error) {
+                    console.warn('Email send result:', emailResult);
+                  }
+                } else {
+                  console.warn('Resend API key not configured, skipping email send');
+                }
+
+                // Show success
+                clearTimeout(timeoutId);
                 setNewsletterSuccess(true);
                 setNewsletterEmail('');
                 setTimeout(() => setNewsletterSuccess(false), 3000);
-              } catch (error) {
-                // Still show success (logging handles errors, timeout failsafe)
-                setNewsletterSuccess(true);
-                setNewsletterEmail('');
-                setTimeout(() => setNewsletterSuccess(false), 3000);
+              } catch (error: any) {
+                clearTimeout(timeoutId);
+                console.error('Error subscribing to newsletter:', error);
+                alert(`⚠️ Error: ${error.message || 'Failed to subscribe. Please try again.'}`);
               } finally {
                 setNewsletterSubmitting(false);
               }

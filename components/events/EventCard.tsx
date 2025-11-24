@@ -53,7 +53,7 @@ export const EventCard: React.FC<EventCardProps> = ({
           aspect-[4/3]
           w-full
           overflow-hidden 
-          rounded-xl
+          rounded-t-xl md:rounded-t-2xl
           bg-gradient-to-br from-popera-teal to-[#1f4d52]
         "
       >

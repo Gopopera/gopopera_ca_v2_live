@@ -23,9 +23,26 @@ export const ContactPage: React.FC<ContactPageProps> = ({ setViewState }) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.message) return;
 
+    // Check for missing config before starting
+    const db = getDbSafe();
+    const resendKey = import.meta.env.VITE_RESEND_API_KEY;
+    
+    if (!db && !resendKey) {
+      alert('⚠️ Configuration error: Firebase and Resend are not configured. Please contact support.');
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmitSuccess(false);
     
+    // Timeout fallback - never stay stuck on "Sending..."
+    const timeoutId = setTimeout(() => {
+      setIsSubmitting(false);
+      if (!submitSuccess) {
+        alert('⚠️ Request timed out. Your message may have been sent. Please check your email or try again.');
+      }
+    }, 10000); // 10 second timeout
+
     try {
       const timestamp = new Date().toLocaleString('en-US', { 
         dateStyle: 'long', 
@@ -33,7 +50,6 @@ export const ContactPage: React.FC<ContactPageProps> = ({ setViewState }) => {
       });
 
       // Save to Firestore (non-blocking)
-      const db = getDbSafe();
       if (db) {
         addDoc(collection(db, 'contact_inquiries'), {
           name: formData.name,
@@ -41,40 +57,44 @@ export const ContactPage: React.FC<ContactPageProps> = ({ setViewState }) => {
           message: formData.message,
           createdAt: new Date().toISOString(),
         }).catch((error) => {
-          if (import.meta.env.DEV) {
-            console.error('Error saving to Firestore:', error);
-          }
+          console.error('Error saving to Firestore:', error);
         });
       }
 
       // Send email via Resend
-      const emailHtml = ContactEmailTemplate({
-        name: formData.name,
-        email: formData.email,
-        message: formData.message,
-        timestamp,
-      });
+      if (resendKey) {
+        const emailHtml = ContactEmailTemplate({
+          name: formData.name,
+          email: formData.email,
+          message: formData.message,
+          timestamp,
+        });
 
-      const emailResult = await sendEmail({
-        to: 'support@gopopera.ca',
-        subject: `Popera Contact Form - ${formData.name}`,
-        html: emailHtml,
-        templateName: 'contact-form',
-      });
+        const emailResult = await sendEmail({
+          to: 'support@gopopera.ca',
+          subject: `Popera Contact Form - ${formData.name}`,
+          html: emailHtml,
+          templateName: 'contact-form',
+        });
 
-      // Always show success (email may have been sent even if timeout)
+        if (!emailResult.success && emailResult.error) {
+          console.warn('Email send result:', emailResult);
+        }
+      } else {
+        console.warn('Resend API key not configured, skipping email send');
+      }
+
+      // Show success
+      clearTimeout(timeoutId);
       setSubmitSuccess(true);
       setFormData({ name: '', email: '', message: '' });
       setTimeout(() => {
         setSubmitSuccess(false);
       }, 3000);
-    } catch (error) {
-      // Still show success to user (email logging handles errors, timeout failsafe)
-      setSubmitSuccess(true);
-      setFormData({ name: '', email: '', message: '' });
-      setTimeout(() => {
-        setSubmitSuccess(false);
-      }, 3000);
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      console.error('Error submitting contact form:', error);
+      alert(`⚠️ Error: ${error.message || 'Failed to submit form. Please try again.'}`);
     } finally {
       setIsSubmitting(false);
     }

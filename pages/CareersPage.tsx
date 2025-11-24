@@ -30,9 +30,26 @@ export const CareersPage: React.FC<CareersPageProps> = ({ setViewState }) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.message) return;
 
+    // Check for missing config before starting
+    const db = getDbSafe();
+    const resendKey = import.meta.env.VITE_RESEND_API_KEY;
+    
+    if (!db && !resendKey) {
+      alert('⚠️ Configuration error: Firebase and Resend are not configured. Please contact support.');
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmitSuccess(false);
     
+    // Timeout fallback - never stay stuck on "Sending..."
+    const timeoutId = setTimeout(() => {
+      setIsSubmitting(false);
+      if (!submitSuccess) {
+        alert('⚠️ Request timed out. Your application may have been sent. Please check your email or try again.');
+      }
+    }, 10000); // 10 second timeout
+
     try {
       const timestamp = new Date().toLocaleString('en-US', { 
         dateStyle: 'long', 
@@ -40,7 +57,6 @@ export const CareersPage: React.FC<CareersPageProps> = ({ setViewState }) => {
       });
 
       // Save to Firestore (non-blocking)
-      const db = getDbSafe();
       if (db) {
         const inquiryData: any = {
           name: formData.name,
@@ -54,9 +70,7 @@ export const CareersPage: React.FC<CareersPageProps> = ({ setViewState }) => {
           inquiryData.fileType = selectedFile.type;
         }
         addDoc(collection(db, 'career_inquiries'), inquiryData).catch((error) => {
-          if (import.meta.env.DEV) {
-            console.error('Error saving to Firestore:', error);
-          }
+          console.error('Error saving to Firestore:', error);
         });
       }
 
@@ -78,32 +92,39 @@ export const CareersPage: React.FC<CareersPageProps> = ({ setViewState }) => {
             contentType: selectedFile.type || 'application/pdf',
           }];
         } catch (error) {
-          if (import.meta.env.DEV) {
-            console.error('Error processing file attachment:', error);
-          }
+          console.error('Error processing file attachment:', error);
           // Continue without attachment if conversion fails
         }
       }
 
       // Send email via Resend
-      const emailHtml = CareerApplicationEmailTemplate({
-        name: formData.name,
-        email: formData.email,
-        message: formData.message,
-        timestamp,
-        hasResume: !!selectedFile,
-        fileName: selectedFile?.name,
-      });
+      if (resendKey) {
+        const emailHtml = CareerApplicationEmailTemplate({
+          name: formData.name,
+          email: formData.email,
+          message: formData.message,
+          timestamp,
+          hasResume: !!selectedFile,
+          fileName: selectedFile?.name,
+        });
 
-      const emailResult = await sendEmail({
-        to: 'support@gopopera.ca',
-        subject: `Career Application - ${formData.name}`,
-        html: emailHtml,
-        attachments: attachment,
-        templateName: 'career-application',
-      });
+        const emailResult = await sendEmail({
+          to: 'support@gopopera.ca',
+          subject: `Career Application - ${formData.name}`,
+          html: emailHtml,
+          attachments: attachment,
+          templateName: 'career-application',
+        });
 
-      // Always show success (email may have been sent even if timeout)
+        if (!emailResult.success && emailResult.error) {
+          console.warn('Email send result:', emailResult);
+        }
+      } else {
+        console.warn('Resend API key not configured, skipping email send');
+      }
+
+      // Show success
+      clearTimeout(timeoutId);
       setSubmitSuccess(true);
       setFormData({ name: '', email: '', message: '' });
       setSelectedFile(null);
@@ -111,15 +132,10 @@ export const CareersPage: React.FC<CareersPageProps> = ({ setViewState }) => {
         setShowEmailModal(false);
         setSubmitSuccess(false);
       }, 2000);
-    } catch (error) {
-      // Still show success to user (email logging handles errors, timeout failsafe)
-      setSubmitSuccess(true);
-      setFormData({ name: '', email: '', message: '' });
-      setSelectedFile(null);
-      setTimeout(() => {
-        setShowEmailModal(false);
-        setSubmitSuccess(false);
-      }, 2000);
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      console.error('Error submitting career inquiry:', error);
+      alert(`⚠️ Error: ${error.message || 'Failed to submit application. Please try again.'}`);
     } finally {
       setIsSubmitting(false);
     }

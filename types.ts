@@ -48,6 +48,7 @@ export enum ViewState {
   GUIDELINES = 'GUIDELINES',
   REPORT_EVENT = 'REPORT_EVENT',
   HELP = 'HELP',
+  DEBUG_ENV = 'DEBUG_ENV',
   SAFETY = 'SAFETY',
   PRESS = 'PRESS',
   AUTH = 'AUTH',

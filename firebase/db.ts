@@ -83,6 +83,7 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
       capacity: eventData.capacity,
     };
     const docRef = await addDoc(eventsCol, firestoreEvent);
+    console.log('Firestore write success:', { path: 'events', docId: docRef.id });
     const createdEvent: FirestoreEvent = {
       id: docRef.id,
       ...firestoreEvent,
@@ -101,8 +102,8 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
     }
     
     return mapFirestoreEventToEvent(createdEvent);
-  } catch (error) {
-    console.error("Error creating event:", error);
+  } catch (error: any) {
+    console.error('Firestore write failed:', { path: 'events', error: error.message || 'Unknown error' });
     throw error;
   }
 }
@@ -233,9 +234,10 @@ export async function createReservation(eventId: string, userId: string): Promis
       status: "reserved",
     };
     const docRef = await addDoc(reservationsCol, reservation);
+    console.log('Firestore write success:', { path: 'reservations', docId: docRef.id });
     return docRef.id;
-  } catch (error) {
-    console.error("Error creating reservation:", error);
+  } catch (error: any) {
+    console.error('Firestore write failed:', { path: 'reservations', error: error.message || 'Unknown error' });
     throw error;
   }
 }
@@ -268,8 +270,9 @@ export async function cancelReservation(reservationId: string): Promise<void> {
   try {
     const reservationRef = doc(db, "reservations", reservationId);
     await updateDoc(reservationRef, { status: "cancelled" });
-  } catch (error) {
-    console.error("Error cancelling reservation:", error);
+    console.log('Firestore write success:', { path: `reservations/${reservationId}`, docId: reservationId });
+  } catch (error: any) {
+    console.error('Firestore write failed:', { path: `reservations/${reservationId}`, error: error.message || 'Unknown error' });
     throw error;
   }
 }
@@ -336,9 +339,10 @@ export async function addChatMessage(
       isHost,
     };
     const docRef = await addDoc(messagesCol, message);
+    console.log('Firestore write success:', { path: `events/${eventId}/messages`, docId: docRef.id });
     return docRef.id;
-  } catch (error) {
-    console.error("Error adding chat message:", error);
+  } catch (error: any) {
+    console.error('Firestore write failed:', { path: `events/${eventId}/messages`, error: error.message || 'Unknown error' });
     throw error;
   }
 }
@@ -392,8 +396,9 @@ export async function createOrUpdateUserProfile(uid: string, userData: Partial<F
       uid,
       updatedAt: Date.now(),
     }, { merge: true });
-  } catch (error) {
-    console.error("Error creating/updating user profile:", error);
+    console.log('Firestore write success:', { path: `users/${uid}`, docId: uid });
+  } catch (error: any) {
+    console.error('Firestore write failed:', { path: `users/${uid}`, error: error.message || 'Unknown error' });
     throw error;
   }
 }
@@ -452,12 +457,13 @@ export async function addReview(
       createdAt: Date.now(),
     };
     const docRef = await addDoc(reviewsCol, review);
+    console.log('Firestore write success:', { path: `events/${eventId}/reviews`, docId: docRef.id });
     
     await recalculateEventRating(eventId);
     
     return docRef.id;
-  } catch (error) {
-    console.error("Error adding review:", error);
+  } catch (error: any) {
+    console.error('Firestore write failed:', { path: `events/${eventId}/reviews`, error: error.message || 'Unknown error' });
     throw error;
   }
 }
@@ -495,6 +501,7 @@ export async function recalculateEventRating(eventId: string): Promise<void> {
         rating: 0,
         reviewCount: 0,
       });
+      console.log('Firestore write success:', { path: `events/${eventId}`, docId: eventId, operation: 'recalculateRating' });
       return;
     }
     
@@ -508,8 +515,9 @@ export async function recalculateEventRating(eventId: string): Promise<void> {
       rating: roundedRating,
       reviewCount,
     });
-  } catch (error) {
-    console.error("Error recalculating event rating:", error);
+    console.log('Firestore write success:', { path: `events/${eventId}`, docId: eventId, operation: 'recalculateRating' });
+  } catch (error: any) {
+    console.error('Firestore write failed:', { path: `events/${eventId}`, error: error.message || 'Unknown error', operation: 'recalculateRating' });
     throw error;
   }
 }

@@ -31,6 +31,7 @@ const FavoritesPage = React.lazy(() => import('./pages/FavoritesPage').then(m =>
 const MyCalendarPage = React.lazy(() => import('./pages/MyCalendarPage').then(m => ({ default: m.MyCalendarPage })));
 const DeleteAccountPage = React.lazy(() => import('./pages/DeleteAccountPage').then(m => ({ default: m.DeleteAccountPage })));
 const CreateEventPage = React.lazy(() => import('./pages/CreateEventPage').then(m => ({ default: m.CreateEventPage })));
+const DebugEnvPage = React.lazy(() => import('./pages/DebugEnvPage').then(m => ({ default: m.DebugEnvPage })));
 
 // Consolidated Imports - lazy loaded
 const BasicDetailsPage = React.lazy(() => import('./pages/ProfileSubPages').then(m => ({ default: m.BasicDetailsPage })));
@@ -803,9 +804,9 @@ const AppContent: React.FC = () => {
         </button>
       </div>
       {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
-      <div className="flex md:grid md:grid-cols-12 overflow-x-auto md:overflow-x-visible gap-6 xl:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+      <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 overflow-x-auto md:overflow-x-visible gap-6 md:gap-6 lg:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4 md:place-items-center">
          {events.map(event => (
-           <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:col-span-6 lg:col-span-4 snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
+           <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:w-full md:max-w-[420px] snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
               <EventCard 
                 event={event} 
                 onClick={handleEventClick} 
@@ -898,6 +899,7 @@ const AppContent: React.FC = () => {
         {viewState === ViewState.ABOUT && <AboutPage setViewState={setViewState} />}
         {viewState === ViewState.CAREERS && <CareersPage setViewState={setViewState} />}
         {viewState === ViewState.CONTACT && <ContactPage setViewState={setViewState} />}
+        {viewState === ViewState.DEBUG_ENV && <DebugEnvPage setViewState={setViewState} />}
         {viewState === ViewState.TERMS && <TermsPage setViewState={setViewState} />}
         {viewState === ViewState.PRIVACY && <PrivacyPage setViewState={setViewState} />}
         {viewState === ViewState.CANCELLATION && <CancellationPage setViewState={setViewState} />}
