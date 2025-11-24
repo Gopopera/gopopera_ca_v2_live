@@ -42,6 +42,7 @@ const MyReviewsPage = React.lazy(() => import('./pages/ProfileSubPages').then(m 
 import { Event, ViewState } from './types';
 import { Search, ArrowRight, MapPin, PlusCircle } from 'lucide-react';
 import { EventCard } from './components/events/EventCard';
+import { CARD_GRID_GAP } from './src/components/events/EventCardLayout';
 import { useEventStore } from './stores/eventStore';
 import { useUserStore } from './stores/userStore';
 import { generatePoperaEvents } from './data/poperaEvents';
@@ -815,9 +816,9 @@ const AppContent: React.FC = () => {
         </button>
       </div>
       {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
-      <div className="flex md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 overflow-x-auto md:overflow-x-visible gap-6 md:gap-6 lg:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4 md:place-items-center">
+      <div className="flex md:grid overflow-x-auto md:overflow-x-visible gap-6 pb-2 md:pb-6 snap-x snap-mandatory md:snap-none scroll-smooth md:place-items-center">
          {events.map(event => (
-           <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:w-full md:max-w-[420px] snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
+           <div key={event.id} className="snap-start flex-shrink-0 md:col-span-1">
               <EventCard 
                 event={event} 
                 onClick={handleEventClick} 
@@ -1008,9 +1009,9 @@ const AppContent: React.FC = () => {
                          {city}
                        </h2>
                        {/* Mobile: Horizontal scroll, Desktop: Grid layout - matches Landing */}
-                       <div className="flex md:grid md:grid-cols-12 overflow-x-auto md:overflow-x-visible gap-6 xl:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+                       <div className="flex md:grid overflow-x-auto md:overflow-x-visible gap-6 pb-2 md:pb-6 snap-x snap-mandatory md:snap-none scroll-smooth md:place-items-center">
                          {cityEvents.map(event => (
-                           <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:col-span-6 lg:col-span-4 snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
+                           <div key={event.id} className="snap-start flex-shrink-0 md:col-span-1">
                              <EventCard
                                event={event}
                                onClick={handleEventClick}
@@ -1057,9 +1058,9 @@ const AppContent: React.FC = () => {
                                 {category}
                               </h2>
                               {/* Mobile: Horizontal scroll, Desktop: Grid layout - matches Landing */}
-                              <div className="flex md:grid md:grid-cols-12 overflow-x-auto md:overflow-x-visible gap-6 xl:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+                              <div className="flex md:grid overflow-x-auto md:overflow-x-visible gap-6 pb-2 md:pb-6 snap-x snap-mandatory md:snap-none scroll-smooth md:place-items-center">
                                 {categoryEvents.map(event => (
-                                  <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:col-span-6 lg:col-span-4 snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
+                                  <div key={event.id} className="snap-start flex-shrink-0 md:col-span-1">
                                     <EventCard
                                       event={event}
                                       onClick={handleEventClick}

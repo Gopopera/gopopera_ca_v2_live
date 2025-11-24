@@ -197,9 +197,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
         
         {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
-        <div className="flex md:grid md:grid-cols-12 overflow-x-auto md:overflow-x-visible gap-6 xl:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+        <div className="flex md:grid overflow-x-auto md:overflow-x-visible gap-6 pb-2 md:pb-6 snap-x snap-mandatory md:snap-none scroll-smooth md:place-items-center">
            {filteredEvents.slice(0, 8).map(event => (
-             <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:col-span-6 lg:col-span-4 snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
+             <div key={event.id} className="snap-start flex-shrink-0">
                 <EventCard 
                   event={event} 
                   onClick={onEventClick} 

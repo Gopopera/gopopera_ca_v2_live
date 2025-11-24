@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { ViewState, Event } from '../types';
 import { ChevronLeft, Calendar, Edit, MapPin, Clock, Users } from 'lucide-react';
 import { EventCard } from '../components/events/EventCard';
+import { CARD_GRID_GAP } from '../src/components/events/EventCardLayout';
 import { useUserStore } from '../stores/userStore';
 
 interface MyPopsPageProps {
@@ -112,9 +113,9 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 xl:gap-8">
+          <div className={`grid ${CARD_GRID_GAP} grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 place-items-center`}>
             {currentEvents.map((event) => (
-              <div key={event.id} className="md:col-span-6 lg:col-span-4 relative">
+              <div key={event.id} className="w-full h-auto relative">
                 <EventCard
                   event={event}
                   onClick={() => onEventClick(event)}

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { ArrowLeft, MapPin, Star, Users, Instagram, Twitter, Globe, MessageCircle, Check } from 'lucide-react';
 import { Event } from '@/types';
 import { EventCard } from '../events/EventCard';
+import { CARD_GRID_GAP } from '@/src/components/events/EventCardLayout';
 import { useProfileStore } from '@/stores/profileStore';
 import { useUserStore, POPERA_HOST_ID, POPERA_HOST_NAME } from '@/stores/userStore';
 import { PoperaProfilePicture } from './PoperaProfilePicture';
@@ -172,9 +173,9 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
            </button>
         </div>
         {activeTab === 'events' ? (
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 lg:gap-6 xl:gap-8">
+           <div className={`grid ${CARD_GRID_GAP} grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 place-items-center`}>
              {hostEvents.map(event => (
-               <div key={event.id} className="h-auto">
+               <div key={event.id} className="w-full h-auto">
                  <EventCard 
                    event={event} 
                    onClick={onEventClick} 

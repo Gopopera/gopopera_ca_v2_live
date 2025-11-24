@@ -1,6 +1,7 @@
 import React from 'react';
 import { EventCard } from './EventCard';
 import { Event } from '@/types';
+import { CARD_GRID_GAP } from '@/src/components/events/EventCardLayout';
 
 interface EventFeedProps {
   events: Event[];
@@ -26,9 +27,9 @@ export const EventFeed: React.FC<EventFeedProps> = ({
   const displayEvents = limit ? events.slice(0, limit) : events;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-6 lg:gap-8 mx-auto place-items-center">
+    <div className={`grid ${CARD_GRID_GAP} grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 place-items-center`}>
       {displayEvents.map(event => (
-        <div key={event.id} className="w-full max-w-[420px] h-auto">
+        <div key={event.id} className="w-full h-auto">
           <EventCard 
             event={event} 
             onClick={onEventClick}
