@@ -12,6 +12,9 @@ import { createOrUpdateUserProfile } from "./db";
 import type { User } from "firebase/auth";
 import { seedPoperaLaunchEventsForUser } from "./demoSeed";
 
+const POPERA_DEMO_BIO =
+  "This is a Popera demo host for example scenarios. These events are examples only.";
+
 /**
  * Ensure Popera profile has correct fields
  * Called after successful login for eatezca@gmail.com
@@ -30,9 +33,7 @@ export async function ensurePoperaProfileAndSeed(user: User) {
   }
 
   const email = user.email.toLowerCase().trim();
-  const poperaEmail = 'eatezca@gmail.com';
-
-  if (email !== poperaEmail) {
+  if (email !== POPERA_EMAIL) {
     console.log('[POPERA_SEED] Not Popera account, skipping seeding');
     return;
   }
@@ -40,12 +41,14 @@ export async function ensurePoperaProfileAndSeed(user: User) {
   try {
     await createOrUpdateUserProfile(user.uid, {
       uid: user.uid,
-      email,
+      email: POPERA_EMAIL,
       displayName: "Popera",
       name: "Popera",
       isOfficialHost: true,
       isDemoHost: true,
       isVerified: true,
+      isPoperaDemoHost: true,
+      bio: POPERA_DEMO_BIO,
       updatedAt: serverTimestamp(),
     });
   } catch (error) {
@@ -82,9 +85,10 @@ export async function ensurePoperaProfile(uid: string, email: string): Promise<v
     const updateData: Partial<FirestoreUser> = {
       displayName: "Popera",
       username: "Popera",
-      bio: "Official Popera host account used for launch events, onboarding, and example use cases.",
+      bio: POPERA_DEMO_BIO,
       isVerified: true,
       isDemoHost: true,
+      isPoperaDemoHost: true,
       updatedAt: Date.now(),
     };
 

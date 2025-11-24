@@ -10,7 +10,7 @@ import { ChevronLeft, CheckCircle, XCircle, Loader } from 'lucide-react';
 import { useUserStore, POPERA_EMAIL } from '../stores/userStore';
 import { getPoperaDemoEventsSnapshot } from '../firebase/demoSeed';
 import { ensurePoperaProfileAndSeed } from '../firebase/poperaProfile';
-import { getDbSafe } from '../src/lib/firebase';
+import { getAppSafe, getDbSafe } from '../src/lib/firebase';
 import { Timestamp } from 'firebase/firestore';
 
 interface DebugSeedDemoEventsPageProps {
@@ -23,6 +23,7 @@ export const DebugSeedDemoEventsPage: React.FC<DebugSeedDemoEventsPageProps> = (
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
   const [seededEvents, setSeededEvents] = useState<any[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
+  const [projectId, setProjectId] = useState<string | null>(null);
   const normalizedEmail = user?.email?.toLowerCase().trim();
 
   // Only show if user is authenticated and is eatezca@gmail.com
@@ -30,6 +31,11 @@ export const DebugSeedDemoEventsPage: React.FC<DebugSeedDemoEventsPageProps> = (
 
   // Load seeded events on mount
   useEffect(() => {
+    const app = getAppSafe();
+    if (app?.options?.projectId) {
+      setProjectId(app.options.projectId);
+    }
+
     if (isAuthorized && user?.uid && normalizedEmail) {
       loadSeededEvents(normalizedEmail);
     }
@@ -47,9 +53,16 @@ export const DebugSeedDemoEventsPage: React.FC<DebugSeedDemoEventsPageProps> = (
       const snap = await getPoperaDemoEventsSnapshot(db, poperaEmail);
       const events = snap.docs.map(doc => {
         const data = doc.data();
-        const startDate = data?.startDate instanceof Timestamp 
-          ? data.startDate.toDate().toISOString()
-          : (data?.startDate || data?.date);
+        let startDate: string | undefined;
+        if (data?.startDate instanceof Timestamp) {
+          startDate = data.startDate.toDate().toISOString();
+        } else if (typeof data?.startDate === 'number') {
+          startDate = new Date(data.startDate).toISOString();
+        } else if (typeof data?.startDate === 'string') {
+          startDate = data.startDate;
+        } else if (data?.date) {
+          startDate = data.date;
+        }
 
         return {
           id: doc.id,
@@ -143,6 +156,11 @@ export const DebugSeedDemoEventsPage: React.FC<DebugSeedDemoEventsPageProps> = (
           <p className="text-gray-300 text-sm sm:text-base">
             Idempotent seeding of demo events for early users
           </p>
+          {projectId && (
+            <p className="text-xs text-gray-400 mt-2">
+              Firebase project: <span className="font-mono">{projectId}</span>
+            </p>
+          )}
         </div>
 
         <div className="bg-white/10 rounded-2xl p-6 sm:p-8 space-y-6">
@@ -165,6 +183,15 @@ export const DebugSeedDemoEventsPage: React.FC<DebugSeedDemoEventsPageProps> = (
           <div className="pt-4 border-t border-white/20">
             <h3 className="text-lg font-bold mb-1">Seeded Launch Events ({seededEvents.length})</h3>
             <p className="text-gray-300 text-sm mb-2">Found {seededEvents.length} demo events</p>
+            <div className="flex flex-wrap gap-3 mb-3">
+              <button
+                onClick={() => normalizedEmail && loadSeededEvents(normalizedEmail)}
+                className="px-4 py-2 text-sm rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                disabled={loadingEvents}
+              >
+                {loadingEvents ? 'Refreshing…' : 'Refresh list'}
+              </button>
+            </div>
             {loadingEvents ? (
               <div className="text-gray-300 text-sm">Loading events...</div>
             ) : seededEvents.length === 0 ? (

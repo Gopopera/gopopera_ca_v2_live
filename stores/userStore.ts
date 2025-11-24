@@ -134,9 +134,11 @@ export const useUserStore = create<UserStore>()(
         });
 
         // Ensure Popera profile and seed events (only runs for Popera account)
-        ensurePoperaProfileAndSeed(firebaseUser).catch(err => {
+        try {
+          await ensurePoperaProfileAndSeed(firebaseUser);
+        } catch (err) {
           console.error('[AUTH] Popera profile/seeding failed, continuing', err);
-        });
+        }
       },
 
       init: () => {
@@ -172,7 +174,6 @@ export const useUserStore = create<UserStore>()(
               if (firebaseUser) {
                 try {
                   await get().handleAuthSuccess(firebaseUser);
-                  await ensurePoperaProfileAndSeed(firebaseUser);
                 } catch (error) {
                   console.error("Error restoring user session:", error);
                   set({ user: null, currentUser: null, loading: false, ready: true, isAuthReady: true });
@@ -195,7 +196,6 @@ export const useUserStore = create<UserStore>()(
           set({ loading: true });
           const userCredential = await signupWithEmail(email, password);
           await get().handleAuthSuccess(userCredential.user);
-          await ensurePoperaProfileAndSeed(userCredential.user);
         } catch (error) {
           console.error("Signup error:", error);
           set({ loading: false });
@@ -218,7 +218,6 @@ export const useUserStore = create<UserStore>()(
             }
           }
           await get().handleAuthSuccess(userCredential.user);
-          await ensurePoperaProfileAndSeed(userCredential.user);
         } catch (error) {
           console.error("Login error:", error);
           set({ loading: false });
@@ -360,7 +359,6 @@ export const useUserStore = create<UserStore>()(
           const cred = await loginWithGoogle();
           if (cred?.user) {
             await get().handleAuthSuccess(cred.user);
-            await ensurePoperaProfileAndSeed(cred.user);
             return get().user;
           }
           return null; // redirect path

@@ -31,6 +31,8 @@ export interface FirestoreEvent {
   demoType?: string; // Type of demo event (e.g., "city-launch")
   managedBy?: string; // Email of account managing this event
   isOfficialLaunch?: boolean;
+  status?: string;
+  public?: boolean;
   // Additional fields
   aboutEvent?: string;
   whatToExpect?: string;
@@ -79,6 +81,7 @@ export interface FirestoreUser {
   phone_verified?: boolean; // Multi-factor enrollment flag
   createdAt: number;
   updatedAt?: number | unknown;
+  isPoperaDemoHost?: boolean; // Specific flag for Popera demo host
 }
 
 export interface FirestoreReview {

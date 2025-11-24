@@ -5,7 +5,7 @@
  */
 
 import { getDbSafe } from '../src/lib/firebase';
-import { addDoc, collection, doc, getDoc, getDocs, query, where, setDoc, Timestamp, type Firestore } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, getDocs, query, where, setDoc, type Firestore } from 'firebase/firestore';
 import { createOrUpdateUserProfile } from './db';
 import { POPERA_EMAIL, POPERA_HOST_ID, POPERA_HOST_NAME } from '../stores/userStore';
 import type { FirestoreEvent } from './types';
@@ -13,6 +13,19 @@ import type { Event } from '../types';
 import type { User } from 'firebase/auth';
 import type { City } from '../src/stores/cityStore';
 import { sanitizeFirestoreData } from '../utils/firestoreValidation';
+
+const DEMO_DEMO_TYPE = 'city-launch';
+const DEMO_HOST_NAME = 'Popera';
+const DEMO_DESCRIPTION =
+  '⚠️ This is a Popera demo event to showcase use cases. It is not an actual public event. Join to see how Popera micro pop-ups can work in your city.';
+
+const DEMO_CITIES: { id: City; label: string; slug: string }[] = [
+  { id: 'montreal', label: 'Montreal', slug: 'montreal' },
+  { id: 'ottawa', label: 'Ottawa', slug: 'ottawa' },
+  { id: 'toronto', label: 'Toronto', slug: 'toronto' },
+  { id: 'vancouver', label: 'Vancouver', slug: 'vancouver' },
+  { id: 'quebec', label: 'Quebec City', slug: 'quebec-city' },
+];
 
 interface DemoEventConfig {
   title: string;
@@ -37,7 +50,7 @@ export async function getPoperaDemoEventsSnapshot(db: Firestore, poperaEmail: st
   const q = query(
     eventsRef,
     where('managedBy', '==', poperaEmail),
-    where('demoType', '==', 'city-launch')
+    where('demoType', '==', DEMO_DEMO_TYPE)
   );
 
   const snap = await getDocs(q);
@@ -49,16 +62,6 @@ export async function getPoperaDemoEventsSnapshot(db: Firestore, poperaEmail: st
   return snap;
 }
 
-const cityLabels: Record<City, string> = {
-  montreal: 'Montréal',
-  ottawa: 'Ottawa–Gatineau',
-  gatineau: 'Ottawa–Gatineau',
-  quebec: 'Québec City',
-  toronto: 'Toronto',
-  vancouver: 'Vancouver',
-};
-
-const cityLabelFromId = (city: City): string => cityLabels[city] || city;
 const normalizeCityValue = (value: string): string =>
   value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
@@ -68,90 +71,86 @@ export async function seedPoperaLaunchEventsForUser(user: User) {
     console.error('[POPERA_SEED] No Firestore db, aborting');
     return;
   }
-  console.log('[POPERA_SEED] Starting seedPoperaLaunchEventsForUser for', user.email);
 
   const poperaEmail = user.email?.toLowerCase().trim();
-  if (!poperaEmail) return;
-
-  console.log('[POPERA_SEED] Checking existing demo events for', poperaEmail);
-
-  const existing = await getPoperaDemoEventsSnapshot(db, poperaEmail);
-  if (existing.size >= 5) {
-    console.log('[POPERA_SEED] Demo events already exist, skipping creation');
+  if (!poperaEmail || poperaEmail !== POPERA_EMAIL) {
+    console.log('[POPERA_SEED] Not Popera account, skipping');
     return;
   }
 
-  const existingCities = new Set(
-    existing.docs.map(docSnap => {
-      const data = docSnap.data() as Record<string, any>;
-      return normalizeCityValue((data?.city || '').toString());
-    })
+  console.log('[POPERA_SEED] Checking existing demo events for', poperaEmail);
+
+  const eventsRef = collection(db, 'events');
+  const existingQuery = query(
+    eventsRef,
+    where('hostId', '==', user.uid),
+    where('demoType', '==', DEMO_DEMO_TYPE)
   );
+  const existingSnap = await getDocs(existingQuery);
 
-  const cities: City[] = ['ottawa', 'montreal', 'toronto', 'vancouver', 'quebec'];
-  // Cities must match Firestore enum exactly: ["Ottawa–Gatineau", "Montréal", "Toronto", "Vancouver", "Québec City"]
-  const now = new Date();
-  const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-  const endDate = new Date(nextWeek.getTime() + 2 * 60 * 60 * 1000);
-  const dateString = nextWeek.toISOString().split('T')[0];
-  const timeString = `${String(nextWeek.getHours()).padStart(2, '0')}:${String(nextWeek.getMinutes()).padStart(2, '0')}`;
-  let createdCount = 0;
-
-  for (const city of cities) {
-    const cityLabel = cityLabelFromId(city);
-    const normalizedCity = normalizeCityValue(cityLabel);
-    if (existingCities.has(normalizedCity)) {
-      console.log('[POPERA_SEED] Demo event already exists for city', cityLabel);
-      continue;
-    }
-
-    const event = {
-      title: `Popera City Launch: ${cityLabel}`,
-      subtitle: 'Join other early members and ask us anything about Popera.',
-      description:
-        'This is a live example pop-up created by the Popera team. Come meet other curious locals, share ideas, and help us shape pop-up culture in your city.',
-      city: cityLabel,
-      host: 'Popera',
-      hostName: 'Popera',
-      hostId: user.uid,
-      hostEmail: poperaEmail,
-      public: true,
-      isPublic: true,
-      status: 'active',
-      category: 'Community' as Event['category'],
-      tags: ['launch', 'popera', 'meetup'],
-      isDemo: true,
-      demoType: 'city-launch',
-      managedBy: poperaEmail,
-      allowChat: true,
-      allowRsvp: true,
-      startDate: Timestamp.fromDate(nextWeek),
-      endDate: Timestamp.fromDate(endDate),
-      date: dateString,
-      time: timeString,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      location: cityLabel,
-      address: '',
-      isPoperaOwned: false,
-      isOfficialLaunch: false,
-      price: 'Free',
-      attendeesCount: 0,
-      rating: 0,
-      reviewCount: 0,
-      imageUrl: `https://picsum.photos/seed/popera-${city}/800/600`,
-    };
-
-    console.log('[POPERA_SEED] Creating demo event for:', cityLabel);
-
-    const sanitizedEvent = sanitizeFirestoreData(event);
-    const docRef = await addDoc(collection(db, 'events'), sanitizedEvent);
-
-    console.log('[POPERA_SEED] Created demo event', docRef.id, 'for city', city);
-    createdCount++;
+  if (existingSnap.size > 0) {
+    console.log('[POPERA_SEED] Demo events already exist for Popera host, skipping seeding');
+    return;
   }
 
-  console.log('[POPERA_SEED] Completed seeding run. Created', createdCount, 'new demo events. Existing snapshot size:', existing.size);
+  const now = Date.now();
+  let createdCount = 0;
+
+  for (let i = 0; i < DEMO_CITIES.length; i++) {
+    const city = DEMO_CITIES[i];
+    const startDate = new Date(now + (3 + i) * 24 * 60 * 60 * 1000);
+    const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
+    const dateString = startDate.toISOString().split('T')[0];
+    const timeString = `${String(startDate.getHours()).padStart(2, '0')}:${String(startDate.getMinutes()).padStart(2, '0')}`;
+
+    const eventData: Omit<FirestoreEvent, 'id'> = {
+      title: `Popera Launch: Micro Pop-Ups in ${city.label}`,
+      subtitle: 'City launch demo — explore how Popera micro pop-ups work.',
+      description: DEMO_DESCRIPTION,
+      city: city.label,
+      address: '',
+      location: city.label,
+      date: dateString,
+      time: timeString,
+      price: 'Free',
+      category: 'Community',
+      tags: ['popera', 'launch', city.label.toLowerCase()],
+      host: DEMO_HOST_NAME,
+      hostName: DEMO_HOST_NAME,
+      hostId: user.uid,
+      imageUrl: `https://picsum.photos/seed/popera-launch-${city.slug}/800/600`,
+      rating: 0,
+      reviewCount: 0,
+      attendeesCount: 0,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      isDemo: true,
+      demoType: DEMO_DEMO_TYPE,
+      demoPurpose: 'Popera demo launch event for this city.',
+      managedBy: POPERA_EMAIL,
+      isPoperaOwned: false,
+      isOfficialLaunch: false,
+      startDate: startDate.getTime(),
+      endDate: endDate.getTime(),
+      isPublic: true,
+      allowChat: true,
+      allowRsvp: true,
+      // Keep compatibility flags/fields used elsewhere
+      public: true as any,
+      status: 'published' as any,
+    };
+
+    try {
+      const sanitizedEvent = sanitizeFirestoreData(eventData);
+      const docRef = await addDoc(eventsRef, sanitizedEvent);
+      console.log('[POPERA_SEED] Created demo event', docRef.id, 'for city', city.label);
+      createdCount++;
+    } catch (error: any) {
+      console.error('[POPERA_SEED] Failed to create demo event for', city.label, error);
+    }
+  }
+
+  console.log('[POPERA_SEED] Completed seeding run. Created', createdCount, 'demo events.');
 }
 
 /**
