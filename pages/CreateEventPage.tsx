@@ -441,6 +441,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
 
       {/* Phone Verification Modal */}
       <PhoneVerificationModal
+        useMfaEnrollment={true}
         isOpen={showSMSModal}
         onClose={() => setShowSMSModal(false)}
         onSuccess={handlePhoneVerificationSuccess}

@@ -8,6 +8,12 @@ import {
   confirmPhoneVerification,
   resetPhoneRecaptcha,
 } from '../../src/services/phoneVerification';
+import {
+  startPhoneMfaEnrollment,
+  verifyPhoneMfaCode,
+  resetRecaptchaVerifier,
+  createRecaptchaVerifier,
+} from '../../src/lib/firebaseAuth';
 import { createOrUpdateUserProfile } from '../../firebase/db';
 import type { ConfirmationResult } from 'firebase/auth';
 
@@ -16,6 +22,7 @@ interface PhoneVerificationModalProps {
   onClose: () => void;
   onSuccess?: () => void;
   required?: boolean; // If true, user cannot bypass
+  useMfaEnrollment?: boolean; // If true, use MFA enrollment instead of phone linking
 }
 
 export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
@@ -23,6 +30,7 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
   onClose,
   onSuccess,
   required = false,
+  useMfaEnrollment = false,
 }) => {
   const user = useUserStore((state) => state.user);
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -32,6 +40,7 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [mfaVerificationId, setMfaVerificationId] = useState<string | null>(null);
   const recaptchaVerifierRef = useRef<boolean>(false);
 
   useEffect(() => {
@@ -40,10 +49,13 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
       setPhoneNumber('');
       setVerificationCode('');
       setVerificationId(null);
+      setMfaVerificationId(null);
+      setConfirmationResult(null);
       setStep('phone');
       setError(null);
       setSuccess(false);
       resetPhoneRecaptcha();
+      resetRecaptchaVerifier();
     }
   }, [isOpen]);
 
@@ -58,10 +70,22 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
 
     try {
       const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+1${phoneNumber.replace(/\D/g, '')}`;
-      const confirmation = await startPhoneVerification(formattedPhone);
-      setConfirmationResult(confirmation);
-      setStep('code');
-      console.log('[PHONE_VERIFY] Code sent');
+      
+      if (useMfaEnrollment) {
+        // Use MFA enrollment (official SDK methods only)
+        resetRecaptchaVerifier();
+        const recaptcha = createRecaptchaVerifier('phone-recaptcha-container');
+        const verificationId = await startPhoneMfaEnrollment(formattedPhone, recaptcha);
+        setMfaVerificationId(verificationId);
+        setStep('code');
+        console.log('[MFA_ENROLL] Code sent for MFA enrollment');
+      } else {
+        // Use regular phone verification (linking)
+        const confirmation = await startPhoneVerification(formattedPhone);
+        setConfirmationResult(confirmation);
+        setStep('code');
+        console.log('[PHONE_VERIFY] Code sent');
+      }
     } catch (error: any) {
       console.error('[PHONE_VERIFY] Error sending verification code:', error);
       
@@ -76,8 +100,18 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
   };
 
   const handleVerifyCode = async () => {
-    if (!verificationCode.trim() || !confirmationResult || !user?.uid) {
+    if (!verificationCode.trim() || !user?.uid) {
       setError('Please enter the verification code');
+      return;
+    }
+
+    if (useMfaEnrollment && !mfaVerificationId) {
+      setError('Verification ID not available');
+      return;
+    }
+
+    if (!useMfaEnrollment && !confirmationResult) {
+      setError('Confirmation result not available');
       return;
     }
 
@@ -85,8 +119,16 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
     setError(null);
 
     try {
-      await confirmPhoneVerification(confirmationResult, verificationCode);
-      console.log('[PHONE_VERIFY] Code verified');
+      if (useMfaEnrollment) {
+        // Use MFA enrollment (official SDK methods only)
+        await verifyPhoneMfaCode(mfaVerificationId!, verificationCode, 'Primary phone');
+        console.log('[MFA_ENROLL] MFA enrollment successful');
+        resetRecaptchaVerifier();
+      } else {
+        // Use regular phone verification (linking)
+        await confirmPhoneVerification(confirmationResult!, verificationCode);
+        console.log('[PHONE_VERIFY] Code verified');
+      }
 
       // Update user profile
       const db = getDbSafe();
@@ -110,7 +152,9 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
 
       setSuccess(true);
       resetPhoneRecaptcha();
+      resetRecaptchaVerifier();
       setConfirmationResult(null);
+      setMfaVerificationId(null);
       
       // Show success for 2 seconds, then close
       setTimeout(() => {

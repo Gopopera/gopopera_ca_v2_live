@@ -71,8 +71,14 @@ export async function completeGoogleRedirect(): Promise<UserCredential | null> {
   if (redirectChecked) return null;
   redirectChecked = true;
   try {
-    return await getRedirectResult(auth);
-  } catch (err) {
+    const result = await getRedirectResult(auth);
+    return result;
+  } catch (err: any) {
+    // If MFA is required, re-throw with MFA info attached
+    if (err?.code === 'auth/multi-factor-auth-required') {
+      console.log('[AUTH] MFA required after Google redirect');
+      throw err;
+    }
     console.error('[AUTH] completeGoogleRedirect error', err);
     return null;
   }

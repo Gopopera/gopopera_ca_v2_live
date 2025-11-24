@@ -4,6 +4,8 @@ import { ViewState } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useUserStore } from '../stores/userStore';
 import { completeGoogleRedirect, loginWithGoogle } from '../src/lib/authHelpers';
+import { MfaSignInModal } from '../components/auth/MfaSignInModal';
+import type { MultiFactorResolver } from 'firebase/auth';
 
 interface AuthPageProps {
   setViewState: (view: ViewState) => void;
@@ -37,17 +39,46 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
 
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [mfaResolver, setMfaResolver] = useState<MultiFactorResolver | null>(null);
+  const [mfaPhoneNumber, setMfaPhoneNumber] = useState<string>('');
+  const [showMfaModal, setShowMfaModal] = useState(false);
 
   useEffect(() => {
     console.log('[AUTH_UI] AuthPage mounted, checking Google redirect result');
+    
+    // Check for stored MFA error from redirect
+    const storedMfaError = (window as any).__GOOGLE_REDIRECT_MFA_ERROR__;
+    if (storedMfaError) {
+      delete (window as any).__GOOGLE_REDIRECT_MFA_ERROR__;
+      const { getMfaResolver } = require('../src/lib/firebaseAuth');
+      const resolver = getMfaResolver(storedMfaError);
+      if (resolver) {
+        setMfaResolver(resolver);
+        setMfaPhoneNumber((resolver.hints?.[0] as any)?.phoneNumber || '');
+        setShowMfaModal(true);
+        return;
+      }
+    }
+    
     completeGoogleRedirect()
       .then((cred) => {
         if (cred?.user) {
           console.log('[AUTH_UI] Redirect login completed for', cred.user.email);
         }
       })
-      .catch((err) => {
-        console.error('[AUTH_UI] Redirect completion error', err);
+      .catch((err: any) => {
+        // Handle MFA error from redirect
+        if (err?.code === 'auth/multi-factor-auth-required') {
+          const { getMfaResolver } = require('../src/lib/firebaseAuth');
+          const resolver = getMfaResolver(err);
+          if (resolver) {
+            setMfaResolver(resolver);
+            setMfaPhoneNumber((resolver.hints?.[0] as any)?.phoneNumber || '');
+            setShowMfaModal(true);
+          }
+        } else {
+          console.error('[AUTH_UI] Redirect completion error', err);
+        }
       });
   }, []);
 
@@ -59,7 +90,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
     console.log('[AUTH_UI] Google button clicked');
     
     try {
-      await loginWithGoogle();
+      const userStore = useUserStore.getState();
+      await userStore.signInWithGoogle();
       
       // Clear loading state quickly - auth listener will handle state update
       // If redirect was used, page will navigate away so this won't run
@@ -68,8 +100,16 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
       }, 100);
     } catch (error: any) {
       console.error("[AUTH] Google sign-in error:", error);
-      setGoogleError(error?.message || "Something went wrong signing you in. Please try again.");
-      setIsGoogleLoading(false);
+      // Check if MFA is required
+      if (error?.mfaRequired && error?.resolver) {
+        setMfaResolver(error.resolver);
+        setMfaPhoneNumber(error.phoneNumber || '');
+        setShowMfaModal(true);
+        setIsGoogleLoading(false);
+      } else {
+        setGoogleError(error?.message || "Something went wrong signing you in. Please try again.");
+        setIsGoogleLoading(false);
+      }
     }
   };
 
@@ -105,9 +145,42 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
       try {
         await onLogin(formData.email, formData.password);
       } catch (error: any) {
-        setEmailError(error?.message || 'We could not sign you in. Please try again.');
+        // Check if MFA is required
+        if (error?.mfaRequired && error?.resolver) {
+          setMfaResolver(error.resolver);
+          setMfaPhoneNumber(error.phoneNumber || '');
+          setShowMfaModal(true);
+        } else {
+          setEmailError(error?.message || 'We could not sign you in. Please try again.');
+        }
       }
     }
+  };
+
+  const handleMfaSuccess = async (userCredential: any) => {
+    console.log('[AUTH_UI] MFA sign-in successful', { uid: userCredential?.user?.uid });
+    setShowMfaModal(false);
+    setMfaResolver(null);
+    setMfaPhoneNumber('');
+    
+    // Update user store with the authenticated user
+    if (userCredential?.user) {
+      const userStore = useUserStore.getState();
+      await userStore.handleAuthSuccess(userCredential.user);
+      await userStore.fetchUserProfile(userCredential.user.uid);
+      
+      // Redirect to intended destination or default to FEED
+      const redirect = userStore.getRedirectAfterLogin() || ViewState.FEED;
+      setViewState(redirect);
+      userStore.setRedirectAfterLogin(null);
+    }
+    // Auth listener will also handle state update as a backup
+  };
+
+  const handleMfaCancel = () => {
+    setShowMfaModal(false);
+    setMfaResolver(null);
+    setMfaPhoneNumber('');
   };
 
   return (
@@ -468,6 +541,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
           </div>
         )}
       </div>
+
+      {/* MFA Sign-In Modal */}
+      <MfaSignInModal
+        isOpen={showMfaModal}
+        resolver={mfaResolver}
+        phoneNumber={mfaPhoneNumber}
+        onSuccess={handleMfaSuccess}
+        onCancel={handleMfaCancel}
+      />
     </div>
   );
 };

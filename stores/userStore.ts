@@ -18,6 +18,7 @@ import type { Unsubscribe } from 'firebase/auth';
 import type { ViewState } from '../types';
 import { completeGoogleRedirect, loginWithEmail, loginWithGoogle, signupWithEmail } from '../src/lib/authHelpers';
 import { ensurePoperaProfileAndSeed } from '../firebase/poperaProfile';
+import { getMfaResolver } from '../src/lib/firebaseAuth';
 
 // Simplified User interface matching Firebase Auth user
 export interface User {
@@ -166,9 +167,18 @@ export const useUserStore = create<UserStore>()(
                 const redirectResult = await completeGoogleRedirect();
                 if (redirectResult?.user) {
                   await get().handleAuthSuccess(redirectResult.user);
+                  await ensurePoperaProfileAndSeed(redirectResult.user);
                 }
-              } catch (error) {
-                console.error('[AUTH] Error checking redirect result:', error);
+              } catch (error: any) {
+                // If MFA is required from redirect, we can't handle it here
+                // The AuthPage will need to handle it on mount
+                if (error?.code === 'auth/multi-factor-auth-required') {
+                  console.log('[AUTH] MFA required after Google redirect - will be handled by AuthPage');
+                  // Store the error for AuthPage to handle
+                  (window as any).__GOOGLE_REDIRECT_MFA_ERROR__ = error;
+                } else {
+                  console.error('[AUTH] Error checking redirect result:', error);
+                }
               } finally {
                 set({ _redirectHandled: true });
               }
@@ -226,9 +236,22 @@ export const useUserStore = create<UserStore>()(
           set({ loading: true });
           const userCredential = await loginWithEmail(email, password);
           await get().handleAuthSuccess(userCredential.user);
-        } catch (error) {
+          await ensurePoperaProfileAndSeed(userCredential.user);
+        } catch (error: any) {
           console.error("Login error:", error);
           set({ loading: false });
+          // If MFA is required, attach resolver to error for UI handling
+          if (error?.code === 'auth/multi-factor-auth-required' || error?.mfaRequired) {
+            const resolver = getMfaResolver(error?.mfaError || error);
+            if (resolver) {
+              const mfaError = new Error(error.message || 'Multi-factor authentication required');
+              (mfaError as any).code = 'auth/multi-factor-auth-required';
+              (mfaError as any).mfaRequired = true;
+              (mfaError as any).resolver = resolver;
+              (mfaError as any).phoneNumber = (resolver.hints?.[0] as any)?.phoneNumber || '';
+              throw mfaError;
+            }
+          }
           throw error;
         }
       },
@@ -367,12 +390,25 @@ export const useUserStore = create<UserStore>()(
           const cred = await loginWithGoogle();
           if (cred?.user) {
             await get().handleAuthSuccess(cred.user);
+            await ensurePoperaProfileAndSeed(cred.user);
             return get().user;
           }
           return null; // redirect path
-        } catch (error) {
+        } catch (error: any) {
           console.error("Google sign in error:", error);
           set({ loading: false, ready: true, isAuthReady: true });
+          // If MFA is required, attach resolver to error for UI handling
+          if (error?.code === 'auth/multi-factor-auth-required' || error?.mfaRequired) {
+            const resolver = getMfaResolver(error?.mfaError || error);
+            if (resolver) {
+              const mfaError = new Error(error.message || 'Multi-factor authentication required');
+              (mfaError as any).code = 'auth/multi-factor-auth-required';
+              (mfaError as any).mfaRequired = true;
+              (mfaError as any).resolver = resolver;
+              (mfaError as any).phoneNumber = (resolver.hints?.[0] as any)?.phoneNumber || '';
+              throw mfaError;
+            }
+          }
           throw error;
         }
       },
