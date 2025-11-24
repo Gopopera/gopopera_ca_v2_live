@@ -10,6 +10,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { auth, db } from '../src/lib/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { shouldUseRedirect } from '../src/lib/authHelpers';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { attachAuthListener } from '../firebase/listeners';
 import { getUserProfile, createOrUpdateUserProfile, listUserReservations, createReservation, cancelReservation, listReservationsForUser } from '../firebase/db';
@@ -83,9 +84,41 @@ export const useUserStore = create<UserStore>()(
       _initialized: false,
       redirectAfterLogin: null,
 
-      init: () => {
+      init: async () => {
         if (get()._initialized) return; // Already initialized
         set({ _initialized: true, loading: true, ready: false });
+        
+        // Check for redirect result when app initializes (user returning from Google auth redirect)
+        try {
+          const redirectResult = await getRedirectResult(auth);
+          if (redirectResult?.user) {
+            // User just returned from redirect, handle profile creation/sync
+            const firebaseUser = redirectResult.user;
+            const firestoreUser = await getUserProfile(firebaseUser.uid);
+            if (!firestoreUser) {
+              await setDoc(doc(db, 'users', firebaseUser.uid), {
+                id: firebaseUser.uid,
+                uid: firebaseUser.uid,
+                name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+                email: firebaseUser.email || '',
+                displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+                photoURL: firebaseUser.photoURL || '',
+                createdAt: serverTimestamp(),
+              });
+            } else {
+              if (firebaseUser.photoURL && firestoreUser.photoURL !== firebaseUser.photoURL) {
+                await createOrUpdateUserProfile(firebaseUser.uid, {
+                  photoURL: firebaseUser.photoURL,
+                });
+              }
+            }
+          }
+        } catch (error) {
+          // Ignore redirect result errors - auth listener will handle state
+          if (import.meta.env.DEV) {
+            console.warn('[AUTH] Error checking redirect result:', error);
+          }
+        }
         
         const unsub = attachAuthListener(async (firebaseUser) => {
           if (firebaseUser) {
@@ -253,7 +286,15 @@ export const useUserStore = create<UserStore>()(
           }
           const provider = new GoogleAuthProvider();
           
-          // Try signInWithPopup first, fallback to signInWithRedirect
+          // Check if we should use redirect (mobile/iOS) or popup (desktop)
+          if (shouldUseRedirect()) {
+            // Mobile/iOS: always use redirect
+            await signInWithRedirect(auth, provider);
+            // Redirect will happen, return early
+            return null;
+          }
+          
+          // Desktop: try popup first, fallback to redirect on error
           let firebaseUser;
           try {
             const userCredential = await signInWithPopup(auth, provider);
@@ -274,27 +315,33 @@ export const useUserStore = create<UserStore>()(
             }
           }
           
-          const firestoreUser = await getUserProfile(firebaseUser.uid);
-          if (!firestoreUser) {
-            await setDoc(doc(db, 'users', firebaseUser.uid), {
-              id: firebaseUser.uid,
-              uid: firebaseUser.uid,
-              name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-              email: firebaseUser.email || '',
-              displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-              photoURL: firebaseUser.photoURL || '',
-              createdAt: serverTimestamp(),
-            });
-          } else {
-            if (firebaseUser.photoURL && firestoreUser.photoURL !== firebaseUser.photoURL) {
-              await createOrUpdateUserProfile(firebaseUser.uid, {
-                photoURL: firebaseUser.photoURL,
+          // Handle user creation/profile sync (only if we have a user from popup)
+          if (firebaseUser) {
+            const firestoreUser = await getUserProfile(firebaseUser.uid);
+            if (!firestoreUser) {
+              await setDoc(doc(db, 'users', firebaseUser.uid), {
+                id: firebaseUser.uid,
+                uid: firebaseUser.uid,
+                name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+                email: firebaseUser.email || '',
+                displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+                photoURL: firebaseUser.photoURL || '',
+                createdAt: serverTimestamp(),
               });
+            } else {
+              if (firebaseUser.photoURL && firestoreUser.photoURL !== firebaseUser.photoURL) {
+                await createOrUpdateUserProfile(firebaseUser.uid, {
+                  photoURL: firebaseUser.photoURL,
+                });
+              }
             }
+            
+            await get().fetchUserProfile(firebaseUser.uid);
+            return get().user || null;
           }
           
-          await get().fetchUserProfile(firebaseUser.uid);
-          return get().user || null;
+          // If we used redirect, return null (auth listener will handle the result)
+          return null;
         } catch (error) {
           console.error("Google sign in error:", error);
           set({ loading: false, ready: true });
