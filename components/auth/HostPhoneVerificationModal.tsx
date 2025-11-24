@@ -21,6 +21,37 @@ import { doc, setDoc } from 'firebase/firestore';
 import { useUserStore } from '../../stores/userStore';
 import { createOrUpdateUserProfile } from '../../firebase/db';
 
+// Module-level singleton for host phone reCAPTCHA verifier
+// This prevents "reCAPTCHA has already been rendered" errors by reusing the same instance
+let hostPhoneRecaptchaVerifier: RecaptchaVerifier | null = null;
+
+function getHostPhoneRecaptchaVerifier(): RecaptchaVerifier {
+  if (hostPhoneRecaptchaVerifier) return hostPhoneRecaptchaVerifier;
+
+  const auth = getAuthInstance();
+  hostPhoneRecaptchaVerifier = new RecaptchaVerifier(auth, 'host-phone-recaptcha-container', {
+    size: 'invisible',
+    callback: () => {
+      // Called when reCAPTCHA is solved automatically; we don't need to do anything here.
+      console.log('[HOST_VERIFY] reCAPTCHA solved');
+    },
+  });
+
+  return hostPhoneRecaptchaVerifier;
+}
+
+function clearHostPhoneRecaptchaVerifier() {
+  if (hostPhoneRecaptchaVerifier) {
+    try {
+      // For the Firebase web SDK, clear() is the public API to reset/destroy the widget.
+      hostPhoneRecaptchaVerifier.clear();
+    } catch {
+      // Ignore any errors from clear()
+    }
+    hostPhoneRecaptchaVerifier = null;
+  }
+}
+
 interface HostPhoneVerificationModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -43,27 +74,27 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-  const [recaptchaVerifier, setRecaptchaVerifier] = useState<RecaptchaVerifier | null>(null);
 
+  // Cleanup verifier only on component unmount (not on modal open/close)
+  useEffect(() => {
+    return () => {
+      // If the whole modal component is being unmounted (route change, etc.),
+      // clear the verifier so React can remount cleanly later.
+      clearHostPhoneRecaptchaVerifier();
+    };
+  }, []);
+
+  // Reset state when modal closes (but don't clear the verifier)
   useEffect(() => {
     if (!isOpen) {
-      // Reset state when modal closes
       setPhoneNumber('');
       setVerificationCode('');
       setStep('phone');
       setError(null);
       setSuccess(false);
       setConfirmationResult(null);
-      if (recaptchaVerifier) {
-        try {
-          recaptchaVerifier.clear();
-        } catch {
-          // ignore cleanup errors
-        }
-        setRecaptchaVerifier(null);
-      }
     }
-  }, [isOpen, recaptchaVerifier]);
+  }, [isOpen]);
 
   const handleSendCode = async () => {
     if (!phoneNumber.trim()) {
@@ -71,8 +102,10 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       return;
     }
 
-    if (!user?.uid) {
-      setError('You must be signed in to verify your phone number');
+    const auth = getAuthInstance();
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      setError('You need to be signed in to verify your phone.');
       return;
     }
 
@@ -80,77 +113,52 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
     setError(null);
 
     try {
-      const auth = getAuthInstance();
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        throw new Error('No authenticated user');
-      }
+      // Format phone number to E.164 format
+      const formattedPhone = phoneNumber.startsWith('+') 
+        ? phoneNumber 
+        : `+1${phoneNumber.replace(/\D/g, '')}`;
 
-      const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+1${phoneNumber.replace(/\D/g, '')}`;
-      
-      // Create reCAPTCHA verifier
-      const containerId = 'host-phone-recaptcha-container';
-      let container = document.getElementById(containerId);
-      if (!container) {
-        container = document.createElement('div');
-        container.id = containerId;
-        container.style.display = 'none';
-        document.body.appendChild(container);
-      }
+      // Get the singleton verifier (reuses existing instance if available)
+      const verifier = getHostPhoneRecaptchaVerifier();
 
-      const verifier = new RecaptchaVerifier(auth, containerId, {
-        size: 'invisible',
-        callback: () => {
-          console.log('[HOST_VERIFY] reCAPTCHA solved');
-        },
-        'expired-callback': () => {
-          console.log('[HOST_VERIFY] reCAPTCHA expired');
-          if (recaptchaVerifier) {
-            try {
-              recaptchaVerifier.clear();
-            } catch {
-              // ignore
-            }
-          }
-          setRecaptchaVerifier(null);
-        },
-      });
-      setRecaptchaVerifier(verifier);
-
-      // Send SMS using linkWithPhoneNumber (not MFA)
+      // IMPORTANT: we are verifying *and linking* the phone number to the existing user,
+      // **not** doing MFA and not signing in with phone.
       const confirmation = await linkWithPhoneNumber(currentUser, formattedPhone, verifier);
+
       setConfirmationResult(confirmation);
       setStep('code');
       console.log('[HOST_VERIFY] Code sent');
     } catch (error: any) {
-      console.error('[HOST_VERIFY] Error sending verification code:', error);
-      
-      // Handle specific Firebase auth errors
-      let errorMessage = 'Failed to send verification code. Please try again.';
-      if (error?.code === 'auth/operation-not-allowed') {
-        errorMessage = 'Phone verification is disabled. Please contact support.';
-      } else if (error?.code === 'auth/invalid-phone-number') {
-        errorMessage = 'Invalid phone number. Please enter a valid phone number.';
+      // Handle Firebase auth errors without crashing reCAPTCHA
+      console.error('[HOST PHONE] send code error', error);
+
+      let msg = "We couldn't send the verification code. Please check your number and try again.";
+
+      if (error?.code === 'auth/invalid-phone-number') {
+        msg = 'That phone number looks invalid. Please double-check and try again.';
+      } else if (error?.code === 'auth/too-many-requests') {
+        msg = 'Too many attempts. Please wait a bit before trying again.';
+      } else if (error?.code === 'auth/quota-exceeded') {
+        msg = 'SMS quota exceeded. Please try again later.';
+      } else if (error?.code === 'auth/operation-not-allowed') {
+        msg = 'Phone verification is disabled. Please contact support.';
       } else if (error?.message) {
-        errorMessage = error.message;
+        msg = error.message;
       }
-      
-      setError(errorMessage);
-      if (recaptchaVerifier) {
-        try {
-          recaptchaVerifier.clear();
-        } catch {
-          // ignore
-        }
-        setRecaptchaVerifier(null);
-      }
+
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
 
   const handleVerifyCode = async () => {
-    if (!verificationCode.trim() || !confirmationResult || !user?.uid) {
+    if (!confirmationResult) {
+      setError('Please request a verification code first.');
+      return;
+    }
+
+    if (!verificationCode.trim()) {
       setError('Please enter the verification code');
       return;
     }
@@ -160,13 +168,16 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
 
     try {
       // Confirm the phone number
-      await confirmationResult.confirm(verificationCode.trim());
+      const cred = await confirmationResult.confirm(verificationCode.trim());
       console.log('[HOST_VERIFY] Phone verified successfully');
 
-      // Update user profile in Firestore
+      // cred.user is the same logged-in user with phone linked.
+      // After successful confirmation, update Firestore user document:
       const db = getDbSafe();
       if (db && user) {
-        const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+1${phoneNumber.replace(/\D/g, '')}`;
+        const formattedPhone = phoneNumber.startsWith('+') 
+          ? phoneNumber 
+          : `+1${phoneNumber.replace(/\D/g, '')}`;
         
         // Update Firestore user document
         await setDoc(
@@ -195,14 +206,6 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       }
 
       setSuccess(true);
-      if (recaptchaVerifier) {
-        try {
-          recaptchaVerifier.clear();
-        } catch {
-          // ignore
-        }
-        setRecaptchaVerifier(null);
-      }
       setConfirmationResult(null);
       
       // Show success for 2 seconds, then close and call onSuccess
@@ -212,18 +215,18 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
         onClose();
       }, 2000);
     } catch (error: any) {
-      console.error('[HOST_VERIFY] Error verifying code:', error);
-      
-      // Handle specific Firebase auth errors
+      console.error('[HOST PHONE] verify code error', error);
+
       let errorMessage = "We couldn't verify your code. Please try again or request a new code.";
+
       if (error?.code === 'auth/invalid-verification-code') {
         errorMessage = 'Invalid verification code. Please check and try again.';
       } else if (error?.code === 'auth/code-expired') {
-        errorMessage = 'Verification code has expired. Please request a new code.';
+        errorMessage = 'This code has expired. Please request a new one.';
       } else if (error?.message) {
         errorMessage = error.message;
       }
-      
+
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -254,8 +257,8 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
           )}
         </div>
 
-        {/* reCAPTCHA container (invisible) */}
-        <div id="host-phone-recaptcha-container"></div>
+        {/* reCAPTCHA container (invisible) - keep this hidden, just a div for Firebase reCAPTCHA to render into */}
+        <div id="host-phone-recaptcha-container" style={{ display: 'none' }} />
 
         {success ? (
           <div className="text-center py-8">
