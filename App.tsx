@@ -846,6 +846,7 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="font-sans text-popera-teal bg-gray-50 min-h-screen flex flex-col w-full max-w-full overflow-x-hidden">
+        <div id="recaptcha-container" style={{ display: 'none' }} />
         {privateModeWarning && (
           <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3 text-sm text-yellow-800 text-center">
             {privateModeWarning}

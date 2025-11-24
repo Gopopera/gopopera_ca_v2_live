@@ -17,6 +17,10 @@ import { seedPoperaLaunchEventsForUser } from "./demoSeed";
  * Called after successful login for eatezca@gmail.com
  */
 export async function ensurePoperaProfileAndSeed(user: User) {
+  if (!user || !user.uid) {
+    console.log('[POPERA_SEED] Missing user, skipping');
+    return;
+  }
   console.log('[POPERA_SEED] ensurePoperaProfileAndSeed called for', user.uid, user.email);
 
   if (!user.email) {
@@ -32,16 +36,20 @@ export async function ensurePoperaProfileAndSeed(user: User) {
     return;
   }
 
-  await createOrUpdateUserProfile(user.uid, {
-    uid: user.uid,
-    email,
-    displayName: "Popera",
-    name: "Popera",
-    isOfficialHost: true,
-    isDemoHost: true,
-    isVerified: true,
-    updatedAt: serverTimestamp(),
-  });
+  try {
+    await createOrUpdateUserProfile(user.uid, {
+      uid: user.uid,
+      email,
+      displayName: "Popera",
+      name: "Popera",
+      isOfficialHost: true,
+      isDemoHost: true,
+      isVerified: true,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error('[POPERA_SEED] Profile ensure failed but continuing', error);
+  }
 
   console.log('[POPERA_SEED] Profile ensured for Popera user', user.uid);
 

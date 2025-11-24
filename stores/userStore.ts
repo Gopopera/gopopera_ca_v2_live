@@ -10,11 +10,12 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { auth } from '../src/lib/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { shouldUseRedirect } from '../src/lib/authHelpers';
 import { doc, getDoc } from 'firebase/firestore';
 import { attachAuthListener } from '../firebase/listeners';
 import { getUserProfile, createOrUpdateUserProfile, listUserReservations, createReservation, cancelReservation, listReservationsForUser } from '../firebase/db';
 import { getDbSafe } from '../src/lib/firebase';
+import { resolveMfaSignIn } from '../src/lib/auth';
+import type { User as FirebaseUser } from 'firebase/auth';
 import type { FirestoreUser } from '../firebase/types';
 import type { Unsubscribe } from '../src/lib/firebase';
 import type { ViewState } from '../types';
@@ -35,6 +36,8 @@ export interface User {
   hostedEvents: string[]; // Event IDs user has created - always an array, never undefined
   attendingEvents?: string[]; // Event IDs user is attending
   profileImageUrl?: string; // Alias for photoURL
+  phone_verified?: boolean;
+  phone_number?: string;
 }
 
 interface UserStore {
@@ -62,7 +65,9 @@ interface UserStore {
   getUserFavorites: (userId: string) => string[];
   getUserRSVPs: (userId: string) => string[];
   getUserHostedEvents: (userId: string) => string[];
+  handleAuthSuccess: (firebaseUser: FirebaseUser) => Promise<void>;
   init: () => void; // Explicit initialization method
+  _redirectHandled: boolean;
   setRedirectAfterLogin: (view: ViewState | null) => void;
   getRedirectAfterLogin: () => ViewState | null;
 }
@@ -81,46 +86,72 @@ export const useUserStore = create<UserStore>()(
       currentUser: null,
       _authUnsub: null,
       _initialized: false,
+      _redirectHandled: false,
       redirectAfterLogin: null,
+      async handleAuthSuccess(firebaseUser: FirebaseUser) {
+        if (!firebaseUser?.uid) return;
+
+        const immediateUser: User = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          photoURL: firebaseUser.photoURL || '',
+          displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+          id: firebaseUser.uid,
+          name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+          profileImageUrl: firebaseUser.photoURL || '',
+          favorites: [],
+          rsvps: [],
+          hostedEvents: [],
+          attendingEvents: [],
+          phone_number: (firebaseUser as any)?.phoneNumber,
+        };
+
+        set({ user: immediateUser, currentUser: immediateUser, loading: false, ready: true });
+
+        const baseProfile = {
+          id: firebaseUser.uid,
+          uid: firebaseUser.uid,
+          name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+          email: firebaseUser.email || '',
+          displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+          photoURL: firebaseUser.photoURL || '',
+        };
+
+        createOrUpdateUserProfile(firebaseUser.uid, baseProfile).catch(err => {
+          console.error('[AUTH] Background profile creation error:', err);
+        });
+
+        get().fetchUserProfile(firebaseUser.uid).catch(err => {
+          console.error('Background profile fetch error:', err);
+        });
+
+        if (firebaseUser.email === POPERA_EMAIL) {
+          import('../firebase/poperaProfile')
+            .then(({ ensurePoperaProfileAndSeed }) =>
+              ensurePoperaProfileAndSeed(firebaseUser).catch(err => {
+                console.error('[AUTH] Error ensuring Popera profile or seeding:', err);
+              })
+            )
+            .catch(err => {
+              console.error('[AUTH] Error loading poperaProfile module:', err);
+            });
+        }
+      },
 
       init: () => {
         if (get()._initialized) return; // Already initialized
-        set({ _initialized: true, loading: true, ready: false });
+        set({ _initialized: true, loading: true, ready: false, _redirectHandled: false });
         
-        // OPTIMIZATION: Check redirect result quickly without blocking
+        // OPTIMIZATION: Check redirect result quickly without blocking (only once)
         // Use Promise.resolve to make it non-blocking
         Promise.resolve().then(async () => {
+          if (get()._redirectHandled) return;
           try {
             const redirectResult = await getRedirectResult(auth);
             if (redirectResult?.user) {
-              // User just returned from redirect, handle profile creation/sync in background
-              const firebaseUser = redirectResult.user;
-              getUserProfile(firebaseUser.uid).then(async (firestoreUser) => {
-                if (!firestoreUser) {
-                  // Create user profile in background (non-blocking)
-                  // Use createOrUpdateUserProfile which has proper Firestore guards and retry logic
-                  createOrUpdateUserProfile(firebaseUser.uid, {
-                    id: firebaseUser.uid,
-                    uid: firebaseUser.uid,
-                    name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-                    email: firebaseUser.email || '',
-                    displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-                    photoURL: firebaseUser.photoURL || '',
-                  }).catch(err => console.error('Background profile creation error:', err));
-                } else {
-                  // Update photo if changed (non-blocking)
-                  if (firebaseUser.photoURL && firestoreUser.photoURL !== firebaseUser.photoURL) {
-                    createOrUpdateUserProfile(firebaseUser.uid, {
-                      photoURL: firebaseUser.photoURL,
-                    }).catch(err => console.error('Background profile update error:', err));
-                  }
-                }
-              }).catch(err => {
-                if (import.meta.env.DEV) {
-                  console.warn('[AUTH] Error checking redirect result profile:', err);
-                }
-              });
+              await get().handleAuthSuccess(redirectResult.user);
             }
+            set({ _redirectHandled: true });
           } catch (error) {
             // Ignore redirect result errors - auth listener will handle state
             if (import.meta.env.DEV) {
@@ -132,39 +163,7 @@ export const useUserStore = create<UserStore>()(
         const unsub = attachAuthListener(async (firebaseUser) => {
           if (firebaseUser) {
             try {
-              // OPTIMIZATION: Set user immediately with Firebase Auth data for fast UI
-              const immediateUser: User = {
-                uid: firebaseUser.uid,
-                email: firebaseUser.email || '',
-                photoURL: firebaseUser.photoURL || '',
-                displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-                id: firebaseUser.uid,
-                name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-                profileImageUrl: firebaseUser.photoURL || '',
-                favorites: [],
-                rsvps: [],
-                hostedEvents: [],
-                attendingEvents: [],
-              };
-              
-              // Set user immediately for fast response
-              set({ user: immediateUser, currentUser: immediateUser, loading: false, ready: true });
-              
-              // Fetch full profile in background (non-blocking)
-              get().fetchUserProfile(firebaseUser.uid).catch(err => {
-                console.error("Error fetching user profile in background:", err);
-              });
-              
-              // Ensure Popera profile is updated and seed launch events (non-blocking)
-              if (firebaseUser.email === POPERA_EMAIL) {
-                import('../firebase/poperaProfile').then(({ ensurePoperaProfileAndSeed }) => {
-                  ensurePoperaProfileAndSeed(firebaseUser).catch(err => {
-                    console.error('[AUTH] Error ensuring Popera profile or seeding:', err);
-                  });
-                }).catch(err => {
-                  console.error('[AUTH] Error loading poperaProfile module:', err);
-                });
-              }
+              await get().handleAuthSuccess(firebaseUser);
             } catch (error) {
               console.error("Error restoring user session:", error);
               set({ user: null, currentUser: null, loading: false, ready: true });
@@ -181,38 +180,7 @@ export const useUserStore = create<UserStore>()(
         try {
           set({ loading: true });
           const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          const firebaseUser = userCredential.user;
-          
-          // OPTIMIZATION: Set user immediately with Firebase Auth data for fast UI
-          const user: User = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email || '',
-            photoURL: firebaseUser.photoURL || '',
-            displayName: firebaseUser.displayName || '',
-            id: firebaseUser.uid,
-            name: firebaseUser.displayName || '',
-            profileImageUrl: firebaseUser.photoURL || '',
-            favorites: [],
-            rsvps: [],
-            hostedEvents: [],
-            attendingEvents: [],
-          };
-          
-          // Set user immediately for fast response
-          set({ user, currentUser: user, loading: false, ready: true });
-          
-          // Create Firestore profile in background (non-blocking)
-          // Use createOrUpdateUserProfile which has proper Firestore guards
-          createOrUpdateUserProfile(firebaseUser.uid, {
-            id: firebaseUser.uid,
-            uid: firebaseUser.uid,
-            name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-            email: firebaseUser.email || '',
-            displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-            photoURL: firebaseUser.photoURL || '',
-          }).catch(err => {
-            console.error('Background profile creation error:', err);
-          });
+          await get().handleAuthSuccess(userCredential.user);
         } catch (error) {
           console.error("Signup error:", error);
           set({ loading: false });
@@ -223,42 +191,18 @@ export const useUserStore = create<UserStore>()(
       login: async (email: string, password: string) => {
         try {
           set({ loading: true });
-          const userCredential = await signInWithEmailAndPassword(auth, email, password);
-          const firebaseUser = userCredential.user;
-          
-          // OPTIMIZATION: Set user immediately with Firebase Auth data for fast UI
-          const immediateUser: User = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email || '',
-            photoURL: firebaseUser.photoURL || '',
-            displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-            id: firebaseUser.uid,
-            name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-            profileImageUrl: firebaseUser.photoURL || '',
-            favorites: [],
-            rsvps: [],
-            hostedEvents: [],
-            attendingEvents: [],
-          };
-          
-          // Set user immediately for fast response
-          set({ user: immediateUser, currentUser: immediateUser, loading: false, ready: true });
-          
-          // Fetch full profile in background (non-blocking)
-          get().fetchUserProfile(firebaseUser.uid).catch(err => {
-            console.error('Background profile fetch error:', err);
-          });
-          
-          // Ensure Popera profile is updated and seed launch events (non-blocking)
-          if (firebaseUser.email === POPERA_EMAIL) {
-            import('../firebase/poperaProfile').then(({ ensurePoperaProfileAndSeed }) => {
-              ensurePoperaProfileAndSeed(firebaseUser).catch(err => {
-                console.error('[AUTH] Error ensuring Popera profile or seeding:', err);
-              });
-            }).catch(err => {
-              console.error('[AUTH] Error loading poperaProfile module:', err);
-            });
+          let userCredential;
+          try {
+            userCredential = await signInWithEmailAndPassword(auth, email, password);
+          } catch (err) {
+            const mfaResult = await resolveMfaSignIn(err);
+            if (mfaResult) {
+              userCredential = mfaResult;
+            } else {
+              throw err;
+            }
           }
+          await get().handleAuthSuccess(userCredential.user);
         } catch (error) {
           console.error("Login error:", error);
           set({ loading: false });
@@ -396,31 +340,23 @@ export const useUserStore = create<UserStore>()(
             await setPersistence(authInstance, browserLocalPersistence);
           }
           const provider = new GoogleAuthProvider();
+          provider.setCustomParameters({ prompt: 'select_account' });
           
-          // Check if we should use redirect (mobile/iOS) or popup (desktop)
-          if (shouldUseRedirect()) {
-            // Mobile/iOS: always use redirect
-            await signInWithRedirect(auth, provider);
-            // Redirect will happen, return early
-            return null;
-          }
-          
-          // Desktop: try popup first, fallback to redirect on error
           let firebaseUser;
           try {
             const userCredential = await signInWithPopup(auth, provider);
             firebaseUser = userCredential.user;
           } catch (popupError: any) {
-            // If popup fails (e.g., blocked), use redirect
-            if (popupError.code === 'auth/popup-blocked' || popupError.code === 'auth/popup-closed-by-user') {
-              await signInWithRedirect(auth, provider);
-              // Redirect will happen, return early
+            if (popupError?.code === 'auth/popup-blocked' || popupError?.code === 'auth/popup-closed-by-user') {
+              const redirectProvider = new GoogleAuthProvider();
+              redirectProvider.setCustomParameters({ prompt: 'select_account' });
+              await signInWithRedirect(auth, redirectProvider);
               return null;
             }
-            // Check for redirect result (user returning from redirect)
-            const redirectResult = await getRedirectResult(auth);
-            if (redirectResult) {
-              firebaseUser = redirectResult.user;
+            const mfaResult = await resolveMfaSignIn(popupError);
+            if (mfaResult) {
+              firebaseUser = mfaResult.user;
+              console.log('[MFA] Resolved MFA sign-in after popup');
             } else {
               throw popupError;
             }
@@ -428,72 +364,8 @@ export const useUserStore = create<UserStore>()(
           
           // Handle user creation/profile sync (only if we have a user from popup)
           if (firebaseUser) {
-            // OPTIMIZATION: Set user state immediately with Firebase Auth data
-            // Then update with Firestore data in background
-            const immediateUser: User = {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email || '',
-              photoURL: firebaseUser.photoURL || '',
-              displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-              id: firebaseUser.uid,
-              name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-              profileImageUrl: firebaseUser.photoURL || '',
-              favorites: [],
-              rsvps: [],
-              hostedEvents: [],
-              attendingEvents: [],
-            };
-            
-            // Set user immediately for fast UI response
-            set({ user: immediateUser, currentUser: immediateUser, loading: false, ready: true });
-            
-            // OPTIMIZATION: Run profile operations in parallel and non-blocking
-            Promise.all([
-              getUserProfile(firebaseUser.uid),
-              // Firestore operations in background
-            ]).then(async ([firestoreUser]) => {
-              if (!firestoreUser) {
-                // Create user profile in background (non-blocking)
-                // Use createOrUpdateUserProfile which has proper Firestore guards
-                createOrUpdateUserProfile(firebaseUser.uid, {
-                  id: firebaseUser.uid,
-                  uid: firebaseUser.uid,
-                  name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-                  email: firebaseUser.email || '',
-                  displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-                  photoURL: firebaseUser.photoURL || '',
-                }).catch(err => console.error('Background profile creation error:', err));
-              } else {
-                // Update photo if changed (non-blocking)
-                if (firebaseUser.photoURL && firestoreUser.photoURL !== firebaseUser.photoURL) {
-                  createOrUpdateUserProfile(firebaseUser.uid, {
-                    photoURL: firebaseUser.photoURL,
-                  }).catch(err => console.error('Background profile update error:', err));
-                }
-              }
-              
-              // Fetch full profile in background (non-blocking)
-              get().fetchUserProfile(firebaseUser.uid).catch(err => {
-                console.error('Background profile fetch error:', err);
-              });
-              
-              // Ensure Popera profile is updated and seed launch events (non-blocking)
-              if (firebaseUser.email === POPERA_EMAIL) {
-                import('../firebase/poperaProfile').then(({ ensurePoperaProfileAndSeed }) => {
-                  ensurePoperaProfileAndSeed(firebaseUser).catch(err => {
-                    console.error('[AUTH] Error ensuring Popera profile or seeding:', err);
-                  });
-                }).catch(err => {
-                  console.error('[AUTH] Error loading poperaProfile module:', err);
-                });
-              }
-            }).catch(err => {
-              console.error('Background profile operations error:', err);
-              // Still fetch profile even if check failed
-              get().fetchUserProfile(firebaseUser.uid).catch(() => {});
-            });
-            
-            return immediateUser;
+            await get().handleAuthSuccess(firebaseUser);
+            return get().user;
           }
           
           // If we used redirect, return null (auth listener will handle the result)
@@ -519,6 +391,13 @@ export const useUserStore = create<UserStore>()(
           if (updates.preferences) firestoreUpdates.preferences = updates.preferences;
           if (updates.profileImageUrl || updates.photoURL) {
             firestoreUpdates.photoURL = updates.profileImageUrl || updates.photoURL || '';
+          }
+          if (updates.phone_number) {
+            firestoreUpdates.phone_number = updates.phone_number;
+          }
+          if (updates.phone_verified !== undefined) {
+            firestoreUpdates.phone_verified = updates.phone_verified;
+            firestoreUpdates.phoneVerified = updates.phone_verified;
           }
           
           await createOrUpdateUserProfile(userId, firestoreUpdates);

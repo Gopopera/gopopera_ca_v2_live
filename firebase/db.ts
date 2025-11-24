@@ -546,6 +546,8 @@ export async function createOrUpdateUserProfile(uid: string, userData: Partial<F
     const userRef = doc(db, "users", uid);
     const userDataRaw: any = {
       ...userData,
+      ...(userData && 'phone_verified' in userData ? { phone_verified: (userData as any).phone_verified, phoneVerified: (userData as any).phone_verified } : {}),
+      ...(userData && 'phoneVerified' in userData ? { phoneVerified: (userData as any).phoneVerified } : {}),
       uid,
       updatedAt: userData?.updatedAt ?? Date.now(),
     };

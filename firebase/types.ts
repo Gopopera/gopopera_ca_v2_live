@@ -76,6 +76,7 @@ export interface FirestoreUser {
   isOfficialHost?: boolean; // Official Popera host flag
   username?: string; // Username for the user
   isVerified?: boolean; // Whether the account is verified
+  phone_verified?: boolean; // Multi-factor enrollment flag
   createdAt: number;
   updatedAt?: number | unknown;
 }

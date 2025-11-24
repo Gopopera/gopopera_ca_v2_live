@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Phone, X, CheckCircle2 } from 'lucide-react';
-import { getAuthSafe } from '../../src/lib/firebase';
-import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
 import { getDbSafe } from '../../src/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { useUserStore } from '../../stores/userStore';
+import { finalizeMfaEnrollment, getRecaptchaVerifier, startMfaEnrollment } from '../../src/services/phoneVerification';
+import { createOrUpdateUserProfile } from '../../firebase/db';
 
 interface PhoneVerificationModalProps {
   isOpen: boolean;
@@ -22,19 +22,19 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
   const user = useUserStore((state) => state.user);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [step, setStep] = useState<'phone' | 'code'>('phone');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
+  const [verificationId, setVerificationId] = useState<string | null>(null);
+  const recaptchaVerifierRef = useRef<ReturnType<typeof getRecaptchaVerifier> | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
       // Reset state when modal closes
       setPhoneNumber('');
       setVerificationCode('');
-      setConfirmationResult(null);
+      setVerificationId(null);
       setStep('phone');
       setError(null);
       setSuccess(false);
@@ -51,20 +51,9 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
   }, [isOpen]);
 
   const initializeRecaptcha = () => {
-    const authInstance = getAuthSafe();
-    if (!authInstance || recaptchaVerifierRef.current) return;
-    
+    if (recaptchaVerifierRef.current) return;
     try {
-      recaptchaVerifierRef.current = new RecaptchaVerifier(authInstance, 'phone-recaptcha-container', {
-        size: 'invisible',
-        callback: () => {
-          // reCAPTCHA solved
-        },
-        'expired-callback': () => {
-          console.error('reCAPTCHA expired');
-          setError('reCAPTCHA expired. Please try again.');
-        }
-      });
+      recaptchaVerifierRef.current = getRecaptchaVerifier('phone-recaptcha-container');
     } catch (error) {
       console.error('Error initializing reCAPTCHA:', error);
       setError('Failed to initialize verification. Please refresh the page.');
@@ -77,27 +66,17 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
       return;
     }
 
-    const authInstance = getAuthSafe();
-    if (!authInstance) {
-      setError('Authentication not available. Please refresh the page.');
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
     try {
-      initializeRecaptcha();
-      if (!recaptchaVerifierRef.current) {
-        throw new Error('reCAPTCHA not initialized');
-      }
-
       const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+1${phoneNumber.replace(/\D/g, '')}`;
-      const confirmation = await signInWithPhoneNumber(authInstance, formattedPhone, recaptchaVerifierRef.current);
-      setConfirmationResult(confirmation);
+      initializeRecaptcha();
+      const vid = await startMfaEnrollment(formattedPhone);
+      setVerificationId(vid);
       setStep('code');
     } catch (error: any) {
-      console.error('Error sending verification code:', error);
+      console.error('[MFA] Error sending verification code:', error);
       
       // Handle specific Firebase auth errors
       let errorMessage = 'Failed to send verification code. Please try again.';
@@ -123,7 +102,7 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
   };
 
   const handleVerifyCode = async () => {
-    if (!verificationCode.trim() || !confirmationResult || !user?.uid) {
+    if (!verificationCode.trim() || !verificationId || !user?.uid) {
       setError('Please enter the verification code');
       return;
     }
@@ -132,7 +111,8 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
     setError(null);
 
     try {
-      await confirmationResult.confirm(verificationCode);
+      await finalizeMfaEnrollment(verificationId, verificationCode);
+      console.log('[MFA] Code verified');
 
       // Update user profile
       const db = getDbSafe();
@@ -142,6 +122,10 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
           phone_verified: true,
           phone_number: formattedPhone,
         }, { merge: true });
+        await createOrUpdateUserProfile(user.uid, {
+          phone_verified: true,
+          phone_number: formattedPhone,
+        });
 
         // Update user store
         useUserStore.getState().updateUser(user.uid, {
@@ -159,7 +143,7 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
         onClose();
       }, 2000);
     } catch (error: any) {
-      console.error('Error verifying code:', error);
+      console.error('[MFA] Error verifying code:', error);
       
       // Handle specific Firebase auth errors
       let errorMessage = 'Invalid verification code. Please try again.';
@@ -306,4 +290,3 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
     </div>
   );
 };
-
