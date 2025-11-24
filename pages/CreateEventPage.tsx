@@ -11,7 +11,7 @@ interface CreateEventPageProps {
   setViewState: (view: ViewState) => void;
 }
 
-const CATEGORIES = ['Music', 'Community', 'Market', 'Workshop', 'Wellness', 'Shows', 'Food & Drink', 'Sports', 'Social'] as const;
+const CATEGORIES = ['Music', 'Community', 'Markets', 'Workshop', 'Wellness', 'Shows', 'Food & Drink', 'Sports', 'Social'] as const;
 const POPULAR_CITIES = [
   'Montreal, CA', 'Toronto, CA', 'Vancouver, CA', 'Ottawa, CA', 'Quebec City, CA',
   'Calgary, CA', 'Edmonton, CA', 'New York, US', 'Los Angeles, US', 'Chicago, US'

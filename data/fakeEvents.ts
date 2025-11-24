@@ -45,7 +45,7 @@ export const generateFakeEvents = (): Event[] => {
       attendeesCount: Math.floor(Math.random() * 50) + 10,
       createdAt: new Date('2024-01-20').toISOString(),
       location: `${location.address}, ${host.city}`,
-      category: 'Market',
+      category: 'Markets',
       price: getRandomPrice(),
       rating: Math.round((4.5 + Math.random() * 0.5) * 10) / 10, // 4.5-5.0, max 1 decimal
       reviewCount: Math.floor(Math.random() * 100) + 20, // Integer only

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 
-console.log('[BOOT] App module loaded');
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
@@ -53,6 +52,7 @@ import { useDebouncedFavorite } from './hooks/useDebouncedFavorite';
 import { ConversationButtonModal } from './components/chat/ConversationButtonModal';
 import { useSelectedCity, useSetCity, type City } from './src/stores/cityStore';
 import { NotificationsModal } from './components/notifications/NotificationsModal';
+import { isPrivateMode, getPrivateModeMessage } from './utils/browserDetection';
 
 // Mock Data Generator - Initial seed data
 const generateMockEvents = (): Event[] => [
@@ -334,8 +334,16 @@ const PageSkeleton: React.FC = () => (
 );
 
 const AppContent: React.FC = () => {
-  console.log("#BOOT: App mounted");
   const { t } = useLanguage();
+  
+  // Check for iOS/Safari private mode
+  const [privateModeWarning, setPrivateModeWarning] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (isPrivateMode()) {
+      setPrivateModeWarning(getPrivateModeMessage());
+    }
+  }, []);
   const city = useSelectedCity();
   
   // Dev guard for city state (no side effects, just for sanity)
@@ -405,7 +413,6 @@ const AppContent: React.FC = () => {
     if (user && viewState === ViewState.AUTH && !loading) {
       // User just logged in, redirect immediately to intended destination or FEED
       const redirect = redirectAfterLogin || ViewState.FEED;
-      console.log('[AUTH] Login success, navigating to:', redirect);
       setViewState(redirect);
       setRedirectAfterLogin(null);
     }
@@ -468,7 +475,9 @@ const AppContent: React.FC = () => {
             isOfficialLaunch: event.isOfficialLaunch || false,
             aboutEvent: event.aboutEvent,
             whatToExpect: event.whatToExpect,
-          }).catch(err => console.warn('Failed to add Popera event to Firestore:', err));
+          }).catch(() => {
+            // Silently fail - mock data will be used
+          });
         });
       }
       
@@ -502,7 +511,9 @@ const AppContent: React.FC = () => {
           isOfficialLaunch: false,
           aboutEvent: event.aboutEvent,
           whatToExpect: event.whatToExpect,
-        }).catch(err => console.warn('Failed to add fake event to Firestore:', err));
+        }).catch(() => {
+          // Silently fail - mock data will be used
+        });
       });
       }
     }
@@ -827,6 +838,11 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="font-sans text-popera-teal bg-gray-50 min-h-screen flex flex-col w-full max-w-full overflow-x-hidden">
+        {privateModeWarning && (
+          <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3 text-sm text-yellow-800 text-center">
+            {privateModeWarning}
+          </div>
+        )}
         {viewState !== ViewState.AUTH && (
           <Header 
            setViewState={setViewState} 

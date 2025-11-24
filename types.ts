@@ -17,7 +17,7 @@ export interface Event {
   lng?: number;
   // Legacy fields for backward compatibility
   location: string; // Combined city + address
-  category: 'Music' | 'Community' | 'Market' | 'Workshop' | 'Wellness' | 'Shows' | 'Food & Drink' | 'Sports' | 'Social';
+  category: 'Music' | 'Community' | 'Markets' | 'Workshop' | 'Wellness' | 'Shows' | 'Food & Drink' | 'Sports' | 'Social';
   price: string;
   rating: number;
   reviewCount: number;

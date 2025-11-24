@@ -98,7 +98,16 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
       setStep('code');
     } catch (error: any) {
       console.error('Error sending verification code:', error);
-      setError(error?.message || 'Failed to send verification code. Please try again.');
+      
+      // Handle specific Firebase auth errors
+      let errorMessage = 'Failed to send verification code. Please try again.';
+      if (error?.code === 'auth/operation-not-allowed') {
+        errorMessage = 'Phone verification is not enabled for this project. Please contact Popera support.';
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
       // Clean up on error
       if (recaptchaVerifierRef.current) {
         try {
@@ -151,7 +160,16 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
       }, 2000);
     } catch (error: any) {
       console.error('Error verifying code:', error);
-      setError(error?.message || 'Invalid verification code. Please try again.');
+      
+      // Handle specific Firebase auth errors
+      let errorMessage = 'Invalid verification code. Please try again.';
+      if (error?.code === 'auth/operation-not-allowed') {
+        errorMessage = 'Phone verification is not enabled for this project. Please contact Popera support.';
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

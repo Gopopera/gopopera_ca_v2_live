@@ -15,10 +15,20 @@ import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
 import { serverTimestamp, Timestamp } from 'firebase/firestore';
 
+// Cached instances for performance
+let cachedApp: FirebaseApp | null = null;
+let cachedDb: Firestore | null = null;
+let cachedAuth: Auth | null = null;
+let cachedStorage: FirebaseStorage | null = null;
+
+// Legacy variables (for backward compatibility)
 let app: FirebaseApp | null = null;
 let _auth: Auth | null = null;
 let _db: Firestore | null = null;
 let _storage: FirebaseStorage | null = null;
+
+// Track initialization state
+let initializationWarningLogged = false;
 
 // Log import.meta.env BEFORE using it
 if (typeof window !== 'undefined') {
@@ -70,23 +80,7 @@ const cfg = {
   measurementId: requiredFirebaseVars.measurementId,
 };
 
-// Log config BEFORE initialization (redact sensitive values)
-if (typeof window !== 'undefined') {
-  console.log('[FIREBASE] import.meta.env in production:', {
-    MODE: import.meta.env.MODE,
-    PROD: import.meta.env.PROD,
-    DEV: import.meta.env.DEV,
-  });
-  console.log('[FIREBASE] Config BEFORE initializeApp:', {
-    apiKey: cfg.apiKey ? `${cfg.apiKey.substring(0, 10)}...` : 'MISSING',
-    authDomain: cfg.authDomain || 'MISSING',
-    projectId: cfg.projectId || 'MISSING',
-    storageBucket: cfg.storageBucket || 'MISSING',
-    messagingSenderId: cfg.messagingSenderId || 'MISSING',
-    appId: cfg.appId || 'MISSING',
-    measurementId: cfg.measurementId || 'MISSING',
-  });
-}
+// Config logging removed for production (only log errors/warnings)
 
 const isDisabled =
   import.meta.env.VITE_DISABLE_FIREBASE === '1' ||
@@ -94,74 +88,106 @@ const isDisabled =
 
 export function getAppSafe(): FirebaseApp | null {
   if (isDisabled) {
-    console.warn('[FIREBASE] Disabled (missing env or VITE_DISABLE_FIREBASE=1)');
+    if (!initializationWarningLogged) {
+      console.warn('[FIREBASE] Disabled (missing env or VITE_DISABLE_FIREBASE=1)');
+      initializationWarningLogged = true;
+    }
     return null;
   }
-  if (!app) {
+  if (!app && !cachedApp) {
     try {
       const existingApps = getApps();
-      console.log('[FIREBASE] getApps() result:', existingApps.length, 'existing app(s)');
       if (existingApps.length > 0) {
         app = existingApps[0];
-        console.log('[FIREBASE] Using existing app:', app.name);
+        cachedApp = app;
       } else {
-        console.log('[FIREBASE] Initializing new app...');
         app = initializeApp(cfg);
-        console.log('[FIREBASE] App initialized successfully:', app.name);
+        cachedApp = app;
       }
     } catch (error) {
       console.error('[FIREBASE] Initialization failed:', error);
       return null;
     }
   }
-  return app;
+  return app || cachedApp;
 }
 
 export function getAuthSafe(): Auth | null {
   const a = getAppSafe();
   if (!a) return null;
-  if (!_auth) {
+  if (!_auth && !cachedAuth) {
     try {
       _auth = getAuth(a);
+      cachedAuth = _auth;
     } catch (error) {
       console.error('[FIREBASE] Auth initialization failed:', error);
       return null;
     }
   }
-  return _auth;
+  return _auth || cachedAuth;
 }
 
 export function getDbSafe(): Firestore | null {
   const a = getAppSafe();
   if (!a) {
-    console.warn('[FIREBASE] getDbSafe: App not available');
+    if (!initializationWarningLogged) {
+      console.warn('[FIREBASE] getDbSafe: App not available');
+      initializationWarningLogged = true;
+    }
     return null;
   }
-  if (!_db) {
+  if (!_db && !cachedDb) {
     try {
-      console.log('[FIREBASE] Initializing Firestore...');
       _db = getFirestore(a);
-      console.log('[FIREBASE] Firestore initialized successfully');
+      cachedDb = _db;
     } catch (error) {
       console.error('[FIREBASE] Firestore initialization failed:', error);
       return null;
     }
   }
-  return _db;
+  return _db || cachedDb;
+}
+
+/**
+ * Wrapper function that ensures Firebase app and Firestore are initialized
+ * Never returns undefined - throws error if initialization fails
+ */
+export function getDb(): Firestore {
+  const a = getAppSafe();
+  if (!a) {
+    throw new Error('Firebase app not initialized');
+  }
+  
+  if (!_db && !cachedDb) {
+    try {
+      _db = getFirestore(a);
+      cachedDb = _db;
+    } catch (error) {
+      throw new Error('Firestore not initialized');
+    }
+  }
+  
+  const db = _db || cachedDb;
+  if (!db) {
+    throw new Error('Firestore not initialized');
+  }
+  
+  return db;
 }
 
 export function getStorageSafe(): FirebaseStorage | null {
   const a = getAppSafe();
   if (!a) return null;
-  if (!_storage) {
+  if (!_storage && !cachedStorage) {
     try {
       _storage = getStorage(a);
+      cachedStorage = _storage;
     } catch (error) {
       console.error('[FIREBASE] Storage initialization failed:', error);
       return null;
     }
   }
-  return _storage;
+  return _storage || cachedStorage;
 }
 
 // Legacy exports for backward compatibility (lazy getters)

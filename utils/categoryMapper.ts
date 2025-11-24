@@ -7,8 +7,8 @@ export const normalizeCategory = (displayCategory: string): string => {
     'All': 'All',
     'Community': 'Community',
     'Music': 'Music',
-    'Markets': 'Market',      // UI uses plural, events use singular
-    'Market': 'Market',       // Also handle singular
+    'Markets': 'Markets',     // UI and events both use plural
+    'Market': 'Markets',       // Map singular to plural
     'Workshops': 'Workshop',  // UI uses plural, events use singular
     'Workshop': 'Workshop',   // Also handle singular
     'Sports': 'Sports',
@@ -49,8 +49,8 @@ export const categoryMatches = (eventCategory: string, displayCategory: string):
   
   // Handle plural/singular variations
   const pluralVariations: Record<string, string[]> = {
-    'Market': ['Market', 'Markets'],
-    'Markets': ['Market', 'Markets'],
+    'Markets': ['Markets', 'Market'],
+    'Market': ['Markets', 'Market'],
     'Workshop': ['Workshop', 'Workshops'],
     'Workshops': ['Workshop', 'Workshops'],
   };

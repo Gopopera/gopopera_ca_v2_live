@@ -9,7 +9,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { auth, db } from '../src/lib/firebase';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { attachAuthListener } from '../firebase/listeners';
 import { getUserProfile, createOrUpdateUserProfile, listUserReservations, createReservation, cancelReservation, listReservationsForUser } from '../firebase/db';
@@ -185,7 +185,6 @@ export const useUserStore = create<UserStore>()(
           // Avoid redundant fetches if user is already loaded
           const currentUser = get().user;
           if (currentUser && currentUser.uid === uid && get().ready) {
-            console.log('[Popera] User already loaded, skipping fetch');
             return;
           }
 
@@ -218,7 +217,6 @@ export const useUserStore = create<UserStore>()(
             attendingEvents: [],
           };
           
-          console.log('[Popera] userStore initialized', { userId: user.uid });
           set({ user, currentUser: user, loading: false, ready: true });
         } catch (error) {
           console.error("Error fetching user profile:", error);
@@ -254,8 +252,27 @@ export const useUserStore = create<UserStore>()(
             await setPersistence(authInstance, browserLocalPersistence);
           }
           const provider = new GoogleAuthProvider();
-          const userCredential = await signInWithPopup(auth, provider);
-          const firebaseUser = userCredential.user;
+          
+          // Try signInWithPopup first, fallback to signInWithRedirect
+          let firebaseUser;
+          try {
+            const userCredential = await signInWithPopup(auth, provider);
+            firebaseUser = userCredential.user;
+          } catch (popupError: any) {
+            // If popup fails (e.g., blocked), use redirect
+            if (popupError.code === 'auth/popup-blocked' || popupError.code === 'auth/popup-closed-by-user') {
+              await signInWithRedirect(auth, provider);
+              // Redirect will happen, return early
+              return null;
+            }
+            // Check for redirect result (user returning from redirect)
+            const redirectResult = await getRedirectResult(auth);
+            if (redirectResult) {
+              firebaseUser = redirectResult.user;
+            } else {
+              throw popupError;
+            }
+          }
           
           const firestoreUser = await getUserProfile(firebaseUser.uid);
           if (!firestoreUser) {

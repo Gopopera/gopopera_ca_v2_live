@@ -49,11 +49,15 @@ const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event => {
 // Events
 export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'location' | 'hostName' | 'attendees'>): Promise<Event> {
   const db = getDbSafe();
-  console.log('[FIRESTORE] createEvent - db:', db ? 'defined' : 'undefined');
   if (!db) {
-    console.error('[FIRESTORE] createEvent failed: Firestore not available');
-    throw new Error('Firestore not available');
+    throw new Error('Firestore not initialized');
   }
+  
+  // Ensure Firestore is ready before calling collection()
+  if (typeof db === 'undefined' || db === null) {
+    throw new Error('Firestore not initialized');
+  }
+  
   try {
     const eventsCol = collection(db, "events");
     const now = Date.now();
@@ -96,7 +100,6 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
     ) as Omit<FirestoreEvent, 'id'>;
 
     const docRef = await addDoc(eventsCol, firestoreEvent);
-    console.log('Firestore write success:', { path: 'events', docId: docRef.id });
     const createdEvent: FirestoreEvent = {
       id: docRef.id,
       ...firestoreEvent,
@@ -124,9 +127,14 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
 export async function listUpcomingEvents(): Promise<Event[]> {
   const db = getDbSafe();
   if (!db) {
-    console.warn('[FIREBASE] Firestore not available, returning empty array');
     return [];
   }
+  
+  // Ensure Firestore is ready before calling collection()
+  if (typeof db === 'undefined' || db === null) {
+    return [];
+  }
+  
   try {
     const eventsCol = collection(db, "events");
     const q = query(eventsCol, orderBy("date", "asc"));
@@ -145,9 +153,14 @@ export async function listUpcomingEvents(): Promise<Event[]> {
 export async function getEventById(id: string): Promise<Event | null> {
   const db = getDbSafe();
   if (!db) {
-    console.warn('[FIREBASE] Firestore not available, returning null');
     return null;
   }
+  
+  // Ensure Firestore is ready before calling collection()
+  if (typeof db === 'undefined' || db === null) {
+    return null;
+  }
+  
   try {
     const eventRef = doc(db, "events", id);
     const snap = await getDoc(eventRef);
@@ -166,9 +179,14 @@ export async function getEventById(id: string): Promise<Event | null> {
 export async function listEventsByCityAndTag(city?: string, tag?: string): Promise<Event[]> {
   const db = getDbSafe();
   if (!db) {
-    console.warn('[FIREBASE] Firestore not available, returning empty array');
     return [];
   }
+  
+  // Ensure Firestore is ready before calling collection()
+  if (typeof db === 'undefined' || db === null) {
+    return [];
+  }
+  
   try {
     const eventsCol = collection(db, "events");
     let q;
@@ -201,9 +219,14 @@ export async function listEventsByCityAndTag(city?: string, tag?: string): Promi
 export async function searchEvents(searchQuery: string): Promise<Event[]> {
   const db = getDbSafe();
   if (!db) {
-    console.warn('[FIREBASE] Firestore not available, returning empty array');
     return [];
   }
+  
+  // Ensure Firestore is ready before calling collection()
+  if (typeof db === 'undefined' || db === null) {
+    return [];
+  }
+  
   try {
     const eventsCol = collection(db, "events");
     const q = query(eventsCol);
@@ -235,11 +258,15 @@ export async function searchEvents(searchQuery: string): Promise<Event[]> {
 // Reservations
 export async function createReservation(eventId: string, userId: string): Promise<string> {
   const db = getDbSafe();
-  console.log('[FIRESTORE] createReservation - db:', db ? 'defined' : 'undefined');
   if (!db) {
-    console.error('[FIRESTORE] createReservation failed: Firestore not available');
-    throw new Error('Firestore not available');
+    throw new Error('Firestore not initialized');
   }
+  
+  // Ensure Firestore is ready before calling collection()
+  if (typeof db === 'undefined' || db === null) {
+    throw new Error('Firestore not initialized');
+  }
+  
   try {
     const reservationsCol = collection(db, "reservations");
     const reservationRaw: Omit<FirestoreReservation, 'id'> = {
@@ -257,7 +284,6 @@ export async function createReservation(eventId: string, userId: string): Promis
     ) as Omit<FirestoreReservation, 'id'>;
     
     const docRef = await addDoc(reservationsCol, reservation);
-    console.log('Firestore write success:', { path: 'reservations', docId: docRef.id });
     return docRef.id;
   } catch (error: any) {
     console.error('Firestore write failed:', { path: 'reservations', error: error.message || 'Unknown error' });
@@ -268,9 +294,14 @@ export async function createReservation(eventId: string, userId: string): Promis
 export async function listReservationsForUser(userId: string): Promise<FirestoreReservation[]> {
   const db = getDbSafe();
   if (!db) {
-    console.warn('[FIREBASE] Firestore not available, returning empty array');
     return [];
   }
+  
+  // Ensure Firestore is ready before calling collection()
+  if (typeof db === 'undefined' || db === null) {
+    return [];
+  }
+  
   try {
     const reservationsCol = collection(db, "reservations");
     const q = query(reservationsCol, where("userId", "==", userId), where("status", "==", "reserved"));
@@ -287,15 +318,18 @@ export async function listReservationsForUser(userId: string): Promise<Firestore
 
 export async function cancelReservation(reservationId: string): Promise<void> {
   const db = getDbSafe();
-  console.log('[FIRESTORE] cancelReservation - db:', db ? 'defined' : 'undefined');
   if (!db) {
-    console.error('[FIRESTORE] cancelReservation failed: Firestore not available');
-    throw new Error('Firestore not available');
+    throw new Error('Firestore not initialized');
   }
+  
+  // Ensure Firestore is ready before calling collection()
+  if (typeof db === 'undefined' || db === null) {
+    throw new Error('Firestore not initialized');
+  }
+  
   try {
     const reservationRef = doc(db, "reservations", reservationId);
     await updateDoc(reservationRef, { status: "cancelled" });
-    console.log('Firestore write success:', { path: `reservations/${reservationId}`, docId: reservationId });
   } catch (error: any) {
     console.error('Firestore write failed:', { path: `reservations/${reservationId}`, error: error.message || 'Unknown error' });
     throw error;
@@ -305,9 +339,14 @@ export async function cancelReservation(reservationId: string): Promise<void> {
 export async function getReservationCountForEvent(eventId: string): Promise<number> {
   const db = getDbSafe();
   if (!db) {
-    console.warn('[FIREBASE] Firestore not available, returning 0');
     return 0;
   }
+  
+  // Ensure Firestore is ready before calling collection()
+  if (typeof db === 'undefined' || db === null) {
+    return 0;
+  }
+  
   try {
     const reservationsCol = collection(db, "reservations");
     const q = query(reservationsCol, where("eventId", "==", eventId), where("status", "==", "reserved"));
@@ -323,9 +362,14 @@ export async function getReservationCountForEvent(eventId: string): Promise<numb
 export async function getChatMessages(eventId: string): Promise<FirestoreChatMessage[]> {
   const db = getDbSafe();
   if (!db) {
-    console.warn('[FIREBASE] Firestore not available, returning empty array');
     return [];
   }
+  
+  // Ensure Firestore is ready before calling collection()
+  if (typeof db === 'undefined' || db === null) {
+    return [];
+  }
+  
   try {
     const messagesCol = collection(db, "events", eventId, "messages");
     const q = query(messagesCol, orderBy("createdAt", "asc"));
@@ -349,11 +393,15 @@ export async function addChatMessage(
   isHost: boolean = false
 ): Promise<string> {
   const db = getDbSafe();
-  console.log('[FIRESTORE] addChatMessage - db:', db ? 'defined' : 'undefined');
   if (!db) {
-    console.error('[FIRESTORE] addChatMessage failed: Firestore not available');
-    throw new Error('Firestore not available');
+    throw new Error('Firestore not initialized');
   }
+  
+  // Ensure Firestore is ready before calling collection()
+  if (typeof db === 'undefined' || db === null) {
+    throw new Error('Firestore not initialized');
+  }
+  
   try {
     const messagesCol = collection(db, "events", eventId, "messages");
     const messageRaw: Omit<FirestoreChatMessage, 'id'> = {
@@ -374,7 +422,6 @@ export async function addChatMessage(
     ) as Omit<FirestoreChatMessage, 'id'>;
     
     const docRef = await addDoc(messagesCol, message);
-    console.log('Firestore write success:', { path: `events/${eventId}/messages`, docId: docRef.id });
     return docRef.id;
   } catch (error: any) {
     console.error('Firestore write failed:', { path: `events/${eventId}/messages`, error: error.message || 'Unknown error' });
@@ -386,9 +433,14 @@ export async function addChatMessage(
 export async function getUserProfile(uid: string): Promise<FirestoreUser | null> {
   const db = getDbSafe();
   if (!db) {
-    console.warn('[FIREBASE] Firestore not available, returning null');
     return null;
   }
+  
+  // Ensure Firestore is ready before calling collection()
+  if (typeof db === 'undefined' || db === null) {
+    return null;
+  }
+  
   try {
     const userRef = doc(db, "users", uid);
     const snap = await getDoc(userRef);
@@ -421,11 +473,15 @@ export async function getUserProfile(uid: string): Promise<FirestoreUser | null>
 
 export async function createOrUpdateUserProfile(uid: string, userData: Partial<FirestoreUser>): Promise<void> {
   const db = getDbSafe();
-  console.log('[FIRESTORE] createOrUpdateUserProfile - db:', db ? 'defined' : 'undefined');
   if (!db) {
-    console.error('[FIRESTORE] createOrUpdateUserProfile failed: Firestore not available');
-    throw new Error('Firestore not available');
+    throw new Error('Firestore not initialized');
   }
+  
+  // Ensure Firestore is ready before calling collection()
+  if (typeof db === 'undefined' || db === null) {
+    throw new Error('Firestore not initialized');
+  }
+  
   try {
     const userRef = doc(db, "users", uid);
     const userDataRaw: any = {
@@ -438,7 +494,6 @@ export async function createOrUpdateUserProfile(uid: string, userData: Partial<F
     const cleanedUserData = removeUndefinedValues(userDataRaw);
     
     await setDoc(userRef, cleanedUserData, { merge: true });
-    console.log('Firestore write success:', { path: `users/${uid}`, docId: uid });
   } catch (error: any) {
     console.error('Firestore write failed:', { path: `users/${uid}`, error: error.message || 'Unknown error' });
     throw error;
@@ -449,9 +504,14 @@ export async function createOrUpdateUserProfile(uid: string, userData: Partial<F
 export async function listUserReservations(uid: string): Promise<Event[]> {
   const db = getDbSafe();
   if (!db) {
-    console.warn('[FIREBASE] Firestore not available, returning empty array');
     return [];
   }
+  
+  // Ensure Firestore is ready before calling collection()
+  if (typeof db === 'undefined' || db === null) {
+    return [];
+  }
+  
   try {
     const reservationsCol = collection(db, "reservations");
     const q = query(
@@ -485,11 +545,15 @@ export async function addReview(
   comment?: string
 ): Promise<string> {
   const db = getDbSafe();
-  console.log('[FIRESTORE] addReview - db:', db ? 'defined' : 'undefined');
   if (!db) {
-    console.error('[FIRESTORE] addReview failed: Firestore not available');
-    throw new Error('Firestore not available');
+    throw new Error('Firestore not initialized');
   }
+  
+  // Ensure Firestore is ready before calling collection()
+  if (typeof db === 'undefined' || db === null) {
+    throw new Error('Firestore not initialized');
+  }
+  
   try {
     const reviewsCol = collection(db, "events", eventId, "reviews");
     const reviewRaw: Omit<FirestoreReview, 'id'> = {
@@ -509,7 +573,6 @@ export async function addReview(
     ) as Omit<FirestoreReview, 'id'>;
     
     const docRef = await addDoc(reviewsCol, review);
-    console.log('Firestore write success:', { path: `events/${eventId}/reviews`, docId: docRef.id });
     
     await recalculateEventRating(eventId);
     
@@ -523,9 +586,14 @@ export async function addReview(
 export async function listReviews(eventId: string): Promise<FirestoreReview[]> {
   const db = getDbSafe();
   if (!db) {
-    console.warn('[FIREBASE] Firestore not available, returning empty array');
     return [];
   }
+  
+  // Ensure Firestore is ready before calling collection()
+  if (typeof db === 'undefined' || db === null) {
+    return [];
+  }
+  
   try {
     const reviewsCol = collection(db, "events", eventId, "reviews");
     const q = query(reviewsCol, orderBy("createdAt", "desc"));
@@ -542,11 +610,15 @@ export async function listReviews(eventId: string): Promise<FirestoreReview[]> {
 
 export async function recalculateEventRating(eventId: string): Promise<void> {
   const db = getDbSafe();
-  console.log('[FIRESTORE] recalculateEventRating - db:', db ? 'defined' : 'undefined');
   if (!db) {
-    console.error('[FIRESTORE] recalculateEventRating failed: Firestore not available');
-    throw new Error('Firestore not available');
+    throw new Error('Firestore not initialized');
   }
+  
+  // Ensure Firestore is ready before calling collection()
+  if (typeof db === 'undefined' || db === null) {
+    throw new Error('Firestore not initialized');
+  }
+  
   try {
     const reviews = await listReviews(eventId);
     if (reviews.length === 0) {
@@ -555,7 +627,6 @@ export async function recalculateEventRating(eventId: string): Promise<void> {
         rating: 0,
         reviewCount: 0,
       });
-      console.log('Firestore write success:', { path: `events/${eventId}`, docId: eventId, operation: 'recalculateRating' });
       return;
     }
     
@@ -569,7 +640,6 @@ export async function recalculateEventRating(eventId: string): Promise<void> {
       rating: roundedRating,
       reviewCount,
     });
-    console.log('Firestore write success:', { path: `events/${eventId}`, docId: eventId, operation: 'recalculateRating' });
   } catch (error: any) {
     console.error('Firestore write failed:', { path: `events/${eventId}`, error: error.message || 'Unknown error', operation: 'recalculateRating' });
     throw error;

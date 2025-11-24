@@ -40,9 +40,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
       setGoogleError(null);
       setIsGoogleLoading(true);
       const userStore = useUserStore.getState();
-      console.log('[AUTH] Google sign-in initiated');
       await userStore.signInWithGoogle();
-      console.log('[AUTH] Google sign-in success, auth listener will handle redirect');
       // Auth listener will handle redirect via App.tsx useEffect
     } catch (error: any) {
       console.error("[AUTH] Google sign-in error:", error);
