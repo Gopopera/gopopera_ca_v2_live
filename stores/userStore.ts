@@ -11,7 +11,7 @@ import { persist } from 'zustand/middleware';
 import { getAuthInstance, initFirebaseAuth, listenToAuthChanges, signOutUser } from '../src/lib/firebaseAuth';
 import { doc, getDoc } from 'firebase/firestore';
 import { getUserProfile, createOrUpdateUserProfile, listUserReservations, createReservation, cancelReservation, listReservationsForUser } from '../firebase/db';
-import { getDbSafe } from '../src/lib/firebase';
+import { getDbSafe, firebaseEnabled } from '../src/lib/firebase';
 import { resolveMfaSignIn } from '../src/lib/auth';
 import type { User as FirebaseUser } from 'firebase/auth';
 import type { FirestoreUser } from '../firebase/types';
@@ -145,6 +145,19 @@ export const useUserStore = create<UserStore>()(
         if (get()._initialized) return; // Already initialized
         set({ _initialized: true, loading: true, ready: false, isAuthReady: false, _redirectHandled: false });
         
+        if (!firebaseEnabled) {
+          console.error('[AUTH] Firebase disabled due to missing env vars; skipping auth init');
+          set({
+            user: null,
+            currentUser: null,
+            loading: false,
+            ready: true,
+            isAuthReady: true,
+            authInitialized: true,
+          });
+          return;
+        }
+        
         (async () => {
           try {
             await initFirebaseAuth();
@@ -176,16 +189,16 @@ export const useUserStore = create<UserStore>()(
                   await get().handleAuthSuccess(firebaseUser);
                 } catch (error) {
                   console.error("Error restoring user session:", error);
-                  set({ user: null, currentUser: null, loading: false, ready: true, isAuthReady: true });
+                  set({ user: null, currentUser: null, loading: false, ready: true, isAuthReady: true, authInitialized: true });
                 }
               } else {
-                set({ user: null, currentUser: null, loading: false, ready: true, isAuthReady: true });
+                set({ user: null, currentUser: null, loading: false, ready: true, isAuthReady: true, authInitialized: true });
               }
             });
             set({ _authUnsub: unsub });
           } catch (error) {
             console.error('[AUTH] Initialization failed:', error);
-            set({ user: null, currentUser: null, loading: false, ready: true, isAuthReady: true });
+            set({ user: null, currentUser: null, loading: false, ready: true, isAuthReady: true, authInitialized: true });
           }
         })();
       },

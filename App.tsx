@@ -373,14 +373,6 @@ const AppContent: React.FC = () => {
   const removeFavorite = useUserStore((state) => state.removeFavorite);
   const updateEvent = useEventStore((state) => state.updateEvent);
   const currentUser = useUserStore((state) => state.getCurrentUser());
-  
-  if (!isAuthReady || !authInitialized) {
-    return (
-      <div className="min-h-screen bg-[#f8fafb] flex items-center justify-center text-[#15383c]">
-        Loading...
-      </div>
-    );
-  }
 
   // Backward compatibility with safe defaults - use nullish coalescing
   const isLoggedIn = !!user;

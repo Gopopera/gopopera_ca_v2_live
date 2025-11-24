@@ -43,20 +43,19 @@ const requiredFirebaseVars = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-// Log missing variables in production
-if (typeof window !== 'undefined') {
-  const missingVars: string[] = [];
-  if (!requiredFirebaseVars.apiKey) missingVars.push('VITE_FIREBASE_API_KEY');
-  if (!requiredFirebaseVars.authDomain) missingVars.push('VITE_FIREBASE_AUTH_DOMAIN');
-  if (!requiredFirebaseVars.projectId) missingVars.push('VITE_FIREBASE_PROJECT_ID');
-  if (!requiredFirebaseVars.storageBucket) missingVars.push('VITE_FIREBASE_STORAGE_BUCKET');
-  if (!requiredFirebaseVars.messagingSenderId) missingVars.push('VITE_FIREBASE_MESSAGING_SENDER_ID');
-  if (!requiredFirebaseVars.appId) missingVars.push('VITE_FIREBASE_APP_ID');
-  
-  if (missingVars.length > 0) {
-    console.warn('⚠️ Missing Firebase environment variables:', missingVars.join(', '));
-    console.warn('⚠️ Firebase features will be disabled. Please configure environment variables in your deployment platform.');
-  }
+const missingVars: string[] = [];
+if (!requiredFirebaseVars.apiKey) missingVars.push('VITE_FIREBASE_API_KEY');
+if (!requiredFirebaseVars.authDomain) missingVars.push('VITE_FIREBASE_AUTH_DOMAIN');
+if (!requiredFirebaseVars.projectId) missingVars.push('VITE_FIREBASE_PROJECT_ID');
+if (!requiredFirebaseVars.storageBucket) missingVars.push('VITE_FIREBASE_STORAGE_BUCKET');
+if (!requiredFirebaseVars.messagingSenderId) missingVars.push('VITE_FIREBASE_MESSAGING_SENDER_ID');
+if (!requiredFirebaseVars.appId) missingVars.push('VITE_FIREBASE_APP_ID');
+
+export const firebaseEnabled =
+  missingVars.length === 0 && import.meta.env.VITE_DISABLE_FIREBASE !== '1';
+
+if (!firebaseEnabled) {
+  console.error('[FIREBASE] Missing environment variables; Firebase disabled.', missingVars);
 }
 
 const cfg = {
@@ -71,14 +70,10 @@ const cfg = {
 
 // Config logging removed for production (only log errors/warnings)
 
-const isDisabled =
-  import.meta.env.VITE_DISABLE_FIREBASE === '1' ||
-  !cfg.apiKey || !cfg.authDomain || !cfg.projectId || !cfg.appId;
-
 export function getAppSafe(): FirebaseApp | null {
-  if (isDisabled) {
+  if (!firebaseEnabled) {
     if (!initializationWarningLogged) {
-      console.warn('[FIREBASE] Disabled (missing env or VITE_DISABLE_FIREBASE=1)');
+      console.error('[FIREBASE] Initialization skipped; firebaseEnabled is false');
       initializationWarningLogged = true;
     }
     return null;
@@ -90,8 +85,13 @@ export function getAppSafe(): FirebaseApp | null {
         app = existingApps[0];
         cachedApp = app;
       } else {
-        app = initializeApp(cfg);
-        cachedApp = app;
+        try {
+          app = initializeApp(cfg);
+          cachedApp = app;
+        } catch (initError) {
+          console.error('[FIREBASE] initializeApp failed:', initError);
+          return null;
+        }
       }
     } catch (error) {
       console.error('[FIREBASE] Initialization failed:', error);
