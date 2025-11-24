@@ -84,46 +84,77 @@ export const useUserStore = create<UserStore>()(
       _initialized: false,
       redirectAfterLogin: null,
 
-      init: async () => {
+      init: () => {
         if (get()._initialized) return; // Already initialized
         set({ _initialized: true, loading: true, ready: false });
         
-        // Check for redirect result when app initializes (user returning from Google auth redirect)
-        try {
-          const redirectResult = await getRedirectResult(auth);
-          if (redirectResult?.user) {
-            // User just returned from redirect, handle profile creation/sync
-            const firebaseUser = redirectResult.user;
-            const firestoreUser = await getUserProfile(firebaseUser.uid);
-            if (!firestoreUser) {
-              await setDoc(doc(db, 'users', firebaseUser.uid), {
-                id: firebaseUser.uid,
-                uid: firebaseUser.uid,
-                name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-                email: firebaseUser.email || '',
-                displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-                photoURL: firebaseUser.photoURL || '',
-                createdAt: serverTimestamp(),
+        // OPTIMIZATION: Check redirect result quickly without blocking
+        // Use Promise.resolve to make it non-blocking
+        Promise.resolve().then(async () => {
+          try {
+            const redirectResult = await getRedirectResult(auth);
+            if (redirectResult?.user) {
+              // User just returned from redirect, handle profile creation/sync in background
+              const firebaseUser = redirectResult.user;
+              getUserProfile(firebaseUser.uid).then(async (firestoreUser) => {
+                if (!firestoreUser) {
+                  // Create user profile in background (non-blocking)
+                  setDoc(doc(db, 'users', firebaseUser.uid), {
+                    id: firebaseUser.uid,
+                    uid: firebaseUser.uid,
+                    name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+                    email: firebaseUser.email || '',
+                    displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+                    photoURL: firebaseUser.photoURL || '',
+                    createdAt: serverTimestamp(),
+                  }).catch(err => console.error('Background profile creation error:', err));
+                } else {
+                  // Update photo if changed (non-blocking)
+                  if (firebaseUser.photoURL && firestoreUser.photoURL !== firebaseUser.photoURL) {
+                    createOrUpdateUserProfile(firebaseUser.uid, {
+                      photoURL: firebaseUser.photoURL,
+                    }).catch(err => console.error('Background profile update error:', err));
+                  }
+                }
+              }).catch(err => {
+                if (import.meta.env.DEV) {
+                  console.warn('[AUTH] Error checking redirect result profile:', err);
+                }
               });
-            } else {
-              if (firebaseUser.photoURL && firestoreUser.photoURL !== firebaseUser.photoURL) {
-                await createOrUpdateUserProfile(firebaseUser.uid, {
-                  photoURL: firebaseUser.photoURL,
-                });
-              }
+            }
+          } catch (error) {
+            // Ignore redirect result errors - auth listener will handle state
+            if (import.meta.env.DEV) {
+              console.warn('[AUTH] Error checking redirect result:', error);
             }
           }
-        } catch (error) {
-          // Ignore redirect result errors - auth listener will handle state
-          if (import.meta.env.DEV) {
-            console.warn('[AUTH] Error checking redirect result:', error);
-          }
-        }
+        });
         
         const unsub = attachAuthListener(async (firebaseUser) => {
           if (firebaseUser) {
             try {
-              await get().fetchUserProfile(firebaseUser.uid);
+              // OPTIMIZATION: Set user immediately with Firebase Auth data for fast UI
+              const immediateUser: User = {
+                uid: firebaseUser.uid,
+                email: firebaseUser.email || '',
+                photoURL: firebaseUser.photoURL || '',
+                displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+                id: firebaseUser.uid,
+                name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+                profileImageUrl: firebaseUser.photoURL || '',
+                favorites: [],
+                rsvps: [],
+                hostedEvents: [],
+                attendingEvents: [],
+              };
+              
+              // Set user immediately for fast response
+              set({ user: immediateUser, currentUser: immediateUser, loading: false, ready: true });
+              
+              // Fetch full profile in background (non-blocking)
+              get().fetchUserProfile(firebaseUser.uid).catch(err => {
+                console.error("Error fetching user profile in background:", err);
+              });
             } catch (error) {
               console.error("Error restoring user session:", error);
               set({ user: null, currentUser: null, loading: false, ready: true });
@@ -142,21 +173,7 @@ export const useUserStore = create<UserStore>()(
           const userCredential = await createUserWithEmailAndPassword(auth, email, password);
           const firebaseUser = userCredential.user;
           
-          const userDoc: FirestoreUser = {
-            id: firebaseUser.uid,
-            uid: firebaseUser.uid,
-            name: '',
-            email: firebaseUser.email || '',
-            displayName: '',
-            photoURL: '',
-            createdAt: Date.now(),
-          };
-          
-          await setDoc(doc(auth.app, 'users', firebaseUser.uid), {
-            ...userDoc,
-            createdAt: serverTimestamp(),
-          });
-          
+          // OPTIMIZATION: Set user immediately with Firebase Auth data for fast UI
           const user: User = {
             uid: firebaseUser.uid,
             email: firebaseUser.email || '',
@@ -171,7 +188,26 @@ export const useUserStore = create<UserStore>()(
             attendingEvents: [],
           };
           
+          // Set user immediately for fast response
           set({ user, currentUser: user, loading: false, ready: true });
+          
+          // Create Firestore profile in background (non-blocking)
+          const userDoc: FirestoreUser = {
+            id: firebaseUser.uid,
+            uid: firebaseUser.uid,
+            name: '',
+            email: firebaseUser.email || '',
+            displayName: '',
+            photoURL: '',
+            createdAt: Date.now(),
+          };
+          
+          setDoc(doc(db, 'users', firebaseUser.uid), {
+            ...userDoc,
+            createdAt: serverTimestamp(),
+          }).catch(err => {
+            console.error('Background profile creation error:', err);
+          });
         } catch (error) {
           console.error("Signup error:", error);
           set({ loading: false });
@@ -185,7 +221,28 @@ export const useUserStore = create<UserStore>()(
           const userCredential = await signInWithEmailAndPassword(auth, email, password);
           const firebaseUser = userCredential.user;
           
-          await get().fetchUserProfile(firebaseUser.uid);
+          // OPTIMIZATION: Set user immediately with Firebase Auth data for fast UI
+          const immediateUser: User = {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            photoURL: firebaseUser.photoURL || '',
+            displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+            id: firebaseUser.uid,
+            name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+            profileImageUrl: firebaseUser.photoURL || '',
+            favorites: [],
+            rsvps: [],
+            hostedEvents: [],
+            attendingEvents: [],
+          };
+          
+          // Set user immediately for fast response
+          set({ user: immediateUser, currentUser: immediateUser, loading: false, ready: true });
+          
+          // Fetch full profile in background (non-blocking)
+          get().fetchUserProfile(firebaseUser.uid).catch(err => {
+            console.error('Background profile fetch error:', err);
+          });
         } catch (error) {
           console.error("Login error:", error);
           set({ loading: false });
@@ -221,17 +278,22 @@ export const useUserStore = create<UserStore>()(
             return;
           }
 
-          const firestoreUser = await getUserProfile(uid);
           const firebaseUser = auth.currentUser;
-          
           if (!firebaseUser) {
             set({ user: null, currentUser: null, loading: false, ready: true });
             return;
           }
+
+          // OPTIMIZATION: Run Firestore queries in parallel for faster loading
+          // Use lightweight reservation IDs instead of full event objects
+          const [firestoreUser, reservationDocs] = await Promise.all([
+            getUserProfile(uid),
+            listReservationsForUser(uid) // Lightweight - only gets reservation IDs, not full events
+          ]);
           
+          // Build user object immediately with available data
           const favorites = Array.isArray(firestoreUser?.favorites) ? firestoreUser.favorites : [];
-          const reservationEvents = await listUserReservations(uid);
-          const rsvps = Array.isArray(reservationEvents) ? reservationEvents.map(e => e?.id).filter(Boolean) : [];
+          const rsvps = Array.isArray(reservationDocs) ? reservationDocs.map(r => r.eventId).filter(Boolean) : [];
           const hostedEvents = Array.isArray(firestoreUser?.hostedEvents) ? firestoreUser.hostedEvents : [];
           
           const user: User = {
@@ -250,6 +312,7 @@ export const useUserStore = create<UserStore>()(
             attendingEvents: [],
           };
           
+          // Set user state immediately - don't wait for anything else
           set({ user, currentUser: user, loading: false, ready: true });
         } catch (error) {
           console.error("Error fetching user profile:", error);
@@ -317,27 +380,61 @@ export const useUserStore = create<UserStore>()(
           
           // Handle user creation/profile sync (only if we have a user from popup)
           if (firebaseUser) {
-            const firestoreUser = await getUserProfile(firebaseUser.uid);
-            if (!firestoreUser) {
-              await setDoc(doc(db, 'users', firebaseUser.uid), {
-                id: firebaseUser.uid,
-                uid: firebaseUser.uid,
-                name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-                email: firebaseUser.email || '',
-                displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-                photoURL: firebaseUser.photoURL || '',
-                createdAt: serverTimestamp(),
-              });
-            } else {
-              if (firebaseUser.photoURL && firestoreUser.photoURL !== firebaseUser.photoURL) {
-                await createOrUpdateUserProfile(firebaseUser.uid, {
-                  photoURL: firebaseUser.photoURL,
-                });
-              }
-            }
+            // OPTIMIZATION: Set user state immediately with Firebase Auth data
+            // Then update with Firestore data in background
+            const immediateUser: User = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              photoURL: firebaseUser.photoURL || '',
+              displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+              id: firebaseUser.uid,
+              name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+              profileImageUrl: firebaseUser.photoURL || '',
+              favorites: [],
+              rsvps: [],
+              hostedEvents: [],
+              attendingEvents: [],
+            };
             
-            await get().fetchUserProfile(firebaseUser.uid);
-            return get().user || null;
+            // Set user immediately for fast UI response
+            set({ user: immediateUser, currentUser: immediateUser, loading: false, ready: true });
+            
+            // OPTIMIZATION: Run profile operations in parallel and non-blocking
+            Promise.all([
+              getUserProfile(firebaseUser.uid),
+              // Firestore operations in background
+            ]).then(async ([firestoreUser]) => {
+              if (!firestoreUser) {
+                // Create user profile in background (non-blocking)
+                setDoc(doc(db, 'users', firebaseUser.uid), {
+                  id: firebaseUser.uid,
+                  uid: firebaseUser.uid,
+                  name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+                  email: firebaseUser.email || '',
+                  displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+                  photoURL: firebaseUser.photoURL || '',
+                  createdAt: serverTimestamp(),
+                }).catch(err => console.error('Background profile creation error:', err));
+              } else {
+                // Update photo if changed (non-blocking)
+                if (firebaseUser.photoURL && firestoreUser.photoURL !== firebaseUser.photoURL) {
+                  createOrUpdateUserProfile(firebaseUser.uid, {
+                    photoURL: firebaseUser.photoURL,
+                  }).catch(err => console.error('Background profile update error:', err));
+                }
+              }
+              
+              // Fetch full profile in background (non-blocking)
+              get().fetchUserProfile(firebaseUser.uid).catch(err => {
+                console.error('Background profile fetch error:', err);
+              });
+            }).catch(err => {
+              console.error('Background profile operations error:', err);
+              // Still fetch profile even if check failed
+              get().fetchUserProfile(firebaseUser.uid).catch(() => {});
+            });
+            
+            return immediateUser;
           }
           
           // If we used redirect, return null (auth listener will handle the result)
