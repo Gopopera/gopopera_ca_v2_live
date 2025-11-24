@@ -8,16 +8,14 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { auth } from '../src/lib/firebase';
-import { signOut, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { getAuthInstance, initFirebaseAuth, listenToAuthChanges, signOutUser } from '../src/lib/firebaseAuth';
 import { doc, getDoc } from 'firebase/firestore';
-import { attachAuthListener } from '../firebase/listeners';
 import { getUserProfile, createOrUpdateUserProfile, listUserReservations, createReservation, cancelReservation, listReservationsForUser } from '../firebase/db';
 import { getDbSafe } from '../src/lib/firebase';
 import { resolveMfaSignIn } from '../src/lib/auth';
 import type { User as FirebaseUser } from 'firebase/auth';
 import type { FirestoreUser } from '../firebase/types';
-import type { Unsubscribe } from '../src/lib/firebase';
+import type { Unsubscribe } from 'firebase/auth';
 import type { ViewState } from '../types';
 import { completeGoogleRedirect, loginWithEmail, loginWithGoogle, signupWithEmail } from '../src/lib/authHelpers';
 
@@ -45,6 +43,7 @@ interface UserStore {
   user: User | null;
   loading: boolean;
   ready: boolean; // True when auth state has been determined
+  isAuthReady: boolean;
   _authUnsub: Unsubscribe | null; // Internal unsubscribe function
   _initialized: boolean; // Track if init() has been called
   redirectAfterLogin: ViewState | null; // Redirect destination after login
@@ -84,6 +83,7 @@ export const useUserStore = create<UserStore>()(
       user: null,
       loading: true,
       ready: false,
+      isAuthReady: false,
       currentUser: null,
       _authUnsub: null,
       _initialized: false,
@@ -111,7 +111,7 @@ export const useUserStore = create<UserStore>()(
           phone_number: (firebaseUser as any)?.phoneNumber,
         };
 
-        set({ user: immediateUser, currentUser: immediateUser, loading: false, ready: true });
+        set({ user: immediateUser, currentUser: immediateUser, loading: false, ready: true, isAuthReady: true });
 
         const baseProfile = {
           id: firebaseUser.uid,
@@ -146,48 +146,55 @@ export const useUserStore = create<UserStore>()(
 
       init: () => {
         if (get()._initialized) return; // Already initialized
-        set({ _initialized: true, loading: true, ready: false, _redirectHandled: false });
+        set({ _initialized: true, loading: true, ready: false, isAuthReady: false, _redirectHandled: false });
         
-        // OPTIMIZATION: Check redirect result quickly without blocking (only once)
-        // Use Promise.resolve to make it non-blocking
-        Promise.resolve().then(async () => {
-          if (get()._redirectHandled) return;
+        (async () => {
           try {
-            const redirectResult = await completeGoogleRedirect(auth);
-            if (redirectResult?.user) {
-              await get().handleAuthSuccess(redirectResult.user);
+            await initFirebaseAuth();
+
+            if (!get()._redirectHandled) {
+              try {
+                const redirectResult = await completeGoogleRedirect();
+                if (redirectResult?.user) {
+                  await get().handleAuthSuccess(redirectResult.user);
+                }
+              } catch (error) {
+                console.error('[AUTH] Error checking redirect result:', error);
+              } finally {
+                set({ _redirectHandled: true });
+              }
             }
-            set({ _redirectHandled: true });
+            
+            const unsub = listenToAuthChanges(async (firebaseUser) => {
+              console.log('[USER_STORE] onAuthStateChanged fired', {
+                hasUser: !!firebaseUser,
+                uid: firebaseUser?.uid,
+                email: firebaseUser?.email,
+              });
+              if (firebaseUser) {
+                try {
+                  await get().handleAuthSuccess(firebaseUser);
+                } catch (error) {
+                  console.error("Error restoring user session:", error);
+                  set({ user: null, currentUser: null, loading: false, ready: true, isAuthReady: true });
+                }
+              } else {
+                set({ user: null, currentUser: null, loading: false, ready: true, isAuthReady: true });
+              }
+            });
+            set({ _authUnsub: unsub });
           } catch (error) {
-            console.error('[AUTH] Error checking redirect result:', error);
+            console.error('[AUTH] Initialization failed:', error);
+            set({ user: null, currentUser: null, loading: false, ready: true, isAuthReady: true });
           }
-        });
-        
-        const unsub = attachAuthListener(async (firebaseUser) => {
-          console.log('[USER_STORE] onAuthStateChanged fired', {
-            hasUser: !!firebaseUser,
-            uid: firebaseUser?.uid,
-            email: firebaseUser?.email,
-          });
-          if (firebaseUser) {
-            try {
-              await get().handleAuthSuccess(firebaseUser);
-            } catch (error) {
-              console.error("Error restoring user session:", error);
-              set({ user: null, currentUser: null, loading: false, ready: true });
-            }
-          } else {
-            set({ user: null, currentUser: null, loading: false, ready: true });
-          }
-        });
-        set({ _authUnsub: unsub });
+        })();
       },
 
       // Core auth functions
       signup: async (email: string, password: string) => {
         try {
           set({ loading: true });
-          const userCredential = await signupWithEmail(auth, email, password);
+          const userCredential = await signupWithEmail(email, password);
           await get().handleAuthSuccess(userCredential.user);
         } catch (error) {
           console.error("Signup error:", error);
@@ -201,7 +208,7 @@ export const useUserStore = create<UserStore>()(
           set({ loading: true });
           let userCredential;
           try {
-            userCredential = await loginWithEmail(auth, email, password);
+            userCredential = await loginWithEmail(email, password);
           } catch (err) {
             const mfaResult = await resolveMfaSignIn(err);
             if (mfaResult) {
@@ -222,7 +229,7 @@ export const useUserStore = create<UserStore>()(
         try {
           set({ loading: true });
           console.log('[USER_STORE] Logging out');
-          await signOut(auth);
+          await signOutUser();
           
           // Clean up auth listener
           const unsub = get()._authUnsub;
@@ -231,7 +238,7 @@ export const useUserStore = create<UserStore>()(
             set({ _authUnsub: null });
           }
           
-          set({ user: null, currentUser: null, loading: false });
+          set({ user: null, currentUser: null, loading: false, ready: true, isAuthReady: true });
           console.log('[USER_STORE] User signed out');
         } catch (error) {
           console.error("Logout error:", error);
@@ -248,9 +255,14 @@ export const useUserStore = create<UserStore>()(
             return;
           }
 
-          const firebaseUser = auth.currentUser;
+          let firebaseUser: FirebaseUser | null = null;
+          try {
+            firebaseUser = getAuthInstance().currentUser;
+          } catch {
+            firebaseUser = null;
+          }
           if (!firebaseUser) {
-            set({ user: null, currentUser: null, loading: false, ready: true });
+            set({ user: null, currentUser: null, loading: false, ready: true, isAuthReady: true });
             return;
           }
 
@@ -282,7 +294,7 @@ export const useUserStore = create<UserStore>()(
               hostedEvents: [],
               attendingEvents: [],
             };
-            set({ user: minimalUser, currentUser: minimalUser, loading: false, ready: true });
+            set({ user: minimalUser, currentUser: minimalUser, loading: false, ready: true, isAuthReady: true });
             return;
           }
 
@@ -315,10 +327,10 @@ export const useUserStore = create<UserStore>()(
           };
           
           // Set user state immediately - don't wait for anything else
-          set({ user, currentUser: user, loading: false, ready: true });
+          set({ user, currentUser: user, loading: false, ready: true, isAuthReady: true });
         } catch (error) {
           console.error("Error fetching user profile:", error);
-          set({ user: null, currentUser: null, loading: false, ready: true });
+          set({ user: null, currentUser: null, loading: false, ready: true, isAuthReady: true });
         }
       },
 
@@ -344,12 +356,7 @@ export const useUserStore = create<UserStore>()(
       signInWithGoogle: async () => {
         try {
           set({ loading: true });
-          const authInstance = auth;
-          if (authInstance) {
-            // Set persistence before sign in
-            await setPersistence(authInstance, browserLocalPersistence);
-          }
-          const cred = await loginWithGoogle(auth);
+          const cred = await loginWithGoogle();
           if (cred?.user) {
             await get().handleAuthSuccess(cred.user);
             return get().user;
@@ -357,7 +364,7 @@ export const useUserStore = create<UserStore>()(
           return null; // redirect path
         } catch (error) {
           console.error("Google sign in error:", error);
-          set({ loading: false, ready: true });
+          set({ loading: false, ready: true, isAuthReady: true });
           throw error;
         }
       },

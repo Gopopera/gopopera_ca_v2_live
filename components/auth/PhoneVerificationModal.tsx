@@ -3,7 +3,12 @@ import { Phone, X, CheckCircle2 } from 'lucide-react';
 import { getDbSafe } from '../../src/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { useUserStore } from '../../stores/userStore';
-import { finalizeMfaEnrollment, getRecaptchaVerifier, startMfaEnrollment } from '../../src/services/phoneVerification';
+import {
+  createRecaptchaVerifier,
+  resetRecaptchaVerifier,
+  startPhoneMfaEnrollment,
+  verifyPhoneMfaCode,
+} from '../../src/lib/firebaseAuth';
 import { createOrUpdateUserProfile } from '../../firebase/db';
 
 interface PhoneVerificationModalProps {
@@ -27,7 +32,7 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [verificationId, setVerificationId] = useState<string | null>(null);
-  const recaptchaVerifierRef = useRef<ReturnType<typeof getRecaptchaVerifier> | null>(null);
+  const recaptchaVerifierRef = useRef<ReturnType<typeof createRecaptchaVerifier> | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -47,13 +52,14 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
         }
         recaptchaVerifierRef.current = null;
       }
+      resetRecaptchaVerifier();
     }
   }, [isOpen]);
 
   const initializeRecaptcha = () => {
     if (recaptchaVerifierRef.current) return;
     try {
-      recaptchaVerifierRef.current = getRecaptchaVerifier('phone-recaptcha-container');
+      recaptchaVerifierRef.current = createRecaptchaVerifier('phone-recaptcha-container');
     } catch (error) {
       console.error('Error initializing reCAPTCHA:', error);
       setError('Failed to initialize verification. Please refresh the page.');
@@ -72,7 +78,9 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
     try {
       const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+1${phoneNumber.replace(/\D/g, '')}`;
       initializeRecaptcha();
-      const vid = await startMfaEnrollment(formattedPhone);
+      const verifier = recaptchaVerifierRef.current || createRecaptchaVerifier('phone-recaptcha-container');
+      recaptchaVerifierRef.current = verifier;
+      const vid = await startPhoneMfaEnrollment(formattedPhone, verifier);
       setVerificationId(vid);
       setStep('code');
     } catch (error: any) {
@@ -96,6 +104,7 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
         }
         recaptchaVerifierRef.current = null;
       }
+      resetRecaptchaVerifier();
     } finally {
       setLoading(false);
     }
@@ -111,7 +120,7 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
     setError(null);
 
     try {
-      await finalizeMfaEnrollment(verificationId, verificationCode);
+      await verifyPhoneMfaCode(verificationId, verificationCode);
       console.log('[MFA] Code verified');
 
       // Update user profile
@@ -135,6 +144,8 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
       }
 
       setSuccess(true);
+      resetRecaptchaVerifier();
+      recaptchaVerifierRef.current = null;
       
       // Show success for 2 seconds, then close
       setTimeout(() => {

@@ -365,7 +365,7 @@ const AppContent: React.FC = () => {
   // Use Zustand stores
   const user = useUserStore((state) => state.user);
   const loading = useUserStore((state) => state.loading);
-  const ready = useUserStore((state) => state.ready);
+  const isAuthReady = useUserStore((state) => state.isAuthReady);
   const addRSVP = useUserStore((state) => state.addRSVP);
   const removeRSVP = useUserStore((state) => state.removeRSVP);
   const addFavorite = useUserStore((state) => state.addFavorite);
@@ -373,6 +373,14 @@ const AppContent: React.FC = () => {
   const updateEvent = useEventStore((state) => state.updateEvent);
   const currentUser = useUserStore((state) => state.getCurrentUser());
   
+  if (!isAuthReady) {
+    return (
+      <div className="min-h-screen bg-[#f8fafb] flex items-center justify-center text-[#15383c]">
+        Loading...
+      </div>
+    );
+  }
+
   // Backward compatibility with safe defaults - use nullish coalescing
   const isLoggedIn = !!user;
   const favorites = (user?.favorites ?? []);
@@ -411,13 +419,13 @@ const AppContent: React.FC = () => {
   const setRedirectAfterLogin = useUserStore((state) => state.setRedirectAfterLogin);
   
   useEffect(() => {
-    if (user && viewState === ViewState.AUTH && !loading) {
+    if (user && viewState === ViewState.AUTH && !loading && isAuthReady) {
       // User just logged in, redirect immediately to intended destination or FEED
       const redirect = redirectAfterLogin || ViewState.FEED;
       setViewState(redirect);
       setRedirectAfterLogin(null);
     }
-  }, [user, loading, viewState, redirectAfterLogin, setRedirectAfterLogin]);
+  }, [user, loading, viewState, redirectAfterLogin, setRedirectAfterLogin, isAuthReady]);
   
   // Load events from Firestore (with fallback to mock data) - memoized to avoid redundant fetches
   const [eventsLoaded, setEventsLoaded] = useState(false);

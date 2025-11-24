@@ -3,7 +3,6 @@ import { ChevronLeft, Eye, EyeOff } from 'lucide-react';
 import { ViewState } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useUserStore } from '../stores/userStore';
-import { auth } from '../src/lib/firebase';
 import { completeGoogleRedirect, loginWithGoogle } from '../src/lib/authHelpers';
 
 interface AuthPageProps {
@@ -39,7 +38,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
 
   useEffect(() => {
     console.log('[AUTH_UI] AuthPage mounted, checking Google redirect result');
-    completeGoogleRedirect(auth)
+    completeGoogleRedirect()
       .then((cred) => {
         if (cred?.user) {
           console.log('[AUTH_UI] Redirect login completed for', cred.user.email);
@@ -57,7 +56,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
     console.log('[AUTH_UI] Google button clicked');
     
     try {
-      await loginWithGoogle(auth);
+      await loginWithGoogle();
       
       // Clear loading state quickly - auth listener will handle state update
       // If redirect was used, page will navigate away so this won't run

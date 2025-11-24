@@ -1,79 +1,25 @@
+import { type UserCredential } from 'firebase/auth';
 import {
-  GoogleAuthProvider,
-  type Auth,
-  type UserCredential,
-  getRedirectResult,
-  signInWithPopup,
-  signInWithRedirect,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-} from 'firebase/auth';
+  completeGoogleRedirect as completeGoogleRedirectCore,
+  signInWithEmail,
+  signInWithGoogle,
+  signUpWithEmail,
+} from './firebaseAuth';
 
-let popupSupportLogged = false;
-
-export function isPopupSupported(): boolean {
-  if (typeof window === 'undefined' || !navigator) {
-    return false;
-  }
-  const ua = navigator.userAgent || '';
-  const isIOS = /iPhone|iPad|iPod/i.test(ua);
-  const isInApp = /FBAN|FBAV|FB_IAB|Instagram|Twitter/i.test(ua);
-  const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(ua);
-  const supported = !(isIOS || isInApp || isSafari || isMobile);
-  if (!popupSupportLogged) {
-    console.log('[AUTH] Popup support:', supported);
-    popupSupportLogged = true;
-  }
-  return supported;
-}
-
-export async function loginWithGoogle(auth: Auth): Promise<UserCredential | null> {
+export async function loginWithGoogle(): Promise<UserCredential | null> {
   console.log('[AUTH] loginWithGoogle: starting');
-  const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: 'select_account' });
-
-  if (isPopupSupported()) {
-    try {
-      const result = await signInWithPopup(auth, provider);
-      console.log('[AUTH] loginWithGoogle: popup success', { uid: result.user?.uid, email: result.user?.email });
-      return result;
-    } catch (err: any) {
-      if (err?.code === 'auth/popup-blocked' || err?.code === 'auth/popup-closed-by-user') {
-        console.warn('[AUTH] loginWithGoogle: popup blocked, falling back to redirect');
-        await signInWithRedirect(auth, provider);
-        return null;
-      }
-      console.error('[AUTH] loginWithGoogle: popup error', err);
-      throw err;
-    }
-  }
-
-  console.log('[AUTH] loginWithGoogle: using redirect (popup not supported)');
-  await signInWithRedirect(auth, provider);
-  return null;
+  return signInWithGoogle();
 }
 
-export async function completeGoogleRedirect(auth: Auth): Promise<UserCredential | null> {
+export async function completeGoogleRedirect(): Promise<UserCredential | null> {
   console.log('[AUTH] completeGoogleRedirect: checking redirect result');
-  try {
-    const result = await getRedirectResult(auth);
-    if (result?.user) {
-      console.log('[AUTH] completeGoogleRedirect: success', { uid: result.user.uid, email: result.user.email });
-      return result;
-    }
-    console.log('[AUTH] completeGoogleRedirect: no redirect result');
-    return null;
-  } catch (err: any) {
-    console.error('[AUTH] completeGoogleRedirect: error', { code: err?.code, message: err?.message });
-    throw err;
-  }
+  return completeGoogleRedirectCore();
 }
 
-export async function loginWithEmail(auth: Auth, email: string, password: string): Promise<UserCredential> {
+export async function loginWithEmail(email: string, password: string): Promise<UserCredential> {
   console.log('[AUTH] loginWithEmail: starting', { emailMasked: email.replace(/(.{2}).+(@.*)/, '$1***$2') });
   try {
-    const cred = await signInWithEmailAndPassword(auth, email, password);
+    const cred = await signInWithEmail(email, password);
     console.log('[AUTH] loginWithEmail: success', { uid: cred.user?.uid, email: cred.user?.email });
     return cred;
   } catch (err: any) {
@@ -82,10 +28,10 @@ export async function loginWithEmail(auth: Auth, email: string, password: string
   }
 }
 
-export async function signupWithEmail(auth: Auth, email: string, password: string): Promise<UserCredential> {
+export async function signupWithEmail(email: string, password: string): Promise<UserCredential> {
   console.log('[AUTH] signupWithEmail: starting', { emailMasked: email.replace(/(.{2}).+(@.*)/, '$1***$2') });
   try {
-    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    const cred = await signUpWithEmail(email, password);
     console.log('[AUTH] signupWithEmail: success', { uid: cred.user?.uid, email: cred.user?.email });
     return cred;
   } catch (err: any) {
@@ -96,8 +42,7 @@ export async function signupWithEmail(auth: Auth, email: string, password: strin
 
 // Backward compatibility export
 export async function handleGoogleSignIn() {
-  const { auth } = await import('./firebase');
-  return loginWithGoogle(auth);
+  return loginWithGoogle();
 }
 
 /*
