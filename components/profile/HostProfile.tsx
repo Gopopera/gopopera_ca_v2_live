@@ -49,10 +49,8 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
       // Popera profile: show city-launch events (demoType: "city-launch") and official launch events
       // Check if event has demoType field (from Firestore) - these are the launch events we want to show
       return filtered.filter(e => {
-        // Show if it's an official launch event OR if it's a city-launch event
-        // We check for demoType by looking at the event object (it may not be in Event type but exists in Firestore)
-        const hasCityLaunchType = (e as any).demoType === "city-launch";
-        return e.isOfficialLaunch === true || hasCityLaunchType;
+      // Show if it's an official launch event OR if it's a city-launch event
+      return e.isOfficialLaunch === true || e.demoType === "city-launch";
       });
     }
     return filtered;

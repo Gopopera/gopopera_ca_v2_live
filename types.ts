@@ -28,6 +28,7 @@ export interface Event {
   isFakeEvent?: boolean; // True for fake demo events (locked reservations/chat) - DEPRECATED: use isDemo
   isDemo?: boolean; // True for demo events (locked reservations/chat)
   demoPurpose?: string; // Optional short explanation shown in UI for demo events
+  demoType?: string; // Type of demo event (e.g., "city-launch")
   isOfficialLaunch?: boolean; // True for official Popera launch events (fully functional)
   hostId?: string; // User ID of the host
   aboutEvent?: string; // "About this event" section

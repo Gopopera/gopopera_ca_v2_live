@@ -252,6 +252,21 @@ export const useUserStore = create<UserStore>()(
           get().fetchUserProfile(firebaseUser.uid).catch(err => {
             console.error('Background profile fetch error:', err);
           });
+          
+          // Ensure Popera profile is updated and seed launch events (non-blocking)
+          if (firebaseUser.email === POPERA_EMAIL) {
+            import('../firebase/poperaProfile').then(({ ensurePoperaProfile, seedPoperaLaunchEvents }) => {
+              ensurePoperaProfile(firebaseUser.uid, firebaseUser.email || '').then(() => {
+                seedPoperaLaunchEvents(firebaseUser.uid).catch(err => {
+                  console.error('[AUTH] Error seeding Popera launch events:', err);
+                });
+              }).catch(err => {
+                console.error('[AUTH] Error ensuring Popera profile:', err);
+              });
+            }).catch(err => {
+              console.error('[AUTH] Error loading poperaProfile module:', err);
+            });
+          }
         } catch (error) {
           console.error("Login error:", error);
           set({ loading: false });

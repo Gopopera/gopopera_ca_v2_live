@@ -42,10 +42,11 @@ const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event => {
       isPoperaOwned: firestoreEvent.isPoperaOwned || false,
       isDemo: firestoreEvent.isDemo || false,
       demoPurpose: firestoreEvent.demoPurpose,
+      demoType: firestoreEvent.demoType, // Map demoType for filtering (e.g., "city-launch")
       isOfficialLaunch: firestoreEvent.isOfficialLaunch || false,
       aboutEvent: firestoreEvent.aboutEvent,
       whatToExpect: firestoreEvent.whatToExpect,
-      // Note: demoType, managedBy, subtitle, startDate, endDate, isPublic, allowChat, allowRsvp
+      // Note: managedBy, subtitle, startDate, endDate, isPublic, allowChat, allowRsvp
       // are stored in Firestore but not mapped to Event type (not needed in UI)
   };
 };

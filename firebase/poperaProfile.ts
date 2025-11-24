@@ -18,9 +18,11 @@ export async function ensurePoperaProfile(uid: string, email: string): Promise<v
     return; // Only update Popera account
   }
 
+  console.log('[POPERA_SEED] Ensuring Popera profile for user', uid, email);
+
   const db = getDbSafe();
   if (!db) {
-    console.warn('[ensurePoperaProfile] Firestore not available');
+    console.warn('[POPERA_SEED] Firestore not available');
     return;
   }
 
@@ -40,7 +42,7 @@ export async function ensurePoperaProfile(uid: string, email: string): Promise<v
     if (userSnap.exists()) {
       // Update existing profile (merge to preserve existing stats)
       await setDoc(userRef, updateData, { merge: true });
-      console.log('[ensurePoperaProfile] Updated Popera profile successfully');
+      console.log('[POPERA_SEED] Updated Popera profile successfully');
     } else {
       // Create new profile with all required fields
       await setDoc(userRef, {
@@ -51,10 +53,10 @@ export async function ensurePoperaProfile(uid: string, email: string): Promise<v
         ...updateData,
         createdAt: Date.now(),
       });
-      console.log('[ensurePoperaProfile] Created Popera profile successfully');
+      console.log('[POPERA_SEED] Created Popera profile successfully');
     }
   } catch (error: any) {
-    console.error('[ensurePoperaProfile] Error updating profile:', error.message || error);
+    console.error('[POPERA_SEED] Error updating profile:', error.message || error);
     // Don't throw - this should not block login
   }
 }
@@ -64,25 +66,31 @@ export async function ensurePoperaProfile(uid: string, email: string): Promise<v
  * Called once after Popera profile is updated
  */
 export async function seedPoperaLaunchEvents(hostUid: string): Promise<void> {
+  console.log('[POPERA_SEED] Starting seeding for user', hostUid);
+  
   const db = getDbSafe();
   if (!db) {
-    console.warn('[seedPoperaLaunchEvents] Firestore not available');
+    console.warn('[POPERA_SEED] Firestore not available');
     return;
   }
 
   try {
-    // Check if launch events already exist
+    // Check if launch events already exist (idempotent check)
     const eventsCol = collection(db, "events");
     const existingQuery = query(
       eventsCol,
-      where("demoType", "==", "city-launch")
+      where("demoType", "==", "city-launch"),
+      where("managedBy", "==", POPERA_EMAIL)
     );
     const existingSnap = await getDocs(existingQuery);
     
     if (existingSnap.size > 0) {
-      console.log(`[seedPoperaLaunchEvents] Launch events already exist (${existingSnap.size} found), skipping seed`);
+      console.log('[POPERA_SEED] Demo city-launch events already exist, skipping.');
+      console.log(`[POPERA_SEED] Found ${existingSnap.size} existing city-launch events`);
       return;
     }
+    
+    console.log('[POPERA_SEED] No existing city-launch events found, proceeding with seeding');
 
     // Calculate dates: today + 3 days, 2 hour duration
     const now = new Date();
@@ -134,20 +142,23 @@ export async function seedPoperaLaunchEvents(hostUid: string): Promise<void> {
     });
 
     // Create all events
+    let successCount = 0;
     for (const eventData of eventsToCreate) {
       try {
+        console.log('[POPERA_SEED] Creating event for city', eventData.city);
         const sanitizedEvent = sanitizeFirestoreData(eventData);
-        await addDoc(eventsCol, sanitizedEvent);
-        console.log(`[seedPoperaLaunchEvents] Created launch event for ${eventData.city}`);
+        const docRef = await addDoc(eventsCol, sanitizedEvent);
+        console.log('[POPERA_SEED] Created event', docRef.id, 'for city', eventData.city);
+        successCount++;
       } catch (error: any) {
-        console.error(`[seedPoperaLaunchEvents] Error creating event for ${eventData.city}:`, error.message || error);
+        console.error('[POPERA_SEED] Failed to create event for city', eventData.city, error);
         // Continue with next event even if one fails
       }
     }
 
-    console.log(`[seedPoperaLaunchEvents] Successfully seeded ${eventsToCreate.length} launch events`);
+    console.log(`[POPERA_SEED] Successfully seeded ${successCount}/${eventsToCreate.length} launch events`);
   } catch (error: any) {
-    console.error('[seedPoperaLaunchEvents] Error seeding events:', error.message || error);
+    console.error('[POPERA_SEED] Error seeding events:', error.message || error);
     // Don't throw - this should not block login
   }
 }
