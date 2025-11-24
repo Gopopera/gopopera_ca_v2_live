@@ -30,18 +30,7 @@ let _storage: FirebaseStorage | null = null;
 // Track initialization state
 let initializationWarningLogged = false;
 
-// Log import.meta.env BEFORE using it
-if (typeof window !== 'undefined') {
-  console.log('[FIREBASE] import.meta.env check:', {
-    hasVITE_FIREBASE_API_KEY: !!import.meta.env.VITE_FIREBASE_API_KEY,
-    hasVITE_FIREBASE_AUTH_DOMAIN: !!import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-    hasVITE_FIREBASE_PROJECT_ID: !!import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    hasVITE_FIREBASE_STORAGE_BUCKET: !!import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-    hasVITE_FIREBASE_MESSAGING_SENDER_ID: !!import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    hasVITE_FIREBASE_APP_ID: !!import.meta.env.VITE_FIREBASE_APP_ID,
-    hasVITE_FIREBASE_MEASUREMENT_ID: !!import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
-  });
-}
+// Environment variable logging removed for production
 
 // Validate required Firebase environment variables
 const requiredFirebaseVars = {
