@@ -72,6 +72,11 @@ const cfg = {
 
 // Log config BEFORE initialization (redact sensitive values)
 if (typeof window !== 'undefined') {
+  console.log('[FIREBASE] import.meta.env in production:', {
+    MODE: import.meta.env.MODE,
+    PROD: import.meta.env.PROD,
+    DEV: import.meta.env.DEV,
+  });
   console.log('[FIREBASE] Config BEFORE initializeApp:', {
     apiKey: cfg.apiKey ? `${cfg.apiKey.substring(0, 10)}...` : 'MISSING',
     authDomain: cfg.authDomain || 'MISSING',

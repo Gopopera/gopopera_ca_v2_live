@@ -1,24 +1,21 @@
 /**
- * Resend Email Service
- * Universal email sending with logging
+ * Email Service - Client-side wrapper for serverless email API
+ * All emails are sent via Vercel serverless function to keep API keys secure
  */
 
-import { Resend } from 'resend';
 import { getDbSafe } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, limit } from 'firebase/firestore';
 
-const RESEND_API_KEY = import.meta.env.VITE_RESEND_API_KEY;
-const RESEND_FROM = import.meta.env.VITE_RESEND_FROM || 'support@gopopera.ca';
 const IS_DEV = import.meta.env.DEV;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
-// Validate Resend environment variables
-if (typeof window !== 'undefined' && !RESEND_API_KEY) {
-  console.warn('⚠️ Missing Resend environment variable: VITE_RESEND_API_KEY');
-  console.warn('⚠️ Email sending will be disabled. Please configure VITE_RESEND_API_KEY in your deployment platform.');
+// Log API configuration
+if (typeof window !== 'undefined') {
+  console.log('[EMAIL] API configuration:', {
+    apiBaseUrl: API_BASE_URL,
+    isDev: IS_DEV,
+  });
 }
-
-// Initialize Resend client with API key
-export const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
 // Timeout helper for email requests (8 seconds max)
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 8000): Promise<T> {
@@ -96,26 +93,6 @@ export async function sendEmail(options: SendEmailOptions): Promise<{ success: b
       }
     }
     
-    // Check if Resend is configured
-    if (!resend || !RESEND_API_KEY) {
-      if (IS_DEV) {
-        console.warn('[EMAIL] Resend not configured, skipping email send');
-      }
-      await logEmailToFirestore({
-        id: logId,
-        to: toEmail,
-        subject: options.subject,
-        status: 'skipped',
-        error: 'Resend API key not configured',
-        templateName: options.templateName,
-        type: options.notificationType,
-        eventId: options.eventId,
-        skippedByPreference: options.skippedByPreference,
-        timestamp: Date.now(),
-      });
-      return { success: false, error: 'Email service not configured' };
-    }
-    
     // Skip if user preference disabled
     if (options.skippedByPreference) {
       if (IS_DEV) {
@@ -137,13 +114,11 @@ export async function sendEmail(options: SendEmailOptions): Promise<{ success: b
     }
 
     if (IS_DEV) {
-      console.log('[EMAIL] Sending email:', { to: toEmail, subject: options.subject, template: options.templateName });
+      console.log('[EMAIL] Sending email via serverless function:', { to: toEmail, subject: options.subject, template: options.templateName });
     }
 
-    // Send email via Resend with 8s timeout failsafe
-    // Resend expects attachments as base64 strings
+    // Send email via Vercel serverless function (server-side)
     const emailPayload = {
-      from: RESEND_FROM,
       to: options.to,
       subject: options.subject,
       html: options.html,
@@ -151,17 +126,30 @@ export async function sendEmail(options: SendEmailOptions): Promise<{ success: b
       ...(options.metadata && { metadata: options.metadata }),
     };
 
-    const result = await withTimeout(
-      resend.emails.send(emailPayload),
-      8000 // 8 second timeout
+    const response = await withTimeout(
+      fetch(`${API_BASE_URL}/send-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(emailPayload),
+      }),
+      10000 // 10 second timeout
     );
 
-    if (result.error) {
-      throw new Error(result.error.message || 'Unknown Resend error');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.error || 'Email send failed');
     }
 
     if (IS_DEV) {
-      console.log('[EMAIL] Email sent successfully:', { messageId: result.data?.id, to: toEmail });
+      console.log('[EMAIL] Email sent successfully:', { messageId: result.messageId, to: toEmail });
     }
 
     // Log success to Firestore (non-blocking)
@@ -170,7 +158,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<{ success: b
       to: toEmail,
       subject: options.subject,
       status: 'sent',
-      messageId: result.data?.id,
+      messageId: result.messageId,
       templateName: options.templateName,
       type: options.notificationType,
       eventId: options.eventId,
@@ -182,7 +170,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<{ success: b
       }
     });
 
-    return { success: true, messageId: result.data?.id };
+    return { success: true, messageId: result.messageId };
   } catch (error: any) {
     const errorMessage = error.message || 'Unknown error';
     

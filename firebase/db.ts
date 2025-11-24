@@ -10,6 +10,7 @@ import { getDbSafe } from "../src/lib/firebase";
 import { collection, doc, getDoc, getDocs, query, where, orderBy, addDoc, updateDoc, setDoc } from "firebase/firestore";
 import { FirestoreEvent, FirestoreReservation, FirestoreChatMessage, FirestoreReview, FirestoreUser } from "./types";
 import { Event } from "../types";
+import { validateFirestoreData, removeUndefinedValues } from "../utils/firestoreValidation";
 
 // Helper to convert FirestoreEvent to Event (frontend type)
 const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event => {
@@ -56,7 +57,9 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
   try {
     const eventsCol = collection(db, "events");
     const now = Date.now();
-    const firestoreEvent: Omit<FirestoreEvent, 'id'> = {
+    
+    // Build event data with defaults
+    const eventDataRaw: Omit<FirestoreEvent, 'id'> = {
       title: eventData.title,
       description: eventData.description,
       date: eventData.date,
@@ -70,7 +73,7 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
       host: eventData.host || 'Unknown',
       hostName: eventData.host || 'Unknown',
       hostId: eventData.hostId || '',
-      imageUrl: eventData.imageUrl,
+      imageUrl: eventData.imageUrl || '',
       rating: eventData.rating || 0,
       reviewCount: eventData.reviewCount || 0,
       attendeesCount: eventData.attendeesCount || 0,
@@ -84,6 +87,14 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
       whatToExpect: eventData.whatToExpect,
       capacity: eventData.capacity,
     };
+
+    // Validate and remove undefined values
+    const firestoreEvent = validateFirestoreData(
+      eventDataRaw,
+      ['title', 'description', 'date', 'time', 'city', 'host', 'hostId', 'createdAt'],
+      'createEvent'
+    ) as Omit<FirestoreEvent, 'id'>;
+
     const docRef = await addDoc(eventsCol, firestoreEvent);
     console.log('Firestore write success:', { path: 'events', docId: docRef.id });
     const createdEvent: FirestoreEvent = {
@@ -231,12 +242,20 @@ export async function createReservation(eventId: string, userId: string): Promis
   }
   try {
     const reservationsCol = collection(db, "reservations");
-    const reservation: Omit<FirestoreReservation, 'id'> = {
+    const reservationRaw: Omit<FirestoreReservation, 'id'> = {
       eventId,
       userId,
       reservedAt: Date.now(),
       status: "reserved",
     };
+    
+    // Validate and remove undefined values
+    const reservation = validateFirestoreData(
+      reservationRaw,
+      ['eventId', 'userId', 'reservedAt', 'status'],
+      'createReservation'
+    ) as Omit<FirestoreReservation, 'id'>;
+    
     const docRef = await addDoc(reservationsCol, reservation);
     console.log('Firestore write success:', { path: 'reservations', docId: docRef.id });
     return docRef.id;
@@ -337,15 +356,23 @@ export async function addChatMessage(
   }
   try {
     const messagesCol = collection(db, "events", eventId, "messages");
-    const message: Omit<FirestoreChatMessage, 'id'> = {
+    const messageRaw: Omit<FirestoreChatMessage, 'id'> = {
       eventId,
       userId,
-      userName,
-      text,
+      userName: userName || 'Anonymous',
+      text: text || '',
       createdAt: Date.now(),
       type,
       isHost,
     };
+    
+    // Validate and remove undefined values
+    const message = validateFirestoreData(
+      messageRaw,
+      ['eventId', 'userId', 'userName', 'text', 'createdAt', 'type', 'isHost'],
+      'addChatMessage'
+    ) as Omit<FirestoreChatMessage, 'id'>;
+    
     const docRef = await addDoc(messagesCol, message);
     console.log('Firestore write success:', { path: `events/${eventId}/messages`, docId: docRef.id });
     return docRef.id;
@@ -401,11 +428,16 @@ export async function createOrUpdateUserProfile(uid: string, userData: Partial<F
   }
   try {
     const userRef = doc(db, "users", uid);
-    await setDoc(userRef, {
+    const userDataRaw: any = {
       ...userData,
       uid,
       updatedAt: Date.now(),
-    }, { merge: true });
+    };
+    
+    // Remove undefined values (merge: true allows partial updates)
+    const cleanedUserData = removeUndefinedValues(userDataRaw);
+    
+    await setDoc(userRef, cleanedUserData, { merge: true });
     console.log('Firestore write success:', { path: `users/${uid}`, docId: uid });
   } catch (error: any) {
     console.error('Firestore write failed:', { path: `users/${uid}`, error: error.message || 'Unknown error' });
@@ -460,14 +492,22 @@ export async function addReview(
   }
   try {
     const reviewsCol = collection(db, "events", eventId, "reviews");
-    const review: Omit<FirestoreReview, 'id'> = {
+    const reviewRaw: Omit<FirestoreReview, 'id'> = {
       eventId,
       userId,
-      userName,
+      userName: userName || 'Anonymous',
       rating: Math.max(1, Math.min(5, rating)),
-      comment,
+      comment: comment || '',
       createdAt: Date.now(),
     };
+    
+    // Validate and remove undefined values
+    const review = validateFirestoreData(
+      reviewRaw,
+      ['eventId', 'userId', 'userName', 'rating', 'createdAt'],
+      'addReview'
+    ) as Omit<FirestoreReview, 'id'>;
+    
     const docRef = await addDoc(reviewsCol, review);
     console.log('Firestore write success:', { path: `events/${eventId}/reviews`, docId: docRef.id });
     
