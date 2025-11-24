@@ -22,6 +22,7 @@ export async function ensurePoperaProfileAndSeed(user: User) {
     return;
   }
   console.log('[POPERA_SEED] ensurePoperaProfileAndSeed called for', user.uid, user.email);
+  console.log('[POPERA_SEED] ensurePoperaProfileAndSeed starting, user.uid:', user.uid);
 
   if (!user.email) {
     console.log('[POPERA_SEED] No email on user, skipping');

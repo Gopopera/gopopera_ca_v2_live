@@ -68,6 +68,7 @@ export async function seedPoperaLaunchEventsForUser(user: User) {
     console.error('[POPERA_SEED] No Firestore db, aborting');
     return;
   }
+  console.log('[POPERA_SEED] Starting seedPoperaLaunchEventsForUser for', user.email);
 
   const poperaEmail = user.email?.toLowerCase().trim();
   if (!poperaEmail) return;

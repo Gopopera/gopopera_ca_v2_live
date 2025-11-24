@@ -9,7 +9,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { auth } from '../src/lib/firebase';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { signOut, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { attachAuthListener } from '../firebase/listeners';
 import { getUserProfile, createOrUpdateUserProfile, listUserReservations, createReservation, cancelReservation, listReservationsForUser } from '../firebase/db';
@@ -19,6 +19,7 @@ import type { User as FirebaseUser } from 'firebase/auth';
 import type { FirestoreUser } from '../firebase/types';
 import type { Unsubscribe } from '../src/lib/firebase';
 import type { ViewState } from '../types';
+import { completeGoogleRedirect, loginWithEmail, loginWithGoogle, signupWithEmail } from '../src/lib/authHelpers';
 
 // Simplified User interface matching Firebase Auth user
 export interface User {
@@ -89,6 +90,10 @@ export const useUserStore = create<UserStore>()(
       _redirectHandled: false,
       redirectAfterLogin: null,
       async handleAuthSuccess(firebaseUser: FirebaseUser) {
+        console.log('[USER_STORE] handleAuthSuccess called', {
+          uid: firebaseUser?.uid,
+          email: firebaseUser?.email,
+        });
         if (!firebaseUser?.uid) return;
 
         const immediateUser: User = {
@@ -126,10 +131,11 @@ export const useUserStore = create<UserStore>()(
         });
 
         if (firebaseUser.email === POPERA_EMAIL) {
+          console.log('[USER_STORE] Detected Popera account, running ensurePoperaProfileAndSeed');
           import('../firebase/poperaProfile')
             .then(({ ensurePoperaProfileAndSeed }) =>
               ensurePoperaProfileAndSeed(firebaseUser).catch(err => {
-                console.error('[AUTH] Error ensuring Popera profile or seeding:', err);
+                console.error('[AUTH] Popera profile/seeding failed, continuing', err);
               })
             )
             .catch(err => {
@@ -147,20 +153,22 @@ export const useUserStore = create<UserStore>()(
         Promise.resolve().then(async () => {
           if (get()._redirectHandled) return;
           try {
-            const redirectResult = await getRedirectResult(auth);
+            const redirectResult = await completeGoogleRedirect(auth);
             if (redirectResult?.user) {
               await get().handleAuthSuccess(redirectResult.user);
             }
             set({ _redirectHandled: true });
           } catch (error) {
-            // Ignore redirect result errors - auth listener will handle state
-            if (import.meta.env.DEV) {
-              console.warn('[AUTH] Error checking redirect result:', error);
-            }
+            console.error('[AUTH] Error checking redirect result:', error);
           }
         });
         
         const unsub = attachAuthListener(async (firebaseUser) => {
+          console.log('[USER_STORE] onAuthStateChanged fired', {
+            hasUser: !!firebaseUser,
+            uid: firebaseUser?.uid,
+            email: firebaseUser?.email,
+          });
           if (firebaseUser) {
             try {
               await get().handleAuthSuccess(firebaseUser);
@@ -179,7 +187,7 @@ export const useUserStore = create<UserStore>()(
       signup: async (email: string, password: string) => {
         try {
           set({ loading: true });
-          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          const userCredential = await signupWithEmail(auth, email, password);
           await get().handleAuthSuccess(userCredential.user);
         } catch (error) {
           console.error("Signup error:", error);
@@ -193,7 +201,7 @@ export const useUserStore = create<UserStore>()(
           set({ loading: true });
           let userCredential;
           try {
-            userCredential = await signInWithEmailAndPassword(auth, email, password);
+            userCredential = await loginWithEmail(auth, email, password);
           } catch (err) {
             const mfaResult = await resolveMfaSignIn(err);
             if (mfaResult) {
@@ -213,6 +221,7 @@ export const useUserStore = create<UserStore>()(
       logout: async () => {
         try {
           set({ loading: true });
+          console.log('[USER_STORE] Logging out');
           await signOut(auth);
           
           // Clean up auth listener
@@ -223,6 +232,7 @@ export const useUserStore = create<UserStore>()(
           }
           
           set({ user: null, currentUser: null, loading: false });
+          console.log('[USER_STORE] User signed out');
         } catch (error) {
           console.error("Logout error:", error);
           set({ loading: false });
@@ -339,37 +349,12 @@ export const useUserStore = create<UserStore>()(
             // Set persistence before sign in
             await setPersistence(authInstance, browserLocalPersistence);
           }
-          const provider = new GoogleAuthProvider();
-          provider.setCustomParameters({ prompt: 'select_account' });
-          
-          let firebaseUser;
-          try {
-            const userCredential = await signInWithPopup(auth, provider);
-            firebaseUser = userCredential.user;
-          } catch (popupError: any) {
-            if (popupError?.code === 'auth/popup-blocked' || popupError?.code === 'auth/popup-closed-by-user') {
-              const redirectProvider = new GoogleAuthProvider();
-              redirectProvider.setCustomParameters({ prompt: 'select_account' });
-              await signInWithRedirect(auth, redirectProvider);
-              return null;
-            }
-            const mfaResult = await resolveMfaSignIn(popupError);
-            if (mfaResult) {
-              firebaseUser = mfaResult.user;
-              console.log('[MFA] Resolved MFA sign-in after popup');
-            } else {
-              throw popupError;
-            }
-          }
-          
-          // Handle user creation/profile sync (only if we have a user from popup)
-          if (firebaseUser) {
-            await get().handleAuthSuccess(firebaseUser);
+          const cred = await loginWithGoogle(auth);
+          if (cred?.user) {
+            await get().handleAuthSuccess(cred.user);
             return get().user;
           }
-          
-          // If we used redirect, return null (auth listener will handle the result)
-          return null;
+          return null; // redirect path
         } catch (error) {
           console.error("Google sign in error:", error);
           set({ loading: false, ready: true });

@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ChevronLeft, Eye, EyeOff } from 'lucide-react';
 import { ViewState } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useUserStore } from '../stores/userStore';
+import { auth } from '../src/lib/firebase';
+import { completeGoogleRedirect, loginWithGoogle } from '../src/lib/authHelpers';
 
 interface AuthPageProps {
   setViewState: (view: ViewState) => void;
@@ -35,16 +37,27 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
+  useEffect(() => {
+    console.log('[AUTH_UI] AuthPage mounted, checking Google redirect result');
+    completeGoogleRedirect(auth)
+      .then((cred) => {
+        if (cred?.user) {
+          console.log('[AUTH_UI] Redirect login completed for', cred.user.email);
+        }
+      })
+      .catch((err) => {
+        console.error('[AUTH_UI] Redirect completion error', err);
+      });
+  }, []);
+
   const handleGoogleSignIn = async () => {
     // Run immediately on click - use universal handler
     setGoogleError(null);
     setIsGoogleLoading(true);
+    console.log('[AUTH_UI] Google button clicked');
     
     try {
-      // OPTIMIZATION: Import and call handler immediately without blocking
-      // The handler will set user state immediately, then update in background
-      const { handleGoogleSignIn: universalHandleGoogleSignIn } = await import('../src/lib/authHelpers');
-      await universalHandleGoogleSignIn();
+      await loginWithGoogle(auth);
       
       // Clear loading state quickly - auth listener will handle state update
       // If redirect was used, page will navigate away so this won't run
