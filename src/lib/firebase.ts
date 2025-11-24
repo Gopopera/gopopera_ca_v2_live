@@ -20,7 +20,8 @@ let _auth: Auth | null = null;
 let _db: Firestore | null = null;
 let _storage: FirebaseStorage | null = null;
 
-const cfg = {
+// Validate required Firebase environment variables
+const requiredFirebaseVars = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
@@ -28,6 +29,32 @@ const cfg = {
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+};
+
+// Log missing variables in production
+if (typeof window !== 'undefined') {
+  const missingVars: string[] = [];
+  if (!requiredFirebaseVars.apiKey) missingVars.push('VITE_FIREBASE_API_KEY');
+  if (!requiredFirebaseVars.authDomain) missingVars.push('VITE_FIREBASE_AUTH_DOMAIN');
+  if (!requiredFirebaseVars.projectId) missingVars.push('VITE_FIREBASE_PROJECT_ID');
+  if (!requiredFirebaseVars.storageBucket) missingVars.push('VITE_FIREBASE_STORAGE_BUCKET');
+  if (!requiredFirebaseVars.messagingSenderId) missingVars.push('VITE_FIREBASE_MESSAGING_SENDER_ID');
+  if (!requiredFirebaseVars.appId) missingVars.push('VITE_FIREBASE_APP_ID');
+  
+  if (missingVars.length > 0) {
+    console.warn('⚠️ Missing Firebase environment variables:', missingVars.join(', '));
+    console.warn('⚠️ Firebase features will be disabled. Please configure environment variables in your deployment platform.');
+  }
+}
+
+const cfg = {
+  apiKey: requiredFirebaseVars.apiKey,
+  authDomain: requiredFirebaseVars.authDomain,
+  projectId: requiredFirebaseVars.projectId,
+  storageBucket: requiredFirebaseVars.storageBucket,
+  messagingSenderId: requiredFirebaseVars.messagingSenderId,
+  appId: requiredFirebaseVars.appId,
+  measurementId: requiredFirebaseVars.measurementId,
 };
 
 const isDisabled =

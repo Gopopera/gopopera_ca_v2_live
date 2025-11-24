@@ -11,6 +11,12 @@ const RESEND_API_KEY = import.meta.env.VITE_RESEND_API_KEY;
 const RESEND_FROM = import.meta.env.VITE_RESEND_FROM || 'support@gopopera.ca';
 const IS_DEV = import.meta.env.DEV;
 
+// Validate Resend environment variables
+if (typeof window !== 'undefined' && !RESEND_API_KEY) {
+  console.warn('⚠️ Missing Resend environment variable: VITE_RESEND_API_KEY');
+  console.warn('⚠️ Email sending will be disabled. Please configure VITE_RESEND_API_KEY in your deployment platform.');
+}
+
 // Initialize Resend client with API key
 export const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 

@@ -18,6 +18,15 @@ interface ImportMetaEnv {
   readonly NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID?: string;
   readonly NEXT_PUBLIC_FIREBASE_APP_ID?: string;
   readonly NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID?: string;
+  
+  // Resend environment variables
+  readonly VITE_RESEND_API_KEY: string;
+  readonly VITE_RESEND_FROM?: string;
+  
+  // Development mode
+  readonly DEV?: boolean;
+  readonly MODE: string;
+  readonly PROD: boolean;
 }
 
 interface ImportMeta {
