@@ -9,6 +9,7 @@
   --fluid-gap: clamp(1rem, 2vw, 3rem);
   --fluid-margin: clamp(0.5rem, 1.5vw, 1.5rem);
   --fluid-section-padding-y: clamp(2.5rem, 6vw, 6rem);
+  --fluid-space-y: clamp(2rem, 4vw, 4rem);
   
   /* Fluid Typography */
   --fluid-heading-1: clamp(1.4rem, 3vw, 2.8rem);
@@ -70,6 +71,10 @@
 .section-padding-fluid {
   padding-top: var(--fluid-section-padding-y);
   padding-bottom: var(--fluid-section-padding-y);
+}
+
+.space-y-fluid > * + * {
+  margin-top: var(--fluid-space-y);
 }
 
 /* Typography */

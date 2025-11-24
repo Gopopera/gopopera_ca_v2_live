@@ -255,7 +255,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </span>
             </h2>
             
-            <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl text-gray-200 font-light leading-relaxed mb-6 sm:mb-8 md:mb-10 max-w-4xl mx-auto px-4 sm:px-6">
+            <p className="fluid-paragraph text-gray-200 font-light leading-relaxed mb-fluid max-w-4xl mx-auto">
               {t('landing.description')} <span className="text-white font-normal border-b border-white/20 pb-0.5">{t('landing.descriptionHighlight')}</span>{t('landing.descriptionEnd')}
             </p>
 

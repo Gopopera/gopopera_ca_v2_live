@@ -1017,14 +1017,14 @@ const AppContent: React.FC = () => {
                  {/* Show events grouped by city if available */}
                  {Object.keys(eventsByCity).length > 0 ? (
                    Object.entries(eventsByCity).map(([city, cityEvents]) => (
-                     <div key={city} className="mb-8 sm:mb-10 md:mb-12">
-                       <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">
+                     <div key={city} className="mb-fluid section-padding-fluid px-fluid">
+                       <h2 className="fluid-heading-2 font-heading font-bold text-[#15383c] mb-fluid">
                          {city}
                        </h2>
-                       {/* Mobile: Horizontal scroll, Desktop: Grid layout - matches Landing */}
-                       <div className="flex md:grid overflow-x-auto md:overflow-x-visible gap-6 pb-2 md:pb-6 snap-x snap-mandatory md:snap-none scroll-smooth md:place-items-center">
-                         {cityEvents.map(event => (
-                           <div key={event.id} className="snap-start flex-shrink-0 md:col-span-1">
+                       {/* Desktop Grid */}
+                       <div className="hidden md:grid gap-fluid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 place-items-center w-full">
+                         {cityEvents.map((event, index) => (
+                           <div key={event.id} className="w-full h-auto animate-stagger" style={{ animationDelay: `${index * 0.1}s` }}>
                              <EventCard
                                event={event}
                                onClick={handleEventClick}
