@@ -1,10 +1,17 @@
 import { create } from 'zustand';
 import { Event } from '../types';
 import { categoryMatches } from '../utils/categoryMapper';
-import { createEvent as createFirestoreEvent } from '../firebase/db';
+import { createEvent as createFirestoreEvent, mapFirestoreEventToEvent } from '../firebase/db';
+import { getDbSafe } from '../src/lib/firebase';
+import { collection, onSnapshot, query, orderBy, type Unsubscribe } from 'firebase/firestore';
+import type { FirestoreEvent } from '../firebase/types';
 
 interface EventStore {
   events: Event[];
+  isLoading: boolean;
+  error: string | null;
+  _unsubscribe: Unsubscribe | null; // Internal unsubscribe function for onSnapshot
+  init: () => void; // Initialize real-time subscription
   addEvent: (event: Omit<Event, 'id' | 'createdAt' | 'location' | 'hostName' | 'attendees'>) => Promise<Event>;
   updateEvent: (eventId: string, updates: Partial<Omit<Event, 'id' | 'createdAt'>>) => void;
   deleteEvent: (eventId: string) => void;
@@ -44,29 +51,78 @@ const createEvent = (
 
 export const useEventStore = create<EventStore>((set, get) => ({
   events: [],
+  isLoading: true,
+  error: null,
+  _unsubscribe: null,
+
+  /**
+   * Initialize real-time subscription to events collection
+   * This sets up onSnapshot to automatically update events when Firestore changes
+   * Should be called once when the app initializes
+   */
+  init: () => {
+    // Don't initialize twice
+    if (get()._unsubscribe) {
+      return;
+    }
+
+    const db = getDbSafe();
+    if (!db) {
+      console.warn('[EVENT_STORE] Firestore not available, cannot initialize events subscription');
+      set({ isLoading: false, error: 'Firestore not available' });
+      return;
+    }
+
+    try {
+      set({ isLoading: true, error: null });
+      
+      // Subscribe to events collection with ordering by date
+      const eventsCol = collection(db, 'events');
+      const q = query(eventsCol, orderBy('date', 'asc'));
+      
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          try {
+            const events: Event[] = snapshot.docs.map((doc) => {
+              const firestoreEvent: FirestoreEvent = {
+                id: doc.id,
+                ...(doc.data() as Omit<FirestoreEvent, 'id'>),
+              };
+              return mapFirestoreEventToEvent(firestoreEvent);
+            });
+            
+            console.log('[EVENT_STORE] Events updated from Firestore:', events.length);
+            set({ events, isLoading: false, error: null });
+          } catch (error) {
+            console.error('[EVENT_STORE] Error processing snapshot:', error);
+            set({ isLoading: false, error: 'Error processing events' });
+          }
+        },
+        (error) => {
+          console.error('[EVENT_STORE] Snapshot error:', error);
+          set({ isLoading: false, error: error.message || 'Error loading events' });
+        }
+      );
+      
+      set({ _unsubscribe: unsubscribe });
+    } catch (error: any) {
+      console.error('[EVENT_STORE] Error initializing subscription:', error);
+      set({ isLoading: false, error: error.message || 'Failed to initialize events subscription' });
+    }
+  },
 
   addEvent: async (eventData) => {
-    // Create event in local state first (for immediate UI update)
-    const newEvent = createEvent(eventData);
-    set((state) => ({
-      events: [...state.events, newEvent],
-    }));
-    
-    // Try to write to Firestore (non-blocking, fails gracefully)
+    // Write to Firestore - onSnapshot will automatically update local state
+    // This ensures real-time updates across all pages (Landing, Explore, etc.)
     try {
       const firestoreEvent = await createFirestoreEvent(eventData);
-      // Update local event with Firestore ID if successful
-      set((state) => ({
-        events: state.events.map(e => 
-          e.id === newEvent.id ? { ...e, id: firestoreEvent.id } : e
-        ),
-      }));
-      return { ...newEvent, id: firestoreEvent.id };
+      // onSnapshot will pick up the new event and update the store automatically
+      // Return the created event for immediate use if needed
+      return firestoreEvent;
     } catch (error) {
-      // Firestore write failed, but local state is updated
-      // Event will still appear in UI, just won't persist across sessions
-      console.warn('Failed to write event to Firestore, using local ID:', error);
-      return newEvent;
+      console.error('[EVENT_STORE] Failed to create event in Firestore:', error);
+      throw error;
     }
   },
 

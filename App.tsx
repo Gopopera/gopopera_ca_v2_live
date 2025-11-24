@@ -45,10 +45,7 @@ import { Search, ArrowRight, MapPin, PlusCircle } from 'lucide-react';
 import { EventCard } from './components/events/EventCard';
 import { useEventStore } from './stores/eventStore';
 import { useUserStore } from './stores/userStore';
-import { generatePoperaEvents } from './data/poperaEvents';
-import { generateFakeEvents } from './data/fakeEvents';
 import { categoryMatches } from './utils/categoryMapper';
-import { listUpcomingEvents } from './firebase/db';
 import { useDebouncedFavorite } from './hooks/useDebouncedFavorite';
 import { ConversationButtonModal } from './components/chat/ConversationButtonModal';
 import { useSelectedCity, useSetCity, type City } from './src/stores/cityStore';
@@ -380,31 +377,24 @@ const AppContent: React.FC = () => {
   const favorites = (user?.favorites ?? []);
   const rsvps = (user?.rsvps ?? []);
   
-  // Use Zustand store for events (for backward compatibility with mock data)
-  const storeEvents = useEventStore((state) => state.getEvents());
+  // Use shared events store with real-time Firestore subscription
+  const events = useEventStore((state) => state.events);
+  const isLoadingEvents = useEventStore((state) => state.isLoading);
+  const eventsError = useEventStore((state) => state.error);
   const searchEvents = useEventStore((state) => state.searchEvents);
   const filterByCity = useEventStore((state) => state.filterByCity);
   const filterByTags = useEventStore((state) => state.filterByTags);
   const getEventsByCity = useEventStore((state) => state.getEventsByCity);
   
-  // State for Firestore events
-  const [firestoreEvents, setFirestoreEvents] = useState<Event[]>([]);
-  const [loadingEvents, setLoadingEvents] = useState(false);
+  // allEvents is now just events from the shared store (real-time updates)
+  const allEvents = events;
   
-  // Memoize allEvents to avoid unnecessary recalculations
-  const allEvents = useMemo(() => {
-    const merged = [...storeEvents, ...firestoreEvents];
-    // Deduplicate by ID
-    const unique = merged.filter((event, index, self) => 
-      index === self.findIndex(e => e.id === event.id)
-    );
-    return unique;
-  }, [storeEvents, firestoreEvents]);
-  
-  // Initialize auth listener on mount
+  // Initialize auth listener and events store on mount
   // City store auto-initializes via Zustand persist middleware
   useEffect(() => {
     useUserStore.getState().init();
+    // Initialize events store with real-time Firestore subscription
+    useEventStore.getState().init();
     setAuthBootChecked(true);
   }, []);
 
@@ -431,106 +421,8 @@ const AppContent: React.FC = () => {
     }
   }, [user, loading, viewState, redirectAfterLogin, setRedirectAfterLogin, isAuthReady, authInitialized]);
   
-  // Load events from Firestore (with fallback to mock data) - memoized to avoid redundant fetches
-  const [eventsLoaded, setEventsLoaded] = useState(false);
-  useEffect(() => {
-    if (eventsLoaded || !authBootChecked) return; // Only load once after auth init check
-    
-    const loadFirestoreEvents = async () => {
-      try {
-        setLoadingEvents(true);
-        const events = await listUpcomingEvents();
-        if (events.length > 0) {
-          setFirestoreEvents(events);
-        }
-        setEventsLoaded(true);
-      } catch (error) {
-        console.error("Error loading Firestore events:", error);
-        // Fallback to mock data if Firestore fails
-        setEventsLoaded(true);
-      } finally {
-        setLoadingEvents(false);
-      }
-    };
-    
-    loadFirestoreEvents();
-  }, [eventsLoaded, authBootChecked]);
-  
-  // Initialize store with Popera events and fake events (first load only, as fallback)
-  useEffect(() => {
-    if (storeEvents.length === 0 && firestoreEvents.length === 0) {
-      // 1. First, add official Popera launch events
-      const poperaEvents = (generatePoperaEvents() ?? []);
-      if (Array.isArray(poperaEvents)) {
-        poperaEvents?.forEach?.(event => {
-          // Fire-and-forget for mock data initialization
-          useEventStore.getState().addEvent({
-            title: event.title,
-            description: event.description,
-            city: event.city,
-            address: event.address,
-            date: event.date,
-            time: event.time,
-            tags: event.tags,
-            host: event.host,
-            hostId: event.hostId,
-            imageUrl: event.imageUrl,
-            attendeesCount: 0, // Start at 0, will increase with real RSVPs
-            category: event.category,
-            price: event.price,
-            rating: 0,
-            reviewCount: 0,
-            capacity: undefined,
-            lat: event.lat,
-            lng: event.lng,
-            isPoperaOwned: true,
-            isFakeEvent: false,
-            isOfficialLaunch: event.isOfficialLaunch || false,
-            aboutEvent: event.aboutEvent,
-            whatToExpect: event.whatToExpect,
-          }).catch(() => {
-            // Silently fail - mock data will be used
-          });
-        });
-      }
-      
-      // 2. Then, add fake demo events (3 per city, one per value prop)
-      const fakeEvents = (generateFakeEvents() ?? []);
-      if (Array.isArray(fakeEvents)) {
-        fakeEvents?.forEach?.(event => {
-        // Fire-and-forget for mock data initialization
-        useEventStore.getState().addEvent({
-          title: event.title,
-          description: event.description,
-          city: event.city,
-          address: event.address,
-          date: event.date,
-          time: event.time,
-          tags: event.tags,
-          host: event.host,
-          hostId: event.hostId,
-          imageUrl: event.imageUrl,
-          attendeesCount: event.attendeesCount,
-          category: event.category,
-          price: event.price,
-          rating: event.rating,
-          reviewCount: event.reviewCount,
-          capacity: event.capacity,
-          lat: event.lat,
-          lng: event.lng,
-          isPoperaOwned: false,
-          isFakeEvent: true,
-          isDemo: true,
-          isOfficialLaunch: false,
-          aboutEvent: event.aboutEvent,
-          whatToExpect: event.whatToExpect,
-        }).catch(() => {
-          // Silently fail - mock data will be used
-        });
-      });
-      }
-    }
-  }, []); // Only run once on mount
+  // Events are now loaded via real-time subscription in eventStore.init()
+  // No need for manual loading or mock data initialization - events come from Firestore in real-time
   
   // Update attendee counts when RSVPs change
   useEffect(() => {
@@ -550,9 +442,9 @@ const AppContent: React.FC = () => {
     }
     
     // Update event attendee counts (only for Popera events)
-    const safeStoreEvents = (storeEvents ?? []);
-    if (Array.isArray(safeStoreEvents)) {
-      safeStoreEvents?.forEach?.(event => {
+    const safeEvents = (allEvents ?? []);
+    if (Array.isArray(safeEvents)) {
+      safeEvents?.forEach?.(event => {
         if (event?.isPoperaOwned && event?.id && eventRSVPCounts[event.id] !== undefined) {
           const newCount = eventRSVPCounts[event.id];
           if (event.attendeesCount !== newCount) {
@@ -561,7 +453,7 @@ const AppContent: React.FC = () => {
         }
       });
     }
-  }, [user?.rsvps, storeEvents, updateEvent, user]);
+  }, [user?.rsvps, allEvents, updateEvent, user]);
 
   // Filter events based on search, location, category, and tags
   // Apply all filters in sequence for proper combined filtering
@@ -702,7 +594,7 @@ const AppContent: React.FC = () => {
     }
     
     // Block RSVP for demo events
-    const event = storeEvents.find(e => e.id === eventId) || allEvents.find(e => e.id === eventId);
+    const event = allEvents.find(e => e.id === eventId);
     if (event?.isDemo === true) {
       // Demo events are handled by EventDetailPage's handleRSVP which shows modal
       // This is a safety check in case handleRSVP is called from elsewhere

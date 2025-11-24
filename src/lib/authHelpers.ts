@@ -6,20 +6,10 @@ import {
   signUpWithEmail,
 } from './firebaseAuth';
 
-type AuthErrorInfo = { code?: string; message: string; mfaRequired?: boolean; mfaError?: any };
+type AuthErrorInfo = { code?: string; message: string };
 
 function mapAuthError(err: any, context: 'google' | 'email-signin' | 'email-signup'): AuthErrorInfo {
   const code = err?.code || err?.message || 'auth/unknown';
-
-  if (code === 'auth/multi-factor-auth-required') {
-    console.log('[AUTH] MFA required - will be handled by MFA flow');
-    return {
-      code,
-      mfaRequired: true,
-      mfaError: err,
-      message: 'Multi-factor authentication is required. Please enter the verification code sent to your phone.',
-    };
-  }
 
   const common: Record<string, string> = {
     'auth/invalid-email': 'The email address is not valid.',
@@ -44,14 +34,6 @@ export async function loginWithGoogle(): Promise<UserCredential | null> {
     return await signInWithGoogle();
   } catch (err: any) {
     const mapped = mapAuthError(err, 'google');
-    if (mapped.mfaRequired) {
-      // Return the error with MFA info attached for handling
-      const errorToThrow = new Error(mapped.message);
-      (errorToThrow as any).code = mapped.code;
-      (errorToThrow as any).mfaRequired = true;
-      (errorToThrow as any).mfaError = mapped.mfaError;
-      throw errorToThrow;
-    }
     console.error('[AUTH] Google sign-in error:', { code: mapped.code, original: err });
     const errorToThrow = new Error(mapped.message);
     (errorToThrow as any).code = mapped.code;
@@ -72,14 +54,6 @@ export async function loginWithEmail(email: string, password: string): Promise<U
     return cred;
   } catch (err: any) {
     const mapped = mapAuthError(err, 'email-signin');
-    if (mapped.mfaRequired) {
-      // Return the error with MFA info attached for handling
-      const errorToThrow = new Error(mapped.message);
-      (errorToThrow as any).code = mapped.code;
-      (errorToThrow as any).mfaRequired = true;
-      (errorToThrow as any).mfaError = mapped.mfaError;
-      throw errorToThrow;
-    }
     console.error('[AUTH] Email sign-in error:', { code: mapped.code, original: err });
     const errorToThrow = new Error(mapped.message);
     (errorToThrow as any).code = mapped.code;

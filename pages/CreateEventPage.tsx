@@ -3,9 +3,7 @@ import { ViewState } from '../types';
 import { ChevronLeft, Upload, MapPin, Calendar, Clock, Plus } from 'lucide-react';
 import { useEventStore } from '../stores/eventStore';
 import { useUserStore } from '../stores/userStore';
-import { getDbSafe } from '../src/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
-import { PhoneVerificationModal } from '../components/auth/PhoneVerificationModal';
+import { HostPhoneVerificationModal } from '../components/auth/HostPhoneVerificationModal';
 
 interface CreateEventPageProps {
   setViewState: (view: ViewState) => void;
@@ -20,8 +18,9 @@ const POPULAR_CITIES = [
 export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }) => {
   const addEvent = useEventStore((state) => state.addEvent);
   const user = useUserStore((state) => state.user);
-  const [phoneVerified, setPhoneVerified] = useState<boolean | null>(null);
-  const [showSMSModal, setShowSMSModal] = useState(false);
+  const userProfile = useUserStore((state) => state.userProfile);
+  const refreshUserProfile = useUserStore((state) => state.refreshUserProfile);
+  const [showHostVerificationModal, setShowHostVerificationModal] = useState(false);
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -38,42 +37,26 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
   const [price, setPrice] = useState('Free');
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
 
-  // Check phone verification status on mount
+  // Check host phone verification status on mount
+  // This determines if user can create events (phoneVerifiedForHosting must be true)
   useEffect(() => {
-    const checkPhoneVerification = async () => {
+    const checkHostPhoneVerification = async () => {
       if (!user?.uid) {
-        setPhoneVerified(false);
         return;
       }
       
-      const db = getDbSafe();
-      if (!db) {
-        setPhoneVerified(false);
-        return;
-      }
-
-      try {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        const verified = userDoc.data()?.phone_verified ?? false;
-        setPhoneVerified(verified);
-        
-        // Show modal if not verified and user tries to create event
-        if (!verified) {
-          setShowSMSModal(true);
-        }
-      } catch (err) {
-        console.warn('Error checking phone verification:', err);
-        setPhoneVerified(false);
-        setShowSMSModal(true);
-      }
+      // Refresh user profile to get latest phoneVerifiedForHosting status
+      await refreshUserProfile();
     };
+    
+    checkHostPhoneVerification();
+  }, [user, refreshUserProfile]);
 
-    checkPhoneVerification();
-  }, [user]);
-
-  const handlePhoneVerificationSuccess = () => {
-    setPhoneVerified(true);
-    setShowSMSModal(false);
+  const handleHostVerificationSuccess = async () => {
+    // Refresh user profile to get updated phoneVerifiedForHosting status
+    await refreshUserProfile();
+    setShowHostVerificationModal(false);
+    // User can now proceed to create event (form submission will work on next attempt)
   };
 
   const handleAddTag = () => {
@@ -102,9 +85,10 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Check phone verification
-    if (phoneVerified === false && !showSMSModal) {
-      setShowSMSModal(true);
+    // Gate: Check if user has verified phone for hosting
+    // If phoneVerifiedForHosting is false or undefined, show verification modal
+    if (!userProfile?.phoneVerifiedForHosting) {
+      setShowHostVerificationModal(true);
       return;
     }
     
@@ -439,12 +423,12 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         </form>
       </div>
 
-      {/* Phone Verification Modal */}
-      <PhoneVerificationModal
-        useMfaEnrollment={true}
-        isOpen={showSMSModal}
-        onClose={() => setShowSMSModal(false)}
-        onSuccess={handlePhoneVerificationSuccess}
+      {/* Host Phone Verification Modal */}
+      {/* This modal gates event creation - users must verify phone once to host events */}
+      <HostPhoneVerificationModal
+        isOpen={showHostVerificationModal}
+        onClose={() => setShowHostVerificationModal(false)}
+        onSuccess={handleHostVerificationSuccess}
         required={true}
       />
     </div>

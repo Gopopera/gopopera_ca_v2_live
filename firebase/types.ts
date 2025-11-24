@@ -61,6 +61,8 @@ export interface FirestoreUser {
   preferredCity?: string; // User's preferred city
   phoneVerified?: boolean; // SMS verification status
   phone_number?: string; // Verified phone number
+  phoneVerifiedForHosting?: boolean; // Host phone verification flag (one-time verification for event creation)
+  hostPhoneNumber?: string | null; // Phone number used for host verification
   signupIntent?: 'attend' | 'host' | 'both'; // First-run signup intent
   // Follow system
   following?: string[]; // Host IDs user is following

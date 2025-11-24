@@ -14,7 +14,8 @@ import { validateFirestoreData, removeUndefinedValues, sanitizeFirestoreData } f
 import { POPERA_EMAIL } from "../stores/userStore";
 
 // Helper to convert FirestoreEvent to Event (frontend type)
-const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event => {
+// Exported for use in eventStore
+export const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event => {
   return {
     id: firestoreEvent.id,
     title: firestoreEvent.title || '',
