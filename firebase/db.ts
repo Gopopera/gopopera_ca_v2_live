@@ -48,7 +48,9 @@ const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event => {
 // Events
 export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'location' | 'hostName' | 'attendees'>): Promise<Event> {
   const db = getDbSafe();
+  console.log('[FIRESTORE] createEvent - db:', db ? 'defined' : 'undefined');
   if (!db) {
+    console.error('[FIRESTORE] createEvent failed: Firestore not available');
     throw new Error('Firestore not available');
   }
   try {
@@ -222,7 +224,9 @@ export async function searchEvents(searchQuery: string): Promise<Event[]> {
 // Reservations
 export async function createReservation(eventId: string, userId: string): Promise<string> {
   const db = getDbSafe();
+  console.log('[FIRESTORE] createReservation - db:', db ? 'defined' : 'undefined');
   if (!db) {
+    console.error('[FIRESTORE] createReservation failed: Firestore not available');
     throw new Error('Firestore not available');
   }
   try {
@@ -264,7 +268,9 @@ export async function listReservationsForUser(userId: string): Promise<Firestore
 
 export async function cancelReservation(reservationId: string): Promise<void> {
   const db = getDbSafe();
+  console.log('[FIRESTORE] cancelReservation - db:', db ? 'defined' : 'undefined');
   if (!db) {
+    console.error('[FIRESTORE] cancelReservation failed: Firestore not available');
     throw new Error('Firestore not available');
   }
   try {
@@ -324,7 +330,9 @@ export async function addChatMessage(
   isHost: boolean = false
 ): Promise<string> {
   const db = getDbSafe();
+  console.log('[FIRESTORE] addChatMessage - db:', db ? 'defined' : 'undefined');
   if (!db) {
+    console.error('[FIRESTORE] addChatMessage failed: Firestore not available');
     throw new Error('Firestore not available');
   }
   try {
@@ -386,7 +394,9 @@ export async function getUserProfile(uid: string): Promise<FirestoreUser | null>
 
 export async function createOrUpdateUserProfile(uid: string, userData: Partial<FirestoreUser>): Promise<void> {
   const db = getDbSafe();
+  console.log('[FIRESTORE] createOrUpdateUserProfile - db:', db ? 'defined' : 'undefined');
   if (!db) {
+    console.error('[FIRESTORE] createOrUpdateUserProfile failed: Firestore not available');
     throw new Error('Firestore not available');
   }
   try {
@@ -443,7 +453,9 @@ export async function addReview(
   comment?: string
 ): Promise<string> {
   const db = getDbSafe();
+  console.log('[FIRESTORE] addReview - db:', db ? 'defined' : 'undefined');
   if (!db) {
+    console.error('[FIRESTORE] addReview failed: Firestore not available');
     throw new Error('Firestore not available');
   }
   try {
@@ -490,7 +502,9 @@ export async function listReviews(eventId: string): Promise<FirestoreReview[]> {
 
 export async function recalculateEventRating(eventId: string): Promise<void> {
   const db = getDbSafe();
+  console.log('[FIRESTORE] recalculateEventRating - db:', db ? 'defined' : 'undefined');
   if (!db) {
+    console.error('[FIRESTORE] recalculateEventRating failed: Firestore not available');
     throw new Error('Firestore not available');
   }
   try {

@@ -19,6 +19,7 @@ export const DebugEnvPage: React.FC<DebugEnvPageProps> = ({ setViewState }) => {
     const envKeys = Object.keys(env).filter(key => key.startsWith('VITE_'));
     
     console.group('🔍 Environment Variables Debug');
+    console.log('Full import.meta.env:', env);
     console.log('Mode:', env.MODE);
     console.log('Dev:', env.DEV);
     console.log('Prod:', env.PROD);
@@ -37,6 +38,17 @@ export const DebugEnvPage: React.FC<DebugEnvPageProps> = ({ setViewState }) => {
     console.log('  VITE_RESEND_FROM:', env.VITE_RESEND_FROM || '❌ MISSING (defaults to support@gopopera.ca)');
     console.log('');
     console.log('All VITE_* variables:', envKeys);
+    
+    // Check Firebase Apps
+    import('firebase/app').then(({ getApps }) => {
+      const apps = getApps();
+      console.log('');
+      console.log('Firebase Apps:', apps.length, 'app(s) initialized');
+      apps.forEach((app, idx) => {
+        console.log(`  App ${idx + 1}:`, app.name, app.options.projectId);
+      });
+    });
+    
     console.groupEnd();
   }, []);
 

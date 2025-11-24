@@ -20,6 +20,19 @@ let _auth: Auth | null = null;
 let _db: Firestore | null = null;
 let _storage: FirebaseStorage | null = null;
 
+// Log import.meta.env BEFORE using it
+if (typeof window !== 'undefined') {
+  console.log('[FIREBASE] import.meta.env check:', {
+    hasVITE_FIREBASE_API_KEY: !!import.meta.env.VITE_FIREBASE_API_KEY,
+    hasVITE_FIREBASE_AUTH_DOMAIN: !!import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    hasVITE_FIREBASE_PROJECT_ID: !!import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    hasVITE_FIREBASE_STORAGE_BUCKET: !!import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    hasVITE_FIREBASE_MESSAGING_SENDER_ID: !!import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    hasVITE_FIREBASE_APP_ID: !!import.meta.env.VITE_FIREBASE_APP_ID,
+    hasVITE_FIREBASE_MEASUREMENT_ID: !!import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+  });
+}
+
 // Validate required Firebase environment variables
 const requiredFirebaseVars = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -57,6 +70,19 @@ const cfg = {
   measurementId: requiredFirebaseVars.measurementId,
 };
 
+// Log config BEFORE initialization (redact sensitive values)
+if (typeof window !== 'undefined') {
+  console.log('[FIREBASE] Config BEFORE initializeApp:', {
+    apiKey: cfg.apiKey ? `${cfg.apiKey.substring(0, 10)}...` : 'MISSING',
+    authDomain: cfg.authDomain || 'MISSING',
+    projectId: cfg.projectId || 'MISSING',
+    storageBucket: cfg.storageBucket || 'MISSING',
+    messagingSenderId: cfg.messagingSenderId || 'MISSING',
+    appId: cfg.appId || 'MISSING',
+    measurementId: cfg.measurementId || 'MISSING',
+  });
+}
+
 const isDisabled =
   import.meta.env.VITE_DISABLE_FIREBASE === '1' ||
   !cfg.apiKey || !cfg.authDomain || !cfg.projectId || !cfg.appId;
@@ -69,10 +95,14 @@ export function getAppSafe(): FirebaseApp | null {
   if (!app) {
     try {
       const existingApps = getApps();
+      console.log('[FIREBASE] getApps() result:', existingApps.length, 'existing app(s)');
       if (existingApps.length > 0) {
         app = existingApps[0];
+        console.log('[FIREBASE] Using existing app:', app.name);
       } else {
+        console.log('[FIREBASE] Initializing new app...');
         app = initializeApp(cfg);
+        console.log('[FIREBASE] App initialized successfully:', app.name);
       }
     } catch (error) {
       console.error('[FIREBASE] Initialization failed:', error);
@@ -98,10 +128,15 @@ export function getAuthSafe(): Auth | null {
 
 export function getDbSafe(): Firestore | null {
   const a = getAppSafe();
-  if (!a) return null;
+  if (!a) {
+    console.warn('[FIREBASE] getDbSafe: App not available');
+    return null;
+  }
   if (!_db) {
     try {
+      console.log('[FIREBASE] Initializing Firestore...');
       _db = getFirestore(a);
+      console.log('[FIREBASE] Firestore initialized successfully');
     } catch (error) {
       console.error('[FIREBASE] Firestore initialization failed:', error);
       return null;
