@@ -42,7 +42,6 @@ const MyReviewsPage = React.lazy(() => import('./pages/ProfileSubPages').then(m 
 import { Event, ViewState } from './types';
 import { Search, ArrowRight, MapPin, PlusCircle } from 'lucide-react';
 import { EventCard } from './components/events/EventCard';
-import { CARD_GRID_GAP } from './src/components/events/EventCardLayout';
 import { useEventStore } from './stores/eventStore';
 import { useUserStore } from './stores/userStore';
 import { generatePoperaEvents } from './data/poperaEvents';
