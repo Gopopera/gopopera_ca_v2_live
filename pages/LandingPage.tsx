@@ -3,7 +3,6 @@ import { Hero } from '../components/landing/Hero';
 import { Pillars } from '../components/landing/Pillars';
 import { EventFeed } from '../components/events/EventFeed';
 import { EventCard } from '../components/events/EventCard';
-import { EventScroller } from '../components/events/EventScroller';
 import { ChatMockupSection } from '../components/landing/ChatMockupSection';
 import { CityInput } from '../components/layout/CityInput';
 import { Event, ViewState } from '../types';
@@ -135,12 +134,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       <Hero setViewState={setViewState} />
       
       {/* 2. Upcoming Events (event feed section) */}
-      <section className="section-padding-fluid px-fluid bg-[#FAFAFA] overflow-hidden">
+      <section className="section-padding md:container md:mx-auto md:px-6 lg:px-8 bg-[#FAFAFA] overflow-hidden">
         {/* Header Content */}
-        <div className="flex flex-col gap-fluid mb-fluid max-w-7xl mx-auto">
+        <div className="flex flex-col gap-4 sm:gap-5 md:gap-6 mb-6 sm:mb-8 md:mb-10 lg:mb-12">
           <div className="max-w-3xl">
-            <div className="mb-fluid">
-               <span className="inline-flex items-center gap-2 py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] fluid-small font-bold tracking-[0.2em] uppercase">
+            <div className="mb-3 sm:mb-4">
+               <span className="inline-flex items-center gap-2 py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">
                   <Sparkles size={10} className="sm:w-3 sm:h-3 -mt-0.5" />
                   Happening Now
                </span>
@@ -198,9 +197,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
         
         {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
-        <div className="md:grid gap-fluid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 place-items-center w-full px-fluid hidden md:grid">
-          {filteredEvents.slice(0, 8).map((event, index) => (
-            <div key={event.id} className="w-full h-auto animate-stagger" style={{ animationDelay: `${index * 0.1}s` }}>
+        <div className="flex md:grid overflow-x-auto md:overflow-x-visible gap-4 md:gap-6 lg:gap-8 pb-2 md:pb-6 snap-x snap-mandatory md:snap-none scroll-smooth md:place-items-center">
+          {filteredEvents.slice(0, 8).map(event => (
+            <div key={event.id} className="snap-start shrink-0 md:col-span-1">
               <EventCard 
                 event={event} 
                 onClick={onEventClick} 
@@ -212,18 +211,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               />
             </div>
           ))}
-        </div>
-        {/* Mobile Scroller */}
-        <div className="md:hidden">
-          <EventScroller
-            events={filteredEvents.slice(0, 8)}
-            onEventClick={onEventClick}
-            onChatClick={onChatClick}
-            onReviewsClick={onReviewsClick}
-            isLoggedIn={isLoggedIn}
-            favorites={favorites}
-            onToggleFavorite={onToggleFavorite}
-          />
         </div>
 
         <div className="mt-fluid text-center">
@@ -237,15 +224,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* 3. Pop-ups and Crowd Activation section */}
-      <section className="section-padding-fluid bg-[#15383c] relative overflow-hidden w-full rounded-t-[2rem] sm:rounded-t-[2.5rem] md:rounded-t-[3rem] lg:rounded-t-[4rem]">
-         <div className="max-w-5xl md:max-w-6xl lg:max-w-7xl mx-auto px-fluid relative z-10 text-center">
-            <div className="mb-fluid animate-fade-in-up">
-              <span className="inline-block py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-white/5 border border-white/10 text-[#e35e25] fluid-small font-bold tracking-[0.2em] uppercase backdrop-blur-sm">
+      <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] relative overflow-hidden w-full rounded-t-[2rem] sm:rounded-t-[2.5rem] md:rounded-t-[3rem] lg:rounded-t-[4rem]">
+         <div className="max-w-5xl md:max-w-6xl lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+            <div className="mb-6 sm:mb-8 md:mb-10 animate-fade-in-up">
+              <span className="inline-block py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-white/5 border border-white/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase backdrop-blur-sm">
                 {t('landing.badge')}
               </span>
             </div>
 
-            <h2 className="fluid-heading-1 font-heading font-bold text-white mb-fluid tracking-tight leading-none">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-white mb-4 sm:mb-6 md:mb-8 tracking-tight leading-none px-2 sm:px-4">
               {t('landing.title')} <br />
               <span className="text-[#e35e25] relative">
                 {t('landing.titleHighlight')}
@@ -255,7 +242,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </span>
             </h2>
             
-            <p className="fluid-paragraph text-gray-200 font-light leading-relaxed mb-fluid max-w-4xl mx-auto">
+            <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl text-gray-200 font-light leading-relaxed mb-6 sm:mb-8 md:mb-10 max-w-4xl mx-auto px-4 sm:px-6">
               {t('landing.description')} <span className="text-white font-normal border-b border-white/20 pb-0.5">{t('landing.descriptionHighlight')}</span>{t('landing.descriptionEnd')}
             </p>
 

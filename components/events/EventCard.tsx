@@ -3,7 +3,6 @@ import { MapPin, Calendar, MessageCircle, Star, Heart } from 'lucide-react';
 import { Event } from '@/types';
 import { formatDate } from '@/utils/dateFormatter';
 import { formatRating } from '@/utils/formatRating';
-import { CARD_ASPECT, CARD_MAX_WIDTH } from '@/src/components/events/EventCardLayout';
 
 interface EventCardProps {
   event: Event;
@@ -45,10 +44,10 @@ export const EventCard: React.FC<EventCardProps> = ({
           onClick(event);
         }
       }}
-      className={`group relative bg-white rounded-2xl overflow-hidden shadow-sm cursor-pointer h-full flex flex-col w-full ${CARD_MAX_WIDTH} focus:outline-none focus:ring-2 focus:ring-[#15383c] focus:ring-offset-2 card-hover`}
+      className={`group relative bg-white rounded-xl md:rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer h-full flex flex-col w-full max-w-[420px] focus:outline-none focus:ring-2 focus:ring-[#15383c] focus:ring-offset-2`}
     >
       {/* Image Container - Fixed aspect ratio */}
-      <div className={`relative w-full ${CARD_ASPECT} overflow-hidden rounded-t-2xl bg-gradient-to-br from-popera-teal to-[#1f4d52]`}>
+      <div className={`relative w-full aspect-[4/3] overflow-hidden rounded-t-xl md:rounded-t-2xl bg-gradient-to-br from-popera-teal to-[#1f4d52]`}>
         <img 
           src={event.imageUrl || `https://picsum.photos/seed/${event.id || 'event'}/800/600`} 
           alt={event.title} 

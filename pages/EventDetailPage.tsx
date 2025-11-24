@@ -4,7 +4,6 @@ import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info
 import { followHost, unfollowHost, isFollowing } from '../firebase/follow';
 import { useUserStore } from '../stores/userStore';
 import { EventCard } from '../components/events/EventCard';
-import { EventScroller } from '../components/events/EventScroller';
 import { MockMap } from '../components/map/MockMap';
 import { FakeEventReservationModal } from '../components/events/FakeEventReservationModal';
 import { formatDate } from '../utils/dateFormatter';

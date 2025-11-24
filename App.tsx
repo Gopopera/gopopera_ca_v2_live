@@ -42,7 +42,6 @@ const MyReviewsPage = React.lazy(() => import('./pages/ProfileSubPages').then(m 
 import { Event, ViewState } from './types';
 import { Search, ArrowRight, MapPin, PlusCircle } from 'lucide-react';
 import { EventCard } from './components/events/EventCard';
-import { EventScroller } from './components/events/EventScroller';
 import { CARD_GRID_GAP } from './src/components/events/EventCardLayout';
 import { useEventStore } from './stores/eventStore';
 import { useUserStore } from './stores/userStore';
@@ -809,17 +808,17 @@ const AppContent: React.FC = () => {
   }
 
   const EventRow: React.FC<{ title: string; events: Event[] }> = ({ title, events }) => (
-    <section className="mb-fluid section-padding-fluid px-fluid">
-      <div className="flex items-center justify-between mb-fluid max-w-7xl mx-auto">
-        <h2 className="fluid-heading-2 font-heading font-bold text-[#15383c]">{title}</h2>
-        <button className="fluid-small font-bold text-[#e35e25] hover:text-[#15383c] transition-base flex items-center gap-1 touch-manipulation active:scale-95 shrink-0">
+    <section className="mb-8 sm:mb-10 md:mb-12 lg:mb-16 max-w-6xl mx-auto px-4 md:px-6 lg:px-8">
+      <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6">
+        <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-heading font-bold text-[#15383c]">{title}</h2>
+        <button className="text-xs sm:text-sm font-bold text-[#e35e25] hover:text-[#15383c] transition-colors flex items-center gap-1 touch-manipulation active:scale-95 shrink-0">
           View All <ArrowRight size={14} className="sm:w-4 sm:h-4" />
         </button>
       </div>
       {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
-      <div className="md:grid gap-fluid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 place-items-center w-full hidden md:grid max-w-7xl mx-auto">
-         {events.map((event, index) => (
-           <div key={event.id} className="w-full h-auto animate-stagger" style={{ animationDelay: `${index * 0.1}s` }}>
+      <div className="flex md:grid overflow-x-auto md:overflow-x-visible gap-4 md:gap-6 lg:gap-8 pb-2 md:pb-6 snap-x snap-mandatory md:snap-none scroll-smooth md:place-items-center">
+         {events.map(event => (
+           <div key={event.id} className="snap-start shrink-0 md:col-span-1">
               <EventCard 
                 event={event} 
                 onClick={handleEventClick} 
@@ -831,18 +830,6 @@ const AppContent: React.FC = () => {
               />
            </div>
          ))}
-      </div>
-      {/* Mobile Scroller */}
-      <div className="md:hidden">
-        <EventScroller
-          events={events}
-          onEventClick={handleEventClick}
-          onChatClick={handleChatClick}
-          onReviewsClick={handleReviewsClick}
-          isLoggedIn={isLoggedIn}
-          favorites={favorites}
-          onToggleFavorite={handleToggleFavorite}
-        />
       </div>
     </section>
   );
@@ -1017,14 +1004,14 @@ const AppContent: React.FC = () => {
                  {/* Show events grouped by city if available */}
                  {Object.keys(eventsByCity).length > 0 ? (
                    Object.entries(eventsByCity).map(([city, cityEvents]) => (
-                     <div key={city} className="mb-fluid section-padding-fluid px-fluid">
-                       <h2 className="fluid-heading-2 font-heading font-bold text-[#15383c] mb-fluid">
+                     <div key={city} className="mb-8 sm:mb-10 md:mb-12 max-w-6xl mx-auto px-4 md:px-6 lg:px-8">
+                       <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">
                          {city}
                        </h2>
-                       {/* Desktop Grid */}
-                       <div className="hidden md:grid gap-fluid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 place-items-center w-full">
-                         {cityEvents.map((event, index) => (
-                           <div key={event.id} className="w-full h-auto animate-stagger" style={{ animationDelay: `${index * 0.1}s` }}>
+                       {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
+                       <div className="flex md:grid overflow-x-auto md:overflow-x-visible gap-4 md:gap-6 lg:gap-8 pb-2 md:pb-6 snap-x snap-mandatory md:snap-none scroll-smooth md:place-items-center">
+                         {cityEvents.map(event => (
+                           <div key={event.id} className="snap-start shrink-0 md:col-span-1">
                              <EventCard
                                event={event}
                                onClick={handleEventClick}
@@ -1036,18 +1023,6 @@ const AppContent: React.FC = () => {
                              />
                            </div>
                          ))}
-                       </div>
-                       {/* Mobile Scroller */}
-                       <div className="md:hidden">
-                         <EventScroller
-                           events={cityEvents}
-                           onEventClick={handleEventClick}
-                           onChatClick={handleChatClick}
-                           onReviewsClick={handleReviewsClick}
-                           isLoggedIn={isLoggedIn}
-                           favorites={favorites}
-                           onToggleFavorite={handleToggleFavorite}
-                         />
                        </div>
                      </div>
                    ))
