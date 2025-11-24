@@ -113,9 +113,9 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
             </p>
           </div>
         ) : (
-          <div className={`grid ${CARD_GRID_GAP} grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 place-items-center`}>
-            {currentEvents.map((event) => (
-              <div key={event.id} className="w-full h-auto relative">
+          <div className={`grid gap-fluid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 place-items-center w-full px-fluid`}>
+            {currentEvents.map((event, index) => (
+              <div key={event.id} className="w-full h-auto relative animate-stagger" style={{ animationDelay: `${index * 0.1}s` }}>
                 <EventCard
                   event={event}
                   onClick={() => onEventClick(event)}

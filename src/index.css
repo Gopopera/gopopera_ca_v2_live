@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import fluid spacing & typography system */
+@import './styles/fluid.css';
+
 /* UI Tokens - Base spacing and typography */
 :root {
   --container-max-width: 1200px;

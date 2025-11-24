@@ -3,6 +3,7 @@ import { Hero } from '../components/landing/Hero';
 import { Pillars } from '../components/landing/Pillars';
 import { EventFeed } from '../components/events/EventFeed';
 import { EventCard } from '../components/events/EventCard';
+import { EventScroller } from '../components/events/EventScroller';
 import { ChatMockupSection } from '../components/landing/ChatMockupSection';
 import { CityInput } from '../components/layout/CityInput';
 import { Event, ViewState } from '../types';
@@ -134,18 +135,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       <Hero setViewState={setViewState} />
       
       {/* 2. Upcoming Events (event feed section) */}
-      <section className="section-padding md:container md:mx-auto md:px-6 lg:px-8 bg-[#FAFAFA] overflow-hidden">
+      <section className="section-padding-fluid px-fluid bg-[#FAFAFA] overflow-hidden">
         {/* Header Content */}
-        <div className="flex flex-col gap-4 sm:gap-5 md:gap-6 mb-6 sm:mb-8 md:mb-10 lg:mb-12">
+        <div className="flex flex-col gap-fluid mb-fluid max-w-7xl mx-auto">
           <div className="max-w-3xl">
-            <div className="mb-3 sm:mb-4">
-               <span className="inline-flex items-center gap-2 py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">
+            <div className="mb-fluid">
+               <span className="inline-flex items-center gap-2 py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] fluid-small font-bold tracking-[0.2em] uppercase">
                   <Sparkles size={10} className="sm:w-3 sm:h-3 -mt-0.5" />
                   Happening Now
                </span>
             </div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-[#15383c] mb-2 sm:mb-3 md:mb-4 px-4 sm:px-0">Upcoming Pop-ups</h2>
-            <p className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-500 font-light leading-relaxed px-4 sm:px-0">See where the crowd is going. Discover the moments bringing people together this week.</p>
+            <h2 className="fluid-heading-1 font-heading font-bold text-[#15383c] mb-fluid">Upcoming Pop-ups</h2>
+            <p className="fluid-paragraph text-gray-500 font-light leading-relaxed">See where the crowd is going. Discover the moments bringing people together this week.</p>
           </div>
 
           {/* SEARCH BAR & FILTERS */}
@@ -197,26 +198,38 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
         
         {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
-        <div className="flex md:grid overflow-x-auto md:overflow-x-visible gap-6 pb-2 md:pb-6 snap-x snap-mandatory md:snap-none scroll-smooth md:place-items-center">
-           {filteredEvents.slice(0, 8).map(event => (
-             <div key={event.id} className="snap-start flex-shrink-0">
-                <EventCard 
-                  event={event} 
-                  onClick={onEventClick} 
-                  onChatClick={onChatClick}
-                  onReviewsClick={onReviewsClick}
-                  isLoggedIn={isLoggedIn}
-                  isFavorite={favorites.includes(event.id)}
-                  onToggleFavorite={onToggleFavorite}
-                />
-             </div>
-           ))}
+        <div className="md:grid gap-fluid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 place-items-center w-full px-fluid hidden md:grid">
+          {filteredEvents.slice(0, 8).map((event, index) => (
+            <div key={event.id} className="w-full h-auto animate-stagger" style={{ animationDelay: `${index * 0.1}s` }}>
+              <EventCard 
+                event={event} 
+                onClick={onEventClick} 
+                onChatClick={onChatClick}
+                onReviewsClick={onReviewsClick}
+                isLoggedIn={isLoggedIn}
+                isFavorite={favorites.includes(event.id)}
+                onToggleFavorite={onToggleFavorite}
+              />
+            </div>
+          ))}
+        </div>
+        {/* Mobile Scroller */}
+        <div className="md:hidden">
+          <EventScroller
+            events={filteredEvents.slice(0, 8)}
+            onEventClick={onEventClick}
+            onChatClick={onChatClick}
+            onReviewsClick={onReviewsClick}
+            isLoggedIn={isLoggedIn}
+            favorites={favorites}
+            onToggleFavorite={onToggleFavorite}
+          />
         </div>
 
-        <div className="mt-6 sm:mt-8 text-center">
+        <div className="mt-fluid text-center">
            <button 
              onClick={() => setViewState(ViewState.FEED)}
-             className="w-auto mx-auto sm:w-auto px-8 sm:px-10 py-4 sm:py-4 min-h-[48px] sm:min-h-0 border-2 border-gray-300 rounded-full text-[#15383c] font-bold text-base sm:text-base hover:border-[#15383c] hover:bg-[#15383c] hover:text-white transition-all touch-manipulation active:scale-[0.97] active:bg-[#15383c] active:text-white"
+             className="w-auto mx-auto px-8 sm:px-10 py-4 min-h-[48px] border-2 border-gray-300 rounded-full text-[#15383c] font-bold fluid-paragraph hover:border-[#15383c] hover:bg-[#15383c] hover:text-white transition-base touch-manipulation active:scale-[0.97] active:bg-[#15383c] active:text-white"
            >
              View All Events
            </button>
@@ -224,15 +237,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* 3. Pop-ups and Crowd Activation section */}
-      <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] relative overflow-hidden w-full rounded-t-[2rem] sm:rounded-t-[2.5rem] md:rounded-t-[3rem] lg:rounded-t-[4rem]">
-         <div className="max-w-5xl md:max-w-6xl lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-            <div className="mb-6 sm:mb-8 md:mb-10 animate-fade-in-up">
-              <span className="inline-block py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-white/5 border border-white/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase backdrop-blur-sm">
+      <section className="section-padding-fluid bg-[#15383c] relative overflow-hidden w-full rounded-t-[2rem] sm:rounded-t-[2.5rem] md:rounded-t-[3rem] lg:rounded-t-[4rem]">
+         <div className="max-w-5xl md:max-w-6xl lg:max-w-7xl mx-auto px-fluid relative z-10 text-center">
+            <div className="mb-fluid animate-fade-in-up">
+              <span className="inline-block py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-white/5 border border-white/10 text-[#e35e25] fluid-small font-bold tracking-[0.2em] uppercase backdrop-blur-sm">
                 {t('landing.badge')}
               </span>
             </div>
 
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-white mb-4 sm:mb-6 md:mb-8 tracking-tight leading-none px-2 sm:px-4">
+            <h2 className="fluid-heading-1 font-heading font-bold text-white mb-fluid tracking-tight leading-none">
               {t('landing.title')} <br />
               <span className="text-[#e35e25] relative">
                 {t('landing.titleHighlight')}

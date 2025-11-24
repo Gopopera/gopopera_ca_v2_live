@@ -4,6 +4,7 @@ import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info
 import { followHost, unfollowHost, isFollowing } from '../firebase/follow';
 import { useUserStore } from '../stores/userStore';
 import { EventCard } from '../components/events/EventCard';
+import { EventScroller } from '../components/events/EventScroller';
 import { MockMap } from '../components/map/MockMap';
 import { FakeEventReservationModal } from '../components/events/FakeEventReservationModal';
 import { formatDate } from '../utils/dateFormatter';
@@ -333,9 +334,21 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 md:py-12 border-t border-gray-100">
          <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-popera-teal mb-6 sm:mb-8">Other events you might be interested in</h2>
-         {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
-         <div className="flex md:grid overflow-x-auto md:overflow-x-visible gap-6 pb-2 md:pb-6 snap-x snap-mandatory md:snap-none scroll-smooth md:place-items-center">
-             {recommendedEvents.map(recEvent => (<div key={recEvent.id} className="snap-start flex-shrink-0"><EventCard event={recEvent} onClick={onEventClick} onChatClick={(e) => { e.stopPropagation(); if (!isLoggedIn) { setShowAuthModal(true); } else { setViewState(ViewState.CHAT); } }} onReviewsClick={onReviewsClick} isLoggedIn={isLoggedIn} isFavorite={favorites.includes(recEvent.id)} onToggleFavorite={onToggleFavorite} /></div>))}
+         {/* Desktop Grid */}
+         <div className="hidden md:grid gap-fluid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 place-items-center w-full px-fluid">
+             {recommendedEvents.map((recEvent, index) => (<div key={recEvent.id} className="w-full h-auto animate-stagger" style={{ animationDelay: `${index * 0.1}s` }}><EventCard event={recEvent} onClick={onEventClick} onChatClick={(e) => { e.stopPropagation(); if (!isLoggedIn) { setShowAuthModal(true); } else { setViewState(ViewState.CHAT); } }} onReviewsClick={onReviewsClick} isLoggedIn={isLoggedIn} isFavorite={favorites.includes(recEvent.id)} onToggleFavorite={onToggleFavorite} /></div>))}
+         </div>
+         {/* Mobile Scroller */}
+         <div className="md:hidden">
+           <EventScroller
+             events={recommendedEvents}
+             onEventClick={onEventClick}
+             onChatClick={(e, event) => { e.stopPropagation(); if (!isLoggedIn) { setShowAuthModal(true); } else { setViewState(ViewState.CHAT); } }}
+             onReviewsClick={onReviewsClick}
+             isLoggedIn={isLoggedIn}
+             favorites={favorites}
+             onToggleFavorite={onToggleFavorite}
+           />
          </div>
       </section>
 

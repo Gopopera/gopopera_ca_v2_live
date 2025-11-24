@@ -27,9 +27,9 @@ export const EventFeed: React.FC<EventFeedProps> = ({
   const displayEvents = limit ? events.slice(0, limit) : events;
 
   return (
-    <div className={`grid ${CARD_GRID_GAP} grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 place-items-center`}>
-      {displayEvents.map(event => (
-        <div key={event.id} className="w-full h-auto">
+    <div className={`grid gap-fluid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 place-items-center w-full px-fluid`}>
+      {displayEvents.map((event, index) => (
+        <div key={event.id} className="w-full h-auto animate-stagger" style={{ animationDelay: `${index * 0.1}s` }}>
           <EventCard 
             event={event} 
             onClick={onEventClick}

@@ -59,8 +59,8 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
 
   const isDetailView = viewState === ViewState.DETAIL;
   
-  const navClasses = `fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-    isScrolled ? 'bg-white/95 backdrop-blur-md shadow-sm py-4' : 'bg-transparent py-6'
+  const navClasses = `fixed top-0 left-0 right-0 z-50 transition-base ${
+    isScrolled ? 'bg-white/95 backdrop-blur-md shadow-sm py-fluid' : 'bg-transparent py-fluid'
   } ${isDetailView ? 'hidden lg:block' : ''}`;
 
   const isLightPage = viewState === ViewState.FEED || viewState === ViewState.PROFILE || viewState === ViewState.NOTIFICATIONS || viewState === ViewState.MY_POPS || viewState === ViewState.FAVORITES || viewState === ViewState.DELETE_ACCOUNT || viewState === ViewState.CREATE_EVENT;
@@ -73,22 +73,22 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
 
   return (
     <header className={navClasses}>
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-fluid flex items-center justify-between">
         {/* Logo */}
         <div 
           className="cursor-pointer z-50 group" 
           onClick={() => handleNav(isLoggedIn ? ViewState.FEED : ViewState.LANDING)}
         >
-           <h1 className={`font-heading font-bold text-2xl sm:text-3xl tracking-tight transition-colors ${getTextColor(false)}`}>
+           <h1 className={`font-heading font-bold fluid-heading-2 tracking-tight transition-base ${getTextColor(false)}`}>
             Popera
            </h1>
         </div>
 
         {/* Desktop Nav */}
         <nav className="hidden lg:flex items-center space-x-8">
-          <button onClick={() => handleNav(ViewState.FEED)} className={`font-medium text-sm hover:opacity-80 transition-opacity ${getTextColor(false)}`}>{t('header.exploreEvents')}</button>
-          <button onClick={() => handleNav(ViewState.GUIDELINES)} className={`font-medium text-sm hover:opacity-80 transition-opacity ${getTextColor(false)}`}>{t('header.community')}</button>
-          <button onClick={() => handleNav(ViewState.ABOUT)} className={`font-medium text-sm hover:opacity-80 transition-opacity ${getTextColor(false)}`}>{t('header.about')}</button>
+          <button onClick={() => handleNav(ViewState.FEED)} className={`font-medium fluid-small hover:opacity-80 transition-base ${getTextColor(false)}`}>{t('header.exploreEvents')}</button>
+          <button onClick={() => handleNav(ViewState.GUIDELINES)} className={`font-medium fluid-small hover:opacity-80 transition-base ${getTextColor(false)}`}>{t('header.community')}</button>
+          <button onClick={() => handleNav(ViewState.ABOUT)} className={`font-medium fluid-small hover:opacity-80 transition-base ${getTextColor(false)}`}>{t('header.about')}</button>
         </nav>
 
         {/* Desktop Actions */}
@@ -113,7 +113,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
                {/* Host Event Button */}
                <button 
                  onClick={() => handleNav(ViewState.CREATE_EVENT)}
-                 className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-full bg-[#e35e25] hover:bg-[#cf4d1d] text-white font-bold text-sm transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
+                 className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-full bg-[#e35e25] hover:bg-[#cf4d1d] text-white font-bold fluid-small transition-base shadow-md hover:shadow-lg hover:-translate-y-0.5"
                >
                  <PlusCircle size={18} /> {t('header.hostEvent')}
                </button>
@@ -152,7 +152,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
           ) : (
               <button 
                 onClick={() => handleNav(ViewState.AUTH)}
-                className="px-6 py-2.5 rounded-full bg-popera-orange text-white font-medium text-sm hover:bg-[#cf4d1d] transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
+                className="px-6 py-2.5 rounded-full bg-popera-orange text-white font-medium fluid-small hover:bg-[#cf4d1d] transition-base shadow-md hover:shadow-lg hover:-translate-y-0.5"
               >
                 {t('header.signIn')}
               </button>
