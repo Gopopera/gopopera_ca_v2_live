@@ -108,7 +108,7 @@ const generateMockEvents = (): Event[] => [
     location: 'Heritage Hall, Toronto',
     hostName: 'Creative Collective',
     host: 'Creative Collective',
-    category: 'Market',
+    category: 'Markets',
     imageUrl: 'https://images.unsplash.com/photo-1531058020387-3be344556be6?q=80&w=2070&auto=format&fit=crop',
     price: 'Free',
     description: 'Discover unique handmade items from local artisans and creators.',
@@ -119,7 +119,7 @@ const generateMockEvents = (): Event[] => [
     capacity: 1000,
     city: 'Toronto',
     address: 'Heritage Hall',
-    tags: ['market', 'shopping', 'local', 'artisan'],
+    tags: ['markets', 'shopping', 'local', 'artisan'],
     createdAt: new Date('2024-10-01').toISOString()
   },
   {

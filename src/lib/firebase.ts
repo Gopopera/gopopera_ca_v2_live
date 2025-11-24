@@ -134,8 +134,14 @@ export function getDbSafe(): Firestore | null {
       return null;
     }
   }
-  return _db || cachedDb;
+  const dbInstance = _db || cachedDb;
+  if (!dbInstance) {
+    console.error('[FIRESTORE] db is null');
+    return null;
+  }
+  return dbInstance;
 }
+
 
 /**
  * Wrapper function that ensures Firebase app and Firestore are initialized
@@ -228,3 +234,25 @@ export const storage = new Proxy({} as FirebaseStorage, {
 // Re-export helpers
 export { serverTimestamp, Timestamp };
 export type Unsubscribe = () => void;
+
+// Initialize Firebase and handle redirect results immediately
+// This prevents iOS "missing initial state" errors
+if (typeof window !== 'undefined') {
+  import('firebase/auth').then(({ getRedirectResult }) => {
+    const authInstance = getAuthSafe();
+    if (authInstance) {
+      getRedirectResult(authInstance).catch(() => {
+        // Swallow missing initial state errors silently (iOS issue)
+      });
+    }
+  }).catch(() => {
+    // Ignore if auth module not available
+  });
+}
+
+// Remove console.log spam in production
+if (import.meta.env.PROD && typeof window !== 'undefined') {
+  console.log = () => {};
+  console.warn = () => {};
+  // Keep console.error for production debugging
+}

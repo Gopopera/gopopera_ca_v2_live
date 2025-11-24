@@ -10,7 +10,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { auth, db } from '../src/lib/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { shouldUseRedirect } from '../src/lib/authHelpers';
+import { handleGoogleSignIn as universalHandleGoogleSignIn } from '../src/lib/authHelpers';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { attachAuthListener } from '../firebase/listeners';
 import { getUserProfile, createOrUpdateUserProfile, listUserReservations, createReservation, cancelReservation, listReservationsForUser } from '../firebase/db';

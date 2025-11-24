@@ -10,7 +10,7 @@ import { getDbSafe } from "../src/lib/firebase";
 import { collection, doc, getDoc, getDocs, query, where, orderBy, addDoc, updateDoc, setDoc } from "firebase/firestore";
 import { FirestoreEvent, FirestoreReservation, FirestoreChatMessage, FirestoreReview, FirestoreUser } from "./types";
 import { Event } from "../types";
-import { validateFirestoreData, removeUndefinedValues } from "../utils/firestoreValidation";
+import { validateFirestoreData, removeUndefinedValues, sanitizeFirestoreData } from "../utils/firestoreValidation";
 
 // Helper to convert FirestoreEvent to Event (frontend type)
 const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event => {
@@ -99,7 +99,10 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
       'createEvent'
     ) as Omit<FirestoreEvent, 'id'>;
 
-    const docRef = await addDoc(eventsCol, firestoreEvent);
+    // Sanitize data to eliminate ALL undefined fields
+    const sanitizedEvent = sanitizeFirestoreData(firestoreEvent);
+
+    const docRef = await addDoc(eventsCol, sanitizedEvent);
     const createdEvent: FirestoreEvent = {
       id: docRef.id,
       ...firestoreEvent,
@@ -275,15 +278,18 @@ export async function createReservation(eventId: string, userId: string): Promis
       reservedAt: Date.now(),
       status: "reserved",
     };
-    
+
     // Validate and remove undefined values
     const reservation = validateFirestoreData(
       reservationRaw,
       ['eventId', 'userId', 'reservedAt', 'status'],
       'createReservation'
     ) as Omit<FirestoreReservation, 'id'>;
-    
-    const docRef = await addDoc(reservationsCol, reservation);
+
+    // Sanitize data to eliminate ALL undefined fields
+    const sanitizedReservation = sanitizeFirestoreData(reservation);
+
+    const docRef = await addDoc(reservationsCol, sanitizedReservation);
     return docRef.id;
   } catch (error: any) {
     console.error('Firestore write failed:', { path: 'reservations', error: error.message || 'Unknown error' });
@@ -421,7 +427,10 @@ export async function addChatMessage(
       'addChatMessage'
     ) as Omit<FirestoreChatMessage, 'id'>;
     
-    const docRef = await addDoc(messagesCol, message);
+    // Sanitize data to eliminate ALL undefined fields
+    const sanitizedMessage = sanitizeFirestoreData(message);
+    
+    const docRef = await addDoc(messagesCol, sanitizedMessage);
     return docRef.id;
   } catch (error: any) {
     console.error('Firestore write failed:', { path: `events/${eventId}/messages`, error: error.message || 'Unknown error' });
@@ -572,7 +581,10 @@ export async function addReview(
       'addReview'
     ) as Omit<FirestoreReview, 'id'>;
     
-    const docRef = await addDoc(reviewsCol, review);
+    // Sanitize data to eliminate ALL undefined fields
+    const sanitizedReview = sanitizeFirestoreData(review);
+    
+    const docRef = await addDoc(reviewsCol, sanitizedReview);
     
     await recalculateEventRating(eventId);
     

@@ -76,3 +76,11 @@ export function validateFirestoreData<T extends Record<string, any>>(
   return cleaned;
 }
 
+/**
+ * Sanitize Firestore data by removing all undefined fields
+ * Uses JSON serialization to eliminate ALL undefined values
+ */
+export function sanitizeFirestoreData(data: any): any {
+  return JSON.parse(JSON.stringify(data));
+}
+

@@ -9,7 +9,7 @@
  * 
  * Returns true for:
  * - iOS devices (iPhone, iPad, iPod)
- * - Android WebViews
+ * - Safari browsers
  * - Mobile devices in general
  * 
  * Returns false for desktop browsers (where popup is preferred)
@@ -21,9 +21,33 @@ export function shouldUseRedirect(): boolean {
 
   const ua = navigator.userAgent || "";
   const isIOS = /iPhone|iPad|iPod/i.test(ua);
-  const isAndroidWebView = /\bwv\b/.test(ua);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
   const isMobile = /Android|iPhone|iPad|iPod/i.test(ua);
 
-  return isIOS || isAndroidWebView || isMobile;
+  return isIOS || isSafari || isMobile;
+}
+
+/**
+ * Universal Google Sign-In handler
+ * Prevents popup-blocked errors and handles mobile/iOS properly
+ */
+export async function handleGoogleSignIn() {
+  const { GoogleAuthProvider, signInWithPopup, signInWithRedirect } = await import('firebase/auth');
+  const { auth } = await import('./firebase');
+  
+  const provider = new GoogleAuthProvider();
+  
+  if (shouldUseRedirect()) {
+    return signInWithRedirect(auth, provider);
+  }
+  
+  try {
+    await signInWithPopup(auth, provider);
+  } catch (err: any) {
+    if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
+      return signInWithRedirect(auth, provider);
+    }
+    throw err;
+  }
 }
 

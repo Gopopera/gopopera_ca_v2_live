@@ -37,7 +37,7 @@ export const generateFakeEvents = (): Event[] => {
       address: location.address,
       date: '2026-02-15', // Future date
       time: '11:00 AM',
-      tags: ['market', 'shopping', 'local', 'artisan', 'demo'],
+      tags: ['markets', 'shopping', 'local', 'artisan', 'demo'],
       host: host.name,
       hostName: host.name,
       hostId: host.id,

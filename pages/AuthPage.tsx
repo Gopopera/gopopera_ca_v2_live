@@ -35,20 +35,23 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  const handleGoogleSignIn = () => {
-    // Run immediately on click - no async wrapper to prevent popup blocking
+  const handleGoogleSignIn = async () => {
+    // Run immediately on click - use universal handler
     setGoogleError(null);
     setIsGoogleLoading(true);
     
-    // Call signInWithGoogle immediately - it will handle redirect/popup internally
-    const userStore = useUserStore.getState();
-    userStore.signInWithGoogle().catch((error: any) => {
+    try {
+      // Use universal handleGoogleSignIn from authHelpers
+      const { handleGoogleSignIn: universalHandleGoogleSignIn } = await import('../src/lib/authHelpers');
+      await universalHandleGoogleSignIn();
+      
+      // If we get here, popup succeeded - auth listener will handle state update
+      // If redirect was used, page will navigate away
+    } catch (error: any) {
       console.error("[AUTH] Google sign-in error:", error);
       setGoogleError(error?.message || "Something went wrong signing you in. Please try again.");
       setIsGoogleLoading(false);
-    });
-    // Note: If redirect is used, the page will navigate away, so setIsGoogleLoading(false) won't run
-    // If popup succeeds, the auth listener will handle the state update
+    }
   };
 
   const handleFinalSubmit = async () => {
