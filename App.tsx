@@ -818,7 +818,7 @@ const AppContent: React.FC = () => {
       {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
       <div className="flex md:grid overflow-x-auto md:overflow-x-visible gap-6 pb-2 md:pb-6 snap-x snap-mandatory md:snap-none scroll-smooth md:place-items-center">
          {events.map(event => (
-           <div key={event.id} className="snap-start flex-shrink-0 md:col-span-1">
+           <div key={event.id} className="snap-start flex-shrink-0">
               <EventCard 
                 event={event} 
                 onClick={handleEventClick} 
