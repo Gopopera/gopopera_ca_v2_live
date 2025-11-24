@@ -82,11 +82,16 @@ export async function signInWithGoogle(): Promise<UserCredential | null> {
   const auth = await initFirebaseAuth();
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
+  const preferRedirect = typeof window !== 'undefined' && window.innerWidth <= 768;
 
   try {
+    if (preferRedirect) {
+      await signInWithRedirect(auth, provider);
+      return null;
+    }
     return await signInWithPopup(auth, provider, browserPopupRedirectResolver);
   } catch (err: any) {
-    console.error("GOOGLE LOGIN ERROR:", err);
+    console.error("[AUTH] Google sign-in error:", err);
     const fallbackCodes = [
       'auth/popup-blocked',
       'auth/popup-closed-by-user',

@@ -12,7 +12,6 @@ import { getAuthInstance, initFirebaseAuth, listenToAuthChanges, signOutUser } f
 import { doc, getDoc } from 'firebase/firestore';
 import { getUserProfile, createOrUpdateUserProfile, listUserReservations, createReservation, cancelReservation, listReservationsForUser } from '../firebase/db';
 import { getDbSafe, firebaseEnabled } from '../src/lib/firebase';
-import { resolveMfaSignIn } from '../src/lib/auth';
 import type { User as FirebaseUser } from 'firebase/auth';
 import type { FirestoreUser } from '../firebase/types';
 import type { Unsubscribe } from 'firebase/auth';
@@ -195,6 +194,13 @@ export const useUserStore = create<UserStore>()(
               }
             });
             set({ _authUnsub: unsub });
+
+            setTimeout(() => {
+              if (!get().authInitialized) {
+                console.warn('[AUTH] Fallback: onAuthStateChanged did not fire in time, marking authInitialized');
+                set({ authInitialized: true, isAuthReady: true, loading: false, ready: true, user: null, currentUser: null });
+              }
+            }, 2000);
           } catch (error) {
             console.error('[AUTH] Initialization failed:', error);
             set({ user: null, currentUser: null, loading: false, ready: true, isAuthReady: true, authInitialized: true });
@@ -218,17 +224,7 @@ export const useUserStore = create<UserStore>()(
       login: async (email: string, password: string) => {
         try {
           set({ loading: true });
-          let userCredential;
-          try {
-            userCredential = await loginWithEmail(email, password);
-          } catch (err) {
-            const mfaResult = await resolveMfaSignIn(err);
-            if (mfaResult) {
-              userCredential = mfaResult;
-            } else {
-              throw err;
-            }
-          }
+          const userCredential = await loginWithEmail(email, password);
           await get().handleAuthSuccess(userCredential.user);
         } catch (error) {
           console.error("Login error:", error);

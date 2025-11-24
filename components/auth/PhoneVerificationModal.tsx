@@ -4,12 +4,12 @@ import { getDbSafe } from '../../src/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { useUserStore } from '../../stores/userStore';
 import {
-  createRecaptchaVerifier,
-  resetRecaptchaVerifier,
-  startPhoneMfaEnrollment,
-  verifyPhoneMfaCode,
-} from '../../src/lib/firebaseAuth';
+  startPhoneVerification,
+  confirmPhoneVerification,
+  resetPhoneRecaptcha,
+} from '../../src/services/phoneVerification';
 import { createOrUpdateUserProfile } from '../../firebase/db';
+import type { ConfirmationResult } from 'firebase/auth';
 
 interface PhoneVerificationModalProps {
   isOpen: boolean;
@@ -31,8 +31,8 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [verificationId, setVerificationId] = useState<string | null>(null);
-  const recaptchaVerifierRef = useRef<ReturnType<typeof createRecaptchaVerifier> | null>(null);
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const recaptchaVerifierRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (!isOpen) {
@@ -43,28 +43,9 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
       setStep('phone');
       setError(null);
       setSuccess(false);
-      // Clean up reCAPTCHA
-      if (recaptchaVerifierRef.current) {
-        try {
-          recaptchaVerifierRef.current.clear();
-        } catch (e) {
-          // Ignore cleanup errors
-        }
-        recaptchaVerifierRef.current = null;
-      }
-      resetRecaptchaVerifier();
+      resetPhoneRecaptcha();
     }
   }, [isOpen]);
-
-  const initializeRecaptcha = () => {
-    if (recaptchaVerifierRef.current) return;
-    try {
-      recaptchaVerifierRef.current = createRecaptchaVerifier('phone-recaptcha-container');
-    } catch (error) {
-      console.error('Error initializing reCAPTCHA:', error);
-      setError('Failed to initialize verification. Please refresh the page.');
-    }
-  };
 
   const handleSendCode = async () => {
     if (!phoneNumber.trim()) {
@@ -77,41 +58,25 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
 
     try {
       const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+1${phoneNumber.replace(/\D/g, '')}`;
-      initializeRecaptcha();
-      const verifier = recaptchaVerifierRef.current || createRecaptchaVerifier('phone-recaptcha-container');
-      recaptchaVerifierRef.current = verifier;
-      const vid = await startPhoneMfaEnrollment(formattedPhone, verifier);
-      setVerificationId(vid);
+      const confirmation = await startPhoneVerification(formattedPhone);
+      setConfirmationResult(confirmation);
       setStep('code');
+      console.log('[PHONE_VERIFY] Code sent');
     } catch (error: any) {
-      console.error('[MFA] Error sending verification code:', error);
+      console.error('[PHONE_VERIFY] Error sending verification code:', error);
       
       // Handle specific Firebase auth errors
-      let errorMessage = 'Failed to send verification code. Please try again.';
-      if (error?.code === 'auth/operation-not-allowed') {
-        errorMessage = 'Phone verification is disabled for this project. Enable Phone Auth in Firebase Console > Authentication > Sign-in Method.';
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
+      const errorMessage = error?.message || 'Failed to send verification code. Please try again.';
       
       setError(errorMessage);
-      // Clean up on error
-      if (recaptchaVerifierRef.current) {
-        try {
-          recaptchaVerifierRef.current.clear();
-        } catch (e) {
-          // Ignore cleanup errors
-        }
-        recaptchaVerifierRef.current = null;
-      }
-      resetRecaptchaVerifier();
+      resetPhoneRecaptcha();
     } finally {
       setLoading(false);
     }
   };
 
   const handleVerifyCode = async () => {
-    if (!verificationCode.trim() || !verificationId || !user?.uid) {
+    if (!verificationCode.trim() || !confirmationResult || !user?.uid) {
       setError('Please enter the verification code');
       return;
     }
@@ -120,8 +85,8 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
     setError(null);
 
     try {
-      await verifyPhoneMfaCode(verificationId, verificationCode);
-      console.log('[MFA] Code verified');
+      await confirmPhoneVerification(confirmationResult, verificationCode);
+      console.log('[PHONE_VERIFY] Code verified');
 
       // Update user profile
       const db = getDbSafe();
@@ -144,8 +109,8 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
       }
 
       setSuccess(true);
-      resetRecaptchaVerifier();
-      recaptchaVerifierRef.current = null;
+      resetPhoneRecaptcha();
+      setConfirmationResult(null);
       
       // Show success for 2 seconds, then close
       setTimeout(() => {
@@ -154,15 +119,10 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
         onClose();
       }, 2000);
     } catch (error: any) {
-      console.error('[MFA] Error verifying code:', error);
+      console.error('[PHONE_VERIFY] Error verifying code:', error);
       
       // Handle specific Firebase auth errors
-      let errorMessage = 'Invalid verification code. Please try again.';
-      if (error?.code === 'auth/operation-not-allowed') {
-        errorMessage = 'Phone verification is disabled for this project. Enable Phone Auth in Firebase Console > Authentication > Sign-in Method.';
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
+      const errorMessage = error?.message || 'We couldn’t verify your code. Please try again or request a new code.';
       
       setError(errorMessage);
     } finally {

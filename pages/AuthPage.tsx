@@ -22,6 +22,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
   });
   const [showPassword, setShowPassword] = useState(false);
   const [selectedPreference, setSelectedPreference] = useState<'attend' | 'host' | 'both' | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [signupError, setSignupError] = useState<string | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -53,6 +55,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
     // Run immediately on click - use universal handler
     setGoogleError(null);
     setIsGoogleLoading(true);
+    setEmailError(null);
     console.log('[AUTH_UI] Google button clicked');
     
     try {
@@ -73,11 +76,13 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
   const handleFinalSubmit = async () => {
     if (selectedPreference && formData.email && formData.password && formData.name) {
       try {
+        setSignupError(null);
         const userStore = useUserStore.getState();
         await userStore.signUp(formData.email, formData.password, formData.name, selectedPreference);
         // Auth listener will handle redirect
-      } catch (error) {
+      } catch (error: any) {
         console.error("Signup failed:", error);
+        setSignupError(error?.message || 'We could not sign you up. Please try again.');
       }
     }
   };
@@ -96,7 +101,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
 
   const handleSignIn = async () => {
     if (formData.email && formData.password) {
-      await onLogin(formData.email, formData.password);
+      setEmailError(null);
+      try {
+        await onLogin(formData.email, formData.password);
+      } catch (error: any) {
+        setEmailError(error?.message || 'We could not sign you in. Please try again.');
+      }
     }
   };
 
@@ -149,6 +159,16 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
             {googleError && (
               <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
                 {googleError}
+              </div>
+            )}
+            {signupError && (
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                {signupError}
+              </div>
+            )}
+            {emailError && (
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                {emailError}
               </div>
             )}
 
@@ -367,6 +387,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
             {googleError && (
               <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
                 {googleError}
+              </div>
+            )}
+            {emailError && (
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                {emailError}
               </div>
             )}
 

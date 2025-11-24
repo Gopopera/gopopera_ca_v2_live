@@ -6,9 +6,48 @@ import {
   signUpWithEmail,
 } from './firebaseAuth';
 
+type AuthErrorInfo = { code?: string; message: string; mfaRequired?: boolean };
+
+function mapAuthError(err: any, context: 'google' | 'email-signin' | 'email-signup'): AuthErrorInfo {
+  const code = err?.code || err?.message || 'auth/unknown';
+
+  if (code === 'auth/multi-factor-auth-required') {
+    console.error('[AUTH] MFA required but not implemented in frontend');
+    return {
+      code,
+      mfaRequired: true,
+      message: 'Sign-in is temporarily blocked because multi-factor auth is enabled on this account. Please contact Popera support.',
+    };
+  }
+
+  const common: Record<string, string> = {
+    'auth/invalid-email': 'The email address is not valid.',
+    'auth/user-disabled': 'This account has been disabled.',
+    'auth/user-not-found': 'No account found with these credentials.',
+    'auth/wrong-password': 'Incorrect email or password.',
+    'auth/popup-closed-by-user': 'Sign-in was canceled before completion.',
+    'auth/popup-blocked': 'Popup was blocked. Please allow popups or try again.',
+    'auth/cancelled-popup-request': 'Another sign-in is already in progress.',
+    'auth/operation-not-supported-in-this-environment': 'This sign-in method is not supported in this environment.',
+    'auth/network-request-failed': 'Network error. Please check your connection and try again.',
+    'auth/too-many-requests': 'Too many attempts. Please try again later.',
+  };
+
+  const message = common[code] || 'Something went wrong signing you in. Please try again.';
+  return { code, message };
+}
+
 export async function loginWithGoogle(): Promise<UserCredential | null> {
   console.log('[AUTH] loginWithGoogle: starting');
-  return signInWithGoogle();
+  try {
+    return await signInWithGoogle();
+  } catch (err: any) {
+    const mapped = mapAuthError(err, 'google');
+    console.error('[AUTH] Google sign-in error:', { code: mapped.code, original: err });
+    const errorToThrow = new Error(mapped.message);
+    (errorToThrow as any).code = mapped.code;
+    throw errorToThrow;
+  }
 }
 
 export async function completeGoogleRedirect(): Promise<UserCredential | null> {
@@ -23,8 +62,11 @@ export async function loginWithEmail(email: string, password: string): Promise<U
     console.log('[AUTH] loginWithEmail: success', { uid: cred.user?.uid, email: cred.user?.email });
     return cred;
   } catch (err: any) {
-    console.error('[AUTH] loginWithEmail: error', { code: err?.code, message: err?.message });
-    throw err;
+    const mapped = mapAuthError(err, 'email-signin');
+    console.error('[AUTH] Email sign-in error:', { code: mapped.code, original: err });
+    const errorToThrow = new Error(mapped.message);
+    (errorToThrow as any).code = mapped.code;
+    throw errorToThrow;
   }
 }
 
@@ -35,8 +77,11 @@ export async function signupWithEmail(email: string, password: string): Promise<
     console.log('[AUTH] signupWithEmail: success', { uid: cred.user?.uid, email: cred.user?.email });
     return cred;
   } catch (err: any) {
-    console.error('[AUTH] signupWithEmail: error', { code: err?.code, message: err?.message });
-    throw err;
+    const mapped = mapAuthError(err, 'email-signup');
+    console.error('[AUTH] Email sign-up error:', { code: mapped.code, original: err });
+    const errorToThrow = new Error(mapped.message);
+    (errorToThrow as any).code = mapped.code;
+    throw errorToThrow;
   }
 }
 
