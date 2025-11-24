@@ -1,23 +1,4 @@
 {
   "version": 2,
-  "builds": [
-    { "src": "package.json", "use": "@vercel/next" }
-  ],
-  "redirects": [],
-  "rewrites": [],
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        {
-          "key": "Cross-Origin-Opener-Policy",
-          "value": "unsafe-none"
-        },
-        {
-          "key": "Cross-Origin-Embedder-Policy",
-          "value": "unsafe-none"
-        }
-      ]
-    }
-  ]
+  "framework": "nextjs"
 }
