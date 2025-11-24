@@ -29,7 +29,12 @@ export async function resolveMfaSignIn(error: any): Promise<UserCredential | nul
     throw new Error('[MFA] SMS code entry cancelled');
   }
 
-  const finalUserCredential = await finishMfaSignIn(resolver, verificationId, smsCode);
-  console.log('[MFA] Resolved MFA sign-in');
-  return finalUserCredential;
+  try {
+    const finalUserCredential = await finishMfaSignIn(resolver, verificationId, smsCode);
+    console.log('[MFA] Resolved MFA sign-in');
+    return finalUserCredential;
+  } catch (err) {
+    console.error("PHONE MFA ERROR:", err);
+    throw err;
+  }
 }

@@ -8,16 +8,14 @@
       "runtime": "nodejs18.x"
     }
   },
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/" }
-  ],
-  "headers": [
+  "routes": [
     {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin-allow-popups" },
-        { "key": "Cross-Origin-Embedder-Policy", "value": "unsafe-none" }
-      ]
+      "src": "/(.*)",
+      "dest": "/index.html",
+      "headers": {
+        "Cross-Origin-Opener-Policy": "",
+        "Cross-Origin-Embedder-Policy": ""
+      }
     }
   ]
 }

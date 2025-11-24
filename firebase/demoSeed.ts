@@ -50,10 +50,10 @@ export async function getPoperaDemoEventsSnapshot(db: Firestore, poperaEmail: st
 }
 
 const cityLabels: Record<City, string> = {
-  montreal: 'Montreal',
-  ottawa: 'Ottawa',
-  gatineau: 'Gatineau',
-  quebec: 'Quebec City',
+  montreal: 'Montréal',
+  ottawa: 'Ottawa–Gatineau',
+  gatineau: 'Ottawa–Gatineau',
+  quebec: 'Québec City',
   toronto: 'Toronto',
   vancouver: 'Vancouver',
 };
@@ -89,6 +89,7 @@ export async function seedPoperaLaunchEventsForUser(user: User) {
   );
 
   const cities: City[] = ['ottawa', 'montreal', 'toronto', 'vancouver', 'quebec'];
+  // Cities must match Firestore enum exactly: ["Ottawa–Gatineau", "Montréal", "Toronto", "Vancouver", "Québec City"]
   const now = new Date();
   const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const endDate = new Date(nextWeek.getTime() + 2 * 60 * 60 * 1000);
@@ -114,8 +115,9 @@ export async function seedPoperaLaunchEventsForUser(user: User) {
       hostName: 'Popera',
       hostId: user.uid,
       hostEmail: poperaEmail,
+      public: true,
       isPublic: true,
-      status: 'published',
+      status: 'active',
       category: 'Community' as Event['category'],
       tags: ['launch', 'popera', 'meetup'],
       isDemo: true,
@@ -140,7 +142,7 @@ export async function seedPoperaLaunchEventsForUser(user: User) {
       imageUrl: `https://picsum.photos/seed/popera-${city}/800/600`,
     };
 
-    console.log('[POPERA_SEED] Creating demo event for city', city, 'with payload', event);
+    console.log('[POPERA_SEED] Creating demo event for:', cityLabel);
 
     const sanitizedEvent = sanitizeFirestoreData(event);
     const docRef = await addDoc(collection(db, 'events'), sanitizedEvent);

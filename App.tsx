@@ -366,6 +366,7 @@ const AppContent: React.FC = () => {
   const user = useUserStore((state) => state.user);
   const loading = useUserStore((state) => state.loading);
   const isAuthReady = useUserStore((state) => state.isAuthReady);
+  const authInitialized = useUserStore((state) => state.authInitialized);
   const addRSVP = useUserStore((state) => state.addRSVP);
   const removeRSVP = useUserStore((state) => state.removeRSVP);
   const addFavorite = useUserStore((state) => state.addFavorite);
@@ -373,7 +374,7 @@ const AppContent: React.FC = () => {
   const updateEvent = useEventStore((state) => state.updateEvent);
   const currentUser = useUserStore((state) => state.getCurrentUser());
   
-  if (!isAuthReady) {
+  if (!isAuthReady || !authInitialized) {
     return (
       <div className="min-h-screen bg-[#f8fafb] flex items-center justify-center text-[#15383c]">
         Loading...
@@ -689,6 +690,7 @@ const AppContent: React.FC = () => {
   };
   
   const handleRSVP = (eventId: string) => {
+    if (!authInitialized) return null;
     if (!user) {
       // Redirect to auth if not logged in
       useUserStore.getState().setRedirectAfterLogin(ViewState.DETAIL);
@@ -725,6 +727,7 @@ const AppContent: React.FC = () => {
   
   const handleToggleFavorite = (e: React.MouseEvent, eventId: string) => {
     e.stopPropagation();
+    if (!authInitialized) return null;
     if (!user) {
       useUserStore.getState().setRedirectAfterLogin(ViewState.FEED);
       setViewState(ViewState.AUTH);
@@ -796,6 +799,7 @@ const AppContent: React.FC = () => {
 
   if (viewState === ViewState.CHAT && selectedEvent) {
     // Ensure user is logged in before showing chat
+    if (!authInitialized) return null;
     if (!user) {
       useUserStore.getState().setRedirectAfterLogin(ViewState.CHAT);
       setViewState(ViewState.AUTH);

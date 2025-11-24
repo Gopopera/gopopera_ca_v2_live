@@ -20,6 +20,7 @@ import {
   PhoneAuthProvider,
   PhoneMultiFactorGenerator,
   type MultiFactorResolver,
+  browserPopupRedirectResolver,
 } from 'firebase/auth';
 import { getAppSafe } from './firebase';
 
@@ -83,8 +84,9 @@ export async function signInWithGoogle(): Promise<UserCredential | null> {
   provider.setCustomParameters({ prompt: 'select_account' });
 
   try {
-    return await signInWithPopup(auth, provider);
+    return await signInWithPopup(auth, provider, browserPopupRedirectResolver);
   } catch (err: any) {
+    console.error("GOOGLE LOGIN ERROR:", err);
     const fallbackCodes = [
       'auth/popup-blocked',
       'auth/popup-closed-by-user',
@@ -96,7 +98,6 @@ export async function signInWithGoogle(): Promise<UserCredential | null> {
       await signInWithRedirect(auth, provider);
       return null;
     }
-    console.error('[AUTH] Google sign-in error', err);
     throw err;
   }
 }

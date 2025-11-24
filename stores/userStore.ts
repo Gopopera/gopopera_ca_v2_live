@@ -18,6 +18,7 @@ import type { FirestoreUser } from '../firebase/types';
 import type { Unsubscribe } from 'firebase/auth';
 import type { ViewState } from '../types';
 import { completeGoogleRedirect, loginWithEmail, loginWithGoogle, signupWithEmail } from '../src/lib/authHelpers';
+import { ensurePoperaProfileAndSeed } from '../firebase/poperaProfile';
 
 // Simplified User interface matching Firebase Auth user
 export interface User {
@@ -44,6 +45,7 @@ interface UserStore {
   loading: boolean;
   ready: boolean; // True when auth state has been determined
   isAuthReady: boolean;
+  authInitialized: boolean; // True when auth state has been determined (prevents premature redirects)
   _authUnsub: Unsubscribe | null; // Internal unsubscribe function
   _initialized: boolean; // Track if init() has been called
   redirectAfterLogin: ViewState | null; // Redirect destination after login
@@ -84,6 +86,7 @@ export const useUserStore = create<UserStore>()(
       loading: true,
       ready: false,
       isAuthReady: false,
+      authInitialized: false,
       currentUser: null,
       _authUnsub: null,
       _initialized: false,
@@ -130,18 +133,10 @@ export const useUserStore = create<UserStore>()(
           console.error('Background profile fetch error:', err);
         });
 
-        if (firebaseUser.email === POPERA_EMAIL) {
-          console.log('[USER_STORE] Detected Popera account, running ensurePoperaProfileAndSeed');
-          import('../firebase/poperaProfile')
-            .then(({ ensurePoperaProfileAndSeed }) =>
-              ensurePoperaProfileAndSeed(firebaseUser).catch(err => {
-                console.error('[AUTH] Popera profile/seeding failed, continuing', err);
-              })
-            )
-            .catch(err => {
-              console.error('[AUTH] Error loading poperaProfile module:', err);
-            });
-        }
+        // Ensure Popera profile and seed events (only runs for Popera account)
+        ensurePoperaProfileAndSeed(firebaseUser).catch(err => {
+          console.error('[AUTH] Popera profile/seeding failed, continuing', err);
+        });
       },
 
       init: () => {
@@ -171,9 +166,13 @@ export const useUserStore = create<UserStore>()(
                 uid: firebaseUser?.uid,
                 email: firebaseUser?.email,
               });
+              set({
+                authInitialized: true
+              });
               if (firebaseUser) {
                 try {
                   await get().handleAuthSuccess(firebaseUser);
+                  await ensurePoperaProfileAndSeed(firebaseUser);
                 } catch (error) {
                   console.error("Error restoring user session:", error);
                   set({ user: null, currentUser: null, loading: false, ready: true, isAuthReady: true });
@@ -196,6 +195,7 @@ export const useUserStore = create<UserStore>()(
           set({ loading: true });
           const userCredential = await signupWithEmail(email, password);
           await get().handleAuthSuccess(userCredential.user);
+          await ensurePoperaProfileAndSeed(userCredential.user);
         } catch (error) {
           console.error("Signup error:", error);
           set({ loading: false });
@@ -218,6 +218,7 @@ export const useUserStore = create<UserStore>()(
             }
           }
           await get().handleAuthSuccess(userCredential.user);
+          await ensurePoperaProfileAndSeed(userCredential.user);
         } catch (error) {
           console.error("Login error:", error);
           set({ loading: false });
@@ -359,6 +360,7 @@ export const useUserStore = create<UserStore>()(
           const cred = await loginWithGoogle();
           if (cred?.user) {
             await get().handleAuthSuccess(cred.user);
+            await ensurePoperaProfileAndSeed(cred.user);
             return get().user;
           }
           return null; // redirect path
