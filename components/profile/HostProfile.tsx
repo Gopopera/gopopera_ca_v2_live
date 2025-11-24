@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import { ArrowLeft, MapPin, Star, Users, Instagram, Twitter, Globe, MessageCircle, Check } from 'lucide-react';
 import { Event } from '@/types';
 import { EventCard } from '../events/EventCard';
-import { CARD_GRID_GAP } from '@/src/components/events/EventCardLayout';
 import { useProfileStore } from '@/stores/profileStore';
 import { useUserStore, POPERA_HOST_ID, POPERA_HOST_NAME } from '@/stores/userStore';
 import { PoperaProfilePicture } from './PoperaProfilePicture';

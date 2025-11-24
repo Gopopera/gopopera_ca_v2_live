@@ -216,7 +216,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className="mt-fluid text-center">
            <button 
              onClick={() => setViewState(ViewState.FEED)}
-             className="w-auto mx-auto px-8 sm:px-10 py-4 min-h-[48px] border-2 border-gray-300 rounded-full text-[#15383c] font-bold fluid-paragraph hover:border-[#15383c] hover:bg-[#15383c] hover:text-white transition-base touch-manipulation active:scale-[0.97] active:bg-[#15383c] active:text-white"
+             className="w-auto mx-auto sm:w-auto px-8 sm:px-10 py-4 sm:py-4 min-h-[48px] sm:min-h-0 border-2 border-gray-300 rounded-full text-[#15383c] font-bold text-base sm:text-base hover:border-[#15383c] hover:bg-[#15383c] hover:text-white transition-all touch-manipulation active:scale-[0.97] active:bg-[#15383c] active:text-white"
            >
              View All Events
            </button>
