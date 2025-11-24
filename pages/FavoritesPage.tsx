@@ -2,7 +2,6 @@ import React from 'react';
 import { ViewState, Event } from '../types';
 import { ChevronLeft, Heart } from 'lucide-react';
 import { EventCard } from '../components/events/EventCard';
-import { CARD_GRID_GAP } from '../src/components/events/EventCardLayout';
 
 interface FavoritesPageProps {
   setViewState: (view: ViewState) => void;
@@ -20,7 +19,7 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({ setViewState, even
     <div className="min-h-screen bg-[#f8fafb] pt-24 pb-20 font-sans">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-center mb-8"><button onClick={() => setViewState(ViewState.PROFILE)} className="mr-4 w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-popera-teal hover:bg-gray-50 transition-colors"><ChevronLeft size={20} /></button><div className="flex items-center gap-3"><h1 className="font-heading font-bold text-3xl text-popera-teal">My Favorites</h1><Heart className="text-popera-orange fill-popera-orange" size={24} /></div></div>
-        {favoriteEvents.length > 0 ? (<div className={`grid gap-fluid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 place-items-center w-full px-fluid animate-fade-in`}>{favoriteEvents.map((event, index) => (<div key={event.id} className="w-full h-auto animate-stagger" style={{ animationDelay: `${index * 0.1}s` }}><EventCard event={event} onClick={onEventClick} onChatClick={onChatClick} onReviewsClick={onReviewsClick} isLoggedIn={true} isFavorite={true} onToggleFavorite={onToggleFavorite} /></div>))}</div>) : (<div className="flex flex-col items-center justify-center py-24 text-center"><div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 text-gray-400"><Heart size={32} /></div><h3 className="text-xl font-bold text-popera-teal mb-2">No favorites yet</h3></div>)}
+        {favoriteEvents.length > 0 ? (<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8 justify-items-center max-w-6xl mx-auto px-4 md:px-6 lg:px-8 animate-fade-in">{favoriteEvents.map(event => (<div key={event.id} className="w-full h-auto"><EventCard event={event} onClick={onEventClick} onChatClick={onChatClick} onReviewsClick={onReviewsClick} isLoggedIn={true} isFavorite={true} onToggleFavorite={onToggleFavorite} /></div>))}</div>) : (<div className="flex flex-col items-center justify-center py-24 text-center"><div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 text-gray-400"><Heart size={32} /></div><h3 className="text-xl font-bold text-popera-teal mb-2">No favorites yet</h3></div>)}
       </div>
     </div>
   );

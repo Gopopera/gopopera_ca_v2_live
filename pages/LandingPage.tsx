@@ -144,8 +144,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   Happening Now
                </span>
             </div>
-            <h2 className="fluid-heading-1 font-heading font-bold text-[#15383c] mb-fluid">Upcoming Pop-ups</h2>
-            <p className="fluid-paragraph text-gray-500 font-light leading-relaxed">See where the crowd is going. Discover the moments bringing people together this week.</p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-[#15383c] mb-2 sm:mb-3 md:mb-4 px-4 sm:px-0">Upcoming Pop-ups</h2>
+            <p className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-500 font-light leading-relaxed px-4 sm:px-0">See where the crowd is going. Discover the moments bringing people together this week.</p>
           </div>
 
           {/* SEARCH BAR & FILTERS */}
