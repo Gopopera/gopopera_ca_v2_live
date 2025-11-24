@@ -1,6 +1,7 @@
 import {
   ConfirmationResult,
   PhoneAuthProvider,
+  PhoneMultiFactorGenerator,
   RecaptchaVerifier,
   signInWithPhoneNumber,
   multiFactor,
@@ -86,6 +87,7 @@ export async function finalizeMfaEnrollment(verificationId: string, code: string
   console.log('[MFA] Verifying enrollment code');
   const cred = PhoneAuthProvider.credential(verificationId, code);
   const mfaUser = multiFactor(auth.currentUser);
-  await mfaUser.enroll(cred, 'Primary SMS');
+  const assertion = PhoneMultiFactorGenerator.assertion(cred);
+  await mfaUser.enroll(assertion, 'Primary SMS');
   console.log('[MFA] Enrollment completed');
 }
