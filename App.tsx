@@ -31,6 +31,7 @@ const MyCalendarPage = React.lazy(() => import('./pages/MyCalendarPage').then(m 
 const DeleteAccountPage = React.lazy(() => import('./pages/DeleteAccountPage').then(m => ({ default: m.DeleteAccountPage })));
 const CreateEventPage = React.lazy(() => import('./pages/CreateEventPage').then(m => ({ default: m.CreateEventPage })));
 const DebugEnvPage = React.lazy(() => import('./pages/DebugEnvPage').then(m => ({ default: m.DebugEnvPage })));
+const DebugSeedDemoEventsPage = React.lazy(() => import('./pages/DebugSeedDemoEventsPage').then(m => ({ default: m.DebugSeedDemoEventsPage })));
 
 // Consolidated Imports - lazy loaded
 const BasicDetailsPage = React.lazy(() => import('./pages/ProfileSubPages').then(m => ({ default: m.BasicDetailsPage })));
@@ -687,17 +688,24 @@ const AppContent: React.FC = () => {
       return;
     }
     
+    // Block RSVP for demo events
+    const event = storeEvents.find(e => e.id === eventId) || allEvents.find(e => e.id === eventId);
+    if (event?.isDemo === true) {
+      // Demo events are handled by EventDetailPage's handleRSVP which shows modal
+      // This is a safety check in case handleRSVP is called from elsewhere
+      console.warn('[RSVP] Attempted to RSVP to demo event:', eventId);
+      return;
+    }
+    
     if (rsvps.includes(eventId)) {
       removeRSVP(user.uid || user.id || '', eventId);
       // Decrease attendee count for Popera events
-      const event = storeEvents.find(e => e.id === eventId);
       if (event?.isPoperaOwned && event.attendeesCount > 0) {
         updateEvent(eventId, { attendeesCount: event.attendeesCount - 1 });
       }
     } else {
       addRSVP(user.uid || user.id || '', eventId);
       // Increase attendee count for Popera events
-      const event = storeEvents.find(e => e.id === eventId);
       if (event?.isPoperaOwned) {
         updateEvent(eventId, { attendeesCount: (event.attendeesCount || 0) + 1 });
       }
@@ -916,6 +924,11 @@ const AppContent: React.FC = () => {
         {viewState === ViewState.CAREERS && <CareersPage setViewState={setViewState} />}
         {viewState === ViewState.CONTACT && <ContactPage setViewState={setViewState} />}
         {viewState === ViewState.DEBUG_ENV && <DebugEnvPage setViewState={setViewState} />}
+        {viewState === ViewState.DEBUG_SEED_DEMO && (
+          <React.Suspense fallback={<PageSkeleton />}>
+            <DebugSeedDemoEventsPage setViewState={setViewState} />
+          </React.Suspense>
+        )}
         {viewState === ViewState.TERMS && <TermsPage setViewState={setViewState} />}
         {viewState === ViewState.PRIVACY && <PrivacyPage setViewState={setViewState} />}
         {viewState === ViewState.CANCELLATION && <CancellationPage setViewState={setViewState} />}

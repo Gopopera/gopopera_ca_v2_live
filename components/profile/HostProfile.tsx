@@ -41,13 +41,19 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
   const followHost = useProfileStore((state) => state.followHost);
   const unfollowHost = useProfileStore((state) => state.unfollowHost);
   
-  // Filter events: For Popera profile, only show official launch events (not demo events)
+  // Filter events: For Popera profile, show launch events (city-launch demoType) and official launch events
   // For other hosts, show all their events
   const hostEvents = useMemo(() => {
     const filtered = allEvents.filter(e => e.hostName === hostName);
     if (isPoperaProfile) {
-      // Popera profile: only show official launch events, exclude demo events
-      return filtered.filter(e => e.isOfficialLaunch === true && !e.isDemo);
+      // Popera profile: show city-launch events (demoType: "city-launch") and official launch events
+      // Check if event has demoType field (from Firestore) - these are the launch events we want to show
+      return filtered.filter(e => {
+        // Show if it's an official launch event OR if it's a city-launch event
+        // We check for demoType by looking at the event object (it may not be in Event type but exists in Firestore)
+        const hasCityLaunchType = (e as any).demoType === "city-launch";
+        return e.isOfficialLaunch === true || hasCityLaunchType;
+      });
     }
     return filtered;
   }, [allEvents, hostName, isPoperaProfile]);

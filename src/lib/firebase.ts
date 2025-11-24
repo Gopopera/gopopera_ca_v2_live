@@ -129,6 +129,11 @@ export function getDbSafe(): Firestore | null {
     try {
       _db = getFirestore(a);
       cachedDb = _db;
+      // Verify Firestore is actually ready
+      if (!_db) {
+        console.error('[FIRESTORE] getFirestore returned null/undefined');
+        return null;
+      }
     } catch (error) {
       console.error('[FIREBASE] Firestore initialization failed:', error);
       return null;
@@ -136,7 +141,12 @@ export function getDbSafe(): Firestore | null {
   }
   const dbInstance = _db || cachedDb;
   if (!dbInstance) {
-    console.error('[FIRESTORE] db is null');
+    console.error('[FIRESTORE] db is null after initialization attempt');
+    return null;
+  }
+  // Final validation: ensure it's a valid Firestore instance
+  if (typeof dbInstance !== 'object' || !('type' in dbInstance)) {
+    console.error('[FIRESTORE] Invalid Firestore instance');
     return null;
   }
   return dbInstance;

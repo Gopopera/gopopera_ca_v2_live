@@ -27,11 +27,20 @@ export interface FirestoreEvent {
   // Event type flags
   isPoperaOwned?: boolean;
   isDemo?: boolean;
+  demoPurpose?: string; // Optional short explanation shown in UI for demo events
+  demoType?: string; // Type of demo event (e.g., "city-launch")
+  managedBy?: string; // Email of account managing this event
   isOfficialLaunch?: boolean;
   // Additional fields
   aboutEvent?: string;
   whatToExpect?: string;
   capacity?: number;
+  subtitle?: string; // Event subtitle
+  startDate?: number; // Timestamp for event start
+  endDate?: number; // Timestamp for event end
+  isPublic?: boolean; // Whether event is publicly visible
+  allowChat?: boolean; // Whether chat is enabled
+  allowRsvp?: boolean; // Whether RSVP is enabled
 }
 
 export interface FirestoreUser {
@@ -62,6 +71,10 @@ export interface FirestoreUser {
   };
   // Ban system
   bannedEvents?: string[]; // Event IDs user is banned from
+  // Demo host flag
+  isDemoHost?: boolean; // True for Popera demo host profile
+  username?: string; // Username for the user
+  isVerified?: boolean; // Whether the account is verified
   createdAt: number;
   updatedAt?: number;
 }

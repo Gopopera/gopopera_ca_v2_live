@@ -27,6 +27,7 @@ export interface Event {
   isPoperaOwned?: boolean; // True for official Popera events
   isFakeEvent?: boolean; // True for fake demo events (locked reservations/chat) - DEPRECATED: use isDemo
   isDemo?: boolean; // True for demo events (locked reservations/chat)
+  demoPurpose?: string; // Optional short explanation shown in UI for demo events
   isOfficialLaunch?: boolean; // True for official Popera launch events (fully functional)
   hostId?: string; // User ID of the host
   aboutEvent?: string; // "About this event" section
@@ -49,6 +50,7 @@ export enum ViewState {
   REPORT_EVENT = 'REPORT_EVENT',
   HELP = 'HELP',
   DEBUG_ENV = 'DEBUG_ENV',
+  DEBUG_SEED_DEMO = 'DEBUG_SEED_DEMO',
   SAFETY = 'SAFETY',
   PRESS = 'PRESS',
   AUTH = 'AUTH',

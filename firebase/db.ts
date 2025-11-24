@@ -7,10 +7,11 @@
  */
 
 import { getDbSafe } from "../src/lib/firebase";
-import { collection, doc, getDoc, getDocs, query, where, orderBy, addDoc, updateDoc, setDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where, orderBy, addDoc, updateDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { FirestoreEvent, FirestoreReservation, FirestoreChatMessage, FirestoreReview, FirestoreUser } from "./types";
 import { Event } from "../types";
 import { validateFirestoreData, removeUndefinedValues, sanitizeFirestoreData } from "../utils/firestoreValidation";
+import { POPERA_EMAIL } from "../stores/userStore";
 
 // Helper to convert FirestoreEvent to Event (frontend type)
 const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event => {
@@ -38,11 +39,14 @@ const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event => {
     capacity: firestoreEvent.capacity,
     lat: firestoreEvent.lat,
     lng: firestoreEvent.lng,
-    isPoperaOwned: firestoreEvent.isPoperaOwned || false,
-    isDemo: firestoreEvent.isDemo || false,
-    isOfficialLaunch: firestoreEvent.isOfficialLaunch || false,
-    aboutEvent: firestoreEvent.aboutEvent,
-    whatToExpect: firestoreEvent.whatToExpect,
+      isPoperaOwned: firestoreEvent.isPoperaOwned || false,
+      isDemo: firestoreEvent.isDemo || false,
+      demoPurpose: firestoreEvent.demoPurpose,
+      isOfficialLaunch: firestoreEvent.isOfficialLaunch || false,
+      aboutEvent: firestoreEvent.aboutEvent,
+      whatToExpect: firestoreEvent.whatToExpect,
+      // Note: demoType, managedBy, subtitle, startDate, endDate, isPublic, allowChat, allowRsvp
+      // are stored in Firestore but not mapped to Event type (not needed in UI)
   };
 };
 
@@ -86,6 +90,15 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
       lng: eventData.lng,
       isPoperaOwned: eventData.isPoperaOwned || false,
       isDemo: eventData.isDemo || false,
+      demoPurpose: eventData.demoPurpose,
+      demoType: (eventData as any).demoType,
+      managedBy: (eventData as any).managedBy,
+      subtitle: (eventData as any).subtitle,
+      startDate: (eventData as any).startDate,
+      endDate: (eventData as any).endDate,
+      isPublic: (eventData as any).isPublic,
+      allowChat: (eventData as any).allowChat,
+      allowRsvp: (eventData as any).allowRsvp,
       isOfficialLaunch: eventData.isOfficialLaunch || false,
       aboutEvent: eventData.aboutEvent,
       whatToExpect: eventData.whatToExpect,
@@ -298,13 +311,25 @@ export async function createReservation(eventId: string, userId: string): Promis
 }
 
 export async function listReservationsForUser(userId: string): Promise<FirestoreReservation[]> {
-  const db = getDbSafe();
+  // Retry logic: wait for Firestore to be ready
+  let db = getDbSafe();
   if (!db) {
+    // Retry up to 3 times with 100ms delay
+    for (let i = 0; i < 3; i++) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      db = getDbSafe();
+      if (db) break;
+    }
+  }
+  
+  if (!db) {
+    console.warn('[listReservationsForUser] Firestore not available after retries');
     return [];
   }
   
-  // Ensure Firestore is ready before calling collection()
-  if (typeof db === 'undefined' || db === null) {
+  // Final validation
+  if (typeof db !== 'object' || db === null) {
+    console.error('[listReservationsForUser] Invalid Firestore instance');
     return [];
   }
   
@@ -440,13 +465,25 @@ export async function addChatMessage(
 
 // User profiles
 export async function getUserProfile(uid: string): Promise<FirestoreUser | null> {
-  const db = getDbSafe();
+  // Retry logic: wait for Firestore to be ready
+  let db = getDbSafe();
   if (!db) {
+    // Retry up to 3 times with 100ms delay
+    for (let i = 0; i < 3; i++) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      db = getDbSafe();
+      if (db) break;
+    }
+  }
+  
+  if (!db) {
+    console.warn('[getUserProfile] Firestore not available after retries');
     return null;
   }
   
-  // Ensure Firestore is ready before calling collection()
-  if (typeof db === 'undefined' || db === null) {
+  // Final validation
+  if (typeof db !== 'object' || db === null) {
+    console.error('[getUserProfile] Invalid Firestore instance');
     return null;
   }
   
@@ -471,6 +508,9 @@ export async function getUserProfile(uid: string): Promise<FirestoreUser | null>
       preferredCity: data.preferredCity,
       phoneVerified: data.phoneVerified || false,
       signupIntent: data.signupIntent,
+      isDemoHost: data.isDemoHost || false,
+      username: data.username,
+      isVerified: data.isVerified || false,
       createdAt: data.createdAt || Date.now(),
       updatedAt: data.updatedAt,
     };
@@ -481,14 +521,24 @@ export async function getUserProfile(uid: string): Promise<FirestoreUser | null>
 }
 
 export async function createOrUpdateUserProfile(uid: string, userData: Partial<FirestoreUser>): Promise<void> {
-  const db = getDbSafe();
+  // Retry logic: wait for Firestore to be ready
+  let db = getDbSafe();
+  if (!db) {
+    // Retry up to 3 times with 100ms delay
+    for (let i = 0; i < 3; i++) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      db = getDbSafe();
+      if (db) break;
+    }
+  }
+  
   if (!db) {
     throw new Error('Firestore not initialized');
   }
   
-  // Ensure Firestore is ready before calling collection()
-  if (typeof db === 'undefined' || db === null) {
-    throw new Error('Firestore not initialized');
+  // Final validation
+  if (typeof db !== 'object' || db === null) {
+    throw new Error('Firestore not initialized - invalid instance');
   }
   
   try {
