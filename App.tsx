@@ -362,6 +362,7 @@ const AppContent: React.FC = () => {
   const [showConversationModal, setShowConversationModal] = useState(false);
   const [conversationModalEvent, setConversationModalEvent] = useState<Event | null>(null);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [authBootChecked, setAuthBootChecked] = useState(false);
   // Use Zustand stores
   const user = useUserStore((state) => state.user);
   const loading = useUserStore((state) => state.loading);
@@ -404,7 +405,16 @@ const AppContent: React.FC = () => {
   // City store auto-initializes via Zustand persist middleware
   useEffect(() => {
     useUserStore.getState().init();
+    setAuthBootChecked(true);
   }, []);
+
+  if (viewState === ViewState.AUTH && !authInitialized) {
+    return (
+      <div className="min-h-screen bg-[#f8fafb] flex items-center justify-center text-[#15383c]">
+        Loading...
+      </div>
+    );
+  }
 
   // Handle redirect after successful login (including Google login)
   // Redirect immediately when user is detected after auth
@@ -412,18 +422,19 @@ const AppContent: React.FC = () => {
   const setRedirectAfterLogin = useUserStore((state) => state.setRedirectAfterLogin);
   
   useEffect(() => {
+    if (!authInitialized) return;
     if (user && viewState === ViewState.AUTH && !loading && isAuthReady) {
       // User just logged in, redirect immediately to intended destination or FEED
       const redirect = redirectAfterLogin || ViewState.FEED;
       setViewState(redirect);
       setRedirectAfterLogin(null);
     }
-  }, [user, loading, viewState, redirectAfterLogin, setRedirectAfterLogin, isAuthReady]);
+  }, [user, loading, viewState, redirectAfterLogin, setRedirectAfterLogin, isAuthReady, authInitialized]);
   
   // Load events from Firestore (with fallback to mock data) - memoized to avoid redundant fetches
   const [eventsLoaded, setEventsLoaded] = useState(false);
   useEffect(() => {
-    if (eventsLoaded) return; // Only load once
+    if (eventsLoaded || !authBootChecked) return; // Only load once after auth init check
     
     const loadFirestoreEvents = async () => {
       try {
@@ -443,7 +454,7 @@ const AppContent: React.FC = () => {
     };
     
     loadFirestoreEvents();
-  }, [eventsLoaded]);
+  }, [eventsLoaded, authBootChecked]);
   
   // Initialize store with Popera events and fake events (first load only, as fallback)
   useEffect(() => {

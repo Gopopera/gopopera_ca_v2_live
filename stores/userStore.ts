@@ -176,23 +176,22 @@ export const useUserStore = create<UserStore>()(
             }
             
             const unsub = listenToAuthChanges(async (firebaseUser) => {
-              console.log('[USER_STORE] onAuthStateChanged fired', {
-                hasUser: !!firebaseUser,
-                uid: firebaseUser?.uid,
-                email: firebaseUser?.email,
-              });
-              set({
-                authInitialized: true
-              });
-              if (firebaseUser) {
-                try {
+              try {
+                console.log('[AUTH] onAuthStateChanged fired', {
+                  hasUser: !!firebaseUser,
+                  uid: firebaseUser?.uid,
+                  email: firebaseUser?.email,
+                });
+                if (firebaseUser) {
                   await get().handleAuthSuccess(firebaseUser);
-                } catch (error) {
-                  console.error("Error restoring user session:", error);
-                  set({ user: null, currentUser: null, loading: false, ready: true, isAuthReady: true, authInitialized: true });
+                } else {
+                  set({ user: null, currentUser: null, loading: false, ready: true, isAuthReady: true });
                 }
-              } else {
-                set({ user: null, currentUser: null, loading: false, ready: true, isAuthReady: true, authInitialized: true });
+              } catch (error) {
+                console.error('[AUTH] onAuthStateChanged error', error);
+                set({ user: null, currentUser: null, loading: false, ready: true, isAuthReady: true });
+              } finally {
+                set({ authInitialized: true });
               }
             });
             set({ _authUnsub: unsub });
