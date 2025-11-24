@@ -5,7 +5,7 @@
   "outputDirectory": "dist",
   "functions": {
     "api/**/*.ts": {
-      "runtime": ""
+      "runtime": "nodejs24.x"
     }
   },
   "routes": [
