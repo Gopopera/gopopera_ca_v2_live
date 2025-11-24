@@ -215,7 +215,7 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       console.error('[HOST_VERIFY] Error verifying code:', error);
       
       // Handle specific Firebase auth errors
-      let errorMessage = 'We couldn't verify your code. Please try again or request a new code.';
+      let errorMessage = "We couldn't verify your code. Please try again or request a new code.";
       if (error?.code === 'auth/invalid-verification-code') {
         errorMessage = 'Invalid verification code. Please check and try again.';
       } else if (error?.code === 'auth/code-expired') {
