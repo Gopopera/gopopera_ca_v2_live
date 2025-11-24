@@ -1,9 +1,3 @@
 {
-  "version": 2,
-  "functions": {
-    "api/send-email.ts": {
-      "runtime": "nodejs18.x"
-    }
-  }
+  "version": 2
 }
-
