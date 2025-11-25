@@ -87,8 +87,12 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
     e.preventDefault();
     
     // Gate: Check if user has verified phone for hosting
+    // Refresh profile first to ensure we have latest data
+    await refreshUserProfile();
+    const freshProfile = useUserStore.getState().userProfile;
+    
     // Use OR logic: userProfile.phoneVerifiedForHosting OR user.phone_verified (backward compatibility)
-    const isHostPhoneVerified = !!(userProfile?.phoneVerifiedForHosting || user?.phone_verified);
+    const isHostPhoneVerified = !!(freshProfile?.phoneVerifiedForHosting || user?.phone_verified);
     
     if (!isHostPhoneVerified) {
       setShowHostVerificationModal(true);

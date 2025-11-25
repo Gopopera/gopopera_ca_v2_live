@@ -74,6 +74,7 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false); // Guard to prevent duplicate verification calls
 
   // Cleanup verifier only on component unmount (not on modal open/close)
   useEffect(() => {
@@ -165,6 +166,12 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
   };
 
   const handleVerifyCode = async () => {
+    // Guard: prevent multiple simultaneous verification attempts
+    if (isVerifying || loading) {
+      console.log('[HOST_VERIFY] Verification already in progress, ignoring duplicate call');
+      return;
+    }
+
     if (!confirmationResult) {
       setError('Please request a verification code first.');
       return;
@@ -176,12 +183,16 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
     }
 
     setLoading(true);
+    setIsVerifying(true);
     setError(null);
 
     try {
-      // Confirm the phone number
+      // Confirm the phone number (can only be called once per confirmationResult)
       const cred = await confirmationResult.confirm(verificationCode.trim());
       console.log('[HOST_VERIFY] Phone verified successfully');
+      
+      // Clear confirmationResult immediately after successful use to prevent reuse
+      setConfirmationResult(null);
 
       // cred.user is the same logged-in user with phone linked.
       // After successful confirmation, update Firestore user document:
@@ -212,22 +223,30 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
           phone_verified: true,
           phone_number: formattedPhone,
         });
-
-        // Immediately sync userProfile in store so gating logic sees the change on next submit
-        // Only update if userProfile exists (if it doesn't, refreshUserProfile will fetch it)
-        const current = useUserStore.getState().userProfile;
-        if (current) {
-          useUserStore.setState({
-            userProfile: { ...current, phoneVerifiedForHosting: true, hostPhoneNumber: formattedPhone },
-          });
-        }
-
-        // Refresh user profile to get updated data from Firestore
-        await refreshUserProfile();
       }
 
+      // Immediately sync userProfile in store so gating logic sees the change on next submit
+      const current = useUserStore.getState().userProfile;
+      if (current) {
+        // Update existing profile
+        useUserStore.setState({
+          userProfile: { ...current, phoneVerifiedForHosting: true, hostPhoneNumber: formattedPhone },
+        });
+      } else if (user) {
+        // Create minimal profile if it doesn't exist yet (refreshUserProfile will fill in details)
+        useUserStore.setState({
+          userProfile: {
+            uid: user.uid,
+            phoneVerifiedForHosting: true,
+            hostPhoneNumber: formattedPhone,
+          } as any, // Type assertion needed for partial profile
+        });
+      }
+
+      // Refresh user profile to get updated data from Firestore (this will merge with our update)
+      await refreshUserProfile();
+
       setSuccess(true);
-      setConfirmationResult(null);
       
       // Show success for 2 seconds, then close and call onSuccess
       setTimeout(() => {
@@ -246,6 +265,12 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
         errorMessage = 'Invalid verification code. Please check and try again.';
       } else if (error?.code === 'auth/code-expired') {
         errorMessage = 'This code has expired. Please request a new one.';
+        // Clear confirmationResult on code expiry - user needs to request new code
+        setConfirmationResult(null);
+      } else if (error?.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many attempts. Please wait a bit before trying again.';
+        // Clear confirmationResult on rate limit - user needs to request new code
+        setConfirmationResult(null);
       } else if (error?.message) {
         errorMessage = error.message;
       }
@@ -253,9 +278,11 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       setError(errorMessage);
       // Ensure loading is cleared - return early to prevent stuck "Verifying..." state
       setLoading(false);
+      setIsVerifying(false);
       return;
     } finally {
       setLoading(false);
+      setIsVerifying(false);
     }
   };
 
@@ -372,10 +399,10 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
             <div className="space-y-3">
               <button
                 onClick={handleVerifyCode}
-                disabled={verificationCode.length !== 6 || loading}
+                disabled={verificationCode.length !== 6 || loading || isVerifying}
                 className="w-full px-6 py-3 bg-[#e35e25] text-white rounded-full font-medium hover:bg-[#d14e1a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Verifying...' : 'Verify Code'}
+                {loading || isVerifying ? 'Verifying...' : 'Verify Code'}
               </button>
               <button
                 onClick={() => {
@@ -394,4 +421,3 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
     </div>
   );
 };
-

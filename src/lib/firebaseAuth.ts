@@ -26,7 +26,6 @@ import { getAppSafe } from './firebase';
 
 let authInstance: Auth | null = null;
 let persistencePromise: Promise<void> | null = null;
-let redirectChecked = false;
 let cachedVerifier: RecaptchaVerifier | null = null;
 
 function ensureAuth(): Auth {
@@ -68,8 +67,6 @@ export function listenToAuthChanges(callback: (user: User | null) => void): Unsu
 
 export async function completeGoogleRedirect(): Promise<UserCredential | null> {
   const auth = await initFirebaseAuth();
-  if (redirectChecked) return null;
-  redirectChecked = true;
   try {
     return await getRedirectResult(auth);
   } catch (err) {
@@ -82,7 +79,9 @@ export async function signInWithGoogle(): Promise<UserCredential | null> {
   const auth = await initFirebaseAuth();
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
-  const preferRedirect = typeof window !== 'undefined' && window.innerWidth <= 768;
+  // Proper mobile detection using user-agent (not viewport width)
+  const isMobile = typeof window !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const preferRedirect = isMobile;
 
   try {
     if (preferRedirect) {
