@@ -191,12 +191,10 @@ export function initVisualDebugger() {
   if (typeof window === 'undefined') return;
   if (debuggerInstance) return;
 
-  // Only enable in development or if ?debug=true in URL
+  // Only enable in development mode (not in production)
   const isDev = import.meta.env.DEV;
-  const urlParams = new URLSearchParams(window.location.search);
-  const debugParam = urlParams.get('debug') === 'true';
 
-  if (isDev || debugParam) {
+  if (isDev) {
     debuggerInstance = new VisualDebugger();
     debuggerInstance.init();
     console.log('[DEBUG] Visual debugger enabled');

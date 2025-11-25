@@ -431,58 +431,32 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     // Wait for auth to be ready
     if (!authInitialized) {
-      console.log('[APP] Navigation effect: waiting for authInitialized', { authInitialized, hasUser: !!user });
       return;
     }
     
-    // CRITICAL: Check persisted flag from store (more reliable than local state)
-    // This flag is set when redirect result is processed in userStore.init()
-    // Navigate IMMEDIATELY when flag is true, regardless of current viewState
-    if (user && justLoggedInFromRedirect) {
+    // SIMPLIFIED APPROACH: If user exists and we're on landing page, navigate to feed
+    // This handles both redirect login and normal login flows
+    if (user && viewState === ViewState.LANDING && !hasHandledRedirectLogin) {
       const redirect = redirectAfterLogin || ViewState.FEED;
-      console.log('[APP] 🔴 CRITICAL: Redirecting after mobile redirect login (flag-based):', redirect, { 
-        user: user.email, 
-        authInitialized, 
-        isAuthReady,
-        viewState,
-        justLoggedInFromRedirect 
+      console.log('[APP] User logged in on landing page - redirecting to:', redirect, { 
+        user: user.email,
+        authInitialized 
       });
-      // Use setTimeout to ensure state updates are processed
-      setTimeout(() => {
+      
+      // Small delay to ensure everything is ready
+      const timer = setTimeout(() => {
         setViewState(redirect);
         setRedirectAfterLogin(null);
-        clearJustLoggedInFlag(); // Clear flag after navigation
-      }, 0);
-      return;
-    }
-    
-    // FALLBACK: Direct auth.currentUser check for mobile redirect
-    // Sometimes the flag might not be set, but user is authenticated
-    // Check if we're on landing page with a logged-in user (likely from redirect)
-    if (user && viewState === ViewState.LANDING && !hasHandledRedirectLogin) {
-      // Import auth check dynamically to avoid circular deps
-      import('./src/lib/firebaseAuth').then(({ getAuthInstance }) => {
-        const auth = getAuthInstance();
-        if (auth.currentUser && auth.currentUser.uid === user.uid) {
-          // User is authenticated and on landing page - likely from redirect
-          const redirect = redirectAfterLogin || ViewState.FEED;
-          console.log('[APP] 🟡 FALLBACK: Redirecting after mobile login (direct auth check):', redirect, {
-            user: user.email,
-            currentUser: auth.currentUser.email,
-            viewState
-          });
-          setTimeout(() => {
-            setViewState(redirect);
-            setRedirectAfterLogin(null);
-            setHasHandledRedirectLogin(true);
-          }, 100); // Small delay to ensure state is ready
+        setHasHandledRedirectLogin(true);
+        if (justLoggedInFromRedirect) {
+          clearJustLoggedInFlag();
         }
-      }).catch(err => {
-        console.error('[APP] Error checking auth.currentUser:', err);
-      });
+      }, 200);
+      
+      return () => clearTimeout(timer);
     }
     
-    // Fallback: Handle normal login flow (not from redirect)
+    // Handle normal login flow from AUTH page
     if (user && !hasHandledRedirectLogin && viewState === ViewState.AUTH) {
       const redirect = redirectAfterLogin || ViewState.FEED;
       console.log('[APP] Redirecting after login from AUTH page:', redirect);
