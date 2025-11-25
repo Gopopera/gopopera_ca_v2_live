@@ -309,8 +309,8 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
           
           // Handle rate limiting
           if (signInErr?.code === 'auth/too-many-requests') {
-            setDebugInfo('⏱️ Rate limited - wait before retrying');
-            setError('Too many attempts. Please wait a few minutes before trying again.');
+            setDebugInfo('⏱️ Rate limited - wait 10-15 minutes before retrying');
+            setError('Too many attempts. Please wait 10-15 minutes before trying again. The rate limit will reset automatically.');
             return;
           }
           
@@ -354,8 +354,8 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
           
           // Handle rate limiting
           if (linkErr?.code === 'auth/too-many-requests') {
-            setDebugInfo('⏱️ Rate limited - wait before retrying');
-            setError('Too many attempts. Please wait a few minutes before trying again.');
+            setDebugInfo('⏱️ Rate limited - wait 10-15 minutes before retrying');
+            setError('Too many attempts. Please wait 10-15 minutes before trying again. The rate limit will reset automatically.');
             return;
           }
           
@@ -747,8 +747,8 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
         setStep('phone'); // Go back to phone input
       } else if (error?.code === 'auth/too-many-requests') {
         // Rate limiting - too many failed attempts
-        setError('Too many attempts. Please wait a few minutes before trying again. The rate limit will reset automatically.');
-        setDebugInfo('⏱️ Rate limited - wait before retrying');
+        setError('Too many attempts. Please wait 10-15 minutes before trying again. The rate limit will reset automatically.');
+        setDebugInfo('⏱️ Rate limited - wait 10-15 minutes before retrying');
         setLoading(false);
         setIsSendingCode(false);
         return; // Don't grant access on rate limit - user must wait
