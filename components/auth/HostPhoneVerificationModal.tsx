@@ -12,7 +12,7 @@
  * This verification is idempotent - if already verified, the modal should not be shown.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Phone, X, CheckCircle2 } from 'lucide-react';
 import { getAuthInstance } from '../../src/lib/firebaseAuth';
 import { linkWithPhoneNumber, signInWithPhoneNumber, RecaptchaVerifier, type ConfirmationResult } from 'firebase/auth';
@@ -20,109 +20,6 @@ import { getDbSafe } from '../../src/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { useUserStore } from '../../stores/userStore';
 import { createOrUpdateUserProfile } from '../../firebase/db';
-
-// Module-level singleton for host phone reCAPTCHA verifier
-// This prevents "reCAPTCHA has already been rendered" errors by reusing the same instance
-let hostPhoneRecaptchaVerifier: RecaptchaVerifier | null = null;
-
-async function getHostPhoneRecaptchaVerifier(): Promise<RecaptchaVerifier> {
-  if (hostPhoneRecaptchaVerifier) {
-    console.log('[HOST_VERIFY] Reusing existing reCAPTCHA verifier');
-    return hostPhoneRecaptchaVerifier;
-  }
-
-  // CRITICAL: Ensure container exists in DOM before creating verifier
-  const containerId = 'host-phone-recaptcha-container';
-  let container = document.getElementById(containerId);
-  
-  if (!container) {
-    // Container doesn't exist - create it
-    container = document.createElement('div');
-    container.id = containerId;
-    // For invisible reCAPTCHA, container can be hidden but must be in DOM
-    container.style.display = 'block';
-    container.style.position = 'absolute';
-    container.style.left = '-9999px';
-    container.style.width = '1px';
-    container.style.height = '1px';
-    document.body.appendChild(container);
-    console.log('[HOST_VERIFY] Created reCAPTCHA container');
-  } else {
-    // Container exists - make sure it's accessible
-    container.style.display = 'block';
-    console.log('[HOST_VERIFY] Using existing reCAPTCHA container');
-  }
-
-  // Wait for container to be fully in DOM and rendered
-  await new Promise(resolve => setTimeout(resolve, 100));
-
-  const auth = getAuthInstance();
-  try {
-    console.log('[HOST_VERIFY] Creating new reCAPTCHA verifier...');
-    
-    // Use 'normal' size reCAPTCHA instead of 'invisible' for better reliability
-    // Invisible reCAPTCHA can hang if it doesn't solve automatically
-    // Normal size shows a checkbox that user can interact with
-    container.style.display = 'block';
-    container.style.position = 'relative';
-    container.style.left = 'auto';
-    container.style.width = 'auto';
-    container.style.height = 'auto';
-    container.style.margin = '10px 0';
-    
-    hostPhoneRecaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
-      size: 'normal', // Changed from 'invisible' to 'normal' for better reliability
-      callback: () => {
-        // Called when reCAPTCHA is solved
-        console.log('[HOST_VERIFY] ✅ reCAPTCHA solved successfully (callback fired)');
-      },
-      'expired-callback': () => {
-        console.warn('[HOST_VERIFY] ⚠️ reCAPTCHA expired');
-        // Clear verifier on expiry so it can be recreated
-        clearHostPhoneRecaptchaVerifier();
-      },
-      'error-callback': (error: any) => {
-        console.error('[HOST_VERIFY] ❌ reCAPTCHA error callback:', error);
-        // Clear verifier on error so it can be recreated
-        clearHostPhoneRecaptchaVerifier();
-      },
-    });
-    
-    console.log('[HOST_VERIFY] ✅ reCAPTCHA verifier created successfully');
-    
-    // For normal size reCAPTCHA, it renders automatically when created
-    // No need to call render() explicitly
-  } catch (error: any) {
-    console.error('[HOST_VERIFY] ❌ Failed to create reCAPTCHA verifier:', {
-      code: error?.code,
-      message: error?.message,
-      stack: error?.stack?.substring(0, 200)
-    });
-    throw error;
-  }
-
-  return hostPhoneRecaptchaVerifier;
-}
-
-function clearHostPhoneRecaptchaVerifier() {
-  if (hostPhoneRecaptchaVerifier) {
-    try {
-      // For the Firebase web SDK, clear() is the public API to reset/destroy the widget.
-      hostPhoneRecaptchaVerifier.clear();
-      console.log('[HOST_VERIFY] reCAPTCHA verifier cleared');
-    } catch (error) {
-      console.warn('[HOST_VERIFY] Error clearing verifier:', error);
-    }
-    hostPhoneRecaptchaVerifier = null;
-  }
-  
-  // Also remove the container from DOM to ensure clean state
-  const container = document.getElementById('host-phone-recaptcha-container');
-  if (container && container.parentNode) {
-    container.parentNode.removeChild(container);
-    console.log('[HOST_VERIFY] reCAPTCHA container removed from DOM');
-  }
-}
 
 interface HostPhoneVerificationModalProps {
   isOpen: boolean;
@@ -148,25 +45,84 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [isVerifying, setIsVerifying] = useState(false); // Guard to prevent duplicate verification calls
   const [isSendingCode, setIsSendingCode] = useState(false); // Guard to prevent multiple simultaneous send attempts
+  const [recaptchaSolved, setRecaptchaSolved] = useState(false); // Track when reCAPTCHA is solved
+  
+  // Use useRef to hold the RecaptchaVerifier instance across re-renders
+  // This ensures we always use the same instance that was initialized
+  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
+  const recaptchaContainerRef = useRef<HTMLDivElement>(null);
 
-  // Cleanup verifier on component unmount AND when modal closes
+  // Initialize reCAPTCHA when modal opens and step is 'phone'
   useEffect(() => {
-    return () => {
-      // If the whole modal component is being unmounted (route change, etc.),
-      // clear the verifier so React can remount cleanly later.
-      clearHostPhoneRecaptchaVerifier();
-    };
-  }, []);
-
-  // Also clear verifier when modal closes to prevent reuse issues
-  useEffect(() => {
-    if (!isOpen) {
-      // Clear verifier when modal closes to ensure fresh verifier on next open
-      clearHostPhoneRecaptchaVerifier();
+    if (!isOpen || step !== 'phone') {
+      return;
     }
-  }, [isOpen]);
 
-  // Reset state when modal closes (but don't clear the verifier)
+    // Initialize reCAPTCHA only once when modal opens
+    if (recaptchaContainerRef.current && !recaptchaVerifierRef.current) {
+      const auth = getAuthInstance();
+      
+      try {
+        console.log('[HOST_VERIFY] Creating new reCAPTCHA verifier...');
+        
+        recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
+          size: 'normal',
+          callback: (response: any) => {
+            // reCAPTCHA solved - set state to indicate this
+            console.log('[HOST_VERIFY] ✅ reCAPTCHA solved!', response);
+            setRecaptchaSolved(true);
+            setError(null); // Clear any previous error
+          },
+          'expired-callback': () => {
+            // reCAPTCHA expired - reset state
+            console.warn('[HOST_VERIFY] ⚠️ reCAPTCHA expired');
+            setRecaptchaSolved(false);
+            // Re-render reCAPTCHA after expiration
+            if (recaptchaVerifierRef.current) {
+              recaptchaVerifierRef.current.render().then(() => {
+                console.log('[HOST_VERIFY] reCAPTCHA re-rendered after expiration');
+              }).catch((err) => {
+                console.error('[HOST_VERIFY] Failed to re-render reCAPTCHA:', err);
+              });
+            }
+          },
+          'error-callback': (err: any) => {
+            // Handle reCAPTCHA errors
+            console.error('[HOST_VERIFY] ❌ reCAPTCHA error:', err);
+            setError(`reCAPTCHA Error: ${err?.message || 'Unknown error'}`);
+            setRecaptchaSolved(false);
+          },
+        });
+
+        // Render the reCAPTCHA widget explicitly
+        recaptchaVerifierRef.current.render().then((widgetId) => {
+          console.log('[HOST_VERIFY] ✅ reCAPTCHA rendered with widget ID:', widgetId);
+        }).catch((err) => {
+          console.error('[HOST_VERIFY] ❌ Failed to render reCAPTCHA:', err);
+          setError('Failed to load reCAPTCHA. Please try again.');
+        });
+      } catch (error: any) {
+        console.error('[HOST_VERIFY] ❌ Failed to create reCAPTCHA verifier:', error);
+        setError('Failed to initialize reCAPTCHA. Please refresh and try again.');
+      }
+    }
+
+    // Cleanup: clear reCAPTCHA when modal closes or component unmounts
+    return () => {
+      if (recaptchaVerifierRef.current) {
+        try {
+          recaptchaVerifierRef.current.clear();
+          console.log('[HOST_VERIFY] reCAPTCHA verifier cleared');
+        } catch (error) {
+          console.warn('[HOST_VERIFY] Error clearing verifier:', error);
+        }
+        recaptchaVerifierRef.current = null;
+      }
+      setRecaptchaSolved(false);
+    };
+  }, [isOpen, step]);
+
+  // Reset state when modal closes
   useEffect(() => {
     if (!isOpen) {
       setPhoneNumber('');
@@ -177,6 +133,7 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       setConfirmationResult(null);
       setIsSendingCode(false);
       setIsVerifying(false);
+      setRecaptchaSolved(false);
     }
   }, [isOpen]);
 
@@ -184,6 +141,12 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
     // Guard: prevent multiple simultaneous send attempts
     if (isSendingCode || loading) {
       console.log('[HOST_VERIFY] Send code already in progress, ignoring duplicate call');
+      return;
+    }
+
+    // CRITICAL: Only proceed if reCAPTCHA is solved
+    if (!recaptchaSolved) {
+      setError('Please solve the reCAPTCHA first.');
       return;
     }
 
@@ -199,6 +162,12 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       return;
     }
 
+    // CRITICAL: Ensure verifier exists and is valid
+    if (!recaptchaVerifierRef.current) {
+      setError('reCAPTCHA is not initialized. Please refresh and try again.');
+      return;
+    }
+
     setLoading(true);
     setIsSendingCode(true);
     setError(null);
@@ -209,25 +178,7 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
         ? phoneNumber 
         : `+1${phoneNumber.replace(/\D/g, '')}`;
 
-      // CRITICAL: Always clear and recreate verifier for each send attempt
-      // Once a verifier is used to send a code, it CANNOT be reused
-      // Reusing it causes "too many attempts" errors from Firebase
-      console.log('[HOST_VERIFY] Clearing verifier before new send attempt');
-      clearHostPhoneRecaptchaVerifier();
-      
-      // Small delay to ensure verifier is fully cleared before creating new one
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      // Create a fresh verifier for this send attempt
-      // CRITICAL: Wait for verifier to be ready (container must exist in DOM)
-      console.log('[HOST_VERIFY] Creating new reCAPTCHA verifier...');
-      const verifier = await getHostPhoneRecaptchaVerifier();
-      console.log('[HOST_VERIFY] ✅ Verifier ready, waiting for reCAPTCHA to be solved...');
-
-      // For normal size reCAPTCHA, wait a moment for it to render
-      // The user will see the checkbox and can interact with it
-      await new Promise(resolve => setTimeout(resolve, 500));
-      console.log('[HOST_VERIFY] Calling Firebase phone auth...');
+      console.log('[HOST_VERIFY] ✅ reCAPTCHA solved, calling Firebase phone auth...');
 
       let confirmation: ConfirmationResult;
 
@@ -235,31 +186,13 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       if (currentUser.phoneNumber) {
         // Phone is already linked - use signInWithPhoneNumber to verify (returns ConfirmationResult)
         console.log('[HOST_VERIFY] Phone already linked, using signInWithPhoneNumber');
-        try {
-          confirmation = await signInWithPhoneNumber(auth, formattedPhone, verifier);
-          console.log('[HOST_VERIFY] signInWithPhoneNumber succeeded, ConfirmationResult received');
-        } catch (signInError: any) {
-          console.error('[HOST_VERIFY] signInWithPhoneNumber error:', {
-            code: signInError?.code,
-            message: signInError?.message,
-            stack: signInError?.stack?.substring(0, 200)
-          });
-          throw signInError;
-        }
+        confirmation = await signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifierRef.current);
+        console.log('[HOST_VERIFY] ✅ signInWithPhoneNumber succeeded, ConfirmationResult received');
       } else {
         // Phone is not linked - use linkWithPhoneNumber to link and verify
         console.log('[HOST_VERIFY] Phone not linked, using linkWithPhoneNumber');
-        try {
-          confirmation = await linkWithPhoneNumber(currentUser, formattedPhone, verifier);
-          console.log('[HOST_VERIFY] linkWithPhoneNumber succeeded, ConfirmationResult received');
-        } catch (linkError: any) {
-          console.error('[HOST_VERIFY] linkWithPhoneNumber error:', {
-            code: linkError?.code,
-            message: linkError?.message,
-            stack: linkError?.stack?.substring(0, 200)
-          });
-          throw linkError;
-        }
+        confirmation = await linkWithPhoneNumber(currentUser, formattedPhone, recaptchaVerifierRef.current);
+        console.log('[HOST_VERIFY] ✅ linkWithPhoneNumber succeeded, ConfirmationResult received');
       }
 
       // CRITICAL: Store ConfirmationResult immediately - we need it for verification step
@@ -269,6 +202,7 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       
       setConfirmationResult(confirmation);
       setStep('code');
+      setRecaptchaSolved(false); // Reset for next time
       console.log('[HOST_VERIFY] ✅ Code sent successfully, ConfirmationResult stored');
     } catch (error: any) {
       // Log detailed error information for debugging
@@ -279,9 +213,25 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
         errorObject: error
       });
 
+      // Reset reCAPTCHA status on error so user can try again
+      setRecaptchaSolved(false);
+      
+      // Re-render reCAPTCHA after error
+      if (recaptchaVerifierRef.current) {
+        try {
+          recaptchaVerifierRef.current.render().then(() => {
+            console.log('[HOST_VERIFY] reCAPTCHA re-rendered after error');
+          }).catch((err) => {
+            console.error('[HOST_VERIFY] Failed to re-render reCAPTCHA:', err);
+          });
+        } catch (renderErr) {
+          console.warn('[HOST_VERIFY] Could not re-render reCAPTCHA:', renderErr);
+        }
+      }
+
       // Check for specific error codes that indicate configuration issues
       if (error?.code === 'auth/captcha-check-failed') {
-        setError('reCAPTCHA verification failed. Please try again.');
+        setError('reCAPTCHA verification failed. Please solve it again and try.');
         setLoading(false);
         setIsSendingCode(false);
         return; // Don't grant access on reCAPTCHA failure - user should retry
@@ -298,12 +248,7 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       // This ensures users never see errors and can proceed with event creation
       console.warn('[HOST PHONE] send code error - granting access anyway (fail-open):', error?.code);
 
-      // Clear verifier on error
-      try {
-        clearHostPhoneRecaptchaVerifier();
-      } catch (clearError) {
-        console.warn('[HOST_VERIFY] Error clearing verifier:', clearError);
-      }
+      // Note: We don't clear the verifier here - it's managed by useRef and useEffect
 
       // Format phone number
       const formattedPhone = phoneNumber.startsWith('+') 
@@ -538,10 +483,9 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
           )}
         </div>
 
-        {/* reCAPTCHA container - will be shown when verifier is created
-            For normal size reCAPTCHA, this will display the checkbox */}
+        {/* reCAPTCHA container - use ref to ensure it's available for verifier */}
         {step === 'phone' && (
-          <div id="host-phone-recaptcha-container" className="my-4 flex justify-center" />
+          <div ref={recaptchaContainerRef} id="host-phone-recaptcha-container" className="my-4 flex justify-center" />
         )}
 
         {success ? (
@@ -582,10 +526,10 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
             <div className="space-y-3">
               <button
                 onClick={handleSendCode}
-                disabled={!phoneNumber.trim() || loading || isSendingCode}
+                disabled={!phoneNumber.trim() || loading || isSendingCode || !recaptchaSolved}
                 className="w-full px-6 py-3 bg-[#e35e25] text-white rounded-full font-medium hover:bg-[#d14e1a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading || isSendingCode ? 'Sending...' : 'Send Verification Code'}
+                {loading || isSendingCode ? 'Sending...' : recaptchaSolved ? 'Send Verification Code' : 'Solve reCAPTCHA First'}
               </button>
               {!required && (
                 <button
