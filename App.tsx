@@ -423,21 +423,29 @@ const AppContent: React.FC = () => {
   
   useEffect(() => {
     // Wait for auth to be ready
-    if (!authInitialized) return;
+    if (!authInitialized) {
+      console.log('[APP] Navigation effect: waiting for authInitialized', { authInitialized, hasUser: !!user });
+      return;
+    }
     
     // CRITICAL: Check persisted flag from store (more reliable than local state)
     // This flag is set when redirect result is processed in userStore.init()
+    // Navigate IMMEDIATELY when flag is true, regardless of current viewState
     if (user && justLoggedInFromRedirect) {
       const redirect = redirectAfterLogin || ViewState.FEED;
-      console.log('[APP] Redirecting after mobile redirect login (flag-based):', redirect, { 
+      console.log('[APP] 🔴 CRITICAL: Redirecting after mobile redirect login (flag-based):', redirect, { 
         user: user.email, 
         authInitialized, 
         isAuthReady,
-        viewState 
+        viewState,
+        justLoggedInFromRedirect 
       });
-      setViewState(redirect);
-      setRedirectAfterLogin(null);
-      clearJustLoggedInFlag(); // Clear flag after navigation
+      // Use setTimeout to ensure state updates are processed
+      setTimeout(() => {
+        setViewState(redirect);
+        setRedirectAfterLogin(null);
+        clearJustLoggedInFlag(); // Clear flag after navigation
+      }, 0);
       return;
     }
     
