@@ -4,6 +4,7 @@ import { ChevronLeft, Upload, MapPin, Calendar, Clock, Plus } from 'lucide-react
 import { useEventStore } from '../stores/eventStore';
 import { useUserStore } from '../stores/userStore';
 import { HostPhoneVerificationModal } from '../components/auth/HostPhoneVerificationModal';
+import { uploadImage } from '../firebase/storage';
 
 interface CreateEventPageProps {
   setViewState: (view: ViewState) => void;
@@ -32,6 +33,8 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [attendeesCount, setAttendeesCount] = useState(0);
   const [host, setHost] = useState('You'); // Default host name
   const [price, setPrice] = useState('Free');
@@ -72,15 +75,44 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Mock upload - create a data URL or use a placeholder
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size must be less than 5MB');
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      setImageFile(file);
+      
+      // Show preview immediately using data URL (for UI only)
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImageUrl(reader.result as string);
+        setImageUrl(reader.result as string); // Preview only
       };
       reader.readAsDataURL(file);
+      
+      console.log('[CREATE_EVENT] Image selected, will upload to Storage on submit:', {
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type
+      });
+    } catch (error) {
+      console.error('[CREATE_EVENT] Error preparing image:', error);
+      alert('Failed to process image. Please try again.');
+      setUploadingImage(false);
+      setImageFile(null);
+      setImageUrl('');
     }
   };
 
@@ -171,7 +203,29 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         actual: projectId
       });
     }
-
+    
+    // Upload image to Firebase Storage if an image file was selected
+    let finalImageUrl = imageUrl || `https://picsum.photos/seed/${title}/800/600`;
+    if (imageFile && user?.uid) {
+      try {
+        console.log('[CREATE_EVENT] Uploading image to Firebase Storage...');
+        const imagePath = `events/${user.uid}/${Date.now()}_${imageFile.name}`;
+        finalImageUrl = await uploadImage(imagePath, imageFile);
+        console.log('[CREATE_EVENT] ✅ Image uploaded successfully:', finalImageUrl);
+      } catch (uploadError: any) {
+        console.error('[CREATE_EVENT] ❌ Image upload failed:', uploadError);
+        alert(`Failed to upload image: ${uploadError?.message || 'Unknown error'}. Please try again or use a different image.`);
+        setIsSubmitting(false);
+        return;
+      }
+    } else if (imageUrl && imageUrl.startsWith('data:')) {
+      // If user selected an image but we're using base64, warn them
+      console.warn('[CREATE_EVENT] ⚠️ Using base64 image URL - this may fail if image is too large. Image should be uploaded to Storage.');
+      // For now, use placeholder to avoid Firestore size limit error
+      finalImageUrl = `https://picsum.photos/seed/${title}/800/600`;
+      console.log('[CREATE_EVENT] Using placeholder image instead of base64 to avoid Firestore size limit');
+    }
+    
     try {
       // Create event with all required fields
       console.log('[CREATE_EVENT] Calling addEvent with:', {
@@ -193,7 +247,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         tags,
         host,
         hostId: user?.uid || '',
-        imageUrl: imageUrl || `https://picsum.photos/seed/${title}/800/600`,
+        imageUrl: finalImageUrl,
         attendeesCount,
         category: category as typeof CATEGORIES[number],
         price,
