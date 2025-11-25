@@ -71,8 +71,10 @@ interface UserStore {
   handleAuthSuccess: (firebaseUser: FirebaseUser) => Promise<void>;
   init: () => void; // Explicit initialization method
   _redirectHandled: boolean;
+  _justLoggedInFromRedirect: boolean; // Track if user just logged in from redirect (for navigation)
   setRedirectAfterLogin: (view: ViewState | null) => void;
   getRedirectAfterLogin: () => ViewState | null;
+  clearJustLoggedInFlag: () => void; // Clear the redirect login flag after navigation
 }
 
 // Official Popera account constants
@@ -93,6 +95,7 @@ export const useUserStore = create<UserStore>()(
       _authUnsub: null,
       _initialized: false,
       _redirectHandled: false,
+      _justLoggedInFromRedirect: false, // Track if user just logged in from redirect (for navigation)
       redirectAfterLogin: null,
       async handleAuthSuccess(firebaseUser: FirebaseUser) {
         console.log('[USER_STORE] handleAuthSuccess called', {
@@ -145,7 +148,8 @@ export const useUserStore = create<UserStore>()(
 
       init: () => {
         if (get()._initialized) return; // Already initialized
-        set({ _initialized: true, loading: true, ready: false, isAuthReady: false, _redirectHandled: false });
+        // Clear redirect flag on init (don't persist across page refreshes)
+        set({ _initialized: true, loading: true, ready: false, isAuthReady: false, _redirectHandled: false, _justLoggedInFromRedirect: false });
         
         if (!firebaseEnabled) {
           console.error('[AUTH] Firebase disabled due to missing env vars; skipping auth init');
@@ -175,9 +179,9 @@ export const useUserStore = create<UserStore>()(
                   console.log('[AUTH] Redirect result found, processing login', redirectResult.user.email);
                   await get().handleAuthSuccess(redirectResult.user);
                   await ensurePoperaProfileAndSeed(redirectResult.user);
-                  // CRITICAL: Set authInitialized immediately after redirect login
+                  // CRITICAL: Set authInitialized and redirect flag immediately after redirect login
                   // This ensures navigation logic in App.tsx can detect the logged-in user
-                  set({ _redirectHandled: true, authInitialized: true, isAuthReady: true });
+                  set({ _redirectHandled: true, _justLoggedInFromRedirect: true, authInitialized: true, isAuthReady: true });
                   redirectUserProcessed = true;
                   } else {
                     console.log('[AUTH] No redirect result found - checking currentUser');
@@ -188,7 +192,9 @@ export const useUserStore = create<UserStore>()(
                       console.log('[AUTH] Found currentUser from auth state:', auth.currentUser.email);
                       await get().handleAuthSuccess(auth.currentUser);
                       await ensurePoperaProfileAndSeed(auth.currentUser);
-                      set({ _redirectHandled: true, authInitialized: true, isAuthReady: true });
+                      // Check if we're on the landing page (likely returned from redirect)
+                      const isOnLanding = typeof window !== 'undefined' && window.location.pathname === '/';
+                      set({ _redirectHandled: true, _justLoggedInFromRedirect: isOnLanding, authInitialized: true, isAuthReady: true });
                       redirectUserProcessed = true;
                     } else {
                       set({ _redirectHandled: true });
@@ -204,7 +210,9 @@ export const useUserStore = create<UserStore>()(
                     console.log('[AUTH] Found currentUser after redirect error:', auth.currentUser.email);
                     await get().handleAuthSuccess(auth.currentUser);
                     await ensurePoperaProfileAndSeed(auth.currentUser);
-                    set({ _redirectHandled: true, authInitialized: true, isAuthReady: true });
+                    // Check if we're on the landing page (likely returned from redirect)
+                    const isOnLanding = typeof window !== 'undefined' && window.location.pathname === '/';
+                    set({ _redirectHandled: true, _justLoggedInFromRedirect: isOnLanding, authInitialized: true, isAuthReady: true });
                     redirectUserProcessed = true;
                   } else {
                     set({ _redirectHandled: true });
@@ -637,6 +645,10 @@ export const useUserStore = create<UserStore>()(
 
       getRedirectAfterLogin: () => {
         return get().redirectAfterLogin;
+      },
+      
+      clearJustLoggedInFlag: () => {
+        set({ _justLoggedInFromRedirect: false });
       },
     }),
     {

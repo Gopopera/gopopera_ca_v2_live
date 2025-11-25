@@ -415,45 +415,47 @@ const AppContent: React.FC = () => {
   }
 
   // Handle redirect after successful login (including Google login)
-  // Redirect immediately when user is detected after auth
+  // Use persisted store flag instead of local state for reliability
   const redirectAfterLogin = useUserStore((state) => state.redirectAfterLogin);
   const setRedirectAfterLogin = useUserStore((state) => state.setRedirectAfterLogin);
+  const justLoggedInFromRedirect = useUserStore((state) => state._justLoggedInFromRedirect);
+  const clearJustLoggedInFlag = useUserStore((state) => state.clearJustLoggedInFlag);
   
   useEffect(() => {
-    // Wait for auth to be ready, but don't block on loading state for redirect login
-    // (loading might be true during profile fetch, but user is already authenticated)
+    // Wait for auth to be ready
     if (!authInitialized) return;
     
-    // Handle redirect login - check if user just logged in
-    if (user && !hasHandledRedirectLogin) {
-      // Case 1: User is on AUTH page (normal login flow)
-      if (viewState === ViewState.AUTH) {
-        const redirect = redirectAfterLogin || ViewState.FEED;
-        console.log('[APP] Redirecting after login from AUTH page:', redirect);
-        setViewState(redirect);
-        setRedirectAfterLogin(null);
-        setHasHandledRedirectLogin(true);
-        return;
-      }
-      
-      // Case 2: User just returned from Google redirect (mobile login)
-      // Redirect immediately when user exists and auth is initialized
-      // Don't wait for authBootChecked - redirect as soon as user is detected
-      if (viewState === ViewState.LANDING) {
-        const redirect = redirectAfterLogin || ViewState.FEED;
-        console.log('[APP] Redirecting after mobile redirect login:', redirect, { user: user.email, authInitialized, isAuthReady });
-        setViewState(redirect);
-        setRedirectAfterLogin(null);
-        setHasHandledRedirectLogin(true);
-        return;
-      }
+    // CRITICAL: Check persisted flag from store (more reliable than local state)
+    // This flag is set when redirect result is processed in userStore.init()
+    if (user && justLoggedInFromRedirect) {
+      const redirect = redirectAfterLogin || ViewState.FEED;
+      console.log('[APP] Redirecting after mobile redirect login (flag-based):', redirect, { 
+        user: user.email, 
+        authInitialized, 
+        isAuthReady,
+        viewState 
+      });
+      setViewState(redirect);
+      setRedirectAfterLogin(null);
+      clearJustLoggedInFlag(); // Clear flag after navigation
+      return;
+    }
+    
+    // Fallback: Handle normal login flow (not from redirect)
+    if (user && !hasHandledRedirectLogin && viewState === ViewState.AUTH) {
+      const redirect = redirectAfterLogin || ViewState.FEED;
+      console.log('[APP] Redirecting after login from AUTH page:', redirect);
+      setViewState(redirect);
+      setRedirectAfterLogin(null);
+      setHasHandledRedirectLogin(true);
+      return;
     }
     
     // Reset redirect handler when user logs out
     if (!user && hasHandledRedirectLogin) {
       setHasHandledRedirectLogin(false);
     }
-  }, [user, viewState, redirectAfterLogin, setRedirectAfterLogin, authInitialized, hasHandledRedirectLogin]);
+  }, [user, viewState, redirectAfterLogin, setRedirectAfterLogin, authInitialized, hasHandledRedirectLogin, justLoggedInFromRedirect, clearJustLoggedInFlag]);
   
   // Events are now loaded via real-time subscription in eventStore.init()
   // No need for manual loading or mock data initialization - events come from Firestore in real-time
