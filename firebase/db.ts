@@ -73,11 +73,23 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
     const eventsCol = collection(db, "events");
     const now = Date.now();
     
+    // Get Firebase app to verify project
+    const app = (await import('../src/lib/firebase')).getAppSafe();
+    const projectId = app?.options?.projectId;
+    
     console.log('[CREATE_EVENT_DB] Firestore connection check:', {
       hasDb: !!db,
+      firebaseProjectId: projectId || 'NOT CONNECTED',
       isOnline: navigator?.onLine,
       connectionType: (navigator as any)?.connection?.effectiveType || 'unknown'
     });
+    
+    if (projectId && projectId !== 'gopopera2026') {
+      console.warn('[CREATE_EVENT_DB] ⚠️ WARNING: Connected to wrong Firebase project!', {
+        expected: 'gopopera2026',
+        actual: projectId
+      });
+    }
     
     // Build event data with defaults
     const eventDataRaw: Omit<FirestoreEvent, 'id'> = {

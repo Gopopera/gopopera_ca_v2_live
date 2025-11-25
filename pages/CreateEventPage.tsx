@@ -147,10 +147,30 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
     }
     
     setIsSubmitting(true);
+    
+    // Log Firebase project info for verification
+    const app = (await import('../src/lib/firebase')).getAppSafe();
+    const projectId = app?.options?.projectId;
     console.log('[CREATE_EVENT] Starting event creation...', {
       isOnline: navigator?.onLine,
-      connectionType: (navigator as any)?.connection?.effectiveType || 'unknown'
+      connectionType: (navigator as any)?.connection?.effectiveType || 'unknown',
+      firebaseProjectId: projectId || 'NOT CONNECTED',
+      userId: user?.uid,
+      userEmail: user?.email
     });
+    
+    if (!projectId) {
+      alert('Firebase is not connected. Please refresh the page and try again.');
+      setIsSubmitting(false);
+      return;
+    }
+    
+    if (projectId !== 'gopopera2026') {
+      console.warn('[CREATE_EVENT] ⚠️ WARNING: Connected to wrong Firebase project!', {
+        expected: 'gopopera2026',
+        actual: projectId
+      });
+    }
 
     try {
       // Create event with all required fields

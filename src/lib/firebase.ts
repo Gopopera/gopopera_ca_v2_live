@@ -68,7 +68,8 @@ const cfg = {
   measurementId: requiredFirebaseVars.measurementId,
 };
 
-// Config logging removed for production (only log errors/warnings)
+// Log Firebase project info on initialization (once)
+let projectInfoLogged = false;
 
 export function getAppSafe(): FirebaseApp | null {
   if (!firebaseEnabled) {
@@ -88,6 +89,17 @@ export function getAppSafe(): FirebaseApp | null {
         try {
           app = initializeApp(cfg);
           cachedApp = app;
+          
+          // Log Firebase project info once on initialization
+          if (!projectInfoLogged) {
+            console.log('[FIREBASE] ✅ Connected to Firebase project:', {
+              projectId: cfg.projectId,
+              authDomain: cfg.authDomain,
+              appId: cfg.appId?.substring(0, 20) + '...',
+              apiKey: cfg.apiKey?.substring(0, 20) + '...'
+            });
+            projectInfoLogged = true;
+          }
         } catch (initError) {
           console.error('[FIREBASE] initializeApp failed:', initError);
           return null;
