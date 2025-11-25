@@ -400,6 +400,13 @@ const AppContent: React.FC = () => {
       console.warn('[APP] Failed to load auth monitoring:', err);
     });
     
+    // Initialize visual debugger (shows logs on screen - enable with ?debug=true)
+    import('./src/lib/visualDebugger').then(({ initVisualDebugger }) => {
+      initVisualDebugger();
+    }).catch((err) => {
+      console.warn('[APP] Failed to load visual debugger:', err);
+    });
+    
     useUserStore.getState().init();
     // Initialize events store with real-time Firestore subscription
     useEventStore.getState().init();
