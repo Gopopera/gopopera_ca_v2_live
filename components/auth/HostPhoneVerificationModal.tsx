@@ -263,17 +263,27 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
             isTimeout
           });
           
+          // CRITICAL: Always clear loading state on error
+          setLoading(false);
+          setIsSendingCode(false);
+          
           // Check for specific error codes from console
           if (signInErr?.code === 'auth/network-request-failed' || signInErr?.message?.includes('400') || signInErr?.message?.includes('401')) {
             setDebugInfo('❌ Network/Configuration Error - Check Firebase Console settings');
             setError('Phone verification configuration error. Please check Firebase Console → Authentication → Settings → reCAPTCHA configuration.');
-            setLoading(false);
-            setIsSendingCode(false);
             return;
           }
           
-          setDebugInfo(isTimeout ? '⏱️ Request timed out after 30 seconds' : `❌ Error: ${signInErr?.code || signInErr?.message}`);
-          throw signInErr;
+          // Handle timeout specifically
+          if (isTimeout) {
+            setDebugInfo('⏱️ Request timed out after 30 seconds - Firebase may be slow or unresponsive');
+            setError('Request timed out. Firebase may be experiencing issues. Please try again in a moment.');
+            return;
+          }
+          
+          setDebugInfo(`❌ Error: ${signInErr?.code || signInErr?.message}`);
+          setError(signInErr?.message || 'Failed to send verification code. Please try again.');
+          return; // Don't throw - we've handled the error
         }
       } else {
         // Phone is not linked - use linkWithPhoneNumber to link and verify
@@ -291,17 +301,27 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
             isTimeout
           });
           
+          // CRITICAL: Always clear loading state on error
+          setLoading(false);
+          setIsSendingCode(false);
+          
           // Check for specific error codes from console
           if (linkErr?.code === 'auth/network-request-failed' || linkErr?.message?.includes('400') || linkErr?.message?.includes('401')) {
             setDebugInfo('❌ Network/Configuration Error - Check Firebase Console settings');
             setError('Phone verification configuration error. Please check Firebase Console → Authentication → Settings → reCAPTCHA configuration.');
-            setLoading(false);
-            setIsSendingCode(false);
             return;
           }
           
-          setDebugInfo(isTimeout ? '⏱️ Request timed out after 30 seconds' : `❌ Error: ${linkErr?.code || linkErr?.message}`);
-          throw linkErr;
+          // Handle timeout specifically
+          if (isTimeout) {
+            setDebugInfo('⏱️ Request timed out after 30 seconds - Firebase may be slow or unresponsive');
+            setError('Request timed out. Firebase may be experiencing issues. Please try again in a moment.');
+            return;
+          }
+          
+          setDebugInfo(`❌ Error: ${linkErr?.code || linkErr?.message}`);
+          setError(linkErr?.message || 'Failed to send verification code. Please try again.');
+          return; // Don't throw - we've handled the error
         }
       }
 
@@ -319,12 +339,16 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       console.log('[HOST_VERIFY] ⏰ IMPORTANT: Verify code quickly - session expires in ~2 minutes');
     } catch (error: any) {
       // Log detailed error information for debugging
-      console.error('[HOST_VERIFY] ❌ Send code failed:', {
+      console.error('[HOST_VERIFY] ❌ Send code failed (outer catch):', {
         code: error?.code,
         message: error?.message,
         stack: error?.stack?.substring(0, 300),
         errorObject: error
       });
+
+      // CRITICAL: Always clear loading state in outer catch (fallback)
+      setLoading(false);
+      setIsSendingCode(false);
 
       // Reset reCAPTCHA status on error so user can try again
       setRecaptchaSolved(false);
