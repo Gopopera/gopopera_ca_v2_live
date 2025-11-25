@@ -46,6 +46,7 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
   const [isVerifying, setIsVerifying] = useState(false); // Guard to prevent duplicate verification calls
   const [isSendingCode, setIsSendingCode] = useState(false); // Guard to prevent multiple simultaneous send attempts
   const [recaptchaSolved, setRecaptchaSolved] = useState(false); // Track when reCAPTCHA is solved
+  const [debugInfo, setDebugInfo] = useState<string>(''); // Visual debug info
   
   // Use useRef to hold the RecaptchaVerifier instance across re-renders
   // This ensures we always use the same instance that was initialized
@@ -69,14 +70,17 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
           size: 'normal',
           callback: (response: any) => {
             // reCAPTCHA solved - set state to indicate this
+            const timestamp = new Date().toISOString();
             console.log('[HOST_VERIFY] ✅✅✅ reCAPTCHA SOLVED! Callback fired!', {
               response,
-              timestamp: new Date().toISOString()
+              timestamp
             });
+            setDebugInfo(`✅ reCAPTCHA solved at ${new Date().toLocaleTimeString()}`);
             // Use setTimeout to ensure state update happens
             setTimeout(() => {
               setRecaptchaSolved(true);
               setError(null); // Clear any previous error
+              setDebugInfo(`✅ reCAPTCHA solved - Ready to send`);
               console.log('[HOST_VERIFY] recaptchaSolved state set to true');
             }, 0);
           },
@@ -101,20 +105,23 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
           },
         });
 
-      // Render the reCAPTCHA widget explicitly
-      // CRITICAL: render() must be called for the widget to appear
-      console.log('[HOST_VERIFY] Calling render() on reCAPTCHA verifier...');
-      recaptchaVerifierRef.current.render().then((widgetId) => {
-        console.log('[HOST_VERIFY] ✅✅✅ reCAPTCHA rendered successfully with widget ID:', widgetId);
-        console.log('[HOST_VERIFY] Waiting for user to solve reCAPTCHA...');
-      }).catch((err) => {
-        console.error('[HOST_VERIFY] ❌ Failed to render reCAPTCHA:', {
-          error: err,
-          message: err?.message,
-          stack: err?.stack?.substring(0, 200)
+        // Render the reCAPTCHA widget explicitly
+        // CRITICAL: render() must be called for the widget to appear
+        console.log('[HOST_VERIFY] Calling render() on reCAPTCHA verifier...');
+        setDebugInfo('🔄 Loading reCAPTCHA...');
+        recaptchaVerifierRef.current.render().then((widgetId) => {
+          console.log('[HOST_VERIFY] ✅✅✅ reCAPTCHA rendered successfully with widget ID:', widgetId);
+          console.log('[HOST_VERIFY] Waiting for user to solve reCAPTCHA...');
+          setDebugInfo('⏳ Please solve the reCAPTCHA checkbox above');
+        }).catch((err) => {
+          console.error('[HOST_VERIFY] ❌ Failed to render reCAPTCHA:', {
+            error: err,
+            message: err?.message,
+            stack: err?.stack?.substring(0, 200)
+          });
+          setError('Failed to load reCAPTCHA. Please refresh and try again.');
+          setDebugInfo('❌ Failed to load reCAPTCHA');
         });
-        setError('Failed to load reCAPTCHA. Please refresh and try again.');
-      });
       } catch (error: any) {
         console.error('[HOST_VERIFY] ❌ Failed to create reCAPTCHA verifier:', error);
         setError('Failed to initialize reCAPTCHA. Please refresh and try again.');
@@ -148,6 +155,7 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       setIsSendingCode(false);
       setIsVerifying(false);
       setRecaptchaSolved(false);
+      setDebugInfo('');
     }
   }, [isOpen]);
 
@@ -210,6 +218,7 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
         hasVerifier: !!recaptchaVerifierRef.current,
         currentUserPhone: currentUser.phoneNumber
       });
+      setDebugInfo('📤 Sending SMS code... (this may take up to 30 seconds)');
 
       let confirmation: ConfirmationResult;
 
@@ -232,13 +241,16 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
         try {
           confirmation = await Promise.race([firebaseCallPromise, timeoutPromise]) as ConfirmationResult;
           console.log('[HOST_VERIFY] ✅✅✅ signInWithPhoneNumber SUCCEEDED, ConfirmationResult received');
+          setDebugInfo('✅ SMS code sent successfully!');
         } catch (signInErr: any) {
+          const isTimeout = signInErr?.message?.includes('timed out');
           console.error('[HOST_VERIFY] ❌ signInWithPhoneNumber ERROR:', {
             code: signInErr?.code,
             message: signInErr?.message,
             stack: signInErr?.stack?.substring(0, 300),
-            isTimeout: signInErr?.message?.includes('timed out')
+            isTimeout
           });
+          setDebugInfo(isTimeout ? '⏱️ Request timed out after 30 seconds' : `❌ Error: ${signInErr?.code || signInErr?.message}`);
           throw signInErr;
         }
       } else {
@@ -247,13 +259,16 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
         try {
           confirmation = await Promise.race([firebaseCallPromise, timeoutPromise]) as ConfirmationResult;
           console.log('[HOST_VERIFY] ✅✅✅ linkWithPhoneNumber SUCCEEDED, ConfirmationResult received');
+          setDebugInfo('✅ SMS code sent successfully!');
         } catch (linkErr: any) {
+          const isTimeout = linkErr?.message?.includes('timed out');
           console.error('[HOST_VERIFY] ❌ linkWithPhoneNumber ERROR:', {
             code: linkErr?.code,
             message: linkErr?.message,
             stack: linkErr?.stack?.substring(0, 300),
-            isTimeout: linkErr?.message?.includes('timed out')
+            isTimeout
           });
+          setDebugInfo(isTimeout ? '⏱️ Request timed out after 30 seconds' : `❌ Error: ${linkErr?.code || linkErr?.message}`);
           throw linkErr;
         }
       }
