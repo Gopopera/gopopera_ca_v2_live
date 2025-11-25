@@ -46,6 +46,23 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      // Lock body scroll
+      document.body.style.overflow = 'hidden';
+      // Ensure menu is visible by scrolling to top if needed
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    } else {
+      // Restore body scroll
+      document.body.style.overflow = '';
+    }
+    return () => {
+      // Cleanup: restore scroll on unmount
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
+
   const handleNav = (view: ViewState) => {
     setViewState(view);
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -160,7 +177,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
         </div>
 
         {/* Mobile Toggle */}
-        <div className="lg:hidden z-50 flex items-center gap-2.5">
+        <div className="lg:hidden z-[55] flex items-center gap-2.5 relative">
           {/* Language Toggle - Mobile */}
           <button
             onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
@@ -194,8 +211,19 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
 
       {/* Mobile Menu Overlay - Fixed z-index and overflow */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 bg-white z-[60] flex flex-col pt-20 sm:pt-24 md:pt-28 px-4 sm:px-6 md:px-8 lg:hidden animate-fade-in safe-area-inset-top overflow-y-auto" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
-          <nav className="flex flex-col space-y-1 sm:space-y-2 md:space-y-3 text-lg sm:text-xl md:text-2xl font-heading font-bold text-popera-teal h-full overflow-y-auto pb-8 sm:pb-10 md:pb-12">
+        <div 
+          className="fixed inset-0 bg-white z-[70] flex flex-col pt-20 sm:pt-24 md:pt-28 px-4 sm:px-6 md:px-8 lg:hidden animate-fade-in safe-area-inset-top overflow-y-auto" 
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0,
+            willChange: 'transform',
+            WebkitOverflowScrolling: 'touch'
+          }}
+        >
+          <nav className="flex flex-col space-y-1 sm:space-y-2 md:space-y-3 text-lg sm:text-xl md:text-2xl font-heading font-bold text-popera-teal flex-1 overflow-y-auto pb-8 sm:pb-10 md:pb-12">
             
             {isLoggedIn ? (
                <>

@@ -149,7 +149,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           {/* SEARCH BAR & FILTERS */}
-          <div className="mt-4 space-y-6">
+          <div className="mt-4 space-y-6 px-4 sm:px-0">
              {/* Search Inputs Row */}
              <div className="flex flex-col md:flex-row gap-3 w-full md:max-w-3xl relative z-30">
                 

@@ -53,10 +53,11 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
   }, [user, refreshUserProfile]);
 
   const handleHostVerificationSuccess = async () => {
-    // Refresh user profile to get updated phoneVerifiedForHosting status
+    // Pull fresh profile from Firestore and close the modal
     await refreshUserProfile();
     setShowHostVerificationModal(false);
-    // User can now proceed to create event (form submission will work on next attempt)
+    // User can now click Submit again and this time the gating will allow publishing
+    // without reopening the modal (phoneVerifiedForHosting is now true)
   };
 
   const handleAddTag = () => {
@@ -86,8 +87,10 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
     e.preventDefault();
     
     // Gate: Check if user has verified phone for hosting
-    // If phoneVerifiedForHosting is false or undefined, show verification modal
-    if (!userProfile?.phoneVerifiedForHosting) {
+    // Use OR logic: userProfile.phoneVerifiedForHosting OR user.phone_verified (backward compatibility)
+    const isHostPhoneVerified = !!(userProfile?.phoneVerifiedForHosting || user?.phone_verified);
+    
+    if (!isHostPhoneVerified) {
       setShowHostVerificationModal(true);
       return;
     }

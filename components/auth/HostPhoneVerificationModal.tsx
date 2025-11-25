@@ -213,7 +213,16 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
           phone_number: formattedPhone,
         });
 
-        // Refresh user profile to get updated data
+        // Immediately sync userProfile in store so gating logic sees the change on next submit
+        // Only update if userProfile exists (if it doesn't, refreshUserProfile will fetch it)
+        const current = useUserStore.getState().userProfile;
+        if (current) {
+          useUserStore.setState({
+            userProfile: { ...current, phoneVerifiedForHosting: true, hostPhoneNumber: formattedPhone },
+          });
+        }
+
+        // Refresh user profile to get updated data from Firestore
         await refreshUserProfile();
       }
 
