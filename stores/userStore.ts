@@ -193,15 +193,14 @@ export const useUserStore = create<UserStore>()(
             }
             
             // Set up auth state listener - PRIMARY mechanism for mobile redirects
-            // onAuthStateChanged is more reliable than getRedirectResult() on mobile
-            // CRITICAL: This MUST fire with the user after redirect, even if getRedirectResult() failed
+            // onAuthStateChanged is the ONLY reliable way to detect mobile redirects
+            // CRITICAL: This MUST fire with the user after redirect completes
             const unsub = listenToAuthChanges(async (firebaseUser) => {
               try {
                 console.log('[AUTH] 🔔 onAuthStateChanged fired', {
                   hasUser: !!firebaseUser,
                   uid: firebaseUser?.uid,
                   email: firebaseUser?.email,
-                  redirectUserProcessed,
                   _redirectHandled: get()._redirectHandled,
                   currentStoreUser: get().user?.email,
                   pathname: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
@@ -211,39 +210,40 @@ export const useUserStore = create<UserStore>()(
                   // If we already have this user in store, just ensure authInitialized is set
                   const currentUser = get().user;
                   if (currentUser && currentUser.uid === firebaseUser.uid) {
-                    console.log('[AUTH] ✅ User already in store, ensuring authInitialized');
+                    console.log('[AUTH] ✅ User already in store');
                     const isOnLanding = typeof window !== 'undefined' && window.location.pathname === '/';
                     set({ 
                       authInitialized: true, 
                       isAuthReady: true,
                       _redirectHandled: true,
-                      _justLoggedInFromRedirect: isOnLanding && !get()._justLoggedInFromRedirect ? true : get()._justLoggedInFromRedirect
+                      _justLoggedInFromRedirect: isOnLanding
                     });
                     return;
                   }
                   
-                  // User exists in Firebase but not in store - THIS IS THE KEY FOR MOBILE
-                  console.log('[AUTH] ✅✅✅ CRITICAL: Setting user from onAuthStateChanged (mobile redirect):', firebaseUser.email);
+                  // User exists in Firebase but not in store - SET IT NOW
+                  console.log('[AUTH] ✅✅✅ CRITICAL: Setting user from onAuthStateChanged:', firebaseUser.email);
                   await get().handleAuthSuccess(firebaseUser);
                   await ensurePoperaProfileAndSeed(firebaseUser);
                   
                   // Check if this is a redirect login (user on landing page)
                   const isOnLanding = typeof window !== 'undefined' && window.location.pathname === '/';
-                  console.log('[AUTH] Setting redirect flags', { isOnLanding, pathname: window.location.pathname });
+                  console.log('[AUTH] User set, redirect flags:', { isOnLanding, pathname: window.location.pathname });
                   set({ 
                     authInitialized: true, 
                     isAuthReady: true, 
                     _redirectHandled: true,
-                    _justLoggedInFromRedirect: isOnLanding // Always set if on landing page
+                    _justLoggedInFromRedirect: isOnLanding
                   });
                 } else {
-                  // No user - CRITICAL: Don't clear if we're on landing page (might be redirect in progress)
+                  // No user - ONLY clear if we're NOT on landing page (landing = might be redirect in progress)
                   const isOnLanding = typeof window !== 'undefined' && window.location.pathname === '/';
-                  if (get()._redirectHandled || !isOnLanding) {
-                    console.log('[AUTH] No user and redirect handled (or not on landing) - clearing state');
+                  if (!isOnLanding && get()._redirectHandled) {
+                    console.log('[AUTH] No user and not on landing - clearing state');
                     set({ user: null, userProfile: null, currentUser: null, loading: false, ready: true, isAuthReady: true, authInitialized: true });
                   } else {
-                    console.log('[AUTH] ⚠️ No user but on landing page - might be redirect in progress, waiting...');
+                    console.log('[AUTH] ⚠️ No user but on landing page - redirect might be in progress, NOT clearing');
+                    // Don't clear user state if on landing page - wait for redirect to complete
                     set({ authInitialized: true });
                   }
                 }
