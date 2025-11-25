@@ -49,7 +49,7 @@ export const EventCard: React.FC<EventCardProps> = ({
       {/* Image Container - Fixed aspect ratio */}
       <div className={`relative w-full aspect-[4/3] overflow-hidden rounded-t-xl md:rounded-t-2xl bg-gradient-to-br from-popera-teal to-[#1f4d52]`}>
         <img 
-          src={event.imageUrl || `https://picsum.photos/seed/${event.id || 'event'}/800/600`} 
+          src={event.imageUrls && event.imageUrls.length > 0 ? event.imageUrls[0] : (event.imageUrl || `https://picsum.photos/seed/${event.id || 'event'}/800/600`)} 
           alt={event.title} 
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
           loading="lazy"

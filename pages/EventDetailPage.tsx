@@ -243,11 +243,17 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             ))}
           </div>
         ) : (
-          // Single image
+          // Single image - prefer imageUrls[0] over imageUrl for backward compatibility
           <img 
-            src={event.imageUrl || (event.imageUrls && event.imageUrls[0]) || `https://picsum.photos/seed/${event.id}/800/600`} 
+            src={(event.imageUrls && event.imageUrls.length > 0) ? event.imageUrls[0] : (event.imageUrl || `https://picsum.photos/seed/${event.id}/800/600`)} 
             alt={event.title} 
             className="w-full h-full object-cover object-center transition-transform duration-1000 group-hover:scale-105" 
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              if (!target.src.includes('picsum.photos')) {
+                target.src = `https://picsum.photos/seed/${event.id}/800/600`;
+              }
+            }}
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-[#15383c] via-[#15383c]/40 to-transparent opacity-90" />
