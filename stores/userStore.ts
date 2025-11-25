@@ -168,56 +168,63 @@ export const useUserStore = create<UserStore>()(
           try {
             await initFirebaseAuth();
 
-            // CRITICAL: On mobile, Firebase might not be ready immediately after redirect
-            // We need to check multiple times and also rely on onAuthStateChanged
+            // CRITICAL: On mobile, getRedirectResult() often returns null even when redirect succeeded
+            // We MUST rely on onAuthStateChanged as the primary mechanism
+            // Don't mark redirect as handled until onAuthStateChanged fires
             let redirectUserProcessed = false;
             if (!get()._redirectHandled) {
-              // First immediate check
+              // Try getRedirectResult() but don't rely on it
               try {
                 const redirectResult = await completeGoogleRedirect();
                 if (redirectResult?.user) {
-                  console.log('[AUTH] ✅ Redirect result found immediately:', redirectResult.user.email);
+                  console.log('[AUTH] ✅ Redirect result found:', redirectResult.user.email);
                   await get().handleAuthSuccess(redirectResult.user);
                   await ensurePoperaProfileAndSeed(redirectResult.user);
                   set({ _redirectHandled: true, _justLoggedInFromRedirect: true, authInitialized: true, isAuthReady: true });
                   redirectUserProcessed = true;
+                } else {
+                  console.log('[AUTH] ⚠️ getRedirectResult() returned null (common on mobile) - will wait for onAuthStateChanged');
+                  // DON'T mark as handled yet - let onAuthStateChanged process it
+                  // This is critical for mobile where getRedirectResult() often fails
                 }
               } catch (error) {
-                console.error('[AUTH] Error in immediate redirect check:', error);
+                console.error('[AUTH] Error in getRedirectResult():', error);
+                // Don't mark as handled - let onAuthStateChanged handle it
               }
               
-              // If immediate check didn't work, wait a bit and check auth.currentUser
-              // Mobile redirects often need a moment for Firebase to process
+              // Check auth.currentUser after a delay (mobile needs time)
               if (!redirectUserProcessed) {
-                // Wait 500ms for Firebase to finish processing redirect
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // Wait longer for mobile (1 second)
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 
                 const auth = getAuthInstance();
                 if (auth.currentUser) {
-                  console.log('[AUTH] ✅ Found currentUser after delay (mobile redirect processed):', auth.currentUser.email);
+                  console.log('[AUTH] ✅ Found currentUser after delay:', auth.currentUser.email);
                   await get().handleAuthSuccess(auth.currentUser);
                   await ensurePoperaProfileAndSeed(auth.currentUser);
                   const isOnLanding = typeof window !== 'undefined' && window.location.pathname === '/';
                   set({ _redirectHandled: true, _justLoggedInFromRedirect: isOnLanding, authInitialized: true, isAuthReady: true });
                   redirectUserProcessed = true;
                 } else {
-                  console.log('[AUTH] ⚠️ No user found after delay - will rely on onAuthStateChanged');
-                  set({ _redirectHandled: true });
+                  console.log('[AUTH] ⚠️ Still no user after delay - MUST wait for onAuthStateChanged');
+                  // Still don't mark as handled - onAuthStateChanged will fire eventually
                 }
               }
             }
             
             // Set up auth state listener - PRIMARY mechanism for mobile redirects
             // onAuthStateChanged is more reliable than getRedirectResult() on mobile
+            // CRITICAL: This MUST fire with the user after redirect, even if getRedirectResult() failed
             const unsub = listenToAuthChanges(async (firebaseUser) => {
               try {
-                console.log('[AUTH] onAuthStateChanged fired', {
+                console.log('[AUTH] 🔔 onAuthStateChanged fired', {
                   hasUser: !!firebaseUser,
                   uid: firebaseUser?.uid,
                   email: firebaseUser?.email,
                   redirectUserProcessed,
                   _redirectHandled: get()._redirectHandled,
                   currentStoreUser: get().user?.email,
+                  pathname: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
                 });
                 
                 if (firebaseUser) {
@@ -225,31 +232,38 @@ export const useUserStore = create<UserStore>()(
                   const currentUser = get().user;
                   if (currentUser && currentUser.uid === firebaseUser.uid) {
                     console.log('[AUTH] ✅ User already in store, ensuring authInitialized');
-                    if (!get().authInitialized) {
-                      set({ authInitialized: true });
-                    }
+                    const isOnLanding = typeof window !== 'undefined' && window.location.pathname === '/';
+                    set({ 
+                      authInitialized: true, 
+                      isAuthReady: true,
+                      _redirectHandled: true,
+                      _justLoggedInFromRedirect: isOnLanding && !get()._justLoggedInFromRedirect ? true : get()._justLoggedInFromRedirect
+                    });
                     return;
                   }
                   
                   // User exists in Firebase but not in store - THIS IS THE KEY FOR MOBILE
-                  console.log('[AUTH] ✅ CRITICAL: Setting user from onAuthStateChanged (mobile redirect):', firebaseUser.email);
+                  console.log('[AUTH] ✅✅✅ CRITICAL: Setting user from onAuthStateChanged (mobile redirect):', firebaseUser.email);
                   await get().handleAuthSuccess(firebaseUser);
                   await ensurePoperaProfileAndSeed(firebaseUser);
                   
                   // Check if this is a redirect login (user on landing page)
                   const isOnLanding = typeof window !== 'undefined' && window.location.pathname === '/';
-                  if (isOnLanding && !get()._justLoggedInFromRedirect) {
-                    set({ _justLoggedInFromRedirect: true });
-                  }
-                  
-                  set({ authInitialized: true, isAuthReady: true, _redirectHandled: true });
+                  console.log('[AUTH] Setting redirect flags', { isOnLanding, pathname: window.location.pathname });
+                  set({ 
+                    authInitialized: true, 
+                    isAuthReady: true, 
+                    _redirectHandled: true,
+                    _justLoggedInFromRedirect: isOnLanding // Always set if on landing page
+                  });
                 } else {
-                  // No user - only clear if redirect has been handled
-                  if (get()._redirectHandled) {
-                    console.log('[AUTH] No user and redirect handled - clearing state');
+                  // No user - CRITICAL: Don't clear if we're on landing page (might be redirect in progress)
+                  const isOnLanding = typeof window !== 'undefined' && window.location.pathname === '/';
+                  if (get()._redirectHandled || !isOnLanding) {
+                    console.log('[AUTH] No user and redirect handled (or not on landing) - clearing state');
                     set({ user: null, userProfile: null, currentUser: null, loading: false, ready: true, isAuthReady: true, authInitialized: true });
                   } else {
-                    console.log('[AUTH] No user but redirect not handled yet - waiting');
+                    console.log('[AUTH] ⚠️ No user but on landing page - might be redirect in progress, waiting...');
                     set({ authInitialized: true });
                   }
                 }
