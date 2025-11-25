@@ -473,11 +473,14 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
           setConfirmationResult(null);
           setLoading(false);
           setIsVerifying(false);
-          throw new Error('Verification timed out. The code may be incorrect or expired. Please request a new code.');
+          // Set error message instead of throwing to prevent unhandled rejection
+          setError('Verification timed out. The code may be incorrect or expired. Please request a new code.');
+          return; // Exit early instead of throwing
         }
-        // Re-throw other errors
+        // For other errors, still set error state but also log
         console.error('[HOST_VERIFY] ❌ Verification error:', raceError);
         setDebugInfo(`❌ Error: ${raceError?.code || raceError?.message || 'Unknown error'}`);
+        // Re-throw to be caught by outer catch block
         throw raceError;
       }
       
