@@ -436,9 +436,17 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       });
       
       setDebugInfo('🔍 Verifying code... (this may take up to 30 seconds)');
-      const cred = await Promise.race([verifyPromise, timeoutPromise]);
-      console.log('[HOST_VERIFY] ✅ Phone verified successfully');
-      setDebugInfo('✅ Code verified successfully!');
+      try {
+        const cred = await Promise.race([verifyPromise, timeoutPromise]);
+        console.log('[HOST_VERIFY] ✅ Phone verified successfully');
+        setDebugInfo('✅ Code verified successfully!');
+      } catch (raceError: any) {
+        // Check if it's a timeout
+        if (raceError?.message?.includes('timed out')) {
+          throw new Error('Verification timed out after 30 seconds. Please try again.');
+        }
+        throw raceError; // Re-throw other errors
+      }
       
       // Clear confirmationResult immediately after successful use to prevent reuse
       setConfirmationResult(null);
