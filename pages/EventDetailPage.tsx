@@ -401,15 +401,28 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
          </div>
          {/* Mobile Scroller */}
          <div className="md:hidden">
-           <EventScroller
-             events={recommendedEvents}
-             onEventClick={onEventClick}
-             onChatClick={(e, event) => { e.stopPropagation(); if (!isLoggedIn) { setShowAuthModal(true); } else { setViewState(ViewState.CHAT); } }}
-             onReviewsClick={onReviewsClick}
-             isLoggedIn={isLoggedIn}
-             favorites={favorites}
-             onToggleFavorite={onToggleFavorite}
-           />
+           <div className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-4 pb-2 -mx-4 px-4 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+             {recommendedEvents.map((recEvent, index) => (
+               <div key={recEvent.id} className="snap-start shrink-0 w-[85vw] max-w-[360px]">
+                 <EventCard 
+                   event={recEvent} 
+                   onClick={onEventClick} 
+                   onChatClick={(e, event) => { 
+                     e.stopPropagation(); 
+                     if (!isLoggedIn) { 
+                       setShowAuthModal(true); 
+                     } else { 
+                       setViewState(ViewState.CHAT); 
+                     } 
+                   }} 
+                   onReviewsClick={onReviewsClick} 
+                   isLoggedIn={isLoggedIn} 
+                   isFavorite={favorites.includes(recEvent.id)} 
+                   onToggleFavorite={onToggleFavorite} 
+                 />
+               </div>
+             ))}
+           </div>
          </div>
       </section>
 
