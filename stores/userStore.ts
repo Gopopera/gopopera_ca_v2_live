@@ -174,8 +174,9 @@ export const useUserStore = create<UserStore>()(
                   console.log('[AUTH] Redirect result found, processing login', redirectResult.user.email);
                   await get().handleAuthSuccess(redirectResult.user);
                   await ensurePoperaProfileAndSeed(redirectResult.user);
-                  // Set redirect handled immediately to prevent duplicate processing
-                  set({ _redirectHandled: true });
+                  // CRITICAL: Set authInitialized immediately after redirect login
+                  // This ensures navigation logic in App.tsx can detect the logged-in user
+                  set({ _redirectHandled: true, authInitialized: true, isAuthReady: true });
                 } else {
                   console.log('[AUTH] No redirect result found');
                   set({ _redirectHandled: true });

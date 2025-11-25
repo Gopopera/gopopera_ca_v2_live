@@ -332,8 +332,20 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       }
 
       // Refresh user profile to get updated data from Firestore (this will merge with our update)
-      await refreshUserProfile();
+      // Wrap in try-catch to prevent hanging if refresh fails
+      try {
+        await Promise.race([
+          refreshUserProfile(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Refresh timeout')), 5000))
+        ]);
+      } catch (refreshError) {
+        console.warn('[HOST_VERIFY] Profile refresh failed or timed out, continuing anyway:', refreshError);
+        // Continue even if refresh fails - we've already updated the store
+      }
 
+      // Clear loading states before showing success
+      setLoading(false);
+      setIsVerifying(false);
       setSuccess(true);
       
       // Show success for 2 seconds, then close and call onSuccess
