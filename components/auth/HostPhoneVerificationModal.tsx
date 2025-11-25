@@ -453,9 +453,9 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       setDebugInfo('🔍 Verifying code... (this should be quick)');
       
       try {
-        const cred = await Promise.race([verifyPromise, timeoutPromise]);
+        const cred = await Promise.race([verifyPromise, timeoutPromise]) as any;
         console.log('[HOST_VERIFY] ✅✅✅ Phone verified successfully!', {
-          user: cred.user?.uid,
+          user: cred?.user?.uid,
           timestamp: new Date().toISOString()
         });
         setDebugInfo('✅ Code verified successfully!');
