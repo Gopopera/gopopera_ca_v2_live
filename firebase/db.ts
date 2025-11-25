@@ -117,7 +117,19 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
     // Sanitize data to eliminate ALL undefined fields
     const sanitizedEvent = sanitizeFirestoreData(firestoreEvent);
 
+    console.log('[CREATE_EVENT_DB] About to write to Firestore:', {
+      collection: 'events',
+      hasData: !!sanitizedEvent,
+      title: sanitizedEvent.title,
+      hostId: sanitizedEvent.hostId
+    });
+    
     const docRef = await addDoc(eventsCol, sanitizedEvent);
+    
+    console.log('[CREATE_EVENT_DB] ✅ Firestore write successful:', {
+      docId: docRef.id,
+      path: docRef.path
+    });
     const createdEvent: FirestoreEvent = {
       id: docRef.id,
       ...firestoreEvent,

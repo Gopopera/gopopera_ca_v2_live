@@ -151,7 +151,9 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         host: user.displayName || user.email || 'You'
       });
       
-      const createdEvent = await addEvent({
+      // Add timeout to detect if addEvent is hanging
+      const EVENT_CREATION_TIMEOUT = 30000; // 30 seconds
+      const addEventPromise = addEvent({
         title,
         description,
         city,
@@ -169,6 +171,15 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         reviewCount: 0,
         capacity: attendeesCount || undefined,
       });
+      
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Event creation timed out after 30 seconds. Firestore may be slow or unresponsive.'));
+        }, EVENT_CREATION_TIMEOUT);
+      });
+      
+      console.log('[CREATE_EVENT] Waiting for addEvent to complete (timeout: 30s)...');
+      const createdEvent = await Promise.race([addEventPromise, timeoutPromise]) as any;
 
       console.log('[CREATE_EVENT] ✅ Event created successfully:', {
         eventId: createdEvent.id,
@@ -196,11 +207,23 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       console.error('[CREATE_EVENT] ❌ Error creating event:', {
         error,
         message: error?.message,
+        code: error?.code,
         stack: error?.stack?.substring(0, 300)
       });
-      alert(`Failed to create event: ${error?.message || 'Unknown error'}. Please check the console for details.`);
+      
+      // Check for timeout
+      if (error?.message?.includes('timed out')) {
+        alert('Event creation timed out. This might be a network issue or Firestore is slow. Please try again.');
+      } else if (error?.code === 'permission-denied') {
+        alert('Permission denied. You may not have permission to create events. Please check your account status.');
+      } else if (error?.code === 'unavailable') {
+        alert('Firestore is unavailable. Please check your internet connection and try again.');
+      } else {
+        alert(`Failed to create event: ${error?.message || 'Unknown error'}. Please check the console for details.`);
+      }
     } finally {
       setIsSubmitting(false);
+      console.log('[CREATE_EVENT] Submission state cleared');
     }
   };
 
