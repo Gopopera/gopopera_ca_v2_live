@@ -164,20 +164,29 @@ export const useUserStore = create<UserStore>()(
           try {
             await initFirebaseAuth();
 
+            // CRITICAL: getRedirectResult() MUST be called BEFORE onAuthStateChanged
+            // Otherwise, onAuthStateChanged might fire first and the redirect result is lost
             if (!get()._redirectHandled) {
               try {
+                // Call getRedirectResult() immediately and synchronously
                 const redirectResult = await completeGoogleRedirect();
                 if (redirectResult?.user) {
+                  console.log('[AUTH] Redirect result found, processing login', redirectResult.user.email);
                   await get().handleAuthSuccess(redirectResult.user);
                   await ensurePoperaProfileAndSeed(redirectResult.user);
+                  // Set redirect handled immediately to prevent duplicate processing
+                  set({ _redirectHandled: true });
+                } else {
+                  console.log('[AUTH] No redirect result found');
+                  set({ _redirectHandled: true });
                 }
               } catch (error) {
                 console.error('[AUTH] Error checking redirect result:', error);
-              } finally {
                 set({ _redirectHandled: true });
               }
             }
             
+            // Set up auth state listener AFTER checking redirect result
             const unsub = listenToAuthChanges(async (firebaseUser) => {
               try {
                 console.log('[AUTH] onAuthStateChanged fired', {

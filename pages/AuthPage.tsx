@@ -3,7 +3,7 @@ import { ChevronLeft, Eye, EyeOff } from 'lucide-react';
 import { ViewState } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useUserStore } from '../stores/userStore';
-import { completeGoogleRedirect, loginWithGoogle } from '../src/lib/authHelpers';
+import { loginWithGoogle } from '../src/lib/authHelpers';
 
 interface AuthPageProps {
   setViewState: (view: ViewState) => void;
@@ -28,18 +28,9 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  useEffect(() => {
-    console.log('[AUTH_UI] AuthPage mounted, checking Google redirect result');
-    completeGoogleRedirect()
-      .then((cred) => {
-        if (cred?.user) {
-          console.log('[AUTH_UI] Redirect login completed for', cred.user.email);
-        }
-      })
-      .catch((err) => {
-        console.error('[AUTH_UI] Redirect completion error', err);
-      });
-  }, []);
+  // REMOVED: Duplicate getRedirectResult() call that was consuming redirect results
+  // before userStore.init() could process them. userStore.init() handles redirect results
+  // properly, so we don't need to check here. This was causing mobile login to fail.
 
   // Regular functions can be declared after all hooks
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
