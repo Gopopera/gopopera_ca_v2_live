@@ -26,7 +26,10 @@ import { createOrUpdateUserProfile } from '../../firebase/db';
 let hostPhoneRecaptchaVerifier: RecaptchaVerifier | null = null;
 
 async function getHostPhoneRecaptchaVerifier(): Promise<RecaptchaVerifier> {
-  if (hostPhoneRecaptchaVerifier) return hostPhoneRecaptchaVerifier;
+  if (hostPhoneRecaptchaVerifier) {
+    console.log('[HOST_VERIFY] Reusing existing reCAPTCHA verifier');
+    return hostPhoneRecaptchaVerifier;
+  }
 
   // CRITICAL: Ensure container exists in DOM before creating verifier
   const containerId = 'host-phone-recaptcha-container';
@@ -36,9 +39,12 @@ async function getHostPhoneRecaptchaVerifier(): Promise<RecaptchaVerifier> {
     // Container doesn't exist - create it
     container = document.createElement('div');
     container.id = containerId;
-    container.style.display = 'block'; // Must be visible (not 'none') for reCAPTCHA to render
+    // For invisible reCAPTCHA, container can be hidden but must be in DOM
+    container.style.display = 'block';
     container.style.position = 'absolute';
-    container.style.left = '-9999px'; // Hide off-screen but still in DOM
+    container.style.left = '-9999px';
+    container.style.width = '1px';
+    container.style.height = '1px';
     document.body.appendChild(container);
     console.log('[HOST_VERIFY] Created reCAPTCHA container');
   } else {
@@ -47,31 +53,51 @@ async function getHostPhoneRecaptchaVerifier(): Promise<RecaptchaVerifier> {
     console.log('[HOST_VERIFY] Using existing reCAPTCHA container');
   }
 
-  // Wait a tick to ensure container is fully in DOM
-  await new Promise(resolve => setTimeout(resolve, 50));
+  // Wait for container to be fully in DOM and rendered
+  await new Promise(resolve => setTimeout(resolve, 100));
 
   const auth = getAuthInstance();
   try {
+    console.log('[HOST_VERIFY] Creating new reCAPTCHA verifier...');
+    
+    // Use 'normal' size reCAPTCHA instead of 'invisible' for better reliability
+    // Invisible reCAPTCHA can hang if it doesn't solve automatically
+    // Normal size shows a checkbox that user can interact with
+    container.style.display = 'block';
+    container.style.position = 'relative';
+    container.style.left = 'auto';
+    container.style.width = 'auto';
+    container.style.height = 'auto';
+    container.style.margin = '10px 0';
+    
     hostPhoneRecaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
-      size: 'invisible',
+      size: 'normal', // Changed from 'invisible' to 'normal' for better reliability
       callback: () => {
-        // Called when reCAPTCHA is solved automatically
-        console.log('[HOST_VERIFY] reCAPTCHA solved successfully');
+        // Called when reCAPTCHA is solved
+        console.log('[HOST_VERIFY] ✅ reCAPTCHA solved successfully (callback fired)');
       },
       'expired-callback': () => {
-        console.warn('[HOST_VERIFY] reCAPTCHA expired');
+        console.warn('[HOST_VERIFY] ⚠️ reCAPTCHA expired');
         // Clear verifier on expiry so it can be recreated
         clearHostPhoneRecaptchaVerifier();
       },
       'error-callback': (error: any) => {
-        console.error('[HOST_VERIFY] reCAPTCHA error:', error);
+        console.error('[HOST_VERIFY] ❌ reCAPTCHA error callback:', error);
         // Clear verifier on error so it can be recreated
         clearHostPhoneRecaptchaVerifier();
       },
     });
-    console.log('[HOST_VERIFY] reCAPTCHA verifier created successfully');
+    
+    console.log('[HOST_VERIFY] ✅ reCAPTCHA verifier created successfully');
+    
+    // For normal size reCAPTCHA, it renders automatically when created
+    // No need to call render() explicitly
   } catch (error: any) {
-    console.error('[HOST_VERIFY] Failed to create reCAPTCHA verifier:', error);
+    console.error('[HOST_VERIFY] ❌ Failed to create reCAPTCHA verifier:', {
+      code: error?.code,
+      message: error?.message,
+      stack: error?.stack?.substring(0, 200)
+    });
     throw error;
   }
 
@@ -196,7 +222,12 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       // CRITICAL: Wait for verifier to be ready (container must exist in DOM)
       console.log('[HOST_VERIFY] Creating new reCAPTCHA verifier...');
       const verifier = await getHostPhoneRecaptchaVerifier();
-      console.log('[HOST_VERIFY] Verifier ready, sending code...');
+      console.log('[HOST_VERIFY] ✅ Verifier ready, waiting for reCAPTCHA to be solved...');
+
+      // For normal size reCAPTCHA, wait a moment for it to render
+      // The user will see the checkbox and can interact with it
+      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log('[HOST_VERIFY] Calling Firebase phone auth...');
 
       let confirmation: ConfirmationResult;
 
@@ -507,9 +538,11 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
           )}
         </div>
 
-        {/* reCAPTCHA container - must exist in DOM but can be hidden off-screen
-            Firebase requires the container to be in DOM when verifier is created
-            We'll create it dynamically if it doesn't exist */}
+        {/* reCAPTCHA container - will be shown when verifier is created
+            For normal size reCAPTCHA, this will display the checkbox */}
+        {step === 'phone' && (
+          <div id="host-phone-recaptcha-container" className="my-4 flex justify-center" />
+        )}
 
         {success ? (
           <div className="text-center py-8">
