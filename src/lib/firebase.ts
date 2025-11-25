@@ -150,11 +150,19 @@ export function getDbSafe(): Firestore | null {
       // Log Firestore database info
       console.log('[FIRESTORE] ✅ Firestore initialized:', {
         projectId: a.options.projectId,
-        databaseId: (_db as any).databaseId || '(default)',
+        databaseId: databaseId,
+        actualDatabaseId: (_db as any).databaseId || databaseId,
         type: (_db as any).type || 'unknown',
         // MongoDB compatibility mode databases might have different properties
         isMongoDBCompatible: (_db as any).type === 'mongodb' || false
       });
+      
+      if ((_db as any).type === 'mongodb') {
+        console.error('[FIRESTORE] ⚠️ WARNING: Database is in MongoDB compatibility mode!', {
+          databaseId: databaseId,
+          note: 'The app requires native Firestore. Please create a native Firestore database.'
+        });
+      }
     } catch (error) {
       console.error('[FIREBASE] Firestore initialization failed:', error);
       return null;
@@ -186,7 +194,9 @@ export function getDb(): Firestore {
   
   if (!_db && !cachedDb) {
     try {
-      _db = getFirestore(a);
+      // Use the same database ID as getDbSafe()
+      const databaseId = 'gopopera2028';
+      _db = getFirestore(a, databaseId);
       cachedDb = _db;
     } catch (error) {
       throw new Error('Firestore not initialized');
