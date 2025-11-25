@@ -343,8 +343,15 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       }
 
       // Check for specific error codes that indicate configuration issues
-      if (error?.code === 'auth/captcha-check-failed') {
-        setError('reCAPTCHA verification failed. Please solve it again and try.');
+      if (error?.code === 'auth/captcha-check-failed' || error?.code === 'auth/network-request-failed') {
+        // Check if it's a 401/400 error (from console screenshot)
+        const errorStr = JSON.stringify(error).toLowerCase();
+        if (errorStr.includes('401') || errorStr.includes('400') || error?.message?.includes('401') || error?.message?.includes('400')) {
+          setError('reCAPTCHA configuration error (401/400). Please check Firebase Console → Authentication → Settings → reCAPTCHA. The reCAPTCHA key may be invalid or not configured correctly.');
+          setDebugInfo('❌ reCAPTCHA configuration issue - check Firebase Console');
+        } else {
+          setError('reCAPTCHA verification failed. Please solve it again and try.');
+        }
         setLoading(false);
         setIsSendingCode(false);
         return; // Don't grant access on reCAPTCHA failure - user should retry
@@ -355,6 +362,15 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
         setLoading(false);
         setIsSendingCode(false);
         return; // Don't grant access on invalid phone - user should fix it
+      }
+      
+      // Check for network/offline errors
+      if (error?.code === 'unavailable' || error?.message?.includes('offline') || error?.message?.includes('network')) {
+        setError('Network error or device appears offline. Please check your internet connection and try again.');
+        setDebugInfo('❌ Network/offline error detected');
+        setLoading(false);
+        setIsSendingCode(false);
+        return;
       }
 
       // If sending code fails for other reasons, grant access immediately (fail-open)
