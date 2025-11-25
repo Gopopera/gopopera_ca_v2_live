@@ -77,7 +77,7 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
   const [isVerifying, setIsVerifying] = useState(false); // Guard to prevent duplicate verification calls
   const [isSendingCode, setIsSendingCode] = useState(false); // Guard to prevent multiple simultaneous send attempts
 
-  // Cleanup verifier only on component unmount (not on modal open/close)
+  // Cleanup verifier on component unmount AND when modal closes
   useEffect(() => {
     return () => {
       // If the whole modal component is being unmounted (route change, etc.),
@@ -85,6 +85,14 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       clearHostPhoneRecaptchaVerifier();
     };
   }, []);
+
+  // Also clear verifier when modal closes to prevent reuse issues
+  useEffect(() => {
+    if (!isOpen) {
+      // Clear verifier when modal closes to ensure fresh verifier on next open
+      clearHostPhoneRecaptchaVerifier();
+    }
+  }, [isOpen]);
 
   // Reset state when modal closes (but don't clear the verifier)
   useEffect(() => {
@@ -129,14 +137,16 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
         ? phoneNumber 
         : `+1${phoneNumber.replace(/\D/g, '')}`;
 
-      // If we already have a confirmation result, clear the verifier and recreate it
-      // This prevents "verifier already used" issues when user wants to resend
-      if (confirmationResult) {
-        console.log('[HOST_VERIFY] Clearing verifier for resend attempt');
-        clearHostPhoneRecaptchaVerifier();
-      }
+      // CRITICAL: Always clear and recreate verifier for each send attempt
+      // Once a verifier is used to send a code, it CANNOT be reused
+      // Reusing it causes "too many attempts" errors from Firebase
+      console.log('[HOST_VERIFY] Clearing verifier before new send attempt');
+      clearHostPhoneRecaptchaVerifier();
+      
+      // Small delay to ensure verifier is fully cleared before creating new one
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Get the singleton verifier (reuses existing instance if available, or creates new one)
+      // Create a fresh verifier for this send attempt
       const verifier = getHostPhoneRecaptchaVerifier();
 
       let confirmation: ConfirmationResult;

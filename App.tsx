@@ -360,6 +360,7 @@ const AppContent: React.FC = () => {
   const [conversationModalEvent, setConversationModalEvent] = useState<Event | null>(null);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [authBootChecked, setAuthBootChecked] = useState(false);
+  const [hasHandledRedirectLogin, setHasHandledRedirectLogin] = useState(false);
   // Use Zustand stores
   const user = useUserStore((state) => state.user);
   const loading = useUserStore((state) => state.loading);
@@ -412,14 +413,41 @@ const AppContent: React.FC = () => {
   const setRedirectAfterLogin = useUserStore((state) => state.setRedirectAfterLogin);
   
   useEffect(() => {
-    if (!authInitialized) return;
-    if (user && viewState === ViewState.AUTH && !loading && isAuthReady) {
-      // User just logged in, redirect immediately to intended destination or FEED
-      const redirect = redirectAfterLogin || ViewState.FEED;
-      setViewState(redirect);
-      setRedirectAfterLogin(null);
+    if (!authInitialized || !isAuthReady || loading) return;
+    
+    // Handle redirect login - check if user just logged in
+    if (user && !hasHandledRedirectLogin) {
+      // Case 1: User is on AUTH page (normal login flow)
+      if (viewState === ViewState.AUTH) {
+        const redirect = redirectAfterLogin || ViewState.FEED;
+        console.log('[APP] Redirecting after login from AUTH page:', redirect);
+        setViewState(redirect);
+        setRedirectAfterLogin(null);
+        setHasHandledRedirectLogin(true);
+        return;
+      }
+      
+      // Case 2: User just returned from Google redirect (mobile login)
+      // Detect this by checking if we're on LANDING and user exists (redirect returns to root)
+      // Only redirect if we haven't handled it yet and user exists
+      if (viewState === ViewState.LANDING && authBootChecked) {
+        // Small delay to ensure redirect result was processed
+        const timer = setTimeout(() => {
+          const redirect = redirectAfterLogin || ViewState.FEED;
+          console.log('[APP] Redirecting after mobile redirect login:', redirect);
+          setViewState(redirect);
+          setRedirectAfterLogin(null);
+          setHasHandledRedirectLogin(true);
+        }, 500);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [user, loading, viewState, redirectAfterLogin, setRedirectAfterLogin, isAuthReady, authInitialized]);
+    
+    // Reset redirect handler when user logs out
+    if (!user && hasHandledRedirectLogin) {
+      setHasHandledRedirectLogin(false);
+    }
+  }, [user, loading, viewState, redirectAfterLogin, setRedirectAfterLogin, isAuthReady, authInitialized, hasHandledRedirectLogin, authBootChecked]);
   
   // Events are now loaded via real-time subscription in eventStore.init()
   // No need for manual loading or mock data initialization - events come from Firestore in real-time
