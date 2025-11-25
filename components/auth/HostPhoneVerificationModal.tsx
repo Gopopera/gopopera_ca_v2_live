@@ -54,82 +54,90 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
   const recaptchaContainerRef = useRef<HTMLDivElement>(null);
 
   // Initialize reCAPTCHA when modal opens and step is 'phone'
+  // Use a small delay to ensure container is fully rendered
   useEffect(() => {
     if (!isOpen || step !== 'phone') {
       return;
     }
 
-    // Initialize reCAPTCHA only once when modal opens
-    if (recaptchaContainerRef.current && !recaptchaVerifierRef.current) {
-      const auth = getAuthInstance();
-      
-      try {
-        console.log('[HOST_VERIFY] Creating new reCAPTCHA verifier...');
+    // Small delay to ensure container is in DOM
+    const initTimer = setTimeout(() => {
+      // Initialize reCAPTCHA only once when modal opens
+      if (recaptchaContainerRef.current && !recaptchaVerifierRef.current) {
+        const auth = getAuthInstance();
         
-        recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
-          size: 'normal',
-          callback: (response: any) => {
-            // reCAPTCHA solved - set state to indicate this
-            const timestamp = new Date().toISOString();
-            console.log('[HOST_VERIFY] ✅✅✅ reCAPTCHA SOLVED! Callback fired!', {
-              response,
-              timestamp
-            });
-            setDebugInfo(`✅ reCAPTCHA solved at ${new Date().toLocaleTimeString()}`);
-            // Use setTimeout to ensure state update happens
-            setTimeout(() => {
-              setRecaptchaSolved(true);
-              setError(null); // Clear any previous error
-              setDebugInfo(`✅ reCAPTCHA solved - Ready to send`);
-              console.log('[HOST_VERIFY] recaptchaSolved state set to true');
-            }, 0);
-          },
-          'expired-callback': () => {
-            // reCAPTCHA expired - reset state
-            console.warn('[HOST_VERIFY] ⚠️ reCAPTCHA expired');
-            setRecaptchaSolved(false);
-            // Re-render reCAPTCHA after expiration
-            if (recaptchaVerifierRef.current) {
-              recaptchaVerifierRef.current.render().then(() => {
-                console.log('[HOST_VERIFY] reCAPTCHA re-rendered after expiration');
-              }).catch((err) => {
-                console.error('[HOST_VERIFY] Failed to re-render reCAPTCHA:', err);
+        try {
+          console.log('[HOST_VERIFY] Creating new reCAPTCHA verifier...');
+          
+          recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
+            size: 'normal',
+            callback: (response: any) => {
+              // reCAPTCHA solved - set state to indicate this
+              const timestamp = new Date().toISOString();
+              console.log('[HOST_VERIFY] ✅✅✅ reCAPTCHA SOLVED! Callback fired!', {
+                response,
+                timestamp
               });
-            }
-          },
-          'error-callback': (err: any) => {
-            // Handle reCAPTCHA errors
-            console.error('[HOST_VERIFY] ❌ reCAPTCHA error:', err);
-            setError(`reCAPTCHA Error: ${err?.message || 'Unknown error'}`);
-            setRecaptchaSolved(false);
-          },
-        });
-
-        // Render the reCAPTCHA widget explicitly
-        // CRITICAL: render() must be called for the widget to appear
-        console.log('[HOST_VERIFY] Calling render() on reCAPTCHA verifier...');
-        setDebugInfo('🔄 Loading reCAPTCHA...');
-        recaptchaVerifierRef.current.render().then((widgetId) => {
-          console.log('[HOST_VERIFY] ✅✅✅ reCAPTCHA rendered successfully with widget ID:', widgetId);
-          console.log('[HOST_VERIFY] Waiting for user to solve reCAPTCHA...');
-          setDebugInfo('⏳ Please solve the reCAPTCHA checkbox above');
-        }).catch((err) => {
-          console.error('[HOST_VERIFY] ❌ Failed to render reCAPTCHA:', {
-            error: err,
-            message: err?.message,
-            stack: err?.stack?.substring(0, 200)
+              setDebugInfo(`✅ reCAPTCHA solved at ${new Date().toLocaleTimeString()}`);
+              // Use setTimeout to ensure state update happens
+              setTimeout(() => {
+                setRecaptchaSolved(true);
+                setError(null); // Clear any previous error
+                setDebugInfo(`✅ reCAPTCHA solved - Ready to send`);
+                console.log('[HOST_VERIFY] recaptchaSolved state set to true');
+              }, 0);
+            },
+            'expired-callback': () => {
+              // reCAPTCHA expired - reset state
+              console.warn('[HOST_VERIFY] ⚠️ reCAPTCHA expired');
+              setRecaptchaSolved(false);
+              setDebugInfo('⚠️ reCAPTCHA expired - please solve again');
+              // Re-render reCAPTCHA after expiration
+              if (recaptchaVerifierRef.current) {
+                recaptchaVerifierRef.current.render().then(() => {
+                  console.log('[HOST_VERIFY] reCAPTCHA re-rendered after expiration');
+                }).catch((err) => {
+                  console.error('[HOST_VERIFY] Failed to re-render reCAPTCHA:', err);
+                });
+              }
+            },
+            'error-callback': (err: any) => {
+              // Handle reCAPTCHA errors
+              console.error('[HOST_VERIFY] ❌ reCAPTCHA error:', err);
+              setError(`reCAPTCHA Error: ${err?.message || 'Unknown error'}`);
+              setRecaptchaSolved(false);
+              setDebugInfo('❌ reCAPTCHA error occurred');
+            },
           });
-          setError('Failed to load reCAPTCHA. Please refresh and try again.');
-          setDebugInfo('❌ Failed to load reCAPTCHA');
-        });
-      } catch (error: any) {
-        console.error('[HOST_VERIFY] ❌ Failed to create reCAPTCHA verifier:', error);
-        setError('Failed to initialize reCAPTCHA. Please refresh and try again.');
+
+          // Render the reCAPTCHA widget explicitly
+          // CRITICAL: render() must be called for the widget to appear
+          console.log('[HOST_VERIFY] Calling render() on reCAPTCHA verifier...');
+          setDebugInfo('🔄 Loading reCAPTCHA...');
+          recaptchaVerifierRef.current.render().then((widgetId) => {
+            console.log('[HOST_VERIFY] ✅✅✅ reCAPTCHA rendered successfully with widget ID:', widgetId);
+            console.log('[HOST_VERIFY] Waiting for user to solve reCAPTCHA...');
+            setDebugInfo('⏳ Please solve the reCAPTCHA checkbox above');
+          }).catch((err) => {
+            console.error('[HOST_VERIFY] ❌ Failed to render reCAPTCHA:', {
+              error: err,
+              message: err?.message,
+              stack: err?.stack?.substring(0, 200)
+            });
+            setError('Failed to load reCAPTCHA. Please refresh and try again.');
+            setDebugInfo('❌ Failed to load reCAPTCHA');
+          });
+        } catch (error: any) {
+          console.error('[HOST_VERIFY] ❌ Failed to create reCAPTCHA verifier:', error);
+          setError('Failed to initialize reCAPTCHA. Please refresh and try again.');
+          setDebugInfo('❌ Failed to initialize reCAPTCHA');
+        }
       }
-    }
+    }, 100); // Small delay to ensure DOM is ready
 
     // Cleanup: clear reCAPTCHA when modal closes or component unmounts
     return () => {
+      clearTimeout(initTimer);
       if (recaptchaVerifierRef.current) {
         try {
           recaptchaVerifierRef.current.clear();
@@ -452,26 +460,36 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       
       setDebugInfo('🔍 Verifying code... (this should be quick)');
       
+      // Wrap in try-catch to handle all errors including timeouts
+      let cred: any;
       try {
-        const cred = await Promise.race([verifyPromise, timeoutPromise]) as any;
-        console.log('[HOST_VERIFY] ✅✅✅ Phone verified successfully!', {
-          user: cred?.user?.uid,
-          timestamp: new Date().toISOString()
-        });
-        setDebugInfo('✅ Code verified successfully!');
-        
-        // Clear confirmationResult immediately after successful use to prevent reuse
-        setConfirmationResult(null);
+        cred = await Promise.race([verifyPromise, timeoutPromise]);
       } catch (raceError: any) {
         // Check if it's a timeout
         if (raceError?.message?.includes('timed out')) {
-          console.error('[HOST_VERIFY] ❌ Verification timed out');
+          console.error('[HOST_VERIFY] ❌ Verification timed out after 20 seconds');
+          setDebugInfo('⏱️ Verification timed out - code may be incorrect or expired');
           // Clear confirmationResult on timeout - user needs to request new code
           setConfirmationResult(null);
+          setLoading(false);
+          setIsVerifying(false);
           throw new Error('Verification timed out. The code may be incorrect or expired. Please request a new code.');
         }
-        throw raceError; // Re-throw other errors
+        // Re-throw other errors
+        console.error('[HOST_VERIFY] ❌ Verification error:', raceError);
+        setDebugInfo(`❌ Error: ${raceError?.code || raceError?.message || 'Unknown error'}`);
+        throw raceError;
       }
+      
+      // If we get here, verification succeeded
+      console.log('[HOST_VERIFY] ✅✅✅ Phone verified successfully!', {
+        user: cred?.user?.uid,
+        timestamp: new Date().toISOString()
+      });
+      setDebugInfo('✅ Code verified successfully!');
+      
+      // Clear confirmationResult immediately after successful use to prevent reuse
+      setConfirmationResult(null);
 
       // cred.user is the same logged-in user with phone linked.
       // After successful confirmation, update Firestore user document:
@@ -551,7 +569,9 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       
       const isTimeout = error?.message?.includes('timed out');
       if (isTimeout) {
-        setDebugInfo('⏱️ Verification timed out after 30 seconds');
+        setDebugInfo('⏱️ Verification timed out - please request a new code');
+      } else {
+        setDebugInfo(`❌ Verification failed: ${error?.code || error?.message || 'Unknown error'}`);
       }
 
       let errorMessage = "We couldn't verify your code. Please try again or request a new code.";
