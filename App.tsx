@@ -1016,14 +1016,16 @@ const AppContent: React.FC = () => {
               </div>
             )}
             
-            {/* Mobile CTA FAB */}
-            <button 
-              onClick={() => handleNav(ViewState.CREATE_EVENT)}
-              className="md:hidden fixed bottom-6 right-4 sm:right-6 w-14 h-14 bg-[#e35e25] rounded-full flex items-center justify-center text-white shadow-2xl shadow-orange-900/40 z-40 hover:scale-105 active:scale-95 transition-transform border-4 border-white touch-manipulation safe-area-inset-bottom"
-              aria-label="Create Pop-up"
-            >
-               <PlusCircle size={28} />
-            </button>
+            {/* Mobile CTA FAB - Only show when logged in */}
+            {isLoggedIn && (
+              <button 
+                onClick={() => handleNav(ViewState.CREATE_EVENT)}
+                className="md:hidden fixed bottom-6 right-4 sm:right-6 w-14 h-14 bg-[#e35e25] rounded-full flex items-center justify-center text-white shadow-2xl shadow-orange-900/40 z-40 hover:scale-105 active:scale-95 transition-transform border-4 border-white touch-manipulation safe-area-inset-bottom"
+                aria-label="Create Pop-up"
+              >
+                 <PlusCircle size={28} />
+              </button>
+            )}
             
           </main>
         )}

@@ -13,6 +13,7 @@ interface AuthPageProps {
 type AuthStep = 'create-account' | 'email-signup' | 'preferences' | 'sign-in';
 
 export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => {
+  // ALL HOOKS MUST BE DECLARED AT THE TOP LEVEL - BEFORE ANY CONDITIONAL LOGIC
   const { t } = useLanguage();
   const [step, setStep] = useState<AuthStep>('create-account');
   const [formData, setFormData] = useState({
@@ -24,17 +25,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
   const [selectedPreference, setSelectedPreference] = useState<'attend' | 'host' | 'both' | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [signupError, setSignupError] = useState<string | null>(null);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleEmailSignup = () => {
-    if (formData.name && formData.email && formData.password) {
-      setStep('preferences');
-    }
-  };
-
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
@@ -50,6 +40,17 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
         console.error('[AUTH_UI] Redirect completion error', err);
       });
   }, []);
+
+  // Regular functions can be declared after all hooks
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleEmailSignup = () => {
+    if (formData.name && formData.email && formData.password) {
+      setStep('preferences');
+    }
+  };
 
   const handleGoogleSignIn = async () => {
     // Run immediately on click - use universal handler

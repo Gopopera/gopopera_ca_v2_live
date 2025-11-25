@@ -75,6 +75,7 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
   const [success, setSuccess] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [isVerifying, setIsVerifying] = useState(false); // Guard to prevent duplicate verification calls
+  const [isSendingCode, setIsSendingCode] = useState(false); // Guard to prevent multiple simultaneous send attempts
 
   // Cleanup verifier only on component unmount (not on modal open/close)
   useEffect(() => {
@@ -94,10 +95,18 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       setError(null);
       setSuccess(false);
       setConfirmationResult(null);
+      setIsSendingCode(false);
+      setIsVerifying(false);
     }
   }, [isOpen]);
 
   const handleSendCode = async () => {
+    // Guard: prevent multiple simultaneous send attempts
+    if (isSendingCode || loading) {
+      console.log('[HOST_VERIFY] Send code already in progress, ignoring duplicate call');
+      return;
+    }
+
     if (!phoneNumber.trim()) {
       setError('Please enter a phone number');
       return;
@@ -111,6 +120,7 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
     }
 
     setLoading(true);
+    setIsSendingCode(true);
     setError(null);
 
     try {
@@ -119,7 +129,14 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
         ? phoneNumber 
         : `+1${phoneNumber.replace(/\D/g, '')}`;
 
-      // Get the singleton verifier (reuses existing instance if available)
+      // If we already have a confirmation result, clear the verifier and recreate it
+      // This prevents "verifier already used" issues when user wants to resend
+      if (confirmationResult) {
+        console.log('[HOST_VERIFY] Clearing verifier for resend attempt');
+        clearHostPhoneRecaptchaVerifier();
+      }
+
+      // Get the singleton verifier (reuses existing instance if available, or creates new one)
       const verifier = getHostPhoneRecaptchaVerifier();
 
       let confirmation: ConfirmationResult;
@@ -137,10 +154,18 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
 
       setConfirmationResult(confirmation);
       setStep('code');
-      console.log('[HOST_VERIFY] Code sent');
+      console.log('[HOST_VERIFY] Code sent successfully');
     } catch (error: any) {
-      // Handle Firebase auth errors without crashing reCAPTCHA
+      // Handle Firebase auth errors
       console.error('[HOST PHONE] send code error', error);
+
+      // Clear verifier on error so it can be recreated on next attempt
+      // This prevents "verifier already used" errors
+      try {
+        clearHostPhoneRecaptchaVerifier();
+      } catch (clearError) {
+        console.warn('[HOST_VERIFY] Error clearing verifier:', clearError);
+      }
 
       let msg = "We couldn't send the verification code. Please check your number and try again.";
 
@@ -152,7 +177,7 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       } else if (error?.code === 'auth/invalid-phone-number') {
         msg = 'That phone number looks invalid. Please double-check and try again.';
       } else if (error?.code === 'auth/too-many-requests') {
-        msg = 'Too many attempts. Please wait a bit before trying again.';
+        msg = 'Too many attempts. Please wait a few minutes before trying again.';
       } else if (error?.code === 'auth/quota-exceeded') {
         msg = 'SMS quota exceeded. Please try again later.';
       } else if (error?.message) {
@@ -162,6 +187,7 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       setError(msg);
     } finally {
       setLoading(false);
+      setIsSendingCode(false);
     }
   };
 
@@ -352,10 +378,10 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
             <div className="space-y-3">
               <button
                 onClick={handleSendCode}
-                disabled={!phoneNumber.trim() || loading}
+                disabled={!phoneNumber.trim() || loading || isSendingCode}
                 className="w-full px-6 py-3 bg-[#e35e25] text-white rounded-full font-medium hover:bg-[#d14e1a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Sending...' : 'Send Verification Code'}
+                {loading || isSendingCode ? 'Sending...' : 'Send Verification Code'}
               </button>
               {!required && (
                 <button
