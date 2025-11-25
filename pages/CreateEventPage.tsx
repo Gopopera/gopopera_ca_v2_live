@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ViewState } from '../types';
-import { ChevronLeft, Upload, MapPin, Calendar, Clock, Plus } from 'lucide-react';
+import { ChevronLeft, Upload, MapPin, Calendar, Clock, Plus, X, ArrowUp, ArrowDown, Sparkles } from 'lucide-react';
 import { useEventStore } from '../stores/eventStore';
 import { useUserStore } from '../stores/userStore';
 import { HostPhoneVerificationModal } from '../components/auth/HostPhoneVerificationModal';
@@ -32,9 +32,12 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
   const [category, setCategory] = useState<typeof CATEGORIES[number] | ''>('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageUrl, setImageUrl] = useState(''); // Legacy single image (for preview)
+  const [imageUrls, setImageUrls] = useState<string[]>([]); // Array of uploaded image URLs
+  const [imageFiles, setImageFiles] = useState<File[]>([]); // Array of files to upload
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]); // Base64 previews for UI
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [whatToExpect, setWhatToExpect] = useState('');
   const [attendeesCount, setAttendeesCount] = useState(0);
   const [host, setHost] = useState('You'); // Default host name
   const [price, setPrice] = useState('Free');
@@ -76,43 +79,90 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
-      return;
-    }
+    const newFiles: File[] = [];
+    const newPreviews: string[] = [];
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Image size must be less than 5MB');
-      return;
-    }
+    // Process each selected file
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
 
-    try {
-      setUploadingImage(true);
-      setImageFile(file);
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert(`"${file.name}" is not an image file. Please select image files only.`);
+        continue;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert(`"${file.name}" is too large. Image size must be less than 5MB.`);
+        continue;
+      }
+
+      newFiles.push(file);
       
-      // Show preview immediately using data URL (for UI only)
+      // Create preview immediately using data URL (for UI only)
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImageUrl(reader.result as string); // Preview only
+        const preview = reader.result as string;
+        setImagePreviews(prev => [...prev, preview]);
       };
       reader.readAsDataURL(file);
-      
-      console.log('[CREATE_EVENT] Image selected, will upload to Storage on submit:', {
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type
+    }
+
+    if (newFiles.length > 0) {
+      setImageFiles(prev => [...prev, ...newFiles]);
+      console.log('[CREATE_EVENT] Images selected, will upload to Storage on submit:', {
+        count: newFiles.length,
+        files: newFiles.map(f => ({ name: f.name, size: f.size, type: f.type }))
       });
-    } catch (error) {
-      console.error('[CREATE_EVENT] Error preparing image:', error);
-      alert('Failed to process image. Please try again.');
-      setUploadingImage(false);
-      setImageFile(null);
+    }
+
+    // Reset input
+    if (e.target) {
+      e.target.value = '';
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+    setImageUrls(prev => prev.filter((_, i) => i !== index));
+    // Update legacy imageUrl if this was the first image
+    if (index === 0 && imageUrls.length > 1) {
+      setImageUrl(imageUrls[1] || '');
+    } else if (index === 0) {
       setImageUrl('');
+    }
+  };
+
+  const handleMoveImage = (index: number, direction: 'up' | 'down') => {
+    if (direction === 'up' && index === 0) return;
+    if (direction === 'down' && index === imageFiles.length - 1) return;
+
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    
+    // Swap files
+    const newFiles = [...imageFiles];
+    [newFiles[index], newFiles[newIndex]] = [newFiles[newIndex], newFiles[index]];
+    setImageFiles(newFiles);
+
+    // Swap previews
+    const newPreviews = [...imagePreviews];
+    [newPreviews[index], newPreviews[newIndex]] = [newPreviews[newIndex], newPreviews[index]];
+    setImagePreviews(newPreviews);
+
+    // Swap URLs if already uploaded
+    if (imageUrls.length > 0) {
+      const newUrls = [...imageUrls];
+      [newUrls[index], newUrls[newIndex]] = [newUrls[newIndex], newUrls[index]];
+      setImageUrls(newUrls);
+      // Update legacy imageUrl
+      if (newIndex === 0) {
+        setImageUrl(newUrls[0] || '');
+      }
     }
   };
 
@@ -204,26 +254,44 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       });
     }
     
-    // Upload image to Firebase Storage if an image file was selected
-    let finalImageUrl = imageUrl || `https://picsum.photos/seed/${title}/800/600`;
-    if (imageFile && user?.uid) {
+    // Upload images to Firebase Storage if image files were selected
+    let finalImageUrls: string[] = [];
+    let finalImageUrl = `https://picsum.photos/seed/${title}/800/600`; // Default placeholder
+    
+    if (imageFiles.length > 0 && user?.uid) {
       try {
-        console.log('[CREATE_EVENT] Uploading image to Firebase Storage...');
-        const imagePath = `events/${user.uid}/${Date.now()}_${imageFile.name}`;
-        finalImageUrl = await uploadImage(imagePath, imageFile);
-        console.log('[CREATE_EVENT] ✅ Image uploaded successfully:', finalImageUrl);
+        console.log('[CREATE_EVENT] Uploading', imageFiles.length, 'image(s) to Firebase Storage...');
+        setUploadingImage(true);
+        
+        // Upload all images in order
+        for (let i = 0; i < imageFiles.length; i++) {
+          const file = imageFiles[i];
+          const imagePath = `events/${user.uid}/${Date.now()}_${i}_${file.name}`;
+          const uploadedUrl = await uploadImage(imagePath, file);
+          finalImageUrls.push(uploadedUrl);
+          console.log(`[CREATE_EVENT] ✅ Image ${i + 1}/${imageFiles.length} uploaded:`, uploadedUrl);
+        }
+        
+        // Set main image (first in array)
+        finalImageUrl = finalImageUrls[0] || finalImageUrl;
+        console.log('[CREATE_EVENT] ✅ All images uploaded successfully. Main image:', finalImageUrl);
       } catch (uploadError: any) {
         console.error('[CREATE_EVENT] ❌ Image upload failed:', uploadError);
         alert(`Failed to upload image: ${uploadError?.message || 'Unknown error'}. Please try again or use a different image.`);
         setIsSubmitting(false);
+        setUploadingImage(false);
         return;
+      } finally {
+        setUploadingImage(false);
       }
-    } else if (imageUrl && imageUrl.startsWith('data:')) {
-      // If user selected an image but we're using base64, warn them
-      console.warn('[CREATE_EVENT] ⚠️ Using base64 image URL - this may fail if image is too large. Image should be uploaded to Storage.');
-      // For now, use placeholder to avoid Firestore size limit error
-      finalImageUrl = `https://picsum.photos/seed/${title}/800/600`;
-      console.log('[CREATE_EVENT] Using placeholder image instead of base64 to avoid Firestore size limit');
+    } else if (imageUrls.length > 0) {
+      // Images were already uploaded in a previous attempt
+      finalImageUrls = imageUrls;
+      finalImageUrl = imageUrls[0] || finalImageUrl;
+    } else if (imageUrl && !imageUrl.startsWith('data:')) {
+      // Legacy single image URL (not base64)
+      finalImageUrl = imageUrl;
+      finalImageUrls = [imageUrl];
     }
     
     try {
@@ -247,7 +315,9 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         tags,
         host,
         hostId: user?.uid || '',
-        imageUrl: finalImageUrl,
+        imageUrl: finalImageUrl, // Main image (backward compatibility)
+        imageUrls: finalImageUrls.length > 0 ? finalImageUrls : undefined, // Array of all images
+        whatToExpect: whatToExpect || undefined,
         attendeesCount,
         category: category as typeof CATEGORIES[number],
         price,
@@ -281,6 +351,11 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       setCategory('');
       setTags([]);
       setImageUrl('');
+      setImageUrls([]);
+      setImageFiles([]);
+      setImagePreviews([]);
+      setUploadingImage(false);
+      setWhatToExpect('');
       setAttendeesCount(0);
       setPrice('Free');
 
@@ -384,6 +459,21 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl sm:rounded-2xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all resize-none" 
               />
             </div>
+            
+            {/* What to Expect - Optional */}
+            <div className="space-y-2">
+              <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1 flex items-center gap-2">
+                <Sparkles size={16} className="text-popera-orange" />
+                What to Expect <span className="text-gray-400 font-normal">(Optional)</span>
+              </label>
+              <textarea 
+                rows={4} 
+                placeholder="Describe what attendees can expect at your event..." 
+                value={whatToExpect}
+                onChange={(e) => setWhatToExpect(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl sm:rounded-2xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all resize-none" 
+              />
+            </div>
           </div>
 
           {/* Location */}
@@ -480,24 +570,86 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
             </div>
           </div>
 
-          {/* Image Upload */}
+          {/* Image Upload - Multiple Images */}
           <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 lg:p-10 border border-gray-100 shadow-sm mb-6 sm:mb-8">
             <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1 mb-3 sm:mb-4 md:mb-5">
-              Add Event Picture
+              Add Event Pictures <span className="text-gray-400 font-normal">(First image is the main photo)</span>
             </label>
+            
+            {/* Image Gallery Preview */}
+            {(imagePreviews.length > 0 || imageUrls.length > 0) && (
+              <div className="mb-4 space-y-3">
+                <div className="flex flex-wrap gap-3">
+                  {(imagePreviews.length > 0 ? imagePreviews : imageUrls).map((preview, index) => (
+                    <div key={index} className="relative group">
+                      <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-lg overflow-hidden border-2 border-gray-200">
+                        <img 
+                          src={preview} 
+                          alt={`Preview ${index + 1}`} 
+                          className="w-full h-full object-cover"
+                        />
+                        {index === 0 && (
+                          <div className="absolute top-1 left-1 bg-popera-orange text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                            Main
+                          </div>
+                        )}
+                        {/* Delete Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage(index)}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          aria-label="Remove image"
+                        >
+                          <X size={14} />
+                        </button>
+                        {/* Reorder Buttons */}
+                        {index > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleMoveImage(index, 'up')}
+                            className="absolute bottom-1 left-1 bg-white/90 text-gray-700 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                            aria-label="Move up"
+                          >
+                            <ArrowUp size={12} />
+                          </button>
+                        )}
+                        {index < (imagePreviews.length > 0 ? imagePreviews.length : imageUrls.length) - 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleMoveImage(index, 'down')}
+                            className="absolute bottom-1 right-1 bg-white/90 text-gray-700 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                            aria-label="Move down"
+                          >
+                            <ArrowDown size={12} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Upload Area */}
             <div className="border-2 border-dashed border-gray-200 rounded-xl sm:rounded-2xl p-6 sm:p-8 md:p-10 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer relative">
               <input
                 type="file"
                 accept="image/*"
+                multiple
                 onChange={handleImageUpload}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                disabled={uploadingImage}
               />
-              {imageUrl ? (
-                <img src={imageUrl} alt="Preview" className="max-w-full max-h-64 rounded-lg" />
+              {uploadingImage ? (
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#15383c] mx-auto mb-2"></div>
+                  <p className="text-xs sm:text-sm text-gray-600">Uploading images...</p>
+                </div>
               ) : (
                 <>
                   <Upload size={24} className="sm:w-7 sm:h-7 md:w-8 md:h-8 text-gray-400 mb-2" />
-                  <span className="text-xs sm:text-sm md:text-base font-medium text-gray-500">Click to Upload</span>
+                  <p className="text-xs sm:text-sm md:text-base text-gray-600 font-medium">Click to upload or drag and drop</p>
+                  <p className="text-[10px] sm:text-xs text-gray-400 mt-1">PNG, JPG, GIF up to 5MB each (multiple images supported)</p>
                 </>
               )}
             </div>

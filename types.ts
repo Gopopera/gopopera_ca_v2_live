@@ -9,7 +9,8 @@ export interface Event {
   tags: string[];
   host: string;
   hostName: string; // Keep for backward compatibility
-  imageUrl: string;
+  imageUrl: string; // Main image (first in imageUrls array, kept for backward compatibility)
+  imageUrls?: string[]; // Array of image URLs (first one is the main photo)
   attendeesCount: number;
   createdAt: string; // ISO date string
   // Map coordinates (optional)

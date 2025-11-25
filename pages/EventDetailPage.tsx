@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Event, ViewState } from '../types';
-import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info, Star, Sparkles, X, UserPlus, UserCheck } from 'lucide-react';
+import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info, Star, Sparkles, X, UserPlus, UserCheck, ChevronRight } from 'lucide-react';
 import { followHost, unfollowHost, isFollowing } from '../firebase/follow';
 import { useUserStore } from '../stores/userStore';
 import { EventCard } from '../components/events/EventCard';
@@ -227,9 +227,37 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         </div>
       )}
 
+      {/* Image Gallery - Scrollable if multiple images */}
       <div className="relative h-[40vh] sm:h-[45vh] md:h-[50vh] lg:h-[55vh] xl:h-[60vh] w-full overflow-hidden group">
-         <img src={event.imageUrl} alt={event.title} className="w-full h-full object-cover object-center transition-transform duration-1000 group-hover:scale-105" />
-         <div className="absolute inset-0 bg-gradient-to-t from-[#15383c] via-[#15383c]/40 to-transparent opacity-90" />
+        {event.imageUrls && event.imageUrls.length > 1 ? (
+          // Multiple images - horizontal scrollable gallery
+          <div className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth h-full hide-scrollbar">
+            {event.imageUrls.map((url, index) => (
+              <div key={index} className="relative min-w-full h-full snap-center flex-shrink-0">
+                <img 
+                  src={url} 
+                  alt={`${event.title} - Image ${index + 1}`} 
+                  className="w-full h-full object-cover object-center"
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          // Single image
+          <img 
+            src={event.imageUrl || (event.imageUrls && event.imageUrls[0]) || `https://picsum.photos/seed/${event.id}/800/600`} 
+            alt={event.title} 
+            className="w-full h-full object-cover object-center transition-transform duration-1000 group-hover:scale-105" 
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#15383c] via-[#15383c]/40 to-transparent opacity-90" />
+        
+        {/* Image counter for multiple images */}
+        {event.imageUrls && event.imageUrls.length > 1 && (
+          <div className="absolute top-4 right-4 bg-black/50 text-white text-xs font-medium px-2 py-1 rounded backdrop-blur-sm z-10">
+            1 / {event.imageUrls.length}
+          </div>
+        )}
          <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 md:p-8 lg:p-12 max-w-7xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6">
             <div className="text-white animate-fade-in-up">
                <span className="inline-block px-3 sm:px-3.5 py-1 sm:py-1.5 bg-popera-orange rounded-full text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-wider mb-2 sm:mb-3 md:mb-4 shadow-lg">{event.category}</span>
@@ -295,10 +323,16 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             <div className="prose prose-lg text-gray-600 leading-relaxed font-light text-sm sm:text-base md:text-base"><p>{event.description || "Join us for an incredible experience..."}</p></div>
           </div>
 
-          <div>
-             <h2 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-popera-teal mb-3 sm:mb-4 md:mb-6 flex items-center gap-2 sm:gap-3"><Sparkles size={18} className="sm:w-5 sm:h-5 text-popera-orange" /> What to Expect</h2>
-             <div className="bg-popera-softTeal p-4 sm:p-6 md:p-8 rounded-xl sm:rounded-[1.5rem] md:rounded-[2rem] border border-popera-teal/5 text-gray-600 font-light leading-relaxed text-sm sm:text-base"><p className="mb-3 sm:mb-4">An immersive experience designed to connect you with like-minded individuals.</p></div>
-          </div>
+          {event.whatToExpect && (
+            <div>
+              <h2 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-popera-teal mb-3 sm:mb-4 md:mb-6 flex items-center gap-2 sm:gap-3">
+                <Sparkles size={18} className="sm:w-5 sm:h-5 text-popera-orange" /> What to Expect
+              </h2>
+              <div className="bg-popera-softTeal p-4 sm:p-6 md:p-8 rounded-xl sm:rounded-[1.5rem] md:rounded-[2rem] border border-popera-teal/5 text-gray-600 font-light leading-relaxed text-sm sm:text-base">
+                <p className="mb-3 sm:mb-4 whitespace-pre-line">{event.whatToExpect}</p>
+              </div>
+            </div>
+          )}
 
           <div className="border-t border-gray-100 pt-6 sm:pt-8 md:pt-10">
             <h2 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-popera-teal mb-4 sm:mb-6">Location</h2>
