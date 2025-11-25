@@ -15,7 +15,7 @@
 import React, { useState, useEffect } from 'react';
 import { Phone, X, CheckCircle2 } from 'lucide-react';
 import { getAuthInstance } from '../../src/lib/firebaseAuth';
-import { linkWithPhoneNumber, RecaptchaVerifier, type ConfirmationResult } from 'firebase/auth';
+import { linkWithPhoneNumber, signInWithPhoneNumber, RecaptchaVerifier, type ConfirmationResult } from 'firebase/auth';
 import { getDbSafe } from '../../src/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { useUserStore } from '../../stores/userStore';
@@ -121,9 +121,18 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       // Get the singleton verifier (reuses existing instance if available)
       const verifier = getHostPhoneRecaptchaVerifier();
 
-      // IMPORTANT: we are verifying *and linking* the phone number to the existing user,
-      // **not** doing MFA and not signing in with phone.
-      const confirmation = await linkWithPhoneNumber(currentUser, formattedPhone, verifier);
+      let confirmation: ConfirmationResult;
+
+      // Check if phone number is already linked to the user
+      if (currentUser.phoneNumber) {
+        // Phone is already linked - use signInWithPhoneNumber to verify (returns ConfirmationResult)
+        console.log('[HOST_VERIFY] Using verifyPhoneNumber');
+        confirmation = await signInWithPhoneNumber(auth, formattedPhone, verifier);
+      } else {
+        // Phone is not linked - use linkWithPhoneNumber to link and verify
+        console.log('[HOST_VERIFY] Using linkWithPhoneNumber');
+        confirmation = await linkWithPhoneNumber(currentUser, formattedPhone, verifier);
+      }
 
       setConfirmationResult(confirmation);
       setStep('code');
@@ -136,6 +145,9 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
 
       if (error?.code === 'auth/operation-not-allowed') {
         msg = 'Phone verification is not enabled. Please contact support.';
+      } else if (error?.code === 'auth/provider-already-linked') {
+        // This shouldn't happen with our logic, but handle it gracefully
+        msg = 'This phone number is already linked to your account.';
       } else if (error?.code === 'auth/invalid-phone-number') {
         msg = 'That phone number looks invalid. Please double-check and try again.';
       } else if (error?.code === 'auth/too-many-requests') {
