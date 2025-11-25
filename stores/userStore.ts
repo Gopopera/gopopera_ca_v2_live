@@ -259,10 +259,15 @@ export const useUserStore = create<UserStore>()(
                 
                 if (firebaseUser) {
                   await get().handleAuthSuccess(firebaseUser);
+                  // CRITICAL: Always set authInitialized after handling user
+                  set({ authInitialized: true });
                 } else {
                   // Only clear user state if redirect has been handled (to avoid clearing during redirect processing)
                   if (get()._redirectHandled) {
-                    set({ user: null, userProfile: null, currentUser: null, loading: false, ready: true, isAuthReady: true });
+                    set({ user: null, userProfile: null, currentUser: null, loading: false, ready: true, isAuthReady: true, authInitialized: true });
+                  } else {
+                    // If redirect not handled yet, just set authInitialized but don't clear user
+                    set({ authInitialized: true });
                   }
                 }
               } catch (error) {

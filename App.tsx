@@ -428,114 +428,29 @@ const AppContent: React.FC = () => {
   const justLoggedInFromRedirect = useUserStore((state) => state._justLoggedInFromRedirect);
   const clearJustLoggedInFlag = useUserStore((state) => state.clearJustLoggedInFlag);
   
-  // AGGRESSIVE MOBILE REDIRECT DETECTION
-  // Check auth.currentUser directly as fallback since store might not update in time
+  // SIMPLE APPROACH: If user exists and we're on landing page, go to feed
+  // No complex logic, no flags, no polling - just check and navigate
   useEffect(() => {
     if (!authInitialized) return;
     
-    // Primary: Check store user
-    if (user && viewState === ViewState.LANDING && !hasHandledRedirectLogin) {
+    // Simple rule: User logged in + on landing page = go to feed
+    if (user && viewState === ViewState.LANDING) {
       const redirect = redirectAfterLogin || ViewState.FEED;
-      console.log('[APP] ✅ User in store on landing page - redirecting to:', redirect, { 
-        user: user.email,
-        authInitialized 
-      });
-      
-      const timer = setTimeout(() => {
-        setViewState(redirect);
-        setRedirectAfterLogin(null);
-        setHasHandledRedirectLogin(true);
-        if (justLoggedInFromRedirect) {
-          clearJustLoggedInFlag();
-        }
-      }, 100);
-      
-      return () => clearTimeout(timer);
+      console.log('[APP] User logged in, navigating to:', redirect);
+      setViewState(redirect);
+      setRedirectAfterLogin(null);
+      return;
     }
     
-    // FALLBACK: Direct Firebase auth check (for mobile redirect timing issues)
-    if (viewState === ViewState.LANDING && !hasHandledRedirectLogin && authInitialized) {
-      import('./src/lib/firebaseAuth').then(({ getAuthInstance }) => {
-        const auth = getAuthInstance();
-        if (auth.currentUser && !user) {
-          // Firebase has user but store doesn't yet - force update store
-          console.log('[APP] 🔴 FALLBACK: Firebase has user but store missing - forcing update', {
-            firebaseUser: auth.currentUser.email,
-            storeUser: user?.email
-          });
-          
-          // Trigger store update by calling handleAuthSuccess
-          useUserStore.getState().handleAuthSuccess(auth.currentUser).then(() => {
-            // After store updates, navigation effect will trigger
-            console.log('[APP] Store updated, navigation should trigger on next render');
-          });
-        } else if (auth.currentUser && user && auth.currentUser.uid === user.uid) {
-          // Both have user but navigation didn't trigger - force it
-          const redirect = redirectAfterLogin || ViewState.FEED;
-          console.log('[APP] 🟡 FALLBACK: Both Firebase and store have user - forcing navigation', redirect);
-          setTimeout(() => {
-            setViewState(redirect);
-            setRedirectAfterLogin(null);
-            setHasHandledRedirectLogin(true);
-          }, 100);
-        }
-      }).catch(err => {
-        console.error('[APP] Error in fallback auth check:', err);
-      });
-    }
-    
-    // Handle normal login flow from AUTH page
-    if (user && !hasHandledRedirectLogin && viewState === ViewState.AUTH) {
+    // Handle login from AUTH page
+    if (user && viewState === ViewState.AUTH) {
       const redirect = redirectAfterLogin || ViewState.FEED;
       console.log('[APP] Redirecting after login from AUTH page:', redirect);
       setViewState(redirect);
       setRedirectAfterLogin(null);
-      setHasHandledRedirectLogin(true);
       return;
     }
-    
-    // Reset redirect handler when user logs out
-    if (!user && hasHandledRedirectLogin) {
-      setHasHandledRedirectLogin(false);
-    }
-  }, [user, viewState, redirectAfterLogin, setRedirectAfterLogin, authInitialized, hasHandledRedirectLogin, justLoggedInFromRedirect, clearJustLoggedInFlag]);
-  
-  // POLLING FALLBACK: Check every 500ms for first 5 seconds after auth init
-  // This catches cases where timing is completely off
-  useEffect(() => {
-    if (!authInitialized || viewState !== ViewState.LANDING || hasHandledRedirectLogin) return;
-    
-    let pollCount = 0;
-    const maxPolls = 10; // 5 seconds (10 * 500ms)
-    
-    const pollInterval = setInterval(() => {
-      pollCount++;
-      
-      import('./src/lib/firebaseAuth').then(({ getAuthInstance }) => {
-        const auth = getAuthInstance();
-        const storeUser = useUserStore.getState().user;
-        
-        if (auth.currentUser && !storeUser) {
-          console.log('[APP] 🔄 POLL: Firebase has user, updating store...', auth.currentUser.email);
-          useUserStore.getState().handleAuthSuccess(auth.currentUser);
-        } else if (auth.currentUser && storeUser && auth.currentUser.uid === storeUser.uid) {
-          // Both have user - navigate
-          const redirect = useUserStore.getState().redirectAfterLogin || ViewState.FEED;
-          console.log('[APP] 🔄 POLL: Both have user, navigating to:', redirect);
-          setViewState(redirect);
-          useUserStore.getState().setRedirectAfterLogin(null);
-          setHasHandledRedirectLogin(true);
-          clearInterval(pollInterval);
-        }
-      }).catch(() => {});
-      
-      if (pollCount >= maxPolls) {
-        clearInterval(pollInterval);
-      }
-    }, 500);
-    
-    return () => clearInterval(pollInterval);
-  }, [authInitialized, viewState, hasHandledRedirectLogin]);
+  }, [user, viewState, redirectAfterLogin, setRedirectAfterLogin, authInitialized]);
   
   // Events are now loaded via real-time subscription in eventStore.init()
   // No need for manual loading or mock data initialization - events come from Firestore in real-time
