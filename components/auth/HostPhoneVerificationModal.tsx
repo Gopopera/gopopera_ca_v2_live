@@ -75,6 +75,7 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
           recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
             size: 'normal',
             // DO NOT pass 'siteKey' parameter - Firebase manages this automatically
+            // Firebase will use the key configured in Firebase Console → Authentication → Settings → reCAPTCHA
             callback: (response: any) => {
               // reCAPTCHA solved - set state to indicate this
               const timestamp = new Date().toISOString();
@@ -236,12 +237,37 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
 
       // CRITICAL: Add timeout to detect if Firebase call is hanging
       const FIREBASE_TIMEOUT = 30000; // 30 seconds
-      const firebaseCallPromise = currentUser.phoneNumber
-        ? signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifierRef.current)
-        : linkWithPhoneNumber(currentUser, formattedPhone, recaptchaVerifierRef.current);
+      
+      // Log before making the Firebase call
+      console.log('[HOST_VERIFY] About to call Firebase phone auth...', {
+        hasVerifier: !!recaptchaVerifierRef.current,
+        verifierType: recaptchaVerifierRef.current?.constructor?.name,
+        phoneAlreadyLinked: !!currentUser.phoneNumber,
+        formattedPhone,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Create the Firebase promise with detailed logging
+      const firebaseCallPromise = (async () => {
+        const startTime = Date.now();
+        console.log('[HOST_VERIFY] 🔄 Starting Firebase phone auth call at', new Date().toISOString());
+        try {
+          const result = currentUser.phoneNumber
+            ? await signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifierRef.current)
+            : await linkWithPhoneNumber(currentUser, formattedPhone, recaptchaVerifierRef.current);
+          const duration = Date.now() - startTime;
+          console.log('[HOST_VERIFY] ✅ Firebase call completed in', duration, 'ms');
+          return result;
+        } catch (err) {
+          const duration = Date.now() - startTime;
+          console.error('[HOST_VERIFY] ❌ Firebase call failed after', duration, 'ms:', err);
+          throw err;
+        }
+      })();
       
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => {
+          console.error('[HOST_VERIFY] ⏱️ TIMEOUT: Firebase call exceeded', FIREBASE_TIMEOUT, 'ms');
           reject(new Error('Firebase phone auth call timed out after 30 seconds'));
         }, FIREBASE_TIMEOUT);
       });
