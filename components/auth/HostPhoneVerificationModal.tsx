@@ -458,13 +458,24 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
         throw new Error('Invalid confirmationResult object. Please request a new code.');
       }
       
-      // Log network state before making the call
+      // Log network state and page visibility before making the call
       if (typeof navigator !== 'undefined' && 'onLine' in navigator) {
         console.log('[HOST_VERIFY] Network status:', {
           online: navigator.onLine,
           connectionType: (navigator as any).connection?.effectiveType || 'unknown'
         });
       }
+      
+      // Check if page is visible (mobile browsers suspend JS when backgrounded)
+      if (typeof document !== 'undefined' && document.hidden) {
+        console.warn('[HOST_VERIFY] ⚠️ Page is hidden - this might cause issues on mobile');
+        setDebugInfo('⚠️ Please ensure the page is active (not in background)');
+      }
+      
+      console.log('[HOST_VERIFY] Page visibility:', {
+        hidden: document?.hidden,
+        visibilityState: document?.visibilityState
+      });
       
       // Create the verify promise with detailed logging
       const verifyPromise = (async () => {
