@@ -90,30 +90,68 @@ export async function signInWithGoogle(): Promise<UserCredential | null> {
   const auth = await initFirebaseAuth();
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
+  
   // Proper mobile detection using user-agent (not viewport width)
   const isMobile = typeof window !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  const preferRedirect = isMobile;
-
-  console.log('[AUTH] signInWithGoogle called', { isMobile, preferRedirect, userAgent: typeof window !== 'undefined' ? navigator.userAgent : 'unknown' });
+  
+  // CRITICAL: For mobile, try popup first (more reliable), fallback to redirect
+  // Redirect has issues with sessionStorage in mobile browsers (especially Safari)
+  // Popup works better on modern mobile browsers
+  console.log('[AUTH] signInWithGoogle called', { 
+    isMobile, 
+    userAgent: typeof window !== 'undefined' ? navigator.userAgent : 'unknown',
+    hasSessionStorage: typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined'
+  });
 
   try {
-    if (preferRedirect) {
-      console.log('[AUTH] Using signInWithRedirect (mobile)');
-      await signInWithRedirect(auth, provider);
-      // Page will redirect away, this won't return
-      return null;
+    if (isMobile) {
+      // Try popup first on mobile (works better than redirect in modern browsers)
+      try {
+        console.log('[AUTH] Attempting signInWithPopup on mobile');
+        return await signInWithPopup(auth, provider, browserPopupRedirectResolver);
+      } catch (popupErr: any) {
+        // If popup fails, fallback to redirect
+        const popupErrorCodes = [
+          'auth/popup-blocked',
+          'auth/popup-closed-by-user',
+          'auth/cancelled-popup-request',
+          'auth/operation-not-supported-in-this-environment',
+        ];
+        if (popupErrorCodes.includes(popupErr?.code)) {
+          console.warn('[AUTH] Popup blocked/failed on mobile, falling back to redirect', popupErr?.code);
+          // Clear any stale sessionStorage before redirect to avoid "missing initial state" error
+          try {
+            if (typeof window !== 'undefined' && window.sessionStorage) {
+              // Clear only Firebase-related keys to avoid losing other data
+              Object.keys(window.sessionStorage).forEach(key => {
+                if (key.startsWith('firebase:') || key.includes('auth')) {
+                  window.sessionStorage.removeItem(key);
+                }
+              });
+            }
+          } catch (e) {
+            console.warn('[AUTH] Could not clear sessionStorage:', e);
+          }
+          await signInWithRedirect(auth, provider);
+          return null;
+        }
+        throw popupErr;
+      }
+    } else {
+      // Desktop: use popup
+      console.log('[AUTH] Using signInWithPopup (desktop)');
+      return await signInWithPopup(auth, provider, browserPopupRedirectResolver);
     }
-    console.log('[AUTH] Using signInWithPopup (desktop)');
-    return await signInWithPopup(auth, provider, browserPopupRedirectResolver);
   } catch (err: any) {
     console.error("[AUTH] Google sign-in error:", err);
+    // Final fallback: try redirect if popup fails
     const fallbackCodes = [
       'auth/popup-blocked',
       'auth/popup-closed-by-user',
       'auth/cancelled-popup-request',
       'auth/operation-not-supported-in-this-environment',
     ];
-    if (fallbackCodes.includes(err?.code)) {
+    if (fallbackCodes.includes(err?.code) && !isMobile) {
       console.warn('[AUTH] Popup failed, falling back to redirect', err?.code);
       await signInWithRedirect(auth, provider);
       return null;
