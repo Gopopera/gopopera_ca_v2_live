@@ -393,6 +393,13 @@ const AppContent: React.FC = () => {
   // Initialize auth listener and events store on mount
   // City store auto-initializes via Zustand persist middleware
   useEffect(() => {
+    // Initialize auth monitoring (tracks failures and redirect issues)
+    import('./src/lib/firebaseMonitoring').then(({ initAuthMonitoring }) => {
+      initAuthMonitoring();
+    }).catch((err) => {
+      console.warn('[APP] Failed to load auth monitoring:', err);
+    });
+    
     useUserStore.getState().init();
     // Initialize events store with real-time Firestore subscription
     useEventStore.getState().init();
