@@ -139,7 +139,11 @@ export function getDbSafe(): Firestore | null {
   }
   if (!_db && !cachedDb) {
     try {
-      _db = getFirestore(a);
+      // Specify database ID: 'gopopera2028' (user renamed the database)
+      // If you have multiple databases, you must specify which one to use
+      // Use '(default)' for the default database, or the database ID for named databases
+      const databaseId = 'gopopera2028'; // User's renamed database
+      _db = getFirestore(a, databaseId);
       cachedDb = _db;
       // Verify Firestore is actually ready
       if (!_db) {
