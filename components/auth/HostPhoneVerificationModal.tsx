@@ -448,10 +448,40 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       console.log('[HOST_VERIFY] Attempting to verify code...', {
         codeLength: verificationCode.trim().length,
         hasConfirmationResult: !!confirmationResult,
+        confirmationResultType: typeof confirmationResult,
+        hasConfirmMethod: typeof confirmationResult?.confirm === 'function',
         timestamp: new Date().toISOString()
       });
       
-      const verifyPromise = confirmationResult.confirm(verificationCode.trim());
+      // CRITICAL: Verify the confirmationResult has the confirm method
+      if (!confirmationResult || typeof confirmationResult.confirm !== 'function') {
+        throw new Error('Invalid confirmationResult object. Please request a new code.');
+      }
+      
+      // Log network state before making the call
+      if (typeof navigator !== 'undefined' && 'onLine' in navigator) {
+        console.log('[HOST_VERIFY] Network status:', {
+          online: navigator.onLine,
+          connectionType: (navigator as any).connection?.effectiveType || 'unknown'
+        });
+      }
+      
+      // Create the verify promise with detailed logging
+      const verifyPromise = (async () => {
+        console.log('[HOST_VERIFY] 🔄 Calling confirmationResult.confirm()...');
+        const startTime = Date.now();
+        try {
+          const result = await confirmationResult.confirm(verificationCode.trim());
+          const duration = Date.now() - startTime;
+          console.log('[HOST_VERIFY] ✅ confirm() resolved after', duration, 'ms');
+          return result;
+        } catch (err: any) {
+          const duration = Date.now() - startTime;
+          console.error('[HOST_VERIFY] ❌ confirm() rejected after', duration, 'ms:', err);
+          throw err;
+        }
+      })();
+      
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => {
           reject(new Error('Verification timed out after 20 seconds. The code may be incorrect or expired.'));
