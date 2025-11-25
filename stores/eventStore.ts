@@ -76,27 +76,54 @@ export const useEventStore = create<EventStore>((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       
-      // Subscribe to events collection with ordering by date
+      // Subscribe to events collection
+      // IMPORTANT: Query without orderBy first to avoid index requirements
+      // We'll sort client-side to ensure all events are loaded
       const eventsCol = collection(db, 'events');
-      const q = query(eventsCol, orderBy('date', 'asc'));
+      
+      // Use a simple query without orderBy to avoid index issues
+      // Filter for public events only (isPublic !== false, defaulting to true)
+      // Note: Firestore doesn't support != null, so we query all and filter client-side
+      const q = query(eventsCol);
       
       const unsubscribe = onSnapshot(
         q,
         (snapshot) => {
           try {
-            const events: Event[] = snapshot.docs.map((doc) => {
-              const firestoreEvent: FirestoreEvent = {
-                id: doc.id,
-                ...(doc.data() as Omit<FirestoreEvent, 'id'>),
-              };
-              return mapFirestoreEventToEvent(firestoreEvent);
-            });
+            // Map and filter events
+            const events: Event[] = snapshot.docs
+              .map((doc) => {
+                const data = doc.data();
+                // Filter: Only include public events (isPublic !== false)
+                // Events without isPublic field default to public (true) - show them
+                if (data.isPublic === false) {
+                  return null; // Skip private events
+                }
+                
+                const firestoreEvent: FirestoreEvent = {
+                  id: doc.id,
+                  ...(data as Omit<FirestoreEvent, 'id'>),
+                };
+                return mapFirestoreEventToEvent(firestoreEvent);
+              })
+              .filter((event): event is Event => event !== null) // Remove nulls
+              // Sort by date client-side (handle missing dates)
+              .sort((a, b) => {
+                const dateA = a.date || '';
+                const dateB = b.date || '';
+                if (!dateA && !dateB) return 0;
+                if (!dateA) return 1; // Events without dates go to end
+                if (!dateB) return -1;
+                return dateA.localeCompare(dateB);
+              });
             
             console.log('[EVENT_STORE] Events updated from Firestore:', events.length, {
               eventIds: events.map(e => e.id),
               eventTitles: events.map(e => e.title),
               eventHosts: events.map(e => e.hostName),
-              eventCities: events.map(e => e.city)
+              eventCities: events.map(e => e.city),
+              totalDocs: snapshot.docs.length,
+              filteredOut: snapshot.docs.length - events.length
             });
             set({ events, isLoading: false, error: null });
           } catch (error) {
