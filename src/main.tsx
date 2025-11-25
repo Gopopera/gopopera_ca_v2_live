@@ -17,6 +17,16 @@ function SafeShell() {
 
 console.log('[BOOT] main.tsx loading');
 
+// Global error handler to catch unhandled promise rejections
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('[GLOBAL] Unhandled promise rejection:', event.reason);
+  // Prevent default browser error logging if we've handled it
+  // But still log it for debugging
+  if (event.reason?.message?.includes('timeout')) {
+    console.warn('[GLOBAL] Timeout error caught - this should be handled by the component');
+  }
+});
+
 ReactDOM.createRoot(el).render(
   <AppErrorBoundary>
     <SafeShell />
