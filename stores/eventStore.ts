@@ -3,7 +3,7 @@ import { Event } from '../types';
 import { categoryMatches } from '../utils/categoryMapper';
 import { createEvent as createFirestoreEvent, mapFirestoreEventToEvent } from '../firebase/db';
 import { getDbSafe } from '../src/lib/firebase';
-import { collection, onSnapshot, query, orderBy, type Unsubscribe } from 'firebase/firestore';
+import { collection, onSnapshot, query, type Unsubscribe } from 'firebase/firestore';
 import type { FirestoreEvent } from '../firebase/types';
 
 interface EventStore {
