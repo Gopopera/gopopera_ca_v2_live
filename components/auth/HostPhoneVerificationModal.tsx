@@ -222,12 +222,32 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
 
     try {
       // Format phone number to E.164 format
-      const formattedPhone = phoneNumber.startsWith('+') 
-        ? phoneNumber 
-        : `+1${phoneNumber.replace(/\D/g, '')}`;
+      // Remove all non-digits first, then add country code if missing
+      const digitsOnly = phoneNumber.replace(/\D/g, '');
+      let formattedPhone: string;
+      
+      if (phoneNumber.startsWith('+')) {
+        // Already has country code
+        formattedPhone = phoneNumber.replace(/\D/g, '');
+        formattedPhone = '+' + formattedPhone;
+      } else if (digitsOnly.length === 10) {
+        // 10 digits - assume US/Canada (+1)
+        formattedPhone = `+1${digitsOnly}`;
+      } else if (digitsOnly.length === 11 && digitsOnly.startsWith('1')) {
+        // 11 digits starting with 1 - already has country code
+        formattedPhone = `+${digitsOnly}`;
+      } else {
+        // Invalid format
+        setError('Invalid phone number format. Please use format: +1234567890 or (123) 456-7890');
+        setLoading(false);
+        setIsSendingCode(false);
+        return;
+      }
 
       console.log('[HOST_VERIFY] ✅ reCAPTCHA solved, calling Firebase phone auth...', {
+        originalPhone: phoneNumber,
         formattedPhone,
+        digitsOnly,
         hasVerifier: !!recaptchaVerifierRef.current,
         currentUserPhone: currentUser.phoneNumber
       });
@@ -734,6 +754,17 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       let errorMessage = "We couldn't verify your code. Please try again or request a new code.";
 
       if (error?.code === 'auth/operation-not-allowed') {
+        // Check if it's a region/phone number format issue
+        const errorMsg = error?.message || '';
+        if (errorMsg.includes('region') || errorMsg.includes('SMS unable to be sent')) {
+          setError('Phone verification is not enabled for this region, or the phone number format is invalid. Please check: 1) Firebase Console → Authentication → Settings → SMS region policy, 2) Ensure phone number is in E.164 format (e.g., +13432095070 for Canada).');
+          setDebugInfo('❌ Region/phone format issue - check Firebase Console SMS settings');
+        } else {
+          setError('Phone verification is not enabled. Please contact support.');
+        }
+        setLoading(false);
+        setIsSendingCode(false);
+        return; // Don't grant access - user needs to fix configuration
         errorMessage = 'Phone verification is not enabled. Please contact support.';
       } else if (error?.code === 'auth/invalid-verification-code') {
         errorMessage = 'Invalid verification code. Please check and try again.';
