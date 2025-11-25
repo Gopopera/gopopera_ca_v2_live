@@ -262,6 +262,16 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
             stack: signInErr?.stack?.substring(0, 300),
             isTimeout
           });
+          
+          // Check for specific error codes from console
+          if (signInErr?.code === 'auth/network-request-failed' || signInErr?.message?.includes('400') || signInErr?.message?.includes('401')) {
+            setDebugInfo('❌ Network/Configuration Error - Check Firebase Console settings');
+            setError('Phone verification configuration error. Please check Firebase Console → Authentication → Settings → reCAPTCHA configuration.');
+            setLoading(false);
+            setIsSendingCode(false);
+            return;
+          }
+          
           setDebugInfo(isTimeout ? '⏱️ Request timed out after 30 seconds' : `❌ Error: ${signInErr?.code || signInErr?.message}`);
           throw signInErr;
         }
@@ -280,6 +290,16 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
             stack: linkErr?.stack?.substring(0, 300),
             isTimeout
           });
+          
+          // Check for specific error codes from console
+          if (linkErr?.code === 'auth/network-request-failed' || linkErr?.message?.includes('400') || linkErr?.message?.includes('401')) {
+            setDebugInfo('❌ Network/Configuration Error - Check Firebase Console settings');
+            setError('Phone verification configuration error. Please check Firebase Console → Authentication → Settings → reCAPTCHA configuration.');
+            setLoading(false);
+            setIsSendingCode(false);
+            return;
+          }
+          
           setDebugInfo(isTimeout ? '⏱️ Request timed out after 30 seconds' : `❌ Error: ${linkErr?.code || linkErr?.message}`);
           throw linkErr;
         }
