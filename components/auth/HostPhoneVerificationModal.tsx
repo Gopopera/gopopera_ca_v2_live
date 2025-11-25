@@ -307,6 +307,13 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
             return;
           }
           
+          // Handle rate limiting
+          if (signInErr?.code === 'auth/too-many-requests') {
+            setDebugInfo('⏱️ Rate limited - wait before retrying');
+            setError('Too many attempts. Please wait a few minutes before trying again.');
+            return;
+          }
+          
           setDebugInfo(`❌ Error: ${signInErr?.code || signInErr?.message}`);
           setError(signInErr?.message || 'Failed to send verification code. Please try again.');
           return; // Don't throw - we've handled the error
@@ -342,6 +349,13 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
           if (isTimeout) {
             setDebugInfo('⏱️ Request timed out after 30 seconds - Firebase may be slow or unresponsive');
             setError('Request timed out. Firebase may be experiencing issues. Please try again in a moment.');
+            return;
+          }
+          
+          // Handle rate limiting
+          if (linkErr?.code === 'auth/too-many-requests') {
+            setDebugInfo('⏱️ Rate limited - wait before retrying');
+            setError('Too many attempts. Please wait a few minutes before trying again.');
             return;
           }
           
@@ -732,6 +746,12 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
         setConfirmationResult(null);
         setStep('phone'); // Go back to phone input
       } else if (error?.code === 'auth/too-many-requests') {
+        // Rate limiting - too many failed attempts
+        setError('Too many attempts. Please wait a few minutes before trying again. The rate limit will reset automatically.');
+        setDebugInfo('⏱️ Rate limited - wait before retrying');
+        setLoading(false);
+        setIsSendingCode(false);
+        return; // Don't grant access on rate limit - user must wait
         errorMessage = 'Too many attempts. Please wait a bit before trying again.';
         // Clear confirmationResult on rate limit - user needs to request new code
         setConfirmationResult(null);
