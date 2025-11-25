@@ -68,9 +68,20 @@ export function listenToAuthChanges(callback: (user: User | null) => void): Unsu
 export async function completeGoogleRedirect(): Promise<UserCredential | null> {
   const auth = await initFirebaseAuth();
   try {
-    return await getRedirectResult(auth);
-  } catch (err) {
-    console.error('[AUTH] completeGoogleRedirect error', err);
+    const result = await getRedirectResult(auth);
+    console.log('[AUTH] getRedirectResult() returned:', {
+      hasResult: !!result,
+      hasUser: !!result?.user,
+      userEmail: result?.user?.email,
+      error: result?.user ? null : 'No user in result'
+    });
+    return result;
+  } catch (err: any) {
+    console.error('[AUTH] completeGoogleRedirect error', {
+      code: err?.code,
+      message: err?.message,
+      stack: err?.stack?.substring(0, 200)
+    });
     return null;
   }
 }
@@ -83,11 +94,16 @@ export async function signInWithGoogle(): Promise<UserCredential | null> {
   const isMobile = typeof window !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const preferRedirect = isMobile;
 
+  console.log('[AUTH] signInWithGoogle called', { isMobile, preferRedirect, userAgent: typeof window !== 'undefined' ? navigator.userAgent : 'unknown' });
+
   try {
     if (preferRedirect) {
+      console.log('[AUTH] Using signInWithRedirect (mobile)');
       await signInWithRedirect(auth, provider);
+      // Page will redirect away, this won't return
       return null;
     }
+    console.log('[AUTH] Using signInWithPopup (desktop)');
     return await signInWithPopup(auth, provider, browserPopupRedirectResolver);
   } catch (err: any) {
     console.error("[AUTH] Google sign-in error:", err);
