@@ -196,12 +196,13 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
 
       // cred.user is the same logged-in user with phone linked.
       // After successful confirmation, update Firestore user document:
+      // Format phone number first (needed for both Firestore and store updates)
+      const formattedPhone = phoneNumber.startsWith('+') 
+        ? phoneNumber 
+        : `+1${phoneNumber.replace(/\D/g, '')}`;
+      
       const db = getDbSafe();
       if (db && user) {
-        const formattedPhone = phoneNumber.startsWith('+') 
-          ? phoneNumber 
-          : `+1${phoneNumber.replace(/\D/g, '')}`;
-        
         // Update Firestore user document
         await setDoc(
           doc(db, 'users', user.uid),
