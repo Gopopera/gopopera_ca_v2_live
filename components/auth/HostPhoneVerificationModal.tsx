@@ -69,9 +69,16 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
           size: 'normal',
           callback: (response: any) => {
             // reCAPTCHA solved - set state to indicate this
-            console.log('[HOST_VERIFY] ✅ reCAPTCHA solved!', response);
-            setRecaptchaSolved(true);
-            setError(null); // Clear any previous error
+            console.log('[HOST_VERIFY] ✅✅✅ reCAPTCHA SOLVED! Callback fired!', {
+              response,
+              timestamp: new Date().toISOString()
+            });
+            // Use setTimeout to ensure state update happens
+            setTimeout(() => {
+              setRecaptchaSolved(true);
+              setError(null); // Clear any previous error
+              console.log('[HOST_VERIFY] recaptchaSolved state set to true');
+            }, 0);
           },
           'expired-callback': () => {
             // reCAPTCHA expired - reset state
@@ -94,13 +101,20 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
           },
         });
 
-        // Render the reCAPTCHA widget explicitly
-        recaptchaVerifierRef.current.render().then((widgetId) => {
-          console.log('[HOST_VERIFY] ✅ reCAPTCHA rendered with widget ID:', widgetId);
-        }).catch((err) => {
-          console.error('[HOST_VERIFY] ❌ Failed to render reCAPTCHA:', err);
-          setError('Failed to load reCAPTCHA. Please try again.');
+      // Render the reCAPTCHA widget explicitly
+      // CRITICAL: render() must be called for the widget to appear
+      console.log('[HOST_VERIFY] Calling render() on reCAPTCHA verifier...');
+      recaptchaVerifierRef.current.render().then((widgetId) => {
+        console.log('[HOST_VERIFY] ✅✅✅ reCAPTCHA rendered successfully with widget ID:', widgetId);
+        console.log('[HOST_VERIFY] Waiting for user to solve reCAPTCHA...');
+      }).catch((err) => {
+        console.error('[HOST_VERIFY] ❌ Failed to render reCAPTCHA:', {
+          error: err,
+          message: err?.message,
+          stack: err?.stack?.substring(0, 200)
         });
+        setError('Failed to load reCAPTCHA. Please refresh and try again.');
+      });
       } catch (error: any) {
         console.error('[HOST_VERIFY] ❌ Failed to create reCAPTCHA verifier:', error);
         setError('Failed to initialize reCAPTCHA. Please refresh and try again.');
@@ -145,8 +159,21 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
     }
 
     // CRITICAL: Only proceed if reCAPTCHA is solved
+    console.log('[HOST_VERIFY] handleSendCode called', {
+      recaptchaSolved,
+      hasVerifier: !!recaptchaVerifierRef.current,
+      phoneNumber: phoneNumber.trim()
+    });
+    
     if (!recaptchaSolved) {
-      setError('Please solve the reCAPTCHA first.');
+      setError('Please solve the reCAPTCHA first. Make sure the checkbox is checked.');
+      console.warn('[HOST_VERIFY] ⚠️ Attempted to send code but reCAPTCHA not solved');
+      return;
+    }
+    
+    if (!recaptchaVerifierRef.current) {
+      setError('reCAPTCHA verifier is not initialized. Please refresh and try again.');
+      console.error('[HOST_VERIFY] ❌ No verifier instance');
       return;
     }
 
@@ -178,7 +205,11 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
         ? phoneNumber 
         : `+1${phoneNumber.replace(/\D/g, '')}`;
 
-      console.log('[HOST_VERIFY] ✅ reCAPTCHA solved, calling Firebase phone auth...');
+      console.log('[HOST_VERIFY] ✅ reCAPTCHA solved, calling Firebase phone auth...', {
+        formattedPhone,
+        hasVerifier: !!recaptchaVerifierRef.current,
+        currentUserPhone: currentUser.phoneNumber
+      });
 
       let confirmation: ConfirmationResult;
 
@@ -186,13 +217,31 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       if (currentUser.phoneNumber) {
         // Phone is already linked - use signInWithPhoneNumber to verify (returns ConfirmationResult)
         console.log('[HOST_VERIFY] Phone already linked, using signInWithPhoneNumber');
-        confirmation = await signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifierRef.current);
-        console.log('[HOST_VERIFY] ✅ signInWithPhoneNumber succeeded, ConfirmationResult received');
+        try {
+          confirmation = await signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifierRef.current);
+          console.log('[HOST_VERIFY] ✅✅✅ signInWithPhoneNumber SUCCEEDED, ConfirmationResult received');
+        } catch (signInErr: any) {
+          console.error('[HOST_VERIFY] ❌ signInWithPhoneNumber ERROR:', {
+            code: signInErr?.code,
+            message: signInErr?.message,
+            stack: signInErr?.stack?.substring(0, 300)
+          });
+          throw signInErr;
+        }
       } else {
         // Phone is not linked - use linkWithPhoneNumber to link and verify
         console.log('[HOST_VERIFY] Phone not linked, using linkWithPhoneNumber');
-        confirmation = await linkWithPhoneNumber(currentUser, formattedPhone, recaptchaVerifierRef.current);
-        console.log('[HOST_VERIFY] ✅ linkWithPhoneNumber succeeded, ConfirmationResult received');
+        try {
+          confirmation = await linkWithPhoneNumber(currentUser, formattedPhone, recaptchaVerifierRef.current);
+          console.log('[HOST_VERIFY] ✅✅✅ linkWithPhoneNumber SUCCEEDED, ConfirmationResult received');
+        } catch (linkErr: any) {
+          console.error('[HOST_VERIFY] ❌ linkWithPhoneNumber ERROR:', {
+            code: linkErr?.code,
+            message: linkErr?.message,
+            stack: linkErr?.stack?.substring(0, 300)
+          });
+          throw linkErr;
+        }
       }
 
       // CRITICAL: Store ConfirmationResult immediately - we need it for verification step
