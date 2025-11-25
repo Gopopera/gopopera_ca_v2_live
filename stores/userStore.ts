@@ -166,6 +166,7 @@ export const useUserStore = create<UserStore>()(
 
             // CRITICAL: getRedirectResult() MUST be called BEFORE onAuthStateChanged
             // Otherwise, onAuthStateChanged might fire first and the redirect result is lost
+            let redirectUserProcessed = false;
             if (!get()._redirectHandled) {
               try {
                 // Call getRedirectResult() immediately and synchronously
@@ -177,32 +178,91 @@ export const useUserStore = create<UserStore>()(
                   // CRITICAL: Set authInitialized immediately after redirect login
                   // This ensures navigation logic in App.tsx can detect the logged-in user
                   set({ _redirectHandled: true, authInitialized: true, isAuthReady: true });
-                } else {
-                  console.log('[AUTH] No redirect result found');
-                  set({ _redirectHandled: true });
-                }
+                  redirectUserProcessed = true;
+                  } else {
+                    console.log('[AUTH] No redirect result found - checking currentUser');
+                    // If no redirect result, check if user is already authenticated
+                    // This handles cases where onAuthStateChanged fired before getRedirectResult
+                    const auth = getAuthInstance();
+                    if (auth.currentUser) {
+                      console.log('[AUTH] Found currentUser from auth state:', auth.currentUser.email);
+                      await get().handleAuthSuccess(auth.currentUser);
+                      await ensurePoperaProfileAndSeed(auth.currentUser);
+                      set({ _redirectHandled: true, authInitialized: true, isAuthReady: true });
+                      redirectUserProcessed = true;
+                    } else {
+                      set({ _redirectHandled: true });
+                    }
+                  }
               } catch (error) {
                 console.error('[AUTH] Error checking redirect result:', error);
-                set({ _redirectHandled: true });
+                // Even on error, check if user is authenticated
+                // This handles cases where redirect succeeded but getRedirectResult failed
+                try {
+                  const auth = getAuthInstance();
+                  if (auth.currentUser) {
+                    console.log('[AUTH] Found currentUser after redirect error:', auth.currentUser.email);
+                    await get().handleAuthSuccess(auth.currentUser);
+                    await ensurePoperaProfileAndSeed(auth.currentUser);
+                    set({ _redirectHandled: true, authInitialized: true, isAuthReady: true });
+                    redirectUserProcessed = true;
+                  } else {
+                    set({ _redirectHandled: true });
+                  }
+                } catch (checkError) {
+                  console.error('[AUTH] Error checking currentUser:', checkError);
+                  set({ _redirectHandled: true });
+                }
               }
             }
             
             // Set up auth state listener AFTER checking redirect result
+            // If redirect user was already processed, skip duplicate processing in onAuthStateChanged
             const unsub = listenToAuthChanges(async (firebaseUser) => {
               try {
                 console.log('[AUTH] onAuthStateChanged fired', {
                   hasUser: !!firebaseUser,
                   uid: firebaseUser?.uid,
                   email: firebaseUser?.email,
+                  redirectUserProcessed,
+                  _redirectHandled: get()._redirectHandled,
                 });
+                
+                // CRITICAL: If we're still processing redirect (not yet handled), don't clear user state
+                // This prevents onAuthStateChanged from firing with null before redirect result is processed
+                if (!get()._redirectHandled && !firebaseUser) {
+                  console.log('[AUTH] Redirect not yet handled and firebaseUser is null - waiting for redirect processing');
+                  // Don't clear user state yet - wait for redirect processing to complete
+                  return;
+                }
+                
+                // If we already processed the redirect user, only update if it's a different user or logout
+                if (redirectUserProcessed && firebaseUser) {
+                  const currentUser = get().user;
+                  if (currentUser && currentUser.uid === firebaseUser.uid) {
+                    console.log('[AUTH] User already processed from redirect, skipping duplicate handleAuthSuccess');
+                    // Just ensure authInitialized is set
+                    if (!get().authInitialized) {
+                      set({ authInitialized: true });
+                    }
+                    return;
+                  }
+                }
+                
                 if (firebaseUser) {
                   await get().handleAuthSuccess(firebaseUser);
                 } else {
-                  set({ user: null, userProfile: null, currentUser: null, loading: false, ready: true, isAuthReady: true });
+                  // Only clear user state if redirect has been handled (to avoid clearing during redirect processing)
+                  if (get()._redirectHandled) {
+                    set({ user: null, userProfile: null, currentUser: null, loading: false, ready: true, isAuthReady: true });
+                  }
                 }
               } catch (error) {
                 console.error('[AUTH] onAuthStateChanged error', error);
-                set({ user: null, currentUser: null, loading: false, ready: true, isAuthReady: true });
+                // Only clear on error if redirect has been handled
+                if (get()._redirectHandled) {
+                  set({ user: null, currentUser: null, loading: false, ready: true, isAuthReady: true });
+                }
               } finally {
                 set({ authInitialized: true });
               }
