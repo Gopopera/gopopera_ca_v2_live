@@ -324,7 +324,11 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         rating: 0,
         reviewCount: 0,
         capacity: attendeesCount || undefined,
-      });
+        // Ensure events are public and joinable by default
+        isPublic: true,
+        allowRsvp: true,
+        allowChat: true,
+      } as any); // Type assertion needed for optional fields
       
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => {
