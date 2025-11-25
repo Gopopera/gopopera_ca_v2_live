@@ -213,32 +213,46 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
 
       let confirmation: ConfirmationResult;
 
+      // CRITICAL: Add timeout to detect if Firebase call is hanging
+      const FIREBASE_TIMEOUT = 30000; // 30 seconds
+      const firebaseCallPromise = currentUser.phoneNumber
+        ? signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifierRef.current)
+        : linkWithPhoneNumber(currentUser, formattedPhone, recaptchaVerifierRef.current);
+      
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Firebase phone auth call timed out after 30 seconds'));
+        }, FIREBASE_TIMEOUT);
+      });
+
       // Check if phone number is already linked to the user
       if (currentUser.phoneNumber) {
         // Phone is already linked - use signInWithPhoneNumber to verify (returns ConfirmationResult)
-        console.log('[HOST_VERIFY] Phone already linked, using signInWithPhoneNumber');
+        console.log('[HOST_VERIFY] Phone already linked, using signInWithPhoneNumber with timeout');
         try {
-          confirmation = await signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifierRef.current);
+          confirmation = await Promise.race([firebaseCallPromise, timeoutPromise]) as ConfirmationResult;
           console.log('[HOST_VERIFY] ✅✅✅ signInWithPhoneNumber SUCCEEDED, ConfirmationResult received');
         } catch (signInErr: any) {
           console.error('[HOST_VERIFY] ❌ signInWithPhoneNumber ERROR:', {
             code: signInErr?.code,
             message: signInErr?.message,
-            stack: signInErr?.stack?.substring(0, 300)
+            stack: signInErr?.stack?.substring(0, 300),
+            isTimeout: signInErr?.message?.includes('timed out')
           });
           throw signInErr;
         }
       } else {
         // Phone is not linked - use linkWithPhoneNumber to link and verify
-        console.log('[HOST_VERIFY] Phone not linked, using linkWithPhoneNumber');
+        console.log('[HOST_VERIFY] Phone not linked, using linkWithPhoneNumber with timeout');
         try {
-          confirmation = await linkWithPhoneNumber(currentUser, formattedPhone, recaptchaVerifierRef.current);
+          confirmation = await Promise.race([firebaseCallPromise, timeoutPromise]) as ConfirmationResult;
           console.log('[HOST_VERIFY] ✅✅✅ linkWithPhoneNumber SUCCEEDED, ConfirmationResult received');
         } catch (linkErr: any) {
           console.error('[HOST_VERIFY] ❌ linkWithPhoneNumber ERROR:', {
             code: linkErr?.code,
             message: linkErr?.message,
-            stack: linkErr?.stack?.substring(0, 300)
+            stack: linkErr?.stack?.substring(0, 300),
+            isTimeout: linkErr?.message?.includes('timed out')
           });
           throw linkErr;
         }
