@@ -64,9 +64,20 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
     throw new Error('Firestore not initialized');
   }
   
+  // Check if device is online
+  if (typeof navigator !== 'undefined' && 'onLine' in navigator && !navigator.onLine) {
+    throw new Error('Device is offline. Please check your internet connection.');
+  }
+  
   try {
     const eventsCol = collection(db, "events");
     const now = Date.now();
+    
+    console.log('[CREATE_EVENT_DB] Firestore connection check:', {
+      hasDb: !!db,
+      isOnline: navigator?.onLine,
+      connectionType: (navigator as any)?.connection?.effectiveType || 'unknown'
+    });
     
     // Build event data with defaults
     const eventDataRaw: Omit<FirestoreEvent, 'id'> = {
@@ -149,7 +160,18 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
     
     return mapFirestoreEventToEvent(createdEvent);
   } catch (error: any) {
-    console.error('Firestore write failed:', { path: 'events', error: error.message || 'Unknown error' });
+    console.error('[CREATE_EVENT_DB] Firestore write failed:', { 
+      path: 'events', 
+      error: error.message || 'Unknown error',
+      code: error.code,
+      isOffline: error.code === 'unavailable' || error.message?.includes('offline')
+    });
+    
+    // Provide more helpful error message for offline errors
+    if (error.code === 'unavailable' || error.message?.includes('offline')) {
+      throw new Error('Firestore is unavailable. The device may be offline or Firestore is experiencing issues. Please check your internet connection and try again.');
+    }
+    
     throw error;
   }
 }

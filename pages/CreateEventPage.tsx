@@ -139,8 +139,18 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       return;
     }
 
+    // Check if device is online before attempting Firestore write
+    if (typeof navigator !== 'undefined' && 'onLine' in navigator && !navigator.onLine) {
+      alert('You appear to be offline. Please check your internet connection and try again.');
+      console.error('[CREATE_EVENT] Device is offline');
+      return;
+    }
+    
     setIsSubmitting(true);
-    console.log('[CREATE_EVENT] Starting event creation...');
+    console.log('[CREATE_EVENT] Starting event creation...', {
+      isOnline: navigator?.onLine,
+      connectionType: (navigator as any)?.connection?.effectiveType || 'unknown'
+    });
 
     try {
       // Create event with all required fields
@@ -216,8 +226,13 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         alert('Event creation timed out. This might be a network issue or Firestore is slow. Please try again.');
       } else if (error?.code === 'permission-denied') {
         alert('Permission denied. You may not have permission to create events. Please check your account status.');
-      } else if (error?.code === 'unavailable') {
-        alert('Firestore is unavailable. Please check your internet connection and try again.');
+      } else if (error?.code === 'unavailable' || error?.message?.includes('offline') || error?.message?.includes('unavailable')) {
+        alert('Firestore is unavailable. The device may be offline or Firestore is experiencing issues. Please check your internet connection and try again.');
+        console.error('[CREATE_EVENT] Offline/unavailable error:', {
+          code: error?.code,
+          message: error?.message,
+          isOnline: navigator?.onLine
+        });
       } else {
         alert(`Failed to create event: ${error?.message || 'Unknown error'}. Please check the console for details.`);
       }
