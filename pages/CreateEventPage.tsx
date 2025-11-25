@@ -36,6 +36,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
   const [host, setHost] = useState('You'); // Default host name
   const [price, setPrice] = useState('Free');
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Check host phone verification status on mount
   // This determines if user can create events (phoneVerifiedForHosting must be true)
@@ -86,6 +87,22 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Prevent double submission
+    if (isSubmitting) {
+      console.log('[CREATE_EVENT] Already submitting, ignoring duplicate call');
+      return;
+    }
+    
+    console.log('[CREATE_EVENT] Form submitted', {
+      hasUser: !!user,
+      userId: user?.uid,
+      title,
+      city,
+      date,
+      time,
+      category
+    });
+    
     // TEMPORARILY DISABLED: Phone verification gating
     // TODO: Re-enable phone verification once SMS delivery issues are resolved
     // Gate: Check if user has verified phone for hosting
@@ -101,14 +118,40 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
     //   return;
     // }
     
+    // Check if user is logged in
+    if (!user?.uid) {
+      alert('You must be logged in to create an event. Please sign in first.');
+      console.error('[CREATE_EVENT] No user logged in');
+      return;
+    }
+    
+    // Validate required fields
     if (!title || !description || !city || !date || !time || !category) {
-      alert('Please fill in all required fields');
+      const missingFields = [];
+      if (!title) missingFields.push('Title');
+      if (!description) missingFields.push('Description');
+      if (!city) missingFields.push('City');
+      if (!date) missingFields.push('Date');
+      if (!time) missingFields.push('Time');
+      if (!category) missingFields.push('Category');
+      alert(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      console.warn('[CREATE_EVENT] Missing required fields:', missingFields);
       return;
     }
 
+    setIsSubmitting(true);
+    console.log('[CREATE_EVENT] Starting event creation...');
+
     try {
       // Create event with all required fields
-      await addEvent({
+      console.log('[CREATE_EVENT] Calling addEvent with:', {
+        title,
+        city,
+        hostId: user.uid,
+        host: user.displayName || user.email || 'You'
+      });
+      
+      const createdEvent = await addEvent({
         title,
         description,
         city,
@@ -127,6 +170,12 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         capacity: attendeesCount || undefined,
       });
 
+      console.log('[CREATE_EVENT] ✅ Event created successfully:', {
+        eventId: createdEvent.id,
+        title: createdEvent.title,
+        hostId: createdEvent.hostId
+      });
+
       // Reset form
       setTitle('');
       setDescription('');
@@ -141,10 +190,17 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       setPrice('Free');
 
       // Redirect to feed
+      console.log('[CREATE_EVENT] Redirecting to feed...');
       setViewState(ViewState.FEED);
-    } catch (error) {
-      console.error('Error creating event:', error);
-      alert('Failed to create event. Please try again.');
+    } catch (error: any) {
+      console.error('[CREATE_EVENT] ❌ Error creating event:', {
+        error,
+        message: error?.message,
+        stack: error?.stack?.substring(0, 300)
+      });
+      alert(`Failed to create event: ${error?.message || 'Unknown error'}. Please check the console for details.`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -417,9 +473,10 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
           <div className="flex flex-col gap-3 sm:gap-4 md:gap-5">
             <button 
               type="submit"
-              className="w-full py-3.5 sm:py-4 md:py-4.5 bg-[#15383c] text-white font-bold rounded-full hover:bg-[#1f4d52] transition-colors shadow-lg touch-manipulation active:scale-95 text-sm sm:text-base md:text-lg"
+              disabled={isSubmitting}
+              className="w-full py-3.5 sm:py-4 md:py-4.5 bg-[#15383c] text-white font-bold rounded-full hover:bg-[#1f4d52] transition-colors shadow-lg touch-manipulation active:scale-95 text-sm sm:text-base md:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Host Event
+              {isSubmitting ? 'Creating Event...' : 'Host Event'}
             </button>
             <button 
               type="button"
