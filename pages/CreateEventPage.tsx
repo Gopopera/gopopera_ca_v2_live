@@ -86,18 +86,20 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // TEMPORARILY DISABLED: Phone verification gating
+    // TODO: Re-enable phone verification once SMS delivery issues are resolved
     // Gate: Check if user has verified phone for hosting
     // Refresh profile first to ensure we have latest data
-    await refreshUserProfile();
-    const freshProfile = useUserStore.getState().userProfile;
+    // await refreshUserProfile();
+    // const freshProfile = useUserStore.getState().userProfile;
     
     // Use OR logic: userProfile.phoneVerifiedForHosting OR user.phone_verified (backward compatibility)
-    const isHostPhoneVerified = !!(freshProfile?.phoneVerifiedForHosting || user?.phone_verified);
+    // const isHostPhoneVerified = !!(freshProfile?.phoneVerifiedForHosting || user?.phone_verified);
     
-    if (!isHostPhoneVerified) {
-      setShowHostVerificationModal(true);
-      return;
-    }
+    // if (!isHostPhoneVerified) {
+    //   setShowHostVerificationModal(true);
+    //   return;
+    // }
     
     if (!title || !description || !city || !date || !time || !category) {
       alert('Please fill in all required fields');
