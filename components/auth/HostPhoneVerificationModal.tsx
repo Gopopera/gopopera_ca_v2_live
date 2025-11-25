@@ -277,6 +277,13 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
             : await linkWithPhoneNumber(currentUser, formattedPhone, recaptchaVerifierRef.current);
           const duration = Date.now() - startTime;
           console.log('[HOST_VERIFY] ✅ Firebase call completed in', duration, 'ms');
+          console.log('[HOST_VERIFY] 📱 SMS should be sent to:', formattedPhone);
+          console.log('[HOST_VERIFY] ConfirmationResult received:', {
+            hasConfirm: typeof result?.confirm === 'function',
+            verificationId: result?.verificationId || 'N/A'
+          });
+          // Note: SMS delivery can take 1-5 minutes, sometimes longer
+          console.log('[HOST_VERIFY] ⏰ SMS delivery time: Usually 30 seconds to 2 minutes, but can take up to 5 minutes');
           return result;
         } catch (err) {
           const duration = Date.now() - startTime;
@@ -396,7 +403,10 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       // CRITICAL: Don't clear the verifier here - we might need it for verification
       // The verifier state is tied to the confirmationResult session
       console.log('[HOST_VERIFY] ✅ Code sent successfully, ConfirmationResult stored');
-      console.log('[HOST_VERIFY] ⏰ IMPORTANT: Verify code quickly - session expires in ~2 minutes');
+      console.log('[HOST_VERIFY] 📱 SMS should arrive at:', formattedPhone);
+      console.log('[HOST_VERIFY] ⏰ SMS delivery time: Usually 30 seconds to 2 minutes, but can take up to 5 minutes');
+      console.log('[HOST_VERIFY] ⏰ IMPORTANT: Verify code quickly - session expires in ~2 minutes after SMS arrives');
+      setDebugInfo('📱 SMS code sent! Check your phone. Delivery usually takes 30 seconds to 2 minutes.');
     } catch (error: any) {
       // Log detailed error information for debugging
       console.error('[HOST_VERIFY] ❌ Send code failed (outer catch):', {
