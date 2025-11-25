@@ -162,16 +162,24 @@ Add to `.env.local`:
 
 ```bash
 # Firebase Configuration
-VITE_FIREBASE_API_KEY=YOUR_API_KEY_HERE
-VITE_FIREBASE_AUTH_DOMAIN=gopopera-8a139.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=gopopera-8a139
-VITE_FIREBASE_STORAGE_BUCKET=gopopera-8a139.firebasestorage.app
-VITE_FIREBASE_MESSAGING_SENDER_ID=360744373416
-VITE_FIREBASE_APP_ID=1:360744373416:web:98c3a55fbefdc3021b069d
-VITE_FIREBASE_MEASUREMENT_ID=G-RQ5V44J3JE
+VITE_FIREBASE_API_KEY=AIzaSyCElsRHFDx4s0aP9dPVTW-hKcnJE9a8_y8
+VITE_FIREBASE_AUTH_DOMAIN=gopopera2026.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=gopopera2026
+VITE_FIREBASE_STORAGE_BUCKET=gopopera2026.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=147428039836
+VITE_FIREBASE_APP_ID=1:147428039836:web:d9a980c3b893b29fcde159
+VITE_FIREBASE_MEASUREMENT_ID="G-B1ZDPCNRR6"
 ```
 
-**Important**: Replace `YOUR_API_KEY_HERE` with your actual Firebase API key from the Firebase Console.
+**Important**: Replace `AIzaSyCElsRHFDx4s0aP9dPVTW-hKcnJE9a8_y8` with your actual Firebase API key from the Firebase Console.
+
+### reCAPTCHA Configuration
+
+For Firebase Phone Authentication, the reCAPTCHA key must be configured in the Firebase Console:
+- **Location**: Firebase Console → Authentication → Settings → reCAPTCHA
+- **Identity Platform reCAPTCHA Integration Key**: `6LcwVhcsAAAAAMcaRT0XX0gIdaoZHZIaFvxMLb9l`
+
+**Note**: The `RecaptchaVerifier` in the code automatically uses the key configured in the Firebase project. No code changes are needed - just ensure the key is set in the Firebase Console.
 
 ## 📊 Firestore Indexes Deployment
 

@@ -134,14 +134,14 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
 
       let msg = "We couldn't send the verification code. Please check your number and try again.";
 
-      if (error?.code === 'auth/invalid-phone-number') {
+      if (error?.code === 'auth/operation-not-allowed') {
+        msg = 'Phone verification is not enabled. Please contact support.';
+      } else if (error?.code === 'auth/invalid-phone-number') {
         msg = 'That phone number looks invalid. Please double-check and try again.';
       } else if (error?.code === 'auth/too-many-requests') {
         msg = 'Too many attempts. Please wait a bit before trying again.';
       } else if (error?.code === 'auth/quota-exceeded') {
         msg = 'SMS quota exceeded. Please try again later.';
-      } else if (error?.code === 'auth/operation-not-allowed') {
-        msg = 'Phone verification is disabled. Please contact support.';
       } else if (error?.message) {
         msg = error.message;
       }
@@ -219,7 +219,9 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
 
       let errorMessage = "We couldn't verify your code. Please try again or request a new code.";
 
-      if (error?.code === 'auth/invalid-verification-code') {
+      if (error?.code === 'auth/operation-not-allowed') {
+        errorMessage = 'Phone verification is not enabled. Please contact support.';
+      } else if (error?.code === 'auth/invalid-verification-code') {
         errorMessage = 'Invalid verification code. Please check and try again.';
       } else if (error?.code === 'auth/code-expired') {
         errorMessage = 'This code has expired. Please request a new one.';
@@ -228,6 +230,9 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       }
 
       setError(errorMessage);
+      // Ensure loading is cleared - return early to prevent stuck "Verifying..." state
+      setLoading(false);
+      return;
     } finally {
       setLoading(false);
     }
