@@ -168,47 +168,27 @@ export const useUserStore = create<UserStore>()(
           try {
             await initFirebaseAuth();
 
-            // CRITICAL: On mobile, getRedirectResult() often returns null even when redirect succeeded
-            // We MUST rely on onAuthStateChanged as the primary mechanism
-            // Don't mark redirect as handled until onAuthStateChanged fires
-            let redirectUserProcessed = false;
+            // CRITICAL: Mobile redirects are unreliable - onAuthStateChanged is the ONLY reliable way
+            // Don't try to process redirect result - just wait for onAuthStateChanged to fire
+            // This prevents timing issues where we check before Firebase is ready
             if (!get()._redirectHandled) {
-              // Try getRedirectResult() but don't rely on it
+              // Just try getRedirectResult() for logging, but don't rely on it
               try {
                 const redirectResult = await completeGoogleRedirect();
                 if (redirectResult?.user) {
-                  console.log('[AUTH] ✅ Redirect result found:', redirectResult.user.email);
+                  console.log('[AUTH] ✅ Redirect result found (unusual on mobile):', redirectResult.user.email);
                   await get().handleAuthSuccess(redirectResult.user);
                   await ensurePoperaProfileAndSeed(redirectResult.user);
-                  set({ _redirectHandled: true, _justLoggedInFromRedirect: true, authInitialized: true, isAuthReady: true });
-                  redirectUserProcessed = true;
-                } else {
-                  console.log('[AUTH] ⚠️ getRedirectResult() returned null (common on mobile) - will wait for onAuthStateChanged');
-                  // DON'T mark as handled yet - let onAuthStateChanged process it
-                  // This is critical for mobile where getRedirectResult() often fails
-                }
-              } catch (error) {
-                console.error('[AUTH] Error in getRedirectResult():', error);
-                // Don't mark as handled - let onAuthStateChanged handle it
-              }
-              
-              // Check auth.currentUser after a delay (mobile needs time)
-              if (!redirectUserProcessed) {
-                // Wait longer for mobile (1 second)
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                const auth = getAuthInstance();
-                if (auth.currentUser) {
-                  console.log('[AUTH] ✅ Found currentUser after delay:', auth.currentUser.email);
-                  await get().handleAuthSuccess(auth.currentUser);
-                  await ensurePoperaProfileAndSeed(auth.currentUser);
                   const isOnLanding = typeof window !== 'undefined' && window.location.pathname === '/';
                   set({ _redirectHandled: true, _justLoggedInFromRedirect: isOnLanding, authInitialized: true, isAuthReady: true });
-                  redirectUserProcessed = true;
                 } else {
-                  console.log('[AUTH] ⚠️ Still no user after delay - MUST wait for onAuthStateChanged');
-                  // Still don't mark as handled - onAuthStateChanged will fire eventually
+                  console.log('[AUTH] ⚠️ getRedirectResult() returned null (normal on mobile) - waiting for onAuthStateChanged');
+                  // Don't mark as handled - onAuthStateChanged will handle it
+                  // This is the correct flow for mobile
                 }
+              } catch (error) {
+                console.error('[AUTH] Error in getRedirectResult() (expected on mobile):', error);
+                // Don't mark as handled - onAuthStateChanged will handle it
               }
             }
             

@@ -421,6 +421,7 @@ const AppContent: React.FC = () => {
     );
   }
 
+
   // Handle redirect after successful login (including Google login)
   // Use persisted store flag instead of local state for reliability
   const redirectAfterLogin = useUserStore((state) => state.redirectAfterLogin);
