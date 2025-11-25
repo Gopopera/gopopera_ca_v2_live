@@ -456,6 +456,32 @@ const AppContent: React.FC = () => {
       return;
     }
     
+    // FALLBACK: Direct auth.currentUser check for mobile redirect
+    // Sometimes the flag might not be set, but user is authenticated
+    // Check if we're on landing page with a logged-in user (likely from redirect)
+    if (user && viewState === ViewState.LANDING && !hasHandledRedirectLogin) {
+      // Import auth check dynamically to avoid circular deps
+      import('./src/lib/firebaseAuth').then(({ getAuthInstance }) => {
+        const auth = getAuthInstance();
+        if (auth.currentUser && auth.currentUser.uid === user.uid) {
+          // User is authenticated and on landing page - likely from redirect
+          const redirect = redirectAfterLogin || ViewState.FEED;
+          console.log('[APP] 🟡 FALLBACK: Redirecting after mobile login (direct auth check):', redirect, {
+            user: user.email,
+            currentUser: auth.currentUser.email,
+            viewState
+          });
+          setTimeout(() => {
+            setViewState(redirect);
+            setRedirectAfterLogin(null);
+            setHasHandledRedirectLogin(true);
+          }, 100); // Small delay to ensure state is ready
+        }
+      }).catch(err => {
+        console.error('[APP] Error checking auth.currentUser:', err);
+      });
+    }
+    
     // Fallback: Handle normal login flow (not from redirect)
     if (user && !hasHandledRedirectLogin && viewState === ViewState.AUTH) {
       const redirect = redirectAfterLogin || ViewState.FEED;
