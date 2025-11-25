@@ -281,7 +281,10 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       setConfirmationResult(confirmation);
       setStep('code');
       setRecaptchaSolved(false); // Reset for next time
+      // CRITICAL: Don't clear the verifier here - we might need it for verification
+      // The verifier state is tied to the confirmationResult session
       console.log('[HOST_VERIFY] ✅ Code sent successfully, ConfirmationResult stored');
+      console.log('[HOST_VERIFY] ⏰ IMPORTANT: Verify code quickly - session expires in ~2 minutes');
     } catch (error: any) {
       // Log detailed error information for debugging
       console.error('[HOST_VERIFY] ❌ Send code failed:', {
@@ -425,31 +428,50 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
     setError(null);
 
     try {
+      // CRITICAL: Verify the confirmationResult is still valid
+      if (!confirmationResult) {
+        throw new Error('Verification session expired. Please request a new code.');
+      }
+
       // Confirm the phone number (can only be called once per confirmationResult)
-      // Add timeout to prevent hanging
-      const VERIFY_TIMEOUT = 30000; // 30 seconds
+      // Add timeout to prevent hanging, but make it shorter since verification should be fast
+      const VERIFY_TIMEOUT = 20000; // 20 seconds (verification should be quick)
+      
+      console.log('[HOST_VERIFY] Attempting to verify code...', {
+        codeLength: verificationCode.trim().length,
+        hasConfirmationResult: !!confirmationResult,
+        timestamp: new Date().toISOString()
+      });
+      
       const verifyPromise = confirmationResult.confirm(verificationCode.trim());
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => {
-          reject(new Error('Verification timed out after 30 seconds'));
+          reject(new Error('Verification timed out after 20 seconds. The code may be incorrect or expired.'));
         }, VERIFY_TIMEOUT);
       });
       
-      setDebugInfo('🔍 Verifying code... (this may take up to 30 seconds)');
+      setDebugInfo('🔍 Verifying code... (this should be quick)');
+      
       try {
         const cred = await Promise.race([verifyPromise, timeoutPromise]);
-        console.log('[HOST_VERIFY] ✅ Phone verified successfully');
+        console.log('[HOST_VERIFY] ✅✅✅ Phone verified successfully!', {
+          user: cred.user?.uid,
+          timestamp: new Date().toISOString()
+        });
         setDebugInfo('✅ Code verified successfully!');
+        
+        // Clear confirmationResult immediately after successful use to prevent reuse
+        setConfirmationResult(null);
       } catch (raceError: any) {
         // Check if it's a timeout
         if (raceError?.message?.includes('timed out')) {
-          throw new Error('Verification timed out after 30 seconds. Please try again.');
+          console.error('[HOST_VERIFY] ❌ Verification timed out');
+          // Clear confirmationResult on timeout - user needs to request new code
+          setConfirmationResult(null);
+          throw new Error('Verification timed out. The code may be incorrect or expired. Please request a new code.');
         }
         throw raceError; // Re-throw other errors
       }
-      
-      // Clear confirmationResult immediately after successful use to prevent reuse
-      setConfirmationResult(null);
 
       // cred.user is the same logged-in user with phone linked.
       // After successful confirmation, update Firestore user document:
@@ -538,16 +560,30 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
         errorMessage = 'Phone verification is not enabled. Please contact support.';
       } else if (error?.code === 'auth/invalid-verification-code') {
         errorMessage = 'Invalid verification code. Please check and try again.';
+      } else       if (error?.code === 'auth/invalid-verification-code') {
+        errorMessage = 'Invalid verification code. Please check the code and try again.';
+        // Don't clear confirmationResult - user can try again with same code
       } else if (error?.code === 'auth/code-expired') {
         errorMessage = 'This code has expired. Please request a new one.';
         // Clear confirmationResult on code expiry - user needs to request new code
         setConfirmationResult(null);
+        setStep('phone'); // Go back to phone input
       } else if (error?.code === 'auth/too-many-requests') {
         errorMessage = 'Too many attempts. Please wait a bit before trying again.';
         // Clear confirmationResult on rate limit - user needs to request new code
         setConfirmationResult(null);
+        setStep('phone'); // Go back to phone input
+      } else if (error?.code === 'auth/session-expired') {
+        errorMessage = 'Verification session expired. Please request a new code.';
+        setConfirmationResult(null);
+        setStep('phone'); // Go back to phone input
       } else if (error?.message) {
         errorMessage = error.message;
+      }
+      
+      // If error suggests session is invalid, clear confirmationResult
+      if (error?.code === 'auth/code-expired' || error?.code === 'auth/session-expired') {
+        setConfirmationResult(null);
       }
 
       setError(errorMessage);
