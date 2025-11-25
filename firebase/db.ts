@@ -77,12 +77,27 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
     const app = (await import('../src/lib/firebase')).getAppSafe();
     const projectId = app?.options?.projectId;
     
+    // Get database ID to verify which database we're using
+    const databaseId = (db as any)?.databaseId || '(default)';
+    const dbType = (db as any)?.type || 'unknown';
+    
     console.log('[CREATE_EVENT_DB] Firestore connection check:', {
       hasDb: !!db,
       firebaseProjectId: projectId || 'NOT CONNECTED',
+      databaseId: databaseId,
+      databaseType: dbType,
+      isMongoDBCompatible: dbType === 'mongodb',
       isOnline: navigator?.onLine,
       connectionType: (navigator as any)?.connection?.effectiveType || 'unknown'
     });
+    
+    // Warn if using MongoDB compatibility mode (might cause issues)
+    if (dbType === 'mongodb') {
+      console.warn('[CREATE_EVENT_DB] ⚠️ WARNING: Using MongoDB compatibility mode database!', {
+        databaseId: databaseId,
+        note: 'Native Firestore is recommended. MongoDB compatibility mode may cause issues.'
+      });
+    }
     
     if (projectId && projectId !== 'gopopera2026') {
       console.warn('[CREATE_EVENT_DB] ⚠️ WARNING: Connected to wrong Firebase project!', {

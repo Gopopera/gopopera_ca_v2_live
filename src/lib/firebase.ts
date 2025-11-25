@@ -146,6 +146,15 @@ export function getDbSafe(): Firestore | null {
         console.error('[FIRESTORE] getFirestore returned null/undefined');
         return null;
       }
+      
+      // Log Firestore database info
+      console.log('[FIRESTORE] ✅ Firestore initialized:', {
+        projectId: a.options.projectId,
+        databaseId: (_db as any).databaseId || '(default)',
+        type: (_db as any).type || 'unknown',
+        // MongoDB compatibility mode databases might have different properties
+        isMongoDBCompatible: (_db as any).type === 'mongodb' || false
+      });
     } catch (error) {
       console.error('[FIREBASE] Firestore initialization failed:', error);
       return null;
