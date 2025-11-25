@@ -253,6 +253,28 @@ export const useUserStore = create<UserStore>()(
               }
             });
             set({ _authUnsub: unsub });
+            
+            // NOW check redirect result (but don't rely on it - onAuthStateChanged is primary)
+            if (!get()._redirectHandled) {
+              try {
+                const redirectResult = await completeGoogleRedirect();
+                if (redirectResult?.user) {
+                  console.log('[AUTH] ✅ Redirect result found (bonus - onAuthStateChanged is primary):', redirectResult.user.email);
+                  // onAuthStateChanged will also fire, but we can process this too
+                  if (!get().user || get().user.uid !== redirectResult.user.uid) {
+                    await get().handleAuthSuccess(redirectResult.user);
+                    await ensurePoperaProfileAndSeed(redirectResult.user);
+                  }
+                  const isOnLanding = typeof window !== 'undefined' && window.location.pathname === '/';
+                  set({ _redirectHandled: true, _justLoggedInFromRedirect: isOnLanding, authInitialized: true, isAuthReady: true });
+                  redirectUserProcessed = true;
+                } else {
+                  console.log('[AUTH] ⚠️ getRedirectResult() returned null (normal on mobile) - onAuthStateChanged will handle it');
+                }
+              } catch (error) {
+                console.error('[AUTH] Error in getRedirectResult() (expected on mobile):', error);
+              }
+            }
 
             setTimeout(() => {
               if (!get().authInitialized) {
