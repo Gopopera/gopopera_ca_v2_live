@@ -69,8 +69,12 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
         try {
           console.log('[HOST_VERIFY] Creating new reCAPTCHA verifier...');
           
+          // CRITICAL: Don't pass any reCAPTCHA site key - Firebase uses its own
+          // The 401 error suggests we might be trying to use a custom key
+          // Firebase Phone Auth uses its own reCAPTCHA configuration
           recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
             size: 'normal',
+            // DO NOT pass 'siteKey' parameter - Firebase manages this automatically
             callback: (response: any) => {
               // reCAPTCHA solved - set state to indicate this
               const timestamp = new Date().toISOString();
@@ -460,10 +464,19 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       
       // Log network state and page visibility before making the call
       if (typeof navigator !== 'undefined' && 'onLine' in navigator) {
+        const isOnline = navigator.onLine;
         console.log('[HOST_VERIFY] Network status:', {
-          online: navigator.onLine,
+          online: isOnline,
           connectionType: (navigator as any).connection?.effectiveType || 'unknown'
         });
+        
+        // CRITICAL: Check if offline - Firebase won't work offline
+        if (!isOnline) {
+          setError('You appear to be offline. Please check your internet connection and try again.');
+          setLoading(false);
+          setIsVerifying(false);
+          return;
+        }
       }
       
       // Check if page is visible (mobile browsers suspend JS when backgrounded)
