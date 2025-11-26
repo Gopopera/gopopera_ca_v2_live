@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ViewState, Event } from '../types';
-import { ChevronLeft, Calendar, Edit, MapPin, Clock, Users } from 'lucide-react';
+import { ChevronLeft, Calendar, MapPin, Clock, Users } from 'lucide-react';
 import { EventCard } from '../components/events/EventCard';
 import { useUserStore } from '../stores/userStore';
 
@@ -123,21 +123,14 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
                   isLoggedIn={isLoggedIn}
                   isFavorite={favorites.includes(event.id)}
                   onToggleFavorite={onToggleFavorite}
+                  showEditButton={activeTab === 'hosting' && event.hostId === user?.uid}
+                  onEditClick={(e, event) => {
+                    e.stopPropagation();
+                    setViewState(ViewState.EDIT_EVENT);
+                    // Store event for editing - CreateEventPage will handle it
+                    onEventClick(event);
+                  }}
                 />
-                {/* Edit button for hosting events */}
-                {activeTab === 'hosting' && event.hostId === user?.uid && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setViewState(ViewState.DETAIL);
-                      onEventClick(event);
-                    }}
-                    className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-medium text-[#15383c] hover:bg-white transition-colors flex items-center gap-1.5 shadow-sm z-30"
-                  >
-                    <Edit size={14} />
-                    Edit
-                  </button>
-                )}
               </div>
             ))}
           </div>

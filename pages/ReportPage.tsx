@@ -142,7 +142,7 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
               onChange={(e) => setName(e.target.value)}
               required
               placeholder="Your name"
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-[#15383c] transition-all"
+              className="w-full bg-white border border-gray-200 rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all"
             />
           </div>
 
@@ -157,7 +157,7 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
               onChange={(e) => setEmail(e.target.value)}
               required
               placeholder="your@email.com"
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-[#15383c] transition-all"
+              className="w-full bg-white border border-gray-200 rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all"
             />
           </div>
 
@@ -172,7 +172,7 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
               onChange={(e) => setSubject(e.target.value)}
               required
               placeholder="Brief description of the issue"
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-[#15383c] transition-all"
+              className="w-full bg-white border border-gray-200 rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all"
             />
           </div>
 
@@ -187,7 +187,7 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
               required
               rows={6}
               placeholder="Please provide as much detail as possible..."
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-[#15383c] transition-all resize-none"
+              className="w-full bg-white border border-gray-200 rounded-2xl sm:rounded-3xl py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all resize-none"
             />
           </div>
 

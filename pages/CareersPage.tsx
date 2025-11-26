@@ -309,7 +309,7 @@ export const CareersPage: React.FC<CareersPageProps> = ({ setViewState }) => {
                     value={formData.name}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#15383c] focus:border-transparent"
+                    className="w-full bg-white border border-gray-200 rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all"
                   />
                 </div>
                 <div>
@@ -320,7 +320,7 @@ export const CareersPage: React.FC<CareersPageProps> = ({ setViewState }) => {
                     value={formData.email}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#15383c] focus:border-transparent"
+                    className="w-full bg-white border border-gray-200 rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all"
                   />
                 </div>
                 <div>
@@ -331,7 +331,7 @@ export const CareersPage: React.FC<CareersPageProps> = ({ setViewState }) => {
                     onChange={handleInputChange}
                     required
                     rows={5}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#15383c] focus:border-transparent resize-none"
+                    className="w-full bg-white border border-gray-200 rounded-2xl sm:rounded-3xl py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all resize-none"
                   />
                 </div>
                 <div>

@@ -260,7 +260,7 @@ export const NotificationSettingsPage: React.FC<SubPageProps> = ({ setViewState 
 // --- Privacy Settings Page ---
 export const PrivacySettingsPage: React.FC<SubPageProps> = ({ setViewState }) => {
   return (
-    <div className="min-h-screen bg-white pt-24 pb-12 font-sans">
+    <div className="min-h-screen bg-white pt-20 sm:pt-24 pb-8 sm:pb-12 font-sans">
       <div className="max-w-4xl mx-auto px-6">
         <div className="flex items-center justify-between mb-8 border-b border-gray-100 pb-6">
            <h1 className="font-heading font-bold text-3xl text-[#15383c]">Privacy Settings</h1>
@@ -306,7 +306,7 @@ export const PrivacySettingsPage: React.FC<SubPageProps> = ({ setViewState }) =>
 // --- Stripe Settings Page ---
 export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => {
   return (
-    <div className="min-h-screen bg-white pt-24 pb-12 font-sans">
+    <div className="min-h-screen bg-white pt-20 sm:pt-24 pb-8 sm:pb-12 font-sans">
       <div className="max-w-4xl mx-auto px-6">
         <div className="flex items-center justify-between mb-8 border-b border-gray-100 pb-6">
            <h1 className="font-heading font-bold text-3xl text-[#15383c]">Stripe Payout Settings</h1>

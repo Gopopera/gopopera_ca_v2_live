@@ -840,6 +840,7 @@ const AppContent: React.FC = () => {
         {viewState === ViewState.DELETE_ACCOUNT && <DeleteAccountPage setViewState={setViewState} onConfirmDelete={handleLogout} />}
 
         {viewState === ViewState.CREATE_EVENT && <CreateEventPage setViewState={setViewState} />}
+        {viewState === ViewState.EDIT_EVENT && <CreateEventPage setViewState={setViewState} />}
 
         {viewState === ViewState.NOTIFICATIONS && <NotificationsPage setViewState={setViewState} />}
         {viewState === ViewState.MY_POPS && (
