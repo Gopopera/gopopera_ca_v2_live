@@ -189,7 +189,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
           ) : (
               <button 
                 onClick={() => handleNav(ViewState.AUTH)}
-                className="px-6 py-2.5 rounded-full bg-popera-orange text-white font-medium text-sm hover:bg-[#cf4d1d] transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
+                className="px-6 py-2.5 rounded-full bg-[#e35e25] text-white font-medium text-sm hover:bg-[#cf4d1d] transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 border-2 border-[#e35e25]"
               >
                 {t('header.signIn')}
               </button>

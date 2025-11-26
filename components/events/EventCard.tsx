@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapPin, Calendar, MessageCircle, Star, Heart, Edit } from 'lucide-react';
 import { Event } from '@/types';
 import { formatDate } from '@/utils/dateFormatter';
@@ -31,14 +31,39 @@ export const EventCard: React.FC<EventCardProps> = ({
   const user = useUserStore((state) => state.user);
   const userProfile = useUserStore((state) => state.userProfile);
   
-  // Get host profile picture - if it's the current user's event, use their profile picture
-  const hostProfilePicture = React.useMemo(() => {
-    // If this is the current user's event, use their profile picture
-    if (event.hostId === user?.uid) {
-      return user?.photoURL || user?.profileImageUrl || userProfile?.photoURL || userProfile?.imageUrl || null;
-    }
-    // For other hosts, use placeholder (could be enhanced with host profile lookup later)
-    return null;
+  // Get host profile picture - sync with user's profile if it's their event, or fetch from Firestore
+  const [hostProfilePicture, setHostProfilePicture] = React.useState<string | null>(null);
+  
+  React.useEffect(() => {
+    const fetchHostProfile = async () => {
+      if (!event.hostId) {
+        setHostProfilePicture(null);
+        return;
+      }
+      
+      // If this is the current user's event, use their profile picture
+      if (event.hostId === user?.uid) {
+        const profilePic = user?.photoURL || user?.profileImageUrl || userProfile?.photoURL || userProfile?.imageUrl;
+        setHostProfilePicture(profilePic || null);
+        return;
+      }
+      
+      // For other hosts, fetch from Firestore (only if host has 1-15 events to avoid too many lookups)
+      try {
+        const { getUserProfile } = await import('../firebase/db');
+        const hostProfile = await getUserProfile(event.hostId);
+        if (hostProfile) {
+          setHostProfilePicture(hostProfile.photoURL || hostProfile.imageUrl || null);
+        } else {
+          setHostProfilePicture(null);
+        }
+      } catch (error) {
+        // Silently fail - will use placeholder
+        setHostProfilePicture(null);
+      }
+    };
+    
+    fetchHostProfile();
   }, [event.hostId, user?.uid, user?.photoURL, user?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl]);
   
   const handleFavoriteClick = (e: React.MouseEvent) => {
@@ -151,11 +176,9 @@ export const EventCard: React.FC<EventCardProps> = ({
                    }}
                  />
                ) : (
-                 <img 
-                   src={`https://picsum.photos/seed/${event.hostName}/50/50`} 
-                   alt={event.hostName} 
-                   className="w-full h-full object-cover" 
-                 />
+                 <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-xs">
+                   {event.hostName?.[0]?.toUpperCase() || 'H'}
+                 </div>
                )}
              </span>
              <p className="text-xs font-medium text-gray-600 sm:text-gray-500 uppercase tracking-wide truncate">

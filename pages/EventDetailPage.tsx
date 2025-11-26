@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Event, ViewState } from '../types';
-import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info, Star, Sparkles, X, UserPlus, UserCheck, ChevronRight } from 'lucide-react';
+import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info, Star, Sparkles, X, UserPlus, UserCheck, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { followHost, unfollowHost, isFollowing } from '../firebase/follow';
 import { useUserStore } from '../stores/userStore';
 import { EventCard } from '../components/events/EventCard';
@@ -47,7 +47,69 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isFollowingHost, setIsFollowingHost] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [reservationCount, setReservationCount] = useState<number | null>(null);
+  const [reserving, setReserving] = useState(false);
+  const [reservationSuccess, setReservationSuccess] = useState(false);
+  const [hostProfilePicture, setHostProfilePicture] = useState<string | null>(null);
   const user = useUserStore((state) => state.user);
+  const userProfile = useUserStore((state) => state.userProfile);
+  
+  // Fetch host profile picture - sync with user's profile if it's their event
+  useEffect(() => {
+    const fetchHostProfile = async () => {
+      if (!event.hostId) {
+        setHostProfilePicture(null);
+        return;
+      }
+      
+      // If this is the current user's event, use their profile picture
+      if (event.hostId === user?.uid) {
+        const profilePic = user?.photoURL || user?.profileImageUrl || userProfile?.photoURL || userProfile?.imageUrl;
+        setHostProfilePicture(profilePic || null);
+        return;
+      }
+      
+      // For other hosts, fetch from Firestore
+      try {
+        const { getUserProfile } = await import('../firebase/db');
+        const hostProfile = await getUserProfile(event.hostId);
+        if (hostProfile) {
+          setHostProfilePicture(hostProfile.photoURL || hostProfile.imageUrl || null);
+        } else {
+          setHostProfilePicture(null);
+        }
+      } catch (error) {
+        console.error('Error fetching host profile:', error);
+        setHostProfilePicture(null);
+      }
+    };
+    
+    fetchHostProfile();
+  }, [event.hostId, user?.uid, user?.photoURL, user?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl]);
+  
+  // Fetch real reservation count from Firestore
+  useEffect(() => {
+    const fetchReservationCount = async () => {
+      try {
+        const { getReservationCountForEvent } = await import('../firebase/db');
+        const count = await getReservationCountForEvent(event.id);
+        setReservationCount(count);
+      } catch (error) {
+        console.error('Error fetching reservation count:', error);
+        // Fallback to event.attendeesCount if available
+        setReservationCount(event.attendeesCount || 0);
+      }
+    };
+    
+    if (event.id && !isDemo) {
+      fetchReservationCount();
+      // Refresh count every 5 seconds to keep it updated
+      const interval = setInterval(fetchReservationCount, 5000);
+      return () => clearInterval(interval);
+    } else {
+      setReservationCount(event.attendeesCount || 0);
+    }
+  }, [event.id, event.attendeesCount, isDemo]);
 
   // Check if user is following the host
   useEffect(() => {
@@ -82,16 +144,57 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     }
   };
   
-  const handleRSVP = () => {
+  const handleRSVP = async () => {
     if (isDemo) {
       // Show modal for demo events instead of reserving
       setShowFakeEventModal(true);
       return;
     }
     
-    // Official launch events and regular events can be reserved
-    if (onRSVP) {
-      onRSVP(event.id);
+    if (!isLoggedIn) {
+      setShowAuthModal(true);
+      return;
+    }
+    
+    if (!user?.uid) {
+      setShowAuthModal(true);
+      return;
+    }
+    
+    setReserving(true);
+    try {
+      const { addRSVP, removeRSVP } = useUserStore.getState();
+      
+      if (hasRSVPed) {
+        // Cancel reservation
+        await removeRSVP(user.uid, event.id);
+        setReservationSuccess(false);
+        // Update local count
+        if (reservationCount !== null && reservationCount > 0) {
+          setReservationCount(reservationCount - 1);
+        }
+      } else {
+        // Create reservation
+        await addRSVP(user.uid, event.id);
+        setReservationSuccess(true);
+        // Update local count
+        setReservationCount((prev) => (prev !== null ? prev + 1 : 1));
+        // Hide success message after 3 seconds
+        setTimeout(() => setReservationSuccess(false), 3000);
+      }
+      
+      // Refresh user profile to ensure rsvps are synced (so events show in My Pops)
+      await useUserStore.getState().refreshUserProfile();
+      
+      // Also call the parent handler if provided
+      if (onRSVP) {
+        onRSVP(event.id);
+      }
+    } catch (error) {
+      console.error('Error handling RSVP:', error);
+      alert('Failed to reserve spot. Please try again.');
+    } finally {
+      setReserving(false);
     }
   };
   
@@ -281,7 +384,18 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         <div className="lg:col-span-2 space-y-6 sm:space-y-8 md:space-y-10">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-5 p-5 sm:p-6 md:p-7 lg:p-8 bg-gray-50 rounded-2xl sm:rounded-3xl border border-gray-100 hover:border-gray-200 transition-colors">
             <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto min-w-0">
-               <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-gray-200 overflow-hidden ring-2 sm:ring-4 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick(event.hostName)}><img src={`https://picsum.photos/seed/${event.hostName}/100/100`} alt={event.hostName} className="w-full h-full object-cover"/></div>
+               <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-gray-200 overflow-hidden ring-2 sm:ring-4 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick(event.hostName)}>
+                 {hostProfilePicture ? (
+                   <img src={hostProfilePicture} alt={event.hostName} className="w-full h-full object-cover" onError={(e) => {
+                     const target = e.target as HTMLImageElement;
+                     target.src = `https://picsum.photos/seed/${event.hostName}/100/100`;
+                   }} />
+                 ) : (
+                   <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-lg sm:text-xl md:text-2xl">
+                     {event.hostName?.[0]?.toUpperCase() || 'H'}
+                   </div>
+                 )}
+               </div>
                <div className="min-w-0 flex-1">
                  <p className="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">Hosted by</p>
                  <h3 className="text-base sm:text-lg md:text-xl font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(event.hostName)}>{event.hostName}</h3>
@@ -320,9 +434,27 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           </div>
 
           <div className="grid grid-cols-2 gap-4 sm:gap-5">
-             <div className="bg-gray-50 p-5 sm:p-6 md:p-7 rounded-2xl border border-gray-100 text-center"><h4 className="text-3xl sm:text-4xl md:text-5xl font-heading font-bold text-popera-teal">{event.attendees || 0}</h4><p className="text-xs sm:text-sm uppercase tracking-wide text-gray-500 font-bold mt-1.5">Attending</p></div>
-             <div className="bg-gray-50 p-5 sm:p-6 md:p-7 rounded-2xl border border-gray-100 text-center"><h4 className="text-3xl sm:text-4xl md:text-5xl font-heading font-bold text-popera-teal">{event.capacity || 'Unlimited'}</h4><p className="text-xs sm:text-sm uppercase tracking-wide text-gray-500 font-bold mt-1.5">Capacity</p></div>
+             <div className="bg-gray-50 p-5 sm:p-6 md:p-7 rounded-2xl border border-gray-100 text-center">
+               <h4 className="text-3xl sm:text-4xl md:text-5xl font-heading font-bold text-popera-teal">
+                 {reservationCount !== null ? reservationCount : (event.attendeesCount || 0)}
+               </h4>
+               <p className="text-xs sm:text-sm uppercase tracking-wide text-gray-500 font-bold mt-1.5">Attending</p>
+             </div>
+             <div className="bg-gray-50 p-5 sm:p-6 md:p-7 rounded-2xl border border-gray-100 text-center">
+               <h4 className="text-3xl sm:text-4xl md:text-5xl font-heading font-bold text-popera-teal">
+                 {event.capacity || 'Unlimited'}
+               </h4>
+               <p className="text-xs sm:text-sm uppercase tracking-wide text-gray-500 font-bold mt-1.5">Capacity</p>
+             </div>
           </div>
+          
+          {/* Reservation Success Message */}
+          {reservationSuccess && (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3 animate-fade-in">
+              <CheckCircle2 size={20} className="text-green-600 shrink-0" />
+              <p className="text-green-800 font-medium text-sm">Successfully reserved your spot!</p>
+            </div>
+          )}
 
           <div>
             <h2 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-popera-teal mb-3 sm:mb-4 md:mb-6 flex items-center gap-2 sm:gap-3">About this event</h2>
@@ -364,16 +496,16 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               <div className="space-y-3">
                 <button 
                   onClick={handleRSVP}
-                  disabled={isDemo}
-                  className={`w-full py-3.5 lg:py-4 font-bold text-base lg:text-lg rounded-full shadow-xl transition-all hover:-translate-y-0.5 touch-manipulation active:scale-95 ${
+                  disabled={isDemo || reserving}
+                  className={`w-full py-3.5 lg:py-4 font-bold text-base lg:text-lg rounded-full shadow-xl transition-all hover:-translate-y-0.5 touch-manipulation active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
                     isDemo 
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                       : hasRSVPed
-                      ? 'bg-popera-teal text-white hover:bg-popera-teal/90'
-                      : 'bg-popera-orange text-white hover:bg-[#cf4d1d] shadow-orange-900/20 hover:shadow-orange-900/30'
+                      ? 'bg-[#15383c] text-white hover:bg-[#1f4d52]'
+                      : 'bg-[#e35e25] text-white hover:bg-[#cf4d1d] shadow-orange-900/20 hover:shadow-orange-900/30'
                   }`}
                 >
-                  {isDemo ? 'Demo Event (Locked)' : hasRSVPed ? 'Reserved ✓' : 'Reserve Spot'}
+                  {reserving ? 'Reserving...' : isDemo ? 'Demo Event (Locked)' : hasRSVPed ? 'Reserved ✓' : 'Reserve Spot'}
                 </button>
                 <button
                   onClick={handleShare}
@@ -401,9 +533,64 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 md:py-12 border-t border-gray-100">
          <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-popera-teal mb-6 sm:mb-8">Other events you might be interested in</h2>
-         {/* Desktop Grid */}
-         <div className="hidden md:grid gap-fluid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 place-items-center w-full px-fluid">
-             {recommendedEvents.map((recEvent, index) => (<div key={recEvent.id} className="w-full h-auto animate-stagger" style={{ animationDelay: `${index * 0.1}s` }}><EventCard event={recEvent} onClick={onEventClick} onChatClick={(e) => { e.stopPropagation(); if (!isLoggedIn) { setShowAuthModal(true); } else { setViewState(ViewState.CHAT); } }} onReviewsClick={onReviewsClick} isLoggedIn={isLoggedIn} isFavorite={favorites.includes(recEvent.id)} onToggleFavorite={onToggleFavorite} /></div>))}
+         {/* Desktop: Horizontal scroll with better spacing */}
+         <div className="hidden md:block">
+           <div className="relative group">
+             {/* Left Arrow */}
+             <button
+               onClick={() => {
+                 const container = document.getElementById('other-events-scroll');
+                 if (container) {
+                   container.scrollBy({ left: -400, behavior: 'smooth' });
+                 }
+               }}
+               className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100 flex"
+               aria-label="Scroll left"
+             >
+               <ChevronLeft size={20} />
+             </button>
+             
+             {/* Scrollable Container */}
+             <div 
+               id="other-events-scroll"
+               className="flex overflow-x-auto gap-6 lg:gap-8 pb-2 snap-x snap-mandatory scroll-smooth hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain"
+             >
+               {recommendedEvents.map((recEvent, index) => (
+                 <div key={recEvent.id} className="snap-start shrink-0 w-[calc(25%-1.5rem)] lg:w-[calc(25%-2rem)] flex-shrink-0">
+                   <EventCard 
+                     event={recEvent} 
+                     onClick={onEventClick} 
+                     onChatClick={(e) => { 
+                       e.stopPropagation(); 
+                       if (!isLoggedIn) { 
+                         setShowAuthModal(true); 
+                       } else { 
+                         setViewState(ViewState.CHAT); 
+                       } 
+                     }} 
+                     onReviewsClick={onReviewsClick} 
+                     isLoggedIn={isLoggedIn} 
+                     isFavorite={favorites.includes(recEvent.id)} 
+                     onToggleFavorite={onToggleFavorite} 
+                   />
+                 </div>
+               ))}
+             </div>
+             
+             {/* Right Arrow */}
+             <button
+               onClick={() => {
+                 const container = document.getElementById('other-events-scroll');
+                 if (container) {
+                   container.scrollBy({ left: 400, behavior: 'smooth' });
+                 }
+               }}
+               className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100 flex"
+               aria-label="Scroll right"
+             >
+               <ChevronRight size={20} />
+             </button>
+           </div>
          </div>
          {/* Mobile Scroller */}
          <div className="md:hidden">
@@ -432,25 +619,32 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
          </div>
       </section>
 
-      <section className="bg-popera-teal py-10 sm:py-12 md:py-16 lg:py-20 relative overflow-hidden">
-         <div className="absolute top-0 left-0 w-64 h-64 bg-popera-orange rounded-full blur-[120px] opacity-20 -translate-x-1/3 -translate-y-1/3 pointer-events-none"></div>
+      <section className="bg-gradient-to-br from-[#15383c] to-[#1f4d52] py-10 sm:py-12 md:py-16 lg:py-20 relative overflow-hidden">
+         <div className="absolute top-0 left-0 w-64 h-64 bg-[#e35e25] rounded-full blur-[120px] opacity-20 -translate-x-1/3 -translate-y-1/3 pointer-events-none"></div>
          <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-10 text-center">
             <h2 className="text-2xl sm:text-3xl md:text-5xl font-heading font-bold text-white mb-5 sm:mb-6">Inspired? Host your own event.</h2>
-            <button className="px-8 sm:px-10 py-3.5 sm:py-4 bg-popera-orange text-white rounded-full font-bold text-base sm:text-lg hover:bg-[#cf4d1d] transition-all shadow-xl shadow-orange-900/20 hover:-translate-y-1 touch-manipulation active:scale-95" onClick={() => setViewState(ViewState.CREATE_EVENT)}>Start Hosting</button>
+            <button className="px-8 sm:px-10 py-3.5 sm:py-4 bg-[#e35e25] text-white rounded-full font-bold text-base sm:text-lg hover:bg-[#cf4d1d] transition-all shadow-xl shadow-orange-900/30 hover:-translate-y-1 touch-manipulation active:scale-95" onClick={() => setViewState(ViewState.CREATE_EVENT)}>Start Hosting</button>
          </div>
       </section>
 
       <div className="fixed bottom-0 left-0 right-0 bg-white/98 backdrop-blur-lg border-t border-gray-200 px-4 sm:px-6 py-4 sm:py-4 lg:hidden z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] safe-area-inset-bottom">
         <div className="flex items-center justify-between gap-3 sm:gap-4 max-w-xl mx-auto">
-           <div className="flex flex-col shrink-0 min-w-0"><span className="text-xl sm:text-xl md:text-2xl font-heading font-bold text-popera-teal truncate">{event.price}</span><span className="text-xs sm:text-xs text-gray-600 sm:text-gray-500 font-bold uppercase tracking-wide">per person</span></div>
+           <div className="flex flex-col shrink-0 min-w-0"><span className="text-xl sm:text-xl md:text-2xl font-heading font-bold text-[#15383c] truncate">{event.price}</span><span className="text-xs sm:text-xs text-gray-600 sm:text-gray-500 font-bold uppercase tracking-wide">per person</span></div>
            <div className="flex items-center gap-3 sm:gap-3 flex-1 justify-end min-w-0">
+             <button 
+               onClick={handleShare}
+               className="w-12 h-12 sm:w-12 sm:h-12 shrink-0 rounded-full border-2 border-[#15383c]/20 bg-[#15383c] text-white flex items-center justify-center active:scale-[0.92] transition-transform touch-manipulation shadow-sm hover:bg-[#1f4d52]"
+               aria-label="Share"
+             >
+               <Share2 size={20} className="sm:w-5 sm:h-5" />
+             </button>
              <button 
                onClick={handleConversationClick}
                disabled={isDemo}
                className={`w-12 h-12 sm:w-12 sm:h-12 shrink-0 rounded-full border-2 flex items-center justify-center active:scale-[0.92] transition-transform touch-manipulation shadow-sm ${
                  isDemo
                    ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                   : 'bg-popera-teal/5 text-popera-teal border-popera-teal/10'
+                   : 'bg-[#15383c]/5 text-[#15383c] border-[#15383c]/20 hover:bg-[#15383c]/10'
                }`}
                aria-label="Chat"
              >
@@ -463,8 +657,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                  isDemo
                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                    : hasRSVPed
-                   ? 'bg-popera-teal text-white'
-                   : 'bg-popera-orange text-white shadow-orange-900/20'
+                   ? 'bg-[#15383c] text-white hover:bg-[#1f4d52]'
+                   : 'bg-[#e35e25] text-white shadow-orange-900/20 hover:bg-[#cf4d1d]'
                }`}
              >
                {isDemo ? 'Locked' : hasRSVPed ? 'Reserved ✓' : 'Reserve'}

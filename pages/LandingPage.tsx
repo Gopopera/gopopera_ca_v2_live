@@ -6,7 +6,7 @@ import { EventCard } from '../components/events/EventCard';
 import { ChatMockupSection } from '../components/landing/ChatMockupSection';
 import { CityInput } from '../components/layout/CityInput';
 import { Event, ViewState } from '../types';
-import { ArrowRight, Sparkles, Check, ChevronDown, Search, MapPin, PlusCircle, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, Sparkles, Check, ChevronDown, Search, MapPin, PlusCircle, CheckCircle2, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { categoryMatches } from '../utils/categoryMapper';
 import { useSelectedCity, useSetCity, type City } from '../src/stores/cityStore';
@@ -197,20 +197,89 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
         
         {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
-        <div className="flex md:grid overflow-x-auto md:overflow-x-visible gap-4 md:gap-6 lg:gap-8 pb-2 md:pb-6 snap-x snap-mandatory md:snap-none scroll-smooth md:place-items-center">
-          {filteredEvents.map(event => (
-            <div key={event.id} className="snap-start shrink-0 md:col-span-1">
-              <EventCard 
-                event={event} 
-                onClick={onEventClick} 
-                onChatClick={onChatClick}
-                onReviewsClick={onReviewsClick}
-                isLoggedIn={isLoggedIn}
-                isFavorite={favorites.includes(event.id)}
-                onToggleFavorite={onToggleFavorite}
-              />
-            </div>
-          ))}
+        {/* Mobile: Single row horizontal scroll */}
+        <div className="md:hidden">
+          <div className="flex overflow-x-auto gap-4 pb-2 snap-x snap-mandatory scroll-smooth hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+            {filteredEvents.slice(0, 10).map(event => (
+              <div key={event.id} className="snap-start shrink-0 w-[85vw] max-w-[360px]">
+                <EventCard 
+                  event={event} 
+                  onClick={onEventClick} 
+                  onChatClick={onChatClick}
+                  onReviewsClick={onReviewsClick}
+                  isLoggedIn={isLoggedIn}
+                  isFavorite={favorites.includes(event.id)}
+                  onToggleFavorite={onToggleFavorite}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {/* Desktop: 3 rows with 4 events each, horizontally scrollable */}
+        <div className="hidden md:block space-y-6 lg:space-y-8">
+          {[0, 1, 2].map((rowIndex) => {
+            const rowEvents = filteredEvents.slice(rowIndex * 4, (rowIndex + 1) * 4);
+            if (rowEvents.length === 0) return null;
+            
+            const scrollContainerId = `upcoming-row-${rowIndex}`;
+            
+            const scrollLeft = () => {
+              const container = document.getElementById(scrollContainerId);
+              if (container) {
+                container.scrollBy({ left: -400, behavior: 'smooth' });
+              }
+            };
+            
+            const scrollRight = () => {
+              const container = document.getElementById(scrollContainerId);
+              if (container) {
+                container.scrollBy({ left: 400, behavior: 'smooth' });
+              }
+            };
+            
+            return (
+              <div key={rowIndex} className="relative group">
+                {/* Left Arrow */}
+                <button
+                  onClick={scrollLeft}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100 hidden lg:flex"
+                  aria-label="Scroll left"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                
+                {/* Scrollable Row */}
+                <div 
+                  id={scrollContainerId}
+                  className="flex overflow-x-auto gap-4 lg:gap-6 pb-2 snap-x snap-mandatory scroll-smooth hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain"
+                >
+                  {rowEvents.map(event => (
+                    <div key={event.id} className="snap-start shrink-0 w-[calc(25%-1rem)] lg:w-[calc(25%-1.5rem)] flex-shrink-0">
+                      <EventCard 
+                        event={event} 
+                        onClick={onEventClick} 
+                        onChatClick={onChatClick}
+                        onReviewsClick={onReviewsClick}
+                        isLoggedIn={isLoggedIn}
+                        isFavorite={favorites.includes(event.id)}
+                        onToggleFavorite={onToggleFavorite}
+                      />
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Right Arrow */}
+                <button
+                  onClick={scrollRight}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100 hidden lg:flex"
+                  aria-label="Scroll right"
+                >
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+            );
+          })}
         </div>
 
         <div className="mt-fluid text-center">

@@ -41,7 +41,7 @@ const StripeSettingsPage = React.lazy(() => import('./pages/ProfileSubPages').th
 const MyReviewsPage = React.lazy(() => import('./pages/ProfileSubPages').then(m => ({ default: m.MyReviewsPage })));
 
 import { Event, ViewState } from './types';
-import { Search, ArrowRight, MapPin, PlusCircle } from 'lucide-react';
+import { Search, ArrowRight, MapPin, PlusCircle, ChevronRight, ChevronLeft } from 'lucide-react';
 import { EventCard } from './components/events/EventCard';
 import { useEventStore } from './stores/eventStore';
 import { useUserStore } from './stores/userStore';
@@ -457,35 +457,38 @@ const AppContent: React.FC = () => {
   // No need for manual loading or mock data initialization - events come from Firestore in real-time
   
   // Update attendee counts when RSVPs change
+  // Sync event attendee counts from Firestore reservations for all events
   useEffect(() => {
-    if (!user) return;
+    const syncEventCounts = async () => {
+      if (allEvents.length === 0) return;
+      
+      try {
+        const { getReservationCountForEvent } = await import('./firebase/db');
+        const countPromises = allEvents
+          .filter(event => event.id && !event.isDemo)
+          .map(async (event) => {
+            try {
+              const count = await getReservationCountForEvent(event.id);
+              // Only update if count is different to avoid unnecessary updates
+              if (event.attendeesCount !== count) {
+                updateEvent(event.id, { attendeesCount: count });
+              }
+            } catch (error) {
+              console.error(`Error syncing count for event ${event.id}:`, error);
+            }
+          });
+        
+        await Promise.all(countPromises);
+      } catch (error) {
+        console.error('Error syncing event counts:', error);
+      }
+    };
     
-    // Count RSVPs per event (using current user's RSVPs only)
-    const eventRSVPCounts: Record<string, number> = {};
-    const userRSVPs = (user?.rsvps ?? []);
-    
-    // Safe forEach with array check
-    if (Array.isArray(userRSVPs)) {
-      userRSVPs?.forEach?.(eventId => {
-        if (eventId) {
-          eventRSVPCounts[eventId] = (eventRSVPCounts[eventId] || 0) + 1;
-        }
-      });
-    }
-    
-    // Update event attendee counts (only for Popera events)
-    const safeEvents = (allEvents ?? []);
-    if (Array.isArray(safeEvents)) {
-      safeEvents?.forEach?.(event => {
-        if (event?.isPoperaOwned && event?.id && eventRSVPCounts[event.id] !== undefined) {
-          const newCount = eventRSVPCounts[event.id];
-          if (event.attendeesCount !== newCount) {
-            updateEvent(event.id, { attendeesCount: newCount });
-          }
-        }
-      });
-    }
-  }, [user?.rsvps, allEvents, updateEvent, user]);
+    // Sync immediately and then every 10 seconds
+    syncEventCounts();
+    const interval = setInterval(syncEventCounts, 10000);
+    return () => clearInterval(interval);
+  }, [allEvents, updateEvent]);
 
   // Filter events based on search, location, category, and tags
   // Apply all filters in sequence for proper combined filtering
@@ -623,7 +626,7 @@ const AppContent: React.FC = () => {
     }
   };
   
-  const handleRSVP = (eventId: string) => {
+  const handleRSVP = async (eventId: string) => {
     if (!authInitialized) return null;
     if (!user) {
       // Redirect to auth if not logged in
@@ -641,18 +644,23 @@ const AppContent: React.FC = () => {
       return;
     }
     
-    if (rsvps.includes(eventId)) {
-      removeRSVP(user.uid || user.id || '', eventId);
-      // Decrease attendee count for Popera events
-      if (event?.isPoperaOwned && event.attendeesCount > 0) {
-        updateEvent(eventId, { attendeesCount: event.attendeesCount - 1 });
+    try {
+      if (rsvps.includes(eventId)) {
+        await removeRSVP(user.uid || user.id || '', eventId);
+        // Update attendee count from actual Firestore reservations for all events
+        const { getReservationCountForEvent } = await import('./firebase/db');
+        const newCount = await getReservationCountForEvent(eventId);
+        updateEvent(eventId, { attendeesCount: newCount });
+      } else {
+        await addRSVP(user.uid || user.id || '', eventId);
+        // Update attendee count from actual Firestore reservations for all events
+        const { getReservationCountForEvent } = await import('./firebase/db');
+        const newCount = await getReservationCountForEvent(eventId);
+        updateEvent(eventId, { attendeesCount: newCount });
       }
-    } else {
-      addRSVP(user.uid || user.id || '', eventId);
-      // Increase attendee count for Popera events
-      if (event?.isPoperaOwned) {
-        updateEvent(eventId, { attendeesCount: (event.attendeesCount || 0) + 1 });
-      }
+    } catch (error) {
+      console.error('Error handling RSVP:', error);
+      // Don't show alert here - let EventDetailPage handle it
     }
   };
   
@@ -1019,29 +1027,71 @@ const AppContent: React.FC = () => {
 
                 return (
                   <div className="space-y-8 sm:space-y-10 md:space-y-12">
-                    {cityEntries.map(([cityName, cityEvents]) => (
-                      <div key={cityName} className="mb-8 sm:mb-10 md:mb-12 max-w-6xl mx-auto px-4 md:px-6 lg:px-8">
-                        <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">
-                          {cityName}
-                        </h2>
-                        {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
-                        <div className="flex md:grid overflow-x-auto md:overflow-x-visible gap-4 md:gap-6 lg:gap-8 pb-2 md:pb-6 snap-x snap-mandatory md:snap-none scroll-smooth md:grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 md:place-items-center">
-                          {cityEvents.map(event => (
-                            <div key={event.id} className="snap-start shrink-0 md:col-span-1 w-full md:w-auto">
-                              <EventCard
-                                event={event}
-                                onClick={handleEventClick}
-                                onChatClick={handleChatClick}
-                                onReviewsClick={handleReviewsClick}
-                                isLoggedIn={isLoggedIn}
-                                isFavorite={favorites.includes(event.id)}
-                                onToggleFavorite={handleToggleFavorite}
-                              />
+                    {cityEntries.map(([cityName, cityEvents]) => {
+                      const scrollContainerId = `city-scroll-${cityName.replace(/\s+/g, '-')}`;
+                      
+                      const scrollLeft = () => {
+                        const container = document.getElementById(scrollContainerId);
+                        if (container) {
+                          container.scrollBy({ left: -400, behavior: 'smooth' });
+                        }
+                      };
+                      
+                      const scrollRight = () => {
+                        const container = document.getElementById(scrollContainerId);
+                        if (container) {
+                          container.scrollBy({ left: 400, behavior: 'smooth' });
+                        }
+                      };
+                      
+                      return (
+                        <div key={cityName} className="mb-8 sm:mb-10 md:mb-12 max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
+                          <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">
+                            {cityName}
+                          </h2>
+                          {/* Mobile: Horizontal scroll, Desktop: Horizontal scroll with 4 per row */}
+                          <div className="relative group">
+                            {/* Left Arrow - Desktop only */}
+                            <button
+                              onClick={scrollLeft}
+                              className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100"
+                              aria-label="Scroll left"
+                            >
+                              <ChevronLeft size={20} />
+                            </button>
+                            
+                            {/* Scrollable Container */}
+                            <div 
+                              id={scrollContainerId}
+                              className="flex overflow-x-auto gap-4 md:gap-6 lg:gap-8 pb-2 md:pb-6 snap-x snap-mandatory scroll-smooth hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4 md:scroll-pl-0"
+                            >
+                              {cityEvents.map(event => (
+                                <div key={event.id} className="snap-start shrink-0 w-[85vw] sm:w-[70vw] md:w-[calc(25%-1.5rem)] lg:w-[calc(25%-2rem)] flex-shrink-0">
+                                  <EventCard
+                                    event={event}
+                                    onClick={handleEventClick}
+                                    onChatClick={handleChatClick}
+                                    onReviewsClick={handleReviewsClick}
+                                    isLoggedIn={isLoggedIn}
+                                    isFavorite={favorites.includes(event.id)}
+                                    onToggleFavorite={handleToggleFavorite}
+                                  />
+                                </div>
+                              ))}
                             </div>
-                          ))}
+                            
+                            {/* Right Arrow - Desktop only */}
+                            <button
+                              onClick={scrollRight}
+                              className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100"
+                              aria-label="Scroll right"
+                            >
+                              <ChevronRight size={20} />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 );
               })()}
