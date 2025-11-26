@@ -58,10 +58,11 @@ export async function ensurePoperaProfileAndSeed(user: User) {
   console.log('[POPERA_SEED] Profile ensured for Popera user', user.uid);
 
   try {
-    await seedPoperaLaunchEventsForUser(user);
-    console.log('[POPERA_SEED] Seeding completed for Popera user', user.uid);
+    // Ensure exactly 1 event per city (manageable events)
+    await ensureOneEventPerCity(user.uid);
+    console.log('[POPERA_SEED] City events ensured for Popera user', user.uid);
   } catch (error) {
-    console.error('[POPERA_SEED] Seeding failed for Popera user', user.uid, error);
+    console.error('[POPERA_SEED] City events seeding failed for Popera user', user.uid, error);
   }
 }
 
@@ -115,103 +116,131 @@ export async function ensurePoperaProfile(uid: string, email: string): Promise<v
 }
 
 /**
- * Seed Popera launch events for 5 cities
- * Called once after Popera profile is updated
+ * Ensure exactly 1 event exists per city
+ * Creates events with random categories, always free, infinite capacity
+ * Called to maintain exactly 1 manageable event per city
  */
-export async function seedPoperaLaunchEvents(hostUid: string): Promise<void> {
-  console.log('[POPERA_SEED] Starting seeding for user', hostUid);
+export async function ensureOneEventPerCity(hostUid: string): Promise<void> {
+  console.log('[CITY_EVENT] Ensuring one event per city for user', hostUid);
   
   const db = getDbSafe();
   if (!db) {
-    console.warn('[POPERA_SEED] Firestore not available');
+    console.warn('[CITY_EVENT] Firestore not available');
     return;
   }
 
   try {
-    // Check if launch events already exist (idempotent check)
     const eventsCol = collection(db, "events");
-    const existingQuery = query(
-      eventsCol,
-      where("demoType", "==", "city-launch"),
-      where("managedBy", "==", POPERA_EMAIL)
-    );
-    const existingSnap = await getDocs(existingQuery);
     
-    if (existingSnap.size > 0) {
-      console.log('[POPERA_SEED] Demo city-launch events already exist, skipping.');
-      console.log(`[POPERA_SEED] Found ${existingSnap.size} existing city-launch events`);
-      return;
-    }
-    
-    console.log('[POPERA_SEED] No existing city-launch events found, proceeding with seeding');
-
-    // Calculate dates: today + 3 days, 2 hour duration
-    const now = new Date();
-    const startDate = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
-    const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // +2 hours
-
+    // Define all cities that should have exactly 1 event
     const cities = [
-      { name: "Ottawa-Gatineau", slug: "ottawa-gatineau" },
-      { name: "Montréal", slug: "montreal" },
-      { name: "Toronto", slug: "toronto" },
-      { name: "Vancouver", slug: "vancouver" },
-      { name: "Québec City", slug: "quebec-city" },
+      { name: "Montreal, CA", slug: "montreal" },
+      { name: "Toronto, CA", slug: "toronto" },
+      { name: "Vancouver, CA", slug: "vancouver" },
+      { name: "Ottawa, CA", slug: "ottawa" },
+      { name: "Quebec City, CA", slug: "quebec" },
+      { name: "Gatineau, CA", slug: "gatineau" },
+      { name: "Calgary, CA", slug: "calgary" },
+      { name: "Edmonton, CA", slug: "edmonton" },
     ];
 
-    const eventsToCreate = cities.map(city => {
-      const eventData: Omit<FirestoreEvent, 'id'> = {
-        title: `Popera Launch Meetup — ${city.name}`,
-        description: "This Popera launch meetup is an opportunity to connect with early users, ask questions about the platform, and discover how Popera helps you bring your crowd anywhere. This is an example event and may be updated as we onboard new users.",
-        date: startDate.toISOString().split('T')[0], // YYYY-MM-DD format
-        time: `${String(startDate.getHours()).padStart(2, '0')}:${String(startDate.getMinutes()).padStart(2, '0')}`,
-        price: "Free",
-        category: "Community",
-        city: city.name,
-        address: "",
-        location: city.name,
-        tags: ["Popera", "Community", "Launch", "Meetup"],
-        host: "Popera",
-        hostName: "Popera",
-        hostId: hostUid,
-        imageUrl: `https://picsum.photos/seed/popera-launch-${city.slug}/800/600`,
-        rating: 0,
-        reviewCount: 0,
-        attendeesCount: 0,
-        createdAt: Date.now(),
-        isDemo: true,
-        demoType: "city-launch",
-        managedBy: POPERA_EMAIL,
-        isPoperaOwned: false,
-        isOfficialLaunch: false,
-        subtitle: "Join us, ask questions, and meet early users from your city.",
-        startDate: startDate.getTime(),
-        endDate: endDate.getTime(),
-        isPublic: true,
-        allowChat: true,
-        allowRsvp: true,
-      };
+    // Random categories for variety
+    const categories = ['Music', 'Community', 'Markets', 'Workshop', 'Wellness', 'Shows', 'Food & Drink', 'Sports', 'Social'];
+    
+    // Calculate dates: today + 7 days, 2 hour duration
+    const now = new Date();
+    const startDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // +2 hours
 
-      return eventData;
-    });
+    let createdCount = 0;
+    let skippedCount = 0;
 
-    // Create all events
-    let successCount = 0;
-    for (const eventData of eventsToCreate) {
+    for (const city of cities) {
       try {
-        console.log('[POPERA_SEED] Creating event for city', eventData.city);
+        // Check if event already exists for this city (managed by Popera)
+        const cityQuery = query(
+          eventsCol,
+          where("city", "==", city.name),
+          where("managedBy", "==", POPERA_EMAIL)
+        );
+        const citySnap = await getDocs(cityQuery);
+        
+        if (citySnap.size > 0) {
+          console.log(`[CITY_EVENT] Event already exists for ${city.name}, skipping`);
+          skippedCount++;
+          continue;
+        }
+
+        // Pick random category
+        const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+        
+        // Generate event title based on category
+        const eventTitles: Record<string, string> = {
+          'Music': `Community Music Gathering in ${city.name.split(',')[0]}`,
+          'Community': `Local Community Meetup in ${city.name.split(',')[0]}`,
+          'Markets': `Pop-Up Market in ${city.name.split(',')[0]}`,
+          'Workshop': `Creative Workshop in ${city.name.split(',')[0]}`,
+          'Wellness': `Wellness Session in ${city.name.split(',')[0]}`,
+          'Shows': `Local Showcase in ${city.name.split(',')[0]}`,
+          'Food & Drink': `Food & Drink Social in ${city.name.split(',')[0]}`,
+          'Sports': `Sports Activity in ${city.name.split(',')[0]}`,
+          'Social': `Social Gathering in ${city.name.split(',')[0]}`,
+        };
+
+        const eventData: Omit<FirestoreEvent, 'id'> = {
+          title: eventTitles[randomCategory] || `Community Event in ${city.name.split(',')[0]}`,
+          description: `Join us for a ${randomCategory.toLowerCase()} event in ${city.name.split(',')[0]}. This is a community gathering open to everyone.`,
+          date: startDate.toISOString().split('T')[0], // YYYY-MM-DD format
+          time: `${String(startDate.getHours()).padStart(2, '0')}:${String(startDate.getMinutes()).padStart(2, '0')}`,
+          price: "Free",
+          category: randomCategory,
+          city: city.name,
+          address: "",
+          location: city.name,
+          tags: [randomCategory, "Community", city.name.split(',')[0]],
+          host: "Popera",
+          hostName: "Popera",
+          hostId: hostUid,
+          imageUrl: `https://picsum.photos/seed/popera-${city.slug}-${randomCategory}/800/600`,
+          rating: 0,
+          reviewCount: 0,
+          attendeesCount: 0,
+          createdAt: Date.now(),
+          isDemo: false, // Not a demo - real manageable events
+          managedBy: POPERA_EMAIL,
+          isPoperaOwned: true,
+          isOfficialLaunch: false,
+          startDate: startDate.getTime(),
+          endDate: endDate.getTime(),
+          isPublic: true,
+          allowChat: true,
+          allowRsvp: true,
+          // No capacity field = infinite limit
+        };
+
+        console.log(`[CITY_EVENT] Creating event for ${city.name} (${randomCategory})`);
         const sanitizedEvent = sanitizeFirestoreData(eventData);
         const docRef = await addDoc(eventsCol, sanitizedEvent);
-        console.log('[POPERA_SEED] Created event', docRef.id, 'for city', eventData.city);
-        successCount++;
+        console.log(`[CITY_EVENT] ✅ Created event ${docRef.id} for ${city.name}`);
+        createdCount++;
       } catch (error: any) {
-        console.error('[POPERA_SEED] Failed to create event for city', eventData.city, error);
-        // Continue with next event even if one fails
+        console.error(`[CITY_EVENT] ❌ Failed to create event for ${city.name}:`, error.message || error);
+        // Continue with next city even if one fails
       }
     }
 
-    console.log(`[POPERA_SEED] Successfully seeded ${successCount}/${eventsToCreate.length} launch events`);
+    console.log(`[CITY_EVENT] Completed: ${createdCount} created, ${skippedCount} already existed`);
   } catch (error: any) {
-    console.error('[POPERA_SEED] Error seeding events:', error.message || error);
-    // Don't throw - this should not block login
+    console.error('[CITY_EVENT] Error ensuring events per city:', error.message || error);
   }
+}
+
+/**
+ * Seed Popera launch events for 5 cities
+ * Called once after Popera profile is updated
+ * @deprecated Use ensureOneEventPerCity instead
+ */
+export async function seedPoperaLaunchEvents(hostUid: string): Promise<void> {
+  // Redirect to new function
+  await ensureOneEventPerCity(hostUid);
 }
