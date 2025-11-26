@@ -64,6 +64,15 @@ export async function ensurePoperaProfileAndSeed(user: User) {
   } catch (error) {
     console.error('[POPERA_SEED] City events seeding failed for Popera user', user.uid, error);
   }
+
+  // Seed reviews for Popera events (only once, idempotent)
+  try {
+    const { seedReviewsForHostEvents } = await import('./reviewSeed');
+    await seedReviewsForHostEvents(POPERA_EMAIL);
+    console.log('[POPERA_SEED] Reviews seeded for Popera events');
+  } catch (error) {
+    console.error('[POPERA_SEED] Review seeding failed for Popera user', user.uid, error);
+  }
 }
 
 export async function ensurePoperaProfile(uid: string, email: string): Promise<void> {

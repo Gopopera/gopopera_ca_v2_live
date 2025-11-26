@@ -571,6 +571,12 @@ const AppContent: React.FC = () => {
     setReviewEvent(event);
   };
 
+  const handleReviewerClick = (userId: string, userName: string) => {
+    // Navigate to reviewer's profile
+    setSelectedHost(userName);
+    setViewState(ViewState.HOST_PROFILE);
+    window.scrollTo(0, 0);
+  };
 
   const handleHostClick = (hostName: string) => {
     setSelectedHost(hostName);
@@ -1075,7 +1081,11 @@ const AppContent: React.FC = () => {
 
       {reviewEvent && (
         <React.Suspense fallback={null}>
-          <ReviewsModal event={reviewEvent} onClose={() => setReviewEvent(null)} />
+          <ReviewsModal 
+            event={reviewEvent} 
+            onClose={() => setReviewEvent(null)}
+            onReviewerClick={handleReviewerClick}
+          />
         </React.Suspense>
       )}
 

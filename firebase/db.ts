@@ -740,6 +740,47 @@ export async function listReviews(eventId: string): Promise<FirestoreReview[]> {
   }
 }
 
+/**
+ * Get all reviews for a host (from all their events)
+ */
+export async function listHostReviews(hostId: string): Promise<FirestoreReview[]> {
+  const db = getDbSafe();
+  if (!db) {
+    return [];
+  }
+  
+  // Ensure Firestore is ready before calling collection()
+  if (typeof db === 'undefined' || db === null) {
+    return [];
+  }
+  
+  try {
+    // First, get all events hosted by this user
+    const eventsCol = collection(db, "events");
+    const eventsQuery = query(eventsCol, where("hostId", "==", hostId));
+    const eventsSnapshot = await getDocs(eventsQuery);
+    
+    const eventIds = eventsSnapshot.docs.map(doc => doc.id);
+    
+    // Then, get all reviews from all their events
+    const allReviews: FirestoreReview[] = [];
+    for (const eventId of eventIds) {
+      const reviews = await listReviews(eventId);
+      allReviews.push(...reviews);
+    }
+    
+    // Sort by creation date (newest first)
+    return allReviews.sort((a, b) => {
+      const aTime = typeof a.createdAt === 'number' ? a.createdAt : (a.createdAt as any)?.toMillis?.() || 0;
+      const bTime = typeof b.createdAt === 'number' ? b.createdAt : (b.createdAt as any)?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
+  } catch (error) {
+    console.error("Error fetching host reviews:", error);
+    return [];
+  }
+}
+
 export async function recalculateEventRating(eventId: string): Promise<void> {
   const db = getDbSafe();
   if (!db) {

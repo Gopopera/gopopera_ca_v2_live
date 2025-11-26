@@ -1,19 +1,82 @@
-import React from 'react';
-import { X, Star, ThumbsUp, MessageSquare } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Star } from 'lucide-react';
 import { Event } from '@/types';
 import { formatRating } from '@/utils/formatRating';
+import { listReviews } from '@/firebase/db';
+import { FirestoreReview } from '@/firebase/types';
+import { ViewState } from '@/types';
 
 interface ReviewsModalProps {
   event: Event;
   onClose: () => void;
+  onReviewerClick?: (userId: string, userName: string) => void;
 }
 
-export const ReviewsModal: React.FC<ReviewsModalProps> = ({ event, onClose }) => {
-  const reviews = [
-    { id: 1, name: "Jessica M.", date: "2 days ago", rating: 5, comment: "Absolutely incredible experience! The host was so welcoming and the atmosphere was unmatched.", likes: 12 },
-    { id: 2, name: "David Chen", date: "1 week ago", rating: 4, comment: "Great event, very well organized.", likes: 5 },
-    { id: 3, name: "Sarah L.", date: "2 weeks ago", rating: 5, comment: "One of the best pop-ups I've been to in the city.", likes: 24 }
-  ];
+interface ReviewWithUser extends FirestoreReview {
+  userPhoto?: string;
+}
+
+export const ReviewsModal: React.FC<ReviewsModalProps> = ({ event, onClose, onReviewerClick }) => {
+  const [reviews, setReviews] = useState<ReviewWithUser[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadReviews = async () => {
+      try {
+        setLoading(true);
+        const firestoreReviews = await listReviews(event.id);
+        
+        // Fetch user profiles for reviewers to get their photos
+        const reviewsWithUsers = await Promise.all(
+          firestoreReviews.map(async (review) => {
+            try {
+              const { getUserProfile } = await import('@/firebase/db');
+              const userProfile = await getUserProfile(review.userId);
+              return {
+                ...review,
+                userPhoto: userProfile?.photoURL || userProfile?.imageUrl || `https://i.pravatar.cc/150?img=${review.userId}`,
+              };
+            } catch (error) {
+              console.error(`Error fetching user profile for ${review.userId}:`, error);
+              return {
+                ...review,
+                userPhoto: `https://i.pravatar.cc/150?img=${review.userId}`,
+              };
+            }
+          })
+        );
+        
+        setReviews(reviewsWithUsers);
+      } catch (error) {
+        console.error('Error loading reviews:', error);
+        setReviews([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadReviews();
+  }, [event.id]);
+
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return '1 day ago';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)} month${Math.floor(diffDays / 30) > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const handleReviewerClick = (review: ReviewWithUser) => {
+    if (onReviewerClick) {
+      onReviewerClick(review.userId, review.userName);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 sm:px-6">
@@ -35,17 +98,52 @@ export const ReviewsModal: React.FC<ReviewsModalProps> = ({ event, onClose }) =>
            </div>
         </div>
         <div className="overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
-           {reviews.map((review) => (
-             <div key={review.id} className="border-b border-gray-50 last:border-0 pb-4 sm:pb-6 last:pb-0">
-                <div className="flex items-center justify-between mb-3">
-                   <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-200 overflow-hidden shrink-0"><img src={`https://picsum.photos/seed/${review.name}/50/50`} alt={review.name} className="w-full h-full object-cover" /></div>
-                      <div className="min-w-0"><h4 className="text-xs sm:text-sm font-bold text-popera-teal truncate">{review.name}</h4><span className="text-[10px] sm:text-xs text-gray-400">{review.date}</span></div>
-                   </div>
-                </div>
-                <p className="text-gray-600 text-xs sm:text-sm leading-relaxed mb-3 sm:mb-4">"{review.comment}"</p>
-             </div>
-           ))}
+           {loading ? (
+             <div className="text-center py-8 text-gray-500">Loading reviews...</div>
+           ) : reviews.length === 0 ? (
+             <div className="text-center py-8 text-gray-500">No reviews yet. Be the first to review this event!</div>
+           ) : (
+             reviews.map((review) => (
+               <div key={review.id} className="border-b border-gray-50 last:border-0 pb-4 sm:pb-6 last:pb-0">
+                  <div className="flex items-center justify-between mb-3">
+                     <div 
+                       className={`flex items-center gap-2 sm:gap-3 ${onReviewerClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                       onClick={() => handleReviewerClick(review)}
+                     >
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-200 overflow-hidden shrink-0 ring-1 ring-gray-200">
+                          <img 
+                            src={review.userPhoto || `https://i.pravatar.cc/150?img=${review.userId}`} 
+                            alt={review.userName} 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = `https://i.pravatar.cc/150?img=${review.userId}`;
+                            }}
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-xs sm:text-sm font-bold text-popera-teal truncate">{review.userName}</h4>
+                          <span className="text-[10px] sm:text-xs text-gray-400">
+                            {formatDate(review.createdAt as number)}
+                          </span>
+                        </div>
+                     </div>
+                     <div className="flex items-center gap-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Star 
+                            key={i} 
+                            size={12} 
+                            className={i < review.rating ? 'fill-[#e35e25] text-[#e35e25]' : 'text-gray-300'} 
+                          />
+                        ))}
+                     </div>
+                  </div>
+                  {review.comment && (
+                    <p className="text-gray-600 text-xs sm:text-sm leading-relaxed mb-3 sm:mb-4">"{review.comment}"</p>
+                  )}
+               </div>
+             ))
+           )}
         </div>
       </div>
     </div>
