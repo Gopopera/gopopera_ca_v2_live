@@ -3,6 +3,7 @@ import { MapPin, Calendar, MessageCircle, Star, Heart, Edit } from 'lucide-react
 import { Event } from '@/types';
 import { formatDate } from '@/utils/dateFormatter';
 import { formatRating } from '@/utils/formatRating';
+import { useUserStore } from '@/stores/userStore';
 
 interface EventCardProps {
   event: Event;
@@ -27,6 +28,19 @@ export const EventCard: React.FC<EventCardProps> = ({
   onEditClick,
   showEditButton = false
 }) => {
+  const user = useUserStore((state) => state.user);
+  const userProfile = useUserStore((state) => state.userProfile);
+  
+  // Get host profile picture - if it's the current user's event, use their profile picture
+  const hostProfilePicture = React.useMemo(() => {
+    // If this is the current user's event, use their profile picture
+    if (event.hostId === user?.uid) {
+      return user?.photoURL || user?.profileImageUrl || userProfile?.photoURL || userProfile?.imageUrl || null;
+    }
+    // For other hosts, use placeholder (could be enhanced with host profile lookup later)
+    return null;
+  }, [event.hostId, user?.uid, user?.photoURL, user?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl]);
+  
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isLoggedIn && onToggleFavorite) {
@@ -126,7 +140,23 @@ export const EventCard: React.FC<EventCardProps> = ({
            {/* Host Info */}
            <div className="flex items-center space-x-2 overflow-hidden min-w-0 flex-1">
              <span className="w-6 h-6 shrink-0 rounded-full bg-gray-200 overflow-hidden ring-1 ring-gray-200">
-               <img src={`https://picsum.photos/seed/${event.hostName}/50/50`} alt="host" className="w-full h-full object-cover" />
+               {hostProfilePicture ? (
+                 <img 
+                   src={hostProfilePicture} 
+                   alt={event.hostName} 
+                   className="w-full h-full object-cover"
+                   onError={(e) => {
+                     const target = e.target as HTMLImageElement;
+                     target.src = `https://picsum.photos/seed/${event.hostName}/50/50`;
+                   }}
+                 />
+               ) : (
+                 <img 
+                   src={`https://picsum.photos/seed/${event.hostName}/50/50`} 
+                   alt={event.hostName} 
+                   className="w-full h-full object-cover" 
+                 />
+               )}
              </span>
              <p className="text-xs font-medium text-gray-600 sm:text-gray-500 uppercase tracking-wide truncate">
                Hosted by {event.hostName.split(' ')[0]}

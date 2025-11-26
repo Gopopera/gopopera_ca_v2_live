@@ -54,6 +54,9 @@ export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
         photoURL: imageUrl,
         profileImageUrl: imageUrl,
       });
+      
+      // Refresh user profile to sync across all components
+      await useUserStore.getState().refreshUserProfile();
     } catch (error) {
       console.error('Error uploading profile picture:', error);
       alert('Failed to upload profile picture. Please try again.');
@@ -126,7 +129,7 @@ export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
               <input type="text" defaultValue="Jason" className="w-full bg-white border border-gray-200 rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all" />
            </div>
            <div className="space-y-2">
-              <label className="block text-xs sm:text-sm font-light text-gray-600 pl-1">Phone Number</label>
+              <label className="block text-xs sm:text-sm font-light text-gray-600 pl-1">Phone Number <span className="text-gray-400 font-normal">(not shared with anyone)</span></label>
               <input type="tel" defaultValue="(+1) 999-888-000" className="w-full bg-white border border-gray-200 rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all" />
            </div>
            <div className="space-y-2">

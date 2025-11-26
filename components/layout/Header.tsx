@@ -19,7 +19,9 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { language, setLanguage, t } = useLanguage();
   const user = useUserStore((state) => state.user);
-  const userPhoto = user?.photoURL || user?.profileImageUrl;
+  const userProfile = useUserStore((state) => state.userProfile);
+  // Get profile picture from multiple sources (user store, userProfile, Firebase auth)
+  const userPhoto = user?.photoURL || user?.profileImageUrl || userProfile?.photoURL || userProfile?.imageUrl;
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Load unread notification count
