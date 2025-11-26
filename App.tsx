@@ -498,7 +498,8 @@ const AppContent: React.FC = () => {
   }
   
   // Apply city filter - match by city slug or city name
-  if (location && location.trim() && location !== 'montreal') {
+  // "Canada" shows all events (no filter)
+  if (location && location.trim() && location.toLowerCase() !== 'canada') {
     const citySlug = location.toLowerCase();
     filteredEvents = filteredEvents.filter(event => {
       const eventCityLower = event.city.toLowerCase();

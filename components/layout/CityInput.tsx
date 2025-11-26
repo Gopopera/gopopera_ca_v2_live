@@ -3,6 +3,7 @@ import { MapPin } from 'lucide-react';
 import { useSelectedCity, useSetCity } from '../../src/stores/cityStore';
 
 const POPULAR_CITIES = [
+  'Canada',
   'Montreal, CA',
   'Toronto, CA',
   'Ottawa, CA',
@@ -18,14 +19,14 @@ interface CityInputProps {
 export const CityInput: React.FC<CityInputProps> = ({ className = '' }) => {
   const selectedCity = useSelectedCity();
   const setCity = useSetCity();
-  const [inputValue, setInputValue] = useState(selectedCity || 'Montreal');
+  const [inputValue, setInputValue] = useState(selectedCity || 'Canada');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Initialize input value from selected city
   useEffect(() => {
-    setInputValue(selectedCity || 'Montreal');
+    setInputValue(selectedCity || 'Canada');
   }, [selectedCity]);
 
   // Filter suggestions based on input
@@ -65,7 +66,7 @@ export const CityInput: React.FC<CityInputProps> = ({ className = '' }) => {
       setShowSuggestions(false);
       // If input is empty, reset to selected city
       if (!inputValue.trim()) {
-        setInputValue(selectedCity || 'Montreal');
+        setInputValue(selectedCity || 'Canada');
       }
     }, 200);
   };
@@ -94,7 +95,7 @@ export const CityInput: React.FC<CityInputProps> = ({ className = '' }) => {
           onChange={handleInputChange}
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
-          placeholder="City (e.g. Montreal)"
+          placeholder="City or Country (e.g. Canada, Montreal)"
           className="w-full pl-11 pr-4 py-3 sm:py-3.5 bg-white border border-gray-200 rounded-full text-sm sm:text-base font-bold text-[#15383c] focus:outline-none focus:border-[#15383c] focus:ring-2 focus:ring-[#15383c]/10 shadow-sm hover:shadow-md transition-all placeholder-gray-400"
         />
       </div>

@@ -16,19 +16,19 @@ type CityState = {
 export const useCityStore = create<CityState>()(
   persist(
     (set) => ({
-      selectedCity: "montreal", // Default to Montreal
+      selectedCity: "Canada", // Default to Canada (shows all events)
       setCity: (c: string) => {
-        const normalized = c.trim() || "montreal";
+        const normalized = c.trim() || "Canada";
         set({ selectedCity: normalized });
       },
-      resetCity: () => set({ selectedCity: "montreal" }),
+      resetCity: () => set({ selectedCity: "Canada" }),
     }),
     { 
       name: "popera:selectedCity",
       // Ensure we have a valid default on rehydration
       onRehydrateStorage: () => (state) => {
         if (state && !state.selectedCity) {
-          state.selectedCity = "montreal";
+          state.selectedCity = "Canada";
         }
       },
     }

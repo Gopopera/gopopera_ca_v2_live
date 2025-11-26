@@ -153,7 +153,7 @@ export async function ensureOneEventPerCity(hostUid: string): Promise<void> {
       { name: "Edmonton, CA", slug: "edmonton" },
     ];
 
-    // Random categories for variety
+    // Random categories for variety - ensure all categories are represented so "All" category always shows events
     const categories = ['Music', 'Community', 'Markets', 'Workshop', 'Wellness', 'Shows', 'Food & Drink', 'Sports', 'Social'];
     
     // Calculate dates: today + 7 days, 2 hour duration
