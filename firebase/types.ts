@@ -103,6 +103,21 @@ export interface FirestoreReservation {
   userId: string;
   reservedAt: number;
   status: "reserved" | "checked_in" | "cancelled";
+  attendeeCount?: number; // Number of attendees in this reservation (default: 1)
+  supportContribution?: number; // Optional support contribution amount
+  paymentMethod?: string; // Payment method used: 'google-pay', 'stripe', or empty for free events
+  totalAmount?: number; // Total amount paid (for paid events)
+}
+
+export interface FirestoreExpulsion {
+  id: string;
+  eventId: string;
+  userId: string;
+  userName: string;
+  hostId: string;
+  reason: string;
+  description?: string;
+  expelledAt: number;
 }
 
 export interface FirestoreChatMessage {

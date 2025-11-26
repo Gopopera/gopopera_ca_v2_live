@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, Search, User, Bell, PlusCircle, Heart } from 'lucide-react';
+import { Menu, X, Search, User, Bell, PlusCircle, Heart, ArrowLeft } from 'lucide-react';
 import { ViewState } from '@/types';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useUserStore } from '../../stores/userStore';
@@ -262,6 +262,16 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
             WebkitOverflowScrolling: 'touch'
           }}
         >
+          {/* Back Button - Always visible at top of menu */}
+          <button
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center gap-2 text-popera-teal hover:text-popera-orange active:text-popera-orange transition-all touch-manipulation py-3 sm:py-2 mb-2 sm:mb-3 active:scale-[0.98] font-medium text-base sm:text-lg"
+            aria-label="Close menu"
+          >
+            <ArrowLeft size={20} className="sm:w-6 sm:h-6" />
+            <span>Back</span>
+          </button>
+          
           <nav className="flex flex-col space-y-1 sm:space-y-2 md:space-y-3 text-lg sm:text-xl md:text-2xl font-heading font-bold text-popera-teal flex-1 overflow-y-auto pb-8 sm:pb-10 md:pb-12">
             
             {isLoggedIn ? (

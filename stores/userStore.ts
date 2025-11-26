@@ -63,7 +63,7 @@ interface UserStore {
   updateUser: (userId: string, updates: Partial<User>) => Promise<void>;
   addFavorite: (userId: string, eventId: string) => Promise<void>;
   removeFavorite: (userId: string, eventId: string) => Promise<void>;
-  addRSVP: (userId: string, eventId: string) => Promise<void>;
+  addRSVP: (userId: string, eventId: string) => Promise<string>; // Returns reservation ID
   removeRSVP: (userId: string, eventId: string) => Promise<void>;
   getUserFavorites: (userId: string) => string[];
   getUserRSVPs: (userId: string) => string[];
@@ -319,6 +319,27 @@ export const useUserStore = create<UserStore>()(
         try {
           set({ loading: true });
           console.log('[USER_STORE] Logging out');
+          
+          // Flush any pending favorite writes before logout
+          const currentUser = get().user;
+          if (currentUser?.uid) {
+            try {
+              // Ensure favorites are synced to Firestore before logout
+              const firestoreUser = await getUserProfile(currentUser.uid);
+              const firestoreFavorites = Array.isArray(firestoreUser?.favorites) ? firestoreUser.favorites : [];
+              const localFavorites = Array.isArray(currentUser.favorites) ? currentUser.favorites : [];
+              
+              // If local and Firestore are out of sync, sync local to Firestore
+              if (JSON.stringify(firestoreFavorites.sort()) !== JSON.stringify(localFavorites.sort())) {
+                console.log('[USER_STORE] Syncing favorites before logout');
+                await createOrUpdateUserProfile(currentUser.uid, { favorites: localFavorites });
+              }
+            } catch (error) {
+              console.warn('[USER_STORE] Error syncing favorites before logout:', error);
+              // Don't block logout on sync error
+            }
+          }
+          
           await signOutUser();
           
           // Clean up auth listener
@@ -520,13 +541,23 @@ export const useUserStore = create<UserStore>()(
 
       addFavorite: async (userId: string, eventId: string) => {
         try {
-          const currentUser = get().user;
-          const currentFavorites = Array.isArray(currentUser?.favorites) ? currentUser.favorites : [];
-          if (currentFavorites.includes(eventId)) return;
+          // First, fetch current favorites from Firestore to ensure we have the latest state
+          const firestoreUser = await getUserProfile(userId);
+          const currentFavorites = Array.isArray(firestoreUser?.favorites) ? firestoreUser.favorites : [];
+          
+          // If already favorited, no-op
+          if (currentFavorites.includes(eventId)) {
+            console.log('[FAVORITES] Event already favorited, skipping');
+            return;
+          }
           
           const updatedFavorites = [...currentFavorites, eventId];
+          
+          // Persist to Firestore
           await createOrUpdateUserProfile(userId, { favorites: updatedFavorites });
           
+          // Update local state
+          const currentUser = get().user;
           if (currentUser && currentUser.uid === userId) {
             set({ user: { ...currentUser, favorites: updatedFavorites }, currentUser: { ...currentUser, favorites: updatedFavorites } });
           }
@@ -538,12 +569,23 @@ export const useUserStore = create<UserStore>()(
 
       removeFavorite: async (userId: string, eventId: string) => {
         try {
-          const currentUser = get().user;
-          const currentFavorites = Array.isArray(currentUser?.favorites) ? currentUser.favorites : [];
+          // First, fetch current favorites from Firestore to ensure we have the latest state
+          const firestoreUser = await getUserProfile(userId);
+          const currentFavorites = Array.isArray(firestoreUser?.favorites) ? firestoreUser.favorites : [];
+          
+          // If not favorited, no-op
+          if (!currentFavorites.includes(eventId)) {
+            console.log('[FAVORITES] Event not favorited, skipping');
+            return;
+          }
+          
           const updatedFavorites = currentFavorites.filter(id => id !== eventId);
           
+          // Persist to Firestore
           await createOrUpdateUserProfile(userId, { favorites: updatedFavorites });
           
+          // Update local state
+          const currentUser = get().user;
           if (currentUser && currentUser.uid === userId) {
             set({ user: { ...currentUser, favorites: updatedFavorites }, currentUser: { ...currentUser, favorites: updatedFavorites } });
           }
@@ -559,7 +601,7 @@ export const useUserStore = create<UserStore>()(
           const currentRSVPs = Array.isArray(currentUser?.rsvps) ? currentUser.rsvps : [];
           if (currentRSVPs.includes(eventId)) return;
           
-          await createReservation(eventId, userId);
+          const reservationId = await createReservation(eventId, userId);
           
           const reservationEvents = await listUserReservations(userId);
           const updatedRSVPs = Array.isArray(reservationEvents) ? reservationEvents.map(e => e?.id).filter(Boolean) : [];
@@ -586,6 +628,9 @@ export const useUserStore = create<UserStore>()(
             console.error('Error notifying host of RSVP:', error);
             // Don't fail RSVP if notification fails
           }
+          
+          // Return reservation ID for confirmation page
+          return reservationId;
         } catch (error) {
           console.error("Add RSVP error:", error);
           throw error;

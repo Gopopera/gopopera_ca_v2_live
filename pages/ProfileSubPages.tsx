@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ViewState } from '../types';
-import { X, DollarSign, ArrowRight, Star, Camera } from 'lucide-react';
+import { X, DollarSign, ArrowRight, Star, Camera, CheckCircle2 } from 'lucide-react';
 import { useUserStore } from '../stores/userStore';
 import { uploadImage } from '../firebase/storage';
 import { createOrUpdateUserProfile } from '../firebase/db';
@@ -345,7 +345,7 @@ export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => 
 };
 
 // --- My Reviews Page ---
-export const MyReviewsPage: React.FC<SubPageProps> = ({ setViewState }) => {
+export const MyReviewsPage: React.FC<SubPageProps & { onHostClick?: (hostName: string) => void }> = ({ setViewState, onHostClick }) => {
   const user = useUserStore((state) => state.user);
   const [reviews, setReviews] = useState<Array<{
     id: string;
@@ -356,8 +356,13 @@ export const MyReviewsPage: React.FC<SubPageProps> = ({ setViewState }) => {
     comment: string;
     eventName: string;
     userId: string;
+    eventId: string;
+    status?: 'pending' | 'accepted' | 'contested';
+    contestMessage?: string;
   }>>([]);
   const [loading, setLoading] = useState(true);
+  const [contestingReviewId, setContestingReviewId] = useState<string | null>(null);
+  const [contestMessage, setContestMessage] = useState('');
 
   useEffect(() => {
     const loadReviews = async () => {
@@ -388,6 +393,9 @@ export const MyReviewsPage: React.FC<SubPageProps> = ({ setViewState }) => {
               comment: review.comment || '',
               eventName: event?.title || 'Unknown Event',
               userId: review.userId,
+              eventId: review.eventId || '',
+              status: (review as any).status || 'pending', // Default to pending for new reviews
+              contestMessage: (review as any).contestMessage || '',
             };
           })
         );
@@ -410,9 +418,110 @@ export const MyReviewsPage: React.FC<SubPageProps> = ({ setViewState }) => {
   };
 
   const handleReviewerClick = (userId: string, userName: string) => {
-    // Navigate to reviewer's profile
-    // This will be handled by App.tsx
-    console.log('Reviewer clicked:', userId, userName);
+    if (onHostClick) {
+      onHostClick(userName);
+    }
+  };
+
+  const handleAcceptReview = async (reviewId: string) => {
+    try {
+      // Update review status to accepted in Firestore
+      const { getDbSafe } = await import('../src/lib/firebase');
+      const { doc, updateDoc } = await import('firebase/firestore');
+      const db = getDbSafe();
+      if (!db) return;
+      
+      // Find the review's eventId
+      const review = reviews.find(r => r.id === reviewId);
+      if (!review?.eventId) return;
+      
+      const reviewRef = doc(db, 'events', review.eventId, 'reviews', reviewId);
+      await updateDoc(reviewRef, { status: 'accepted' });
+      
+      // Update local state
+      setReviews(prev => prev.map(r => r.id === reviewId ? { ...r, status: 'accepted' as const } : r));
+    } catch (error) {
+      console.error('Error accepting review:', error);
+      alert('Failed to accept review. Please try again.');
+    }
+  };
+
+  const handleContestReview = async (reviewId: string) => {
+    if (!contestMessage.trim()) {
+      alert('Please provide a reason for contesting this review.');
+      return;
+    }
+
+    try {
+      const review = reviews.find(r => r.id === reviewId);
+      if (!review) return;
+
+      // Send contest email to support
+      const { sendEmail } = await import('../src/lib/email');
+      const hostName = user?.displayName || user?.name || 'Unknown';
+      const hostId = user?.uid || 'unknown';
+      const subject = `Review contest_${hostName}_${hostId}`;
+      
+      const emailHtml = `
+        <h2 style="margin: 0 0 24px 0; color: #15383c; font-size: 24px; font-weight: bold;">Review Contest</h2>
+        <div style="background-color: #f8fafb; padding: 24px; border-radius: 12px;">
+          <p style="margin: 0 0 12px 0; color: #374151; font-size: 16px; line-height: 1.6;">
+            <strong style="color: #15383c;">Host:</strong> ${hostName} (${hostId})
+          </p>
+          <p style="margin: 0 0 12px 0; color: #374151; font-size: 16px; line-height: 1.6;">
+            <strong style="color: #15383c;">Reviewer:</strong> ${review.name}
+          </p>
+          <p style="margin: 0 0 12px 0; color: #374151; font-size: 16px; line-height: 1.6;">
+            <strong style="color: #15383c;">Event:</strong> ${review.eventName}
+          </p>
+          <p style="margin: 0 0 12px 0; color: #374151; font-size: 16px; line-height: 1.6;">
+            <strong style="color: #15383c;">Rating:</strong> ${review.rating}/5
+          </p>
+          <p style="margin: 0 0 12px 0; color: #374151; font-size: 16px; line-height: 1.6;">
+            <strong style="color: #15383c;">Review Comment:</strong> ${review.comment || 'No comment'}
+          </p>
+          <div style="margin-top: 24px; padding-top: 24px; border-top: 2px solid #e5e7eb;">
+            <p style="margin: 0 0 12px 0; color: #15383c; font-size: 18px; font-weight: bold;">Contest Message:</p>
+            <p style="margin: 0; color: #374151; font-size: 16px; line-height: 1.6; white-space: pre-wrap;">${contestMessage}</p>
+          </div>
+        </div>
+      `;
+
+      await sendEmail({
+        to: 'support@gopopera.ca',
+        subject,
+        html: emailHtml,
+        templateName: 'review-contest',
+      });
+
+      // Update review status to contested in Firestore
+      const { getDbSafe } = await import('../src/lib/firebase');
+      const { doc, updateDoc } = await import('firebase/firestore');
+      const db = getDbSafe();
+      if (db && review.eventId) {
+        const reviewRef = doc(db, 'events', review.eventId, 'reviews', reviewId);
+        await updateDoc(reviewRef, { 
+          status: 'contested',
+          contestMessage: contestMessage,
+          contestedAt: Date.now(),
+        });
+      }
+
+      // Update local state
+      setReviews(prev => prev.map(r => 
+        r.id === reviewId 
+          ? { ...r, status: 'contested' as const, contestMessage } 
+          : r
+      ));
+
+      // Reset contest form
+      setContestingReviewId(null);
+      setContestMessage('');
+      alert('Review contest submitted. Our support team will review it shortly.');
+    } catch (error) {
+      console.error('Error contesting review:', error);
+      alert('Failed to submit contest. Please try again.');
+    }
   };
 
   return (
@@ -475,12 +584,301 @@ export const MyReviewsPage: React.FC<SubPageProps> = ({ setViewState }) => {
                       "{review.comment}"
                     </p>
                   )}
-                  <div className="pt-4 border-t border-gray-50 flex justify-between items-center">
+                  <div className="pt-4 border-t border-gray-50 flex justify-between items-center mb-4">
                       <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Event</span>
                       <span className="text-sm font-medium text-[#15383c]">{review.eventName}</span>
                   </div>
+                  
+                  {/* Accept/Contest Actions - Only show for pending reviews */}
+                  {review.status === 'pending' && (
+                    <div className="pt-4 border-t border-gray-50 flex gap-3">
+                      <button
+                        onClick={() => handleAcceptReview(review.id)}
+                        className="flex-1 px-4 py-2 bg-[#15383c] text-white rounded-full text-sm font-medium hover:bg-[#1f4d52] transition-colors"
+                      >
+                        Accept
+                      </button>
+                      <button
+                        onClick={() => setContestingReviewId(review.id)}
+                        className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors"
+                      >
+                        Contest
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Contest Form */}
+                  {contestingReviewId === review.id && (
+                    <div className="pt-4 border-t border-gray-50 mt-4">
+                      <textarea
+                        value={contestMessage}
+                        onChange={(e) => setContestMessage(e.target.value)}
+                        placeholder="Please explain why you're contesting this review..."
+                        className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#15383c] mb-3"
+                        rows={4}
+                      />
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => handleContestReview(review.id)}
+                          className="flex-1 px-4 py-2 bg-[#e35e25] text-white rounded-full text-sm font-medium hover:bg-[#cf4d1d] transition-colors"
+                        >
+                          Submit Contest
+                        </button>
+                        <button
+                          onClick={() => {
+                            setContestingReviewId(null);
+                            setContestMessage('');
+                          }}
+                          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Status Badge */}
+                  {review.status === 'accepted' && (
+                    <div className="pt-4 border-t border-gray-50">
+                      <span className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium">
+                        <CheckCircle2 size={14} />
+                        Accepted
+                      </span>
+                    </div>
+                  )}
+                  
+                  {review.status === 'contested' && (
+                    <div className="pt-4 border-t border-gray-50">
+                      <span className="inline-flex items-center gap-2 px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-xs font-medium">
+                        Under Review
+                      </span>
+                    </div>
+                  )}
                </div>
              ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// --- Following Page ---
+export const FollowingPage: React.FC<SubPageProps & { onHostClick?: (hostName: string) => void }> = ({ setViewState, onHostClick }) => {
+  const user = useUserStore((state) => state.user);
+  const [following, setFollowing] = useState<Array<{ id: string; name: string; photoURL?: string; imageUrl?: string }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadFollowing = async () => {
+      if (!user?.uid) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const { getFollowingHosts } = await import('../firebase/follow');
+        const { getUserProfile } = await import('../firebase/db');
+        const followingIds = await getFollowingHosts(user.uid);
+        
+        const followingProfiles = await Promise.all(
+          followingIds.map(async (hostId) => {
+            const profile = await getUserProfile(hostId);
+            return {
+              id: hostId,
+              name: profile?.name || profile?.displayName || 'Unknown',
+              photoURL: profile?.photoURL,
+              imageUrl: profile?.imageUrl,
+            };
+          })
+        );
+        
+        setFollowing(followingProfiles);
+      } catch (error) {
+        console.error('Error loading following:', error);
+        setFollowing([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadFollowing();
+  }, [user?.uid]);
+
+  const handleUnfollow = async (hostId: string) => {
+    if (!user?.uid) return;
+    
+    try {
+      const { unfollowHost } = await import('../firebase/follow');
+      await unfollowHost(user.uid, hostId);
+      setFollowing(prev => prev.filter(f => f.id !== hostId));
+    } catch (error) {
+      console.error('Error unfollowing:', error);
+      alert('Failed to unfollow. Please try again.');
+    }
+  };
+
+  const handleProfileClick = (hostName: string) => {
+    if (onHostClick) {
+      onHostClick(hostName);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#f8fafb] pt-24 pb-20 font-sans">
+      <div className="max-w-4xl mx-auto px-6">
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="font-heading font-bold text-3xl text-[#15383c]">Following</h1>
+          <button 
+            onClick={() => setViewState(ViewState.PROFILE)}
+            className="w-10 h-10 bg-[#15383c] rounded-lg flex items-center justify-center text-white hover:opacity-90 transition-opacity shadow-sm"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-12 text-gray-500">Loading...</div>
+        ) : following.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            <p className="text-lg mb-2">Not following anyone yet</p>
+            <p className="text-sm">Start following hosts to see their events in your feed.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {following.map((host) => {
+              const photo = host.photoURL || host.imageUrl;
+              const initials = host.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+              
+              return (
+                <div key={host.id} className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+                  <div 
+                    className="flex items-center gap-4 flex-1 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => handleProfileClick(host.name)}
+                  >
+                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-[#e35e25] flex items-center justify-center overflow-hidden shrink-0">
+                      {photo ? (
+                        <img src={photo} alt={host.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="font-heading font-bold text-white text-lg">{initials}</span>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-[#15383c] text-base md:text-lg">{host.name}</h3>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleUnfollow(host.id)}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors"
+                  >
+                    Unfollow
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// --- Followers Page ---
+export const FollowersPage: React.FC<SubPageProps & { onHostClick?: (hostName: string) => void }> = ({ setViewState, onHostClick }) => {
+  const user = useUserStore((state) => state.user);
+  const [followers, setFollowers] = useState<Array<{ id: string; name: string; photoURL?: string; imageUrl?: string }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadFollowers = async () => {
+      if (!user?.uid) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const { getHostFollowers } = await import('../firebase/follow');
+        const { getUserProfile } = await import('../firebase/db');
+        const followersIds = await getHostFollowers(user.uid);
+        
+        const followersProfiles = await Promise.all(
+          followersIds.map(async (followerId) => {
+            const profile = await getUserProfile(followerId);
+            return {
+              id: followerId,
+              name: profile?.name || profile?.displayName || 'Unknown',
+              photoURL: profile?.photoURL,
+              imageUrl: profile?.imageUrl,
+            };
+          })
+        );
+        
+        setFollowers(followersProfiles);
+      } catch (error) {
+        console.error('Error loading followers:', error);
+        setFollowers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadFollowers();
+  }, [user?.uid]);
+
+  const handleProfileClick = (hostName: string) => {
+    if (onHostClick) {
+      onHostClick(hostName);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#f8fafb] pt-24 pb-20 font-sans">
+      <div className="max-w-4xl mx-auto px-6">
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="font-heading font-bold text-3xl text-[#15383c]">Followers</h1>
+          <button 
+            onClick={() => setViewState(ViewState.PROFILE)}
+            className="w-10 h-10 bg-[#15383c] rounded-lg flex items-center justify-center text-white hover:opacity-90 transition-opacity shadow-sm"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-12 text-gray-500">Loading...</div>
+        ) : followers.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            <p className="text-lg mb-2">No followers yet</p>
+            <p className="text-sm">Start hosting events to gain followers.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {followers.map((follower) => {
+              const photo = follower.photoURL || follower.imageUrl;
+              const initials = follower.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+              
+              return (
+                <div key={follower.id} className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100">
+                  <div 
+                    className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => handleProfileClick(follower.name)}
+                  >
+                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-[#e35e25] flex items-center justify-center overflow-hidden shrink-0">
+                      {photo ? (
+                        <img src={photo} alt={follower.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="font-heading font-bold text-white text-lg">{initials}</span>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-[#15383c] text-base md:text-lg">{follower.name}</h3>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ViewState } from '../types';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { useUserStore } from '../stores/userStore';
+import { useEventStore } from '../stores/eventStore';
+import { getReservationCountForEvent, listHostReviews, getUserProfile } from '../firebase/db';
+import { getFollowingHosts, getHostFollowers } from '../firebase/follow';
 
 interface ProfilePageProps {
   setViewState: (view: ViewState) => void;
@@ -12,12 +15,73 @@ interface ProfilePageProps {
 export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName, onLogout }) => {
   const user = useUserStore((state) => state.user);
   const userProfile = useUserStore((state) => state.userProfile);
+  const allEvents = useEventStore((state) => state.events);
+  const [stats, setStats] = useState({ revenue: 30, hosted: 0, attendees: 0, following: 0, attended: 0, reviews: 0, followers: 0 });
+  const [loading, setLoading] = useState(true);
+  
   // Get profile picture from multiple sources
   const profilePicture = user?.photoURL || user?.profileImageUrl || userProfile?.photoURL || userProfile?.imageUrl;
   const displayName = user?.displayName || user?.name || userName;
   const initials = displayName ? displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'P';
   
-  const stats = { revenue: 0, hosted: 0, attendees: 0, following: 0, attended: 0, reviews: 0 };
+  // Calculate metrics
+  useEffect(() => {
+    const calculateMetrics = async () => {
+      if (!user?.uid) {
+        setLoading(false);
+        return;
+      }
+      
+      try {
+        // Get hosted events
+        const hostedEvents = allEvents.filter(e => e.hostId === user.uid);
+        const hostedCount = hostedEvents.length;
+        
+        // Calculate total attendees across all hosted events (accumulated)
+        let totalAttendees = 0;
+        for (const event of hostedEvents) {
+          try {
+            const count = await getReservationCountForEvent(event.id);
+            totalAttendees += count;
+          } catch (error) {
+            // Fallback to event.attendeesCount if getReservationCountForEvent fails
+            totalAttendees += event.attendeesCount || 0;
+          }
+        }
+        
+        // Get events attended (from RSVPs)
+        const attendedCount = user.rsvps?.length || 0;
+        
+        // Get following count
+        const followingIds = await getFollowingHosts(user.uid);
+        const followingCount = followingIds.length;
+        
+        // Get followers count
+        const followersIds = await getHostFollowers(user.uid);
+        const followersCount = followersIds.length;
+        
+        // Get reviews count
+        const reviews = await listHostReviews(user.uid);
+        const reviewsCount = reviews.length;
+        
+        setStats({
+          revenue: 30, // Placeholder - will be calculated from Stripe later
+          hosted: hostedCount,
+          attendees: totalAttendees,
+          following: followingCount,
+          attended: attendedCount,
+          reviews: reviewsCount,
+          followers: followersCount,
+        });
+      } catch (error) {
+        console.error('Error calculating metrics:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    calculateMetrics();
+  }, [user?.uid, allEvents, user?.rsvps]);
   const settingsLinks = [
     { label: 'My Pop-ups', action: () => setViewState(ViewState.MY_POPS) },
     { label: 'Basic Details', action: () => setViewState(ViewState.PROFILE_BASIC) },
@@ -58,8 +122,73 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
            </div>
            <div className="flex-1 min-w-0"><p className="text-[#15383c] font-medium text-base sm:text-lg md:text-xl truncate">@{userName.toLowerCase().replace(/\s/g, '') || 'user'}</p><p className="text-gray-500 text-xs sm:text-sm md:text-base mb-3">Member since Nov '23</p><button onClick={() => setViewState(ViewState.PROFILE_BASIC)} className="px-5 sm:px-6 md:px-7 py-1.5 sm:py-2 rounded-full border border-gray-200 text-xs sm:text-sm md:text-base font-medium text-gray-600 hover:bg-white hover:border-[#15383c] hover:text-[#15383c] transition-all bg-white shadow-sm touch-manipulation active:scale-95">Edit</button></div>
         </div>
-        <div className="bg-white p-5 sm:p-6 md:p-7 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center mb-6 sm:mb-8"><span className="text-gray-500 font-medium text-sm sm:text-base md:text-lg">Total Revenue</span><span className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c]">${stats.revenue}</span></div>
-        <div className="mb-8 sm:mb-10"><div className="flex gap-3 sm:gap-4 md:gap-5 overflow-x-auto pb-4 -mx-4 sm:-mx-6 px-4 sm:px-6 md:grid md:grid-cols-2 md:gap-6 md:mx-0 md:px-0 md:pb-0 snap-x snap-mandatory scroll-smooth hide-scrollbar"><div className="bg-white p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center min-w-[140px] sm:min-w-[160px] md:min-w-0 snap-center"><span className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-1">{stats.hosted}</span><span className="text-[9px] sm:text-[10px] md:text-xs text-gray-400 uppercase tracking-wide">Events Hosted</span></div></div></div>
+        {/* Total Revenue Card */}
+        <div className="bg-white p-5 sm:p-6 md:p-7 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center mb-6 sm:mb-8 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setViewState(ViewState.PROFILE_STRIPE)}>
+          <span className="text-gray-500 font-medium text-sm sm:text-base md:text-lg">Total Revenue</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c]">${stats.revenue}</span>
+            <ChevronRight size={20} className="text-gray-400" />
+          </div>
+        </div>
+        
+        {/* Metrics Grid */}
+        <div className="mb-8 sm:mb-10">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-5">
+            {/* Events Hosted */}
+            <div className="bg-white p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
+              <span className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-1">{loading ? '...' : stats.hosted}</span>
+              <span className="text-[9px] sm:text-[10px] md:text-xs text-gray-400 uppercase tracking-wide">Events Hosted</span>
+            </div>
+            
+            {/* Attendees (accumulated) */}
+            <div className="bg-white p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
+              <span className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-1">{loading ? '...' : stats.attendees}</span>
+              <span className="text-[9px] sm:text-[10px] md:text-xs text-gray-400 uppercase tracking-wide">Attendees</span>
+            </div>
+            
+            {/* Following - Clickable */}
+            <div 
+              className="bg-white p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-50 transition-colors"
+              onClick={() => setViewState(ViewState.PROFILE_FOLLOWING)}
+            >
+              <span className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-1">{loading ? '...' : stats.following}</span>
+              <div className="flex items-center gap-1">
+                <span className="text-[9px] sm:text-[10px] md:text-xs text-gray-400 uppercase tracking-wide">Following</span>
+                <ChevronRight size={12} className="text-gray-400" />
+              </div>
+            </div>
+            
+            {/* Events Attended */}
+            <div className="bg-white p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
+              <span className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-1">{loading ? '...' : stats.attended}</span>
+              <span className="text-[9px] sm:text-[10px] md:text-xs text-gray-400 uppercase tracking-wide">Events Attended</span>
+            </div>
+            
+            {/* Reviews - Clickable */}
+            <div 
+              className="bg-white p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-50 transition-colors"
+              onClick={() => setViewState(ViewState.PROFILE_REVIEWS)}
+            >
+              <span className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-1">{loading ? '...' : stats.reviews}</span>
+              <div className="flex items-center gap-1">
+                <span className="text-[9px] sm:text-[10px] md:text-xs text-gray-400 uppercase tracking-wide">Reviews</span>
+                <ChevronRight size={12} className="text-gray-400" />
+              </div>
+            </div>
+            
+            {/* Followers - Clickable */}
+            <div 
+              className="bg-white p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-50 transition-colors"
+              onClick={() => setViewState(ViewState.PROFILE_FOLLOWERS)}
+            >
+              <span className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-1">{loading ? '...' : stats.followers}</span>
+              <div className="flex items-center gap-1">
+                <span className="text-[9px] sm:text-[10px] md:text-xs text-gray-400 uppercase tracking-wide">Followers</span>
+                <ChevronRight size={12} className="text-gray-400" />
+              </div>
+            </div>
+          </div>
+        </div>
         <div className="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-gray-100 overflow-hidden">{settingsLinks.map((item, idx) => (<button key={idx} onClick={item.action} className={`w-full flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors text-left touch-manipulation active:scale-95 ${item.isLogout ? 'text-gray-500 hover:text-red-500' : 'text-[#15383c]'}`}><span className={`text-sm sm:text-base md:text-lg ${item.isLogout ? '' : 'font-light'}`}>{item.label}</span><div className="flex items-center gap-3 shrink-0"><ChevronRight size={16} className="sm:w-[18px] sm:h-[18px] md:w-5 md:h-5 text-gray-400" /></div></button>))}</div>
       </div>
     </div>

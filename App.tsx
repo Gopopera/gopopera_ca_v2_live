@@ -39,6 +39,10 @@ const NotificationSettingsPage = React.lazy(() => import('./pages/ProfileSubPage
 const PrivacySettingsPage = React.lazy(() => import('./pages/ProfileSubPages').then(m => ({ default: m.PrivacySettingsPage })));
 const StripeSettingsPage = React.lazy(() => import('./pages/ProfileSubPages').then(m => ({ default: m.StripeSettingsPage })));
 const MyReviewsPage = React.lazy(() => import('./pages/ProfileSubPages').then(m => ({ default: m.MyReviewsPage })));
+const FollowingPage = React.lazy(() => import('./pages/ProfileSubPages').then(m => ({ default: m.FollowingPage })));
+const FollowersPage = React.lazy(() => import('./pages/ProfileSubPages').then(m => ({ default: m.FollowersPage })));
+const ReservationConfirmationPage = React.lazy(() => import('./pages/ReservationConfirmationPage').then(m => ({ default: m.ReservationConfirmationPage })));
+const ConfirmReservationPage = React.lazy(() => import('./pages/ConfirmReservationPage').then(m => ({ default: m.ConfirmReservationPage })));
 
 import { Event, ViewState } from './types';
 import { Search, ArrowRight, MapPin, PlusCircle, ChevronRight, ChevronLeft } from 'lucide-react';
@@ -626,7 +630,9 @@ const AppContent: React.FC = () => {
     }
   };
   
-  const handleRSVP = async (eventId: string) => {
+  const [confirmedReservation, setConfirmedReservation] = useState<{ event: Event; reservationId: string } | null>(null);
+
+  const handleRSVP = async (eventId: string, reservationId?: string) => {
     if (!authInitialized) return null;
     if (!user) {
       // Redirect to auth if not logged in
@@ -652,11 +658,17 @@ const AppContent: React.FC = () => {
         const newCount = await getReservationCountForEvent(eventId);
         updateEvent(eventId, { attendeesCount: newCount });
       } else {
-        await addRSVP(user.uid || user.id || '', eventId);
+        const resId = reservationId || await addRSVP(user.uid || user.id || '', eventId);
         // Update attendee count from actual Firestore reservations for all events
         const { getReservationCountForEvent } = await import('./firebase/db');
         const newCount = await getReservationCountForEvent(eventId);
         updateEvent(eventId, { attendeesCount: newCount });
+        
+        // If we have a reservation ID and event, navigate to confirmation page
+        if (resId && event) {
+          setConfirmedReservation({ event, reservationId: resId });
+          setViewState(ViewState.RESERVATION_CONFIRMED);
+        }
       }
     } catch (error) {
       console.error('Error handling RSVP:', error);
@@ -844,8 +856,85 @@ const AppContent: React.FC = () => {
         {viewState === ViewState.PROFILE_NOTIFICATIONS && <NotificationSettingsPage setViewState={setViewState} />}
         {viewState === ViewState.PROFILE_PRIVACY && <PrivacySettingsPage setViewState={setViewState} />}
         {viewState === ViewState.PROFILE_STRIPE && <StripeSettingsPage setViewState={setViewState} />}
-        {viewState === ViewState.PROFILE_REVIEWS && <MyReviewsPage setViewState={setViewState} />}
+        {viewState === ViewState.PROFILE_REVIEWS && (
+          <React.Suspense fallback={<PageSkeleton />}>
+            <MyReviewsPage setViewState={setViewState} onHostClick={handleHostClick} />
+          </React.Suspense>
+        )}
+        {viewState === ViewState.PROFILE_FOLLOWING && (
+          <React.Suspense fallback={<PageSkeleton />}>
+            <FollowingPage setViewState={setViewState} onHostClick={handleHostClick} />
+          </React.Suspense>
+        )}
+        {viewState === ViewState.PROFILE_FOLLOWERS && (
+          <React.Suspense fallback={<PageSkeleton />}>
+            <FollowersPage setViewState={setViewState} onHostClick={handleHostClick} />
+          </React.Suspense>
+        )}
         {viewState === ViewState.DELETE_ACCOUNT && <DeleteAccountPage setViewState={setViewState} onConfirmDelete={handleLogout} />}
+        
+        {/* CONFIRM RESERVATION (Confirm & Pay) */}
+        {viewState === ViewState.CONFIRM_RESERVATION && selectedEvent && (
+          <React.Suspense fallback={<PageSkeleton />}>
+            <ConfirmReservationPage
+              event={selectedEvent}
+              setViewState={setViewState}
+              onHostClick={handleHostClick}
+              onConfirm={async (attendeeCount, supportContribution, paymentMethod) => {
+                if (!user?.uid) {
+                  setViewState(ViewState.AUTH);
+                  throw new Error('User not logged in');
+                }
+
+                // Create a single reservation with attendee count
+                // In the future, this will integrate with Stripe/Google Pay for payment processing
+                const { createReservation } = await import('./firebase/db');
+                
+                // Calculate total amount
+                const priceStr = selectedEvent.price?.replace(/[^0-9.]/g, '') || '0';
+                const pricePerAttendee = parseFloat(priceStr) || 0;
+                const subtotal = pricePerAttendee * attendeeCount;
+                const totalAmount = subtotal + supportContribution;
+                
+                const reservationId = await createReservation(selectedEvent.id, user.uid, {
+                  attendeeCount,
+                  supportContribution: supportContribution > 0 ? supportContribution : undefined,
+                  paymentMethod: !selectedEvent.price || selectedEvent.price.toLowerCase() === 'free' ? undefined : paymentMethod,
+                  totalAmount: totalAmount > 0 ? totalAmount : undefined,
+                });
+                
+                // Update user's RSVPs array
+                await addRSVP(user.uid, selectedEvent.id);
+
+                // Update attendee count
+                const { getReservationCountForEvent } = await import('./firebase/db');
+                const newCount = await getReservationCountForEvent(selectedEvent.id);
+                const { updateEvent: updateEventInStore } = useEventStore.getState();
+                updateEventInStore(selectedEvent.id, { attendeesCount: newCount });
+
+                // Refresh user profile
+                await useUserStore.getState().refreshUserProfile();
+
+                // Navigate to confirmation page
+                setConfirmedReservation({ event: selectedEvent, reservationId });
+                setViewState(ViewState.RESERVATION_CONFIRMED);
+
+                return reservationId;
+              }}
+            />
+          </React.Suspense>
+        )}
+
+        {/* RESERVATION CONFIRMATION */}
+        {viewState === ViewState.RESERVATION_CONFIRMED && confirmedReservation && (
+          <React.Suspense fallback={<PageSkeleton />}>
+            <ReservationConfirmationPage 
+              event={confirmedReservation.event} 
+              reservationId={confirmedReservation.reservationId}
+              setViewState={setViewState}
+            />
+          </React.Suspense>
+        )}
 
         {viewState === ViewState.CREATE_EVENT && <CreateEventPage setViewState={setViewState} />}
         {viewState === ViewState.EDIT_EVENT && <CreateEventPage setViewState={setViewState} />}
@@ -1060,13 +1149,46 @@ const AppContent: React.FC = () => {
                               <ChevronLeft size={20} />
                             </button>
                             
-                            {/* Scrollable Container */}
+                            {/* Scrollable Container - Scrollable anywhere on screen */}
                             <div 
                               id={scrollContainerId}
-                              className="flex overflow-x-auto gap-4 md:gap-6 lg:gap-8 pb-2 md:pb-6 snap-x snap-mandatory scroll-smooth hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4 md:scroll-pl-0"
+                              className="flex overflow-x-auto gap-4 md:gap-6 lg:gap-8 pb-2 md:pb-6 snap-x snap-mandatory scroll-smooth hide-scrollbar w-full touch-pan-x overscroll-x-contain scroll-pl-4 md:scroll-pl-0 cursor-grab active:cursor-grabbing"
+                              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                              onWheel={(e) => {
+                                // Allow horizontal scrolling with mouse wheel when hovering over the container
+                                const container = e.currentTarget;
+                                if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
+                                  e.preventDefault();
+                                  container.scrollLeft += e.deltaY;
+                                }
+                              }}
+                              onMouseDown={(e) => {
+                                // Enable drag scrolling
+                                const container = e.currentTarget;
+                                const startX = e.pageX - container.offsetLeft;
+                                const scrollLeft = container.scrollLeft;
+                                let isDown = true;
+
+                                const handleMouseMove = (e: MouseEvent) => {
+                                  if (!isDown) return;
+                                  e.preventDefault();
+                                  const x = e.pageX - container.offsetLeft;
+                                  const walk = (x - startX) * 2;
+                                  container.scrollLeft = scrollLeft - walk;
+                                };
+
+                                const handleMouseUp = () => {
+                                  isDown = false;
+                                  document.removeEventListener('mousemove', handleMouseMove);
+                                  document.removeEventListener('mouseup', handleMouseUp);
+                                };
+
+                                document.addEventListener('mousemove', handleMouseMove);
+                                document.addEventListener('mouseup', handleMouseUp);
+                              }}
                             >
                               {cityEvents.map(event => (
-                                <div key={event.id} className="snap-start shrink-0 w-[85vw] sm:w-[70vw] md:w-[calc(25%-1.5rem)] lg:w-[calc(25%-2rem)] flex-shrink-0">
+                                <div key={event.id} className="snap-start shrink-0 w-[85vw] sm:w-[70vw] md:w-[calc(25%-1.5rem)] lg:w-[calc(25%-2rem)] flex-shrink-0 pointer-events-auto">
                                   <EventCard
                                     event={event}
                                     onClick={handleEventClick}

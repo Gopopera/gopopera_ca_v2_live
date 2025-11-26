@@ -7,7 +7,7 @@
  */
 
 import { getDbSafe } from "../src/lib/firebase";
-import { collection, doc, getDoc, getDocs, query, where, orderBy, addDoc, updateDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where, orderBy, addDoc, updateDoc, setDoc, serverTimestamp, arrayUnion } from "firebase/firestore";
 import { FirestoreEvent, FirestoreReservation, FirestoreChatMessage, FirestoreReview, FirestoreUser } from "./types";
 import { Event } from "../types";
 import { validateFirestoreData, removeUndefinedValues, sanitizeFirestoreData } from "../utils/firestoreValidation";
@@ -363,7 +363,16 @@ export async function searchEvents(searchQuery: string): Promise<Event[]> {
 }
 
 // Reservations
-export async function createReservation(eventId: string, userId: string): Promise<string> {
+export async function createReservation(
+  eventId: string, 
+  userId: string,
+  options?: {
+    attendeeCount?: number;
+    supportContribution?: number;
+    paymentMethod?: string;
+    totalAmount?: number;
+  }
+): Promise<string> {
   const db = getDbSafe();
   if (!db) {
     throw new Error('Firestore not initialized');
@@ -381,6 +390,10 @@ export async function createReservation(eventId: string, userId: string): Promis
       userId,
       reservedAt: Date.now(),
       status: "reserved",
+      attendeeCount: options?.attendeeCount || 1,
+      supportContribution: options?.supportContribution,
+      paymentMethod: options?.paymentMethod,
+      totalAmount: options?.totalAmount,
     };
 
     // Validate and remove undefined values
@@ -473,7 +486,11 @@ export async function getReservationCountForEvent(eventId: string): Promise<numb
     const reservationsCol = collection(db, "reservations");
     const q = query(reservationsCol, where("eventId", "==", eventId), where("status", "==", "reserved"));
     const snap = await getDocs(q);
-    return snap.size;
+    // Sum up attendeeCount from all reservations (default to 1 if not specified for backward compatibility)
+    return snap.docs.reduce((total, doc) => {
+      const data = doc.data() as FirestoreReservation;
+      return total + (data.attendeeCount || 1);
+    }, 0);
   } catch (error) {
     console.error("Error fetching reservation count:", error);
     return 0;
@@ -801,6 +818,83 @@ export async function listHostReviews(hostId: string): Promise<FirestoreReview[]
   } catch (error) {
     console.error("Error fetching host reviews:", error);
     return [];
+  }
+}
+
+/**
+ * Expel a user from an event
+ * This adds the event to the user's bannedEvents array and creates an expulsion record
+ */
+export async function expelUserFromEvent(
+  eventId: string,
+  userId: string,
+  hostId: string,
+  reason: string,
+  description?: string
+): Promise<void> {
+  const db = getDbSafe();
+  if (!db) {
+    throw new Error('Firestore not initialized');
+  }
+
+  try {
+    // Add event to user's bannedEvents array
+    const userRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userRef);
+    
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      const bannedEvents = userData.bannedEvents || [];
+      
+      if (!bannedEvents.includes(eventId)) {
+        await updateDoc(userRef, {
+          bannedEvents: arrayUnion(eventId),
+        });
+      }
+    }
+
+    // Create expulsion record in events/{eventId}/expulsions/{expulsionId}
+    const expulsionsCol = collection(db, 'events', eventId, 'expulsions');
+    const expulsionData = {
+      userId,
+      userName: userDoc.data()?.name || userDoc.data()?.displayName || 'Unknown',
+      hostId,
+      reason,
+      description: description || '',
+      expelledAt: Date.now(),
+    };
+
+    // Validate and sanitize data
+    const sanitizedData = sanitizeFirestoreData(expulsionData);
+    await addDoc(expulsionsCol, sanitizedData);
+
+    // Cancel user's reservation if they have one
+    try {
+      const reservationsCol = collection(db, 'reservations');
+      const reservationsQuery = query(
+        reservationsCol,
+        where('eventId', '==', eventId),
+        where('userId', '==', userId),
+        where('status', '==', 'reserved')
+      );
+      const reservationsSnapshot = await getDocs(reservationsQuery);
+      
+      for (const reservationDoc of reservationsSnapshot.docs) {
+        await updateDoc(doc(db, 'reservations', reservationDoc.id), {
+          status: 'cancelled',
+          cancelledAt: Date.now(),
+          cancellationReason: 'expelled',
+        });
+      }
+    } catch (error) {
+      console.error('Error cancelling reservation:', error);
+      // Don't fail expulsion if reservation cancellation fails
+    }
+
+    console.log(`[EXPEL_USER] User ${userId} expelled from event ${eventId} by host ${hostId}`);
+  } catch (error: any) {
+    console.error('[EXPEL_USER] Error expelling user:', error);
+    throw new Error(`Failed to expel user: ${error.message || 'Unknown error'}`);
   }
 }
 

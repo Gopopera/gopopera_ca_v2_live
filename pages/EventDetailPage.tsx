@@ -20,7 +20,7 @@ interface EventDetailPageProps {
   isLoggedIn?: boolean;
   favorites?: string[];
   onToggleFavorite?: (e: React.MouseEvent, eventId: string) => void;
-  onRSVP?: (eventId: string) => void;
+  onRSVP?: (eventId: string, reservationId?: string) => void;
   rsvps?: string[];
 }
 
@@ -173,21 +173,29 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           setReservationCount(reservationCount - 1);
         }
       } else {
-        // Create reservation
-        await addRSVP(user.uid, event.id);
-        setReservationSuccess(true);
-        // Update local count
-        setReservationCount((prev) => (prev !== null ? prev + 1 : 1));
-        // Hide success message after 3 seconds
-        setTimeout(() => setReservationSuccess(false), 3000);
-      }
-      
-      // Refresh user profile to ensure rsvps are synced (so events show in My Pops)
-      await useUserStore.getState().refreshUserProfile();
-      
-      // Also call the parent handler if provided
-      if (onRSVP) {
-        onRSVP(event.id);
+        // Check if event is free
+        const isFree = !event.price || event.price.toLowerCase() === 'free' || event.price === '$0' || event.price === '0';
+        
+        if (isFree) {
+          // For free events, go directly to reservation
+          const reservationId = await addRSVP(user.uid, event.id);
+          setReservationSuccess(true);
+          // Update local count
+          setReservationCount((prev) => (prev !== null ? prev + 1 : 1));
+          
+          // Refresh user profile to ensure rsvps are synced (so events show in My Pops)
+          await useUserStore.getState().refreshUserProfile();
+          
+          // Navigate to confirmation page after a brief delay
+          setTimeout(() => {
+            if (onRSVP) {
+              onRSVP(event.id, reservationId);
+            }
+          }, 500);
+        } else {
+          // For paid events, navigate to Confirm & Pay page first
+          setViewState(ViewState.CONFIRM_RESERVATION);
+        }
       }
     } catch (error) {
       console.error('Error handling RSVP:', error);
@@ -616,6 +624,45 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
              ))}
            </div>
          </div>
+      </section>
+
+      {/* Tags Section - Only show if host created tags */}
+      {event.tags && event.tags.length > 0 && (
+        <section className="py-8 sm:py-10 md:py-12 bg-white">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6">
+            <h3 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">Tags</h3>
+            <div className="flex flex-wrap gap-2 sm:gap-3">
+              {event.tags.map((tag, index) => (
+                <span
+                  key={index}
+                  className="px-4 py-2 bg-[#eef4f5] text-[#15383c] rounded-full text-sm sm:text-base font-medium border border-[#15383c]/10"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Cancellation / Expulsion Policy Section */}
+      <section className="py-8 sm:py-10 md:py-12 bg-white border-t border-gray-100">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6">
+          <h3 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">
+            Cancellation / Expulsion Policy
+          </h3>
+          <div className="space-y-4 text-gray-700 text-sm sm:text-base leading-relaxed">
+            <p>
+              <strong className="text-[#15383c]">Cancellation Policy:</strong> Attendees may cancel their reservation up to 48 hours before the event for a full refund. Cancellations made 24-48 hours before the event are eligible for a partial refund (typically 50%). No refunds are provided for cancellations made less than 24 hours before the event or for no-shows.
+            </p>
+            <p>
+              <strong className="text-[#15383c]">Expulsion Policy:</strong> Hosts reserve the right to expel attendees who violate event rules, engage in abusive behavior, spam, impersonate others, ignore moderator warnings, or break event chat rules. Expelled attendees will not receive refunds and may be banned from future events.
+            </p>
+            <p className="text-gray-500 text-xs sm:text-sm italic">
+              For complete policy details, please review our <button onClick={() => setViewState(ViewState.CANCELLATION)} className="text-[#e35e25] hover:underline font-medium">Cancellation Policy</button> page.
+            </p>
+          </div>
+        </div>
       </section>
 
       <section className="bg-gradient-to-br from-[#15383c] to-[#1f4d52] py-10 sm:py-12 md:py-16 lg:py-20 relative overflow-hidden">

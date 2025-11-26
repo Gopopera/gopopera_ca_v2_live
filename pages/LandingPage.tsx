@@ -60,12 +60,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     }
     
     // Apply city filter - match by city slug or city name
-    if (location && location.trim() && location !== 'montreal') {
+    // Handle "Canada" as showing all events
+    if (location && location.trim() && location.toLowerCase() !== 'canada') {
       const citySlug = location.toLowerCase();
       filtered = filtered.filter(event => {
         const eventCityLower = event.city.toLowerCase();
+        // Normalize city name (remove ", CA" for comparison)
+        const normalizedEventCity = eventCityLower.replace(/,\s*ca$/, '').trim();
+        const normalizedLocation = citySlug.replace(/,\s*ca$/, '').trim();
         // Match by slug (e.g., "montreal" matches "Montreal, CA")
-        return eventCityLower.includes(citySlug) || 
+        return normalizedEventCity.includes(normalizedLocation) || 
+               normalizedLocation.includes(normalizedEventCity) ||
+               eventCityLower.includes(citySlug) || 
                eventCityLower.includes(citySlug.replace('-', ' '));
       });
     }
@@ -196,12 +202,62 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         </div>
         
-        {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
-        {/* Mobile: Single row horizontal scroll */}
-        <div className="md:hidden">
-          <div className="flex overflow-x-auto gap-4 pb-2 snap-x snap-mandatory scroll-smooth hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4">
-            {filteredEvents.slice(0, 10).map(event => (
-              <div key={event.id} className="snap-start shrink-0 w-[85vw] max-w-[360px]">
+        {/* Single row with one event at a time, horizontally scrollable on all devices */}
+        <div className="relative group">
+          {/* Left Arrow - Desktop only */}
+          <button
+            onClick={() => {
+              const container = document.getElementById('upcoming-popups-scroll');
+              if (container) {
+                container.scrollBy({ left: -400, behavior: 'smooth' });
+              }
+            }}
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100 hidden lg:flex"
+            aria-label="Scroll left"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          
+          {/* Scrollable Row - One event at a time */}
+          <div 
+            id="upcoming-popups-scroll"
+            className="flex overflow-x-auto gap-4 lg:gap-6 pb-2 snap-x snap-mandatory scroll-smooth hide-scrollbar w-full touch-pan-x overscroll-x-contain cursor-grab active:cursor-grabbing"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            onWheel={(e) => {
+              // Allow horizontal scrolling with mouse wheel when hovering over the container
+              const container = e.currentTarget;
+              if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
+                e.preventDefault();
+                container.scrollLeft += e.deltaY;
+              }
+            }}
+            onMouseDown={(e) => {
+              // Enable drag scrolling
+              const container = e.currentTarget;
+              const startX = e.pageX - container.offsetLeft;
+              const scrollLeft = container.scrollLeft;
+              let isDown = true;
+
+              const handleMouseMove = (e: MouseEvent) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - container.offsetLeft;
+                const walk = (x - startX) * 2;
+                container.scrollLeft = scrollLeft - walk;
+              };
+
+              const handleMouseUp = () => {
+                isDown = false;
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+              };
+
+              document.addEventListener('mousemove', handleMouseMove);
+              document.addEventListener('mouseup', handleMouseUp);
+            }}
+          >
+            {filteredEvents.map(event => (
+              <div key={event.id} className="snap-start shrink-0 w-[85vw] sm:w-[70vw] md:w-[60vw] lg:w-[50vw] xl:w-[40vw] max-w-[500px] flex-shrink-0 pointer-events-auto">
                 <EventCard 
                   event={event} 
                   onClick={onEventClick} 
@@ -214,72 +270,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
             ))}
           </div>
-        </div>
-        
-        {/* Desktop: 3 rows with 4 events each, horizontally scrollable */}
-        <div className="hidden md:block space-y-6 lg:space-y-8">
-          {[0, 1, 2].map((rowIndex) => {
-            const rowEvents = filteredEvents.slice(rowIndex * 4, (rowIndex + 1) * 4);
-            if (rowEvents.length === 0) return null;
-            
-            const scrollContainerId = `upcoming-row-${rowIndex}`;
-            
-            const scrollLeft = () => {
-              const container = document.getElementById(scrollContainerId);
-              if (container) {
-                container.scrollBy({ left: -400, behavior: 'smooth' });
-              }
-            };
-            
-            const scrollRight = () => {
-              const container = document.getElementById(scrollContainerId);
+          
+          {/* Right Arrow - Desktop only */}
+          <button
+            onClick={() => {
+              const container = document.getElementById('upcoming-popups-scroll');
               if (container) {
                 container.scrollBy({ left: 400, behavior: 'smooth' });
               }
-            };
-            
-            return (
-              <div key={rowIndex} className="relative group">
-                {/* Left Arrow */}
-                <button
-                  onClick={scrollLeft}
-                  className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100 hidden lg:flex"
-                  aria-label="Scroll left"
-                >
-                  <ChevronLeft size={20} />
-                </button>
-                
-                {/* Scrollable Row */}
-                <div 
-                  id={scrollContainerId}
-                  className="flex overflow-x-auto gap-4 lg:gap-6 pb-2 snap-x snap-mandatory scroll-smooth hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain"
-                >
-                  {rowEvents.map(event => (
-                    <div key={event.id} className="snap-start shrink-0 w-[calc(25%-1rem)] lg:w-[calc(25%-1.5rem)] flex-shrink-0">
-                      <EventCard 
-                        event={event} 
-                        onClick={onEventClick} 
-                        onChatClick={onChatClick}
-                        onReviewsClick={onReviewsClick}
-                        isLoggedIn={isLoggedIn}
-                        isFavorite={favorites.includes(event.id)}
-                        onToggleFavorite={onToggleFavorite}
-                      />
-                    </div>
-                  ))}
-                </div>
-                
-                {/* Right Arrow */}
-                <button
-                  onClick={scrollRight}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100 hidden lg:flex"
-                  aria-label="Scroll right"
-                >
-                  <ChevronRight size={20} />
-                </button>
-              </div>
-            );
-          })}
+            }}
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100 hidden lg:flex"
+            aria-label="Scroll right"
+          >
+            <ChevronRight size={20} />
+          </button>
         </div>
 
         <div className="mt-fluid text-center">

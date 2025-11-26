@@ -261,12 +261,25 @@ export const useEventStore = create<EventStore>((set, get) => ({
     const events = get().events || [];
     const grouped: Record<string, Event[]> = {};
 
+    // Helper to normalize city name to "City, CA" format
+    const normalizeCityName = (city: string): string => {
+      if (!city) return '';
+      // Remove any existing country code and whitespace
+      const cleaned = city.trim().replace(/,\s*CA$/, '').replace(/,\s*Canada$/, '').trim();
+      // Add ", CA" if not already present
+      return cleaned ? `${cleaned}, CA` : '';
+    };
+
     events.forEach((event) => {
       if (event?.city) {
-        if (!grouped[event.city]) {
-          grouped[event.city] = [];
+        // Normalize city name to ensure consistent format
+        const normalizedCity = normalizeCityName(event.city);
+        if (normalizedCity) {
+          if (!grouped[normalizedCity]) {
+            grouped[normalizedCity] = [];
+          }
+          grouped[normalizedCity].push(event);
         }
-        grouped[event.city].push(event);
       }
     });
 

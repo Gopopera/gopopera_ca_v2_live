@@ -19,6 +19,7 @@ interface AttendeeListProps {
   isHost: boolean;
   onRemoveUser?: (userId: string) => void;
   onBanUser?: (userId: string) => void;
+  onExpelUser?: (userId: string) => void;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -29,6 +30,7 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
   isHost,
   onRemoveUser,
   onBanUser,
+  onExpelUser,
   isOpen,
   onClose,
 }) => {
@@ -200,7 +202,17 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
                       {attendee.hasRSVP ? 'RSVP\'d' : 'No RSVP'}
                     </p>
                   </div>
-                  {isHost && !attendee.isHost && onRemoveUser && onBanUser && (
+                  {isHost && !attendee.isHost && onExpelUser && (
+                    <button
+                      onClick={() => onExpelUser(attendee.userId)}
+                      className="px-4 py-2 bg-red-50 text-red-600 rounded-full text-sm font-medium hover:bg-red-100 transition-colors"
+                      title="Expel user"
+                    >
+                      Expel
+                    </button>
+                  )}
+                  {/* Legacy buttons for backward compatibility */}
+                  {isHost && !attendee.isHost && !onExpelUser && onRemoveUser && onBanUser && (
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => onRemoveUser(attendee.userId)}

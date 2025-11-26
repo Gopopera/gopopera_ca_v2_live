@@ -7,10 +7,13 @@ import { ChatReservationBlocker } from './ChatReservationBlocker';
 import { DemoEventBlocker } from './DemoEventBlocker';
 import { GroupChatHeader } from './GroupChatHeader';
 import { AttendeeList } from './AttendeeList';
+import { ExpelUserModal } from './ExpelUserModal';
+import { CreatePollModal } from './CreatePollModal';
 import { POPERA_HOST_ID } from '@/stores/userStore';
 import { getDbSafe } from '../../src/lib/firebase';
 import { doc, updateDoc, arrayUnion, arrayRemove, getDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { processRefundForRemovedUser } from '../../utils/refundHelper';
+import { expelUserFromEvent } from '../../firebase/db';
 
 interface GroupChatProps {
   event: Event;
@@ -26,6 +29,9 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   const [showAttendeeList, setShowAttendeeList] = useState(false);
   const [chatLocked, setChatLocked] = useState(false);
   const [muteAll, setMuteAll] = useState(false);
+  const [showExpelModal, setShowExpelModal] = useState(false);
+  const [userToExpel, setUserToExpel] = useState<{ userId: string; userName: string } | null>(null);
+  const [showCreatePollModal, setShowCreatePollModal] = useState(false);
   const currentUser = useUserStore((state) => state.getCurrentUser());
   const getMessagesForEvent = useChatStore((state) => state.getMessagesForEvent);
   const addMessage = useChatStore((state) => state.addMessage);
@@ -232,6 +238,67 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
     } catch (error) {
       console.error('Error banning user:', error);
       alert('Failed to ban user. Please try again.');
+    }
+  };
+
+  const handleExpelUser = (userId: string) => {
+    if (!isHost || !currentUser) return;
+    
+    // Get user name for modal
+    const db = getDbSafe();
+    if (!db) return;
+    
+    getDoc(doc(db, 'users', userId))
+      .then((userDoc) => {
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const userName = userData.name || userData.displayName || 'User';
+          setUserToExpel({ userId, userName });
+          setShowExpelModal(true);
+        }
+      })
+      .catch((error) => {
+        console.error('Error fetching user:', error);
+        // Still show modal with default name
+        setUserToExpel({ userId, userName: 'User' });
+        setShowExpelModal(true);
+      });
+  };
+
+  const handleConfirmExpel = async (reason: string, description: string) => {
+    if (!isHost || !currentUser || !userToExpel) return;
+
+    try {
+      await expelUserFromEvent(
+        event.id,
+        userToExpel.userId,
+        currentUser.id,
+        reason,
+        description
+      );
+
+      // Process refund if needed
+      try {
+        await processRefundForRemovedUser(userToExpel.userId, event.id);
+      } catch (refundError) {
+        console.error('Error processing refund:', refundError);
+        // Don't fail expulsion if refund fails
+      }
+
+      alert(`${userToExpel.userName} has been expelled from this event.`);
+      
+      // Close modals and refresh attendee list
+      setShowExpelModal(false);
+      setUserToExpel(null);
+      setShowAttendeeList(false);
+      
+      // Refresh attendee list by closing and reopening
+      setTimeout(() => {
+        setShowAttendeeList(true);
+      }, 100);
+    } catch (error) {
+      console.error('Error expelling user:', error);
+      alert('Failed to expel user. Please try again.');
     }
   };
 
@@ -443,62 +510,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 <button
-                  onClick={async () => {
-                    const question = prompt('Enter poll question:');
-                    if (!question) return;
-                    const option1 = prompt('Option 1:');
-                    const option2 = prompt('Option 2:');
-                    if (!option1 || !option2) return;
-
-                    try {
-                      // Create announcement/poll in Firestore
-                      const { createAnnouncement } = await import('../../firebase/notifications');
-                      const announcementId = await createAnnouncement(event.id, {
-                        type: 'poll',
-                        title: question,
-                        message: `Vote: ${option1} or ${option2}`,
-                        options: [option1, option2],
-                        createdBy: event.hostId,
-                      });
-
-                      // Also add to chat store for display
-                      addPoll(event.id, question, [option1, option2]);
-
-                      // Notify attendees (non-blocking)
-                      import('../../utils/notificationHelpers').then(async ({ notifyAttendeesOfPoll }) => {
-                        const { getDocs, collection, query, where } = await import('firebase/firestore');
-                        const { getDbSafe } = await import('../../src/lib/firebase');
-                        const db = getDbSafe();
-                        
-                        if (db) {
-                          try {
-                            const rsvpsRef = collection(db, 'reservations');
-                            const rsvpsQuery = query(rsvpsRef, where('eventId', '==', event.id));
-                            const rsvpsSnapshot = await getDocs(rsvpsQuery);
-                            const attendeeIds = rsvpsSnapshot.docs.map(doc => doc.data().userId).filter(Boolean);
-                            if (event.hostId && !attendeeIds.includes(event.hostId)) {
-                              attendeeIds.push(event.hostId);
-                            }
-
-                            await notifyAttendeesOfPoll(
-                              event.id,
-                              question,
-                              `Vote: ${option1} or ${option2}`,
-                              event.title,
-                              attendeeIds
-                            );
-                          } catch (error) {
-                            console.error('Error notifying attendees of poll:', error);
-                          }
-                        }
-                      }).catch((error) => {
-                        console.error('Error loading notification helpers for poll:', error);
-                      });
-                    } catch (error) {
-                      console.error('Error creating poll:', error);
-                      alert('Failed to create poll. Please try again.');
-                    }
-                  }}
+                  onClick={() => setShowCreatePollModal(true)}
                   className="flex flex-col items-center gap-2 p-3 rounded-lg border border-gray-200 hover:border-[#e35e25] hover:bg-[#e35e25]/5 transition-colors touch-manipulation active:scale-95"
                 >
                   <BarChart2 size={20} className="text-[#15383c]" />
@@ -828,8 +840,78 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
         isHost={isHost}
         onRemoveUser={handleRemoveUser}
         onBanUser={handleBanUser}
+        onExpelUser={handleExpelUser}
         isOpen={showAttendeeList}
         onClose={() => setShowAttendeeList(false)}
+      />
+
+      {/* Expel User Modal */}
+      {userToExpel && (
+        <ExpelUserModal
+          userName={userToExpel.userName}
+          isOpen={showExpelModal}
+          onClose={() => {
+            setShowExpelModal(false);
+            setUserToExpel(null);
+          }}
+          onConfirm={handleConfirmExpel}
+        />
+      )}
+
+      {/* Create Poll Modal */}
+      <CreatePollModal
+        isOpen={showCreatePollModal}
+        onClose={() => setShowCreatePollModal(false)}
+        onCreatePoll={async (question, options) => {
+          try {
+            // Create poll message in Firestore
+            await addMessage(
+              event.id,
+              currentUser?.id || '',
+              currentUser?.name || 'Host',
+              `Poll: ${question}`,
+              'poll',
+              true
+            );
+            
+            // Add poll to store
+            addPoll(event.id, question, options);
+            
+            // Notify attendees of new poll (non-blocking)
+            import('../../utils/notificationHelpers').then(async ({ notifyAttendeesOfPoll }) => {
+              try {
+                const db = getDbSafe();
+                if (db) {
+                  const reservationsRef = collection(db, 'reservations');
+                  const q = query(
+                    reservationsRef,
+                    where('eventId', '==', event.id),
+                    where('status', '==', 'reserved')
+                  );
+                  const snapshot = await getDocs(q);
+                  const attendeeIds = snapshot.docs.map(doc => doc.data().userId).filter(Boolean);
+                  
+                  if (attendeeIds.length > 0) {
+                    await notifyAttendeesOfPoll(
+                      event.hostId || '',
+                      attendeeIds,
+                      event.id,
+                      event.title || 'Event',
+                      question
+                    );
+                  }
+                }
+              } catch (error) {
+                console.error('Error notifying attendees of poll:', error);
+              }
+            }).catch((error) => {
+              console.error('Error loading notification helpers for poll:', error);
+            });
+          } catch (error) {
+            console.error('Error creating poll:', error);
+            alert('Failed to create poll. Please try again.');
+          }
+        }}
       />
     </div>
   );
