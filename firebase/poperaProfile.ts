@@ -187,9 +187,23 @@ export async function ensureOneEventPerCity(hostUid: string): Promise<void> {
           'Social': `Social Gathering in ${city.name.split(',')[0]}`,
         };
 
+        // Generate searchable description with keywords
+        const cityName = city.name.split(',')[0];
+        const descriptions: Record<string, string> = {
+          'Music': `Join us for a community music gathering in ${cityName}. Discover local musicians, enjoy live performances, and connect with music lovers in your area. Free event open to everyone.`,
+          'Community': `Local community meetup in ${cityName}. Connect with neighbors, share ideas, and build meaningful relationships. Everyone is welcome to join this free community gathering.`,
+          'Markets': `Pop-up market in ${cityName}. Explore local vendors, unique products, and support local businesses. Free to attend, open to all.`,
+          'Workshop': `Creative workshop in ${cityName}. Learn new skills, meet like-minded people, and explore your creativity. Free workshop for all skill levels.`,
+          'Wellness': `Wellness session in ${cityName}. Join us for activities focused on health, mindfulness, and well-being. Free event open to everyone.`,
+          'Shows': `Local showcase in ${cityName}. Experience performances, exhibitions, and local talent. Free event, all are welcome.`,
+          'Food & Drink': `Food and drink social in ${cityName}. Sample local flavors, meet food enthusiasts, and enjoy good company. Free event.`,
+          'Sports': `Sports activity in ${cityName}. Join us for friendly games, exercise, and active fun. Free event for all fitness levels.`,
+          'Social': `Social gathering in ${cityName}. Meet new people, make friends, and enjoy good conversation. Free event open to everyone.`,
+        };
+
         const eventData: Omit<FirestoreEvent, 'id'> = {
-          title: eventTitles[randomCategory] || `Community Event in ${city.name.split(',')[0]}`,
-          description: `Join us for a ${randomCategory.toLowerCase()} event in ${city.name.split(',')[0]}. This is a community gathering open to everyone.`,
+          title: eventTitles[randomCategory] || `Community Event in ${cityName}`,
+          description: descriptions[randomCategory] || `Join us for a ${randomCategory.toLowerCase()} event in ${cityName}. This is a community gathering open to everyone.`,
           date: startDate.toISOString().split('T')[0], // YYYY-MM-DD format
           time: `${String(startDate.getHours()).padStart(2, '0')}:${String(startDate.getMinutes()).padStart(2, '0')}`,
           price: "Free",
@@ -197,7 +211,7 @@ export async function ensureOneEventPerCity(hostUid: string): Promise<void> {
           city: city.name,
           address: "",
           location: city.name,
-          tags: [randomCategory, "Community", city.name.split(',')[0]],
+          tags: [randomCategory, "Community", cityName, "Free", "Popera", "Local"],
           host: "Popera",
           hostName: "Popera",
           hostId: hostUid,
@@ -212,7 +226,7 @@ export async function ensureOneEventPerCity(hostUid: string): Promise<void> {
           isOfficialLaunch: false,
           startDate: startDate.getTime(),
           endDate: endDate.getTime(),
-          isPublic: true,
+          isPublic: true, // ✅ Will appear in all feeds
           allowChat: true,
           allowRsvp: true,
           // No capacity field = infinite limit
