@@ -4,6 +4,7 @@ import { Event } from '@/types';
 import { formatDate } from '@/utils/dateFormatter';
 import { formatRating } from '@/utils/formatRating';
 import { useUserStore } from '@/stores/userStore';
+import { getUserProfile } from '../../firebase/db';
 
 interface EventCardProps {
   event: Event;
@@ -48,9 +49,8 @@ export const EventCard: React.FC<EventCardProps> = ({
         return;
       }
       
-      // For other hosts, fetch from Firestore (only if host has 1-15 events to avoid too many lookups)
+      // For other hosts, fetch from Firestore
       try {
-        const { getUserProfile } = await import('../firebase/db');
         const hostProfile = await getUserProfile(event.hostId);
         if (hostProfile) {
           setHostProfilePicture(hostProfile.photoURL || hostProfile.imageUrl || null);

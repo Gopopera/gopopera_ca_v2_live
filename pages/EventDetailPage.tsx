@@ -8,6 +8,7 @@ import { MockMap } from '../components/map/MockMap';
 import { FakeEventReservationModal } from '../components/events/FakeEventReservationModal';
 import { formatDate } from '../utils/dateFormatter';
 import { formatRating } from '../utils/formatRating';
+import { getUserProfile, getReservationCountForEvent } from '../firebase/db';
 
 interface EventDetailPageProps {
   event: Event;
@@ -71,7 +72,6 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       
       // For other hosts, fetch from Firestore
       try {
-        const { getUserProfile } = await import('../firebase/db');
         const hostProfile = await getUserProfile(event.hostId);
         if (hostProfile) {
           setHostProfilePicture(hostProfile.photoURL || hostProfile.imageUrl || null);
@@ -91,7 +91,6 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   useEffect(() => {
     const fetchReservationCount = async () => {
       try {
-        const { getReservationCountForEvent } = await import('../firebase/db');
         const count = await getReservationCountForEvent(event.id);
         setReservationCount(count);
       } catch (error) {
