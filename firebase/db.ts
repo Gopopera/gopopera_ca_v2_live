@@ -160,14 +160,37 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
     // Sanitize data to eliminate ALL undefined fields
     const sanitizedEvent = sanitizeFirestoreData(firestoreEvent);
 
+    // Validate document size before writing (Firestore has 1MB limit)
+    const eventSizeEstimate = JSON.stringify(sanitizedEvent).length;
+    const MAX_DOCUMENT_SIZE = 900000; // 900KB (safe margin below 1MB limit)
+    
+    if (eventSizeEstimate > MAX_DOCUMENT_SIZE) {
+      console.error('[CREATE_EVENT_DB] Event document too large:', {
+        size: eventSizeEstimate,
+        maxSize: MAX_DOCUMENT_SIZE,
+        title: sanitizedEvent.title
+      });
+      throw new Error(`Event data is too large (${(eventSizeEstimate / 1024).toFixed(2)}KB). Please reduce the description or remove some images.`);
+    }
+    
     console.log('[CREATE_EVENT_DB] About to write to Firestore:', {
       collection: 'events',
       hasData: !!sanitizedEvent,
       title: sanitizedEvent.title,
-      hostId: sanitizedEvent.hostId
+      hostId: sanitizedEvent.hostId,
+      estimatedSize: `${(eventSizeEstimate / 1024).toFixed(2)}KB`
     });
     
-    const docRef = await addDoc(eventsCol, sanitizedEvent);
+    // Add timeout wrapper for addDoc to prevent hanging
+    const FIRESTORE_WRITE_TIMEOUT = 45000; // 45 seconds (should complete well before this)
+    const addDocPromise = addDoc(eventsCol, sanitizedEvent);
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('Firestore write operation timed out. The database may be slow or unresponsive. Please try again.'));
+      }, FIRESTORE_WRITE_TIMEOUT);
+    });
+    
+    const docRef = await Promise.race([addDocPromise, timeoutPromise]);
     
     console.log('[CREATE_EVENT_DB] ✅ Firestore write successful:', {
       docId: docRef.id,

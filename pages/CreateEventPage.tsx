@@ -254,6 +254,23 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       });
     }
     
+    // Validate text field sizes to prevent Firestore document size issues (1MB limit)
+    // Firestore has a 1MB document size limit, so we need to ensure text fields aren't too large
+    const MAX_DESCRIPTION_LENGTH = 50000; // ~50KB of text (safe margin)
+    const MAX_WHAT_TO_EXPECT_LENGTH = 20000; // ~20KB of text
+    
+    if (description.length > MAX_DESCRIPTION_LENGTH) {
+      alert(`Description is too long (${description.length} characters). Please keep it under ${MAX_DESCRIPTION_LENGTH.toLocaleString()} characters.`);
+      setIsSubmitting(false);
+      return;
+    }
+    
+    if (whatToExpect.length > MAX_WHAT_TO_EXPECT_LENGTH) {
+      alert(`"What to Expect" is too long (${whatToExpect.length} characters). Please keep it under ${MAX_WHAT_TO_EXPECT_LENGTH.toLocaleString()} characters.`);
+      setIsSubmitting(false);
+      return;
+    }
+    
     // Upload images to Firebase Storage if image files were selected
     let finalImageUrls: string[] = [];
     let finalImageUrl = `https://picsum.photos/seed/${title}/800/600`; // Default placeholder
@@ -263,13 +280,48 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         console.log('[CREATE_EVENT] Uploading', imageFiles.length, 'image(s) to Firebase Storage...');
         setUploadingImage(true);
         
-        // Upload all images in order
+        // Helper function to upload a single image with timeout and retry
+        const uploadImageWithTimeout = async (file: File, path: string, retries = 2): Promise<string> => {
+          const IMAGE_UPLOAD_TIMEOUT = 60000; // 60 seconds per image
+          
+          for (let attempt = 0; attempt <= retries; attempt++) {
+            try {
+              const uploadPromise = uploadImage(path, file);
+              const timeoutPromise = new Promise<never>((_, reject) => {
+                setTimeout(() => {
+                  reject(new Error(`Image upload timed out after ${IMAGE_UPLOAD_TIMEOUT / 1000} seconds`));
+                }, IMAGE_UPLOAD_TIMEOUT);
+              });
+              
+              const uploadedUrl = await Promise.race([uploadPromise, timeoutPromise]);
+              return uploadedUrl;
+            } catch (error: any) {
+              const isLastAttempt = attempt === retries;
+              if (isLastAttempt) {
+                throw error;
+              }
+              // Wait before retry (exponential backoff)
+              await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+              console.log(`[CREATE_EVENT] Retrying image upload (attempt ${attempt + 2}/${retries + 1})...`);
+            }
+          }
+          throw new Error('Image upload failed after all retries');
+        };
+        
+        // Upload all images in order with progress tracking
         for (let i = 0; i < imageFiles.length; i++) {
           const file = imageFiles[i];
           const imagePath = `events/${user.uid}/${Date.now()}_${i}_${file.name}`;
-          const uploadedUrl = await uploadImage(imagePath, file);
-          finalImageUrls.push(uploadedUrl);
-          console.log(`[CREATE_EVENT] ✅ Image ${i + 1}/${imageFiles.length} uploaded:`, uploadedUrl);
+          
+          try {
+            console.log(`[CREATE_EVENT] Uploading image ${i + 1}/${imageFiles.length} (${(file.size / 1024 / 1024).toFixed(2)}MB)...`);
+            const uploadedUrl = await uploadImageWithTimeout(file, imagePath);
+            finalImageUrls.push(uploadedUrl);
+            console.log(`[CREATE_EVENT] ✅ Image ${i + 1}/${imageFiles.length} uploaded:`, uploadedUrl);
+          } catch (uploadError: any) {
+            console.error(`[CREATE_EVENT] ❌ Failed to upload image ${i + 1}/${imageFiles.length}:`, uploadError);
+            throw new Error(`Failed to upload image "${file.name}": ${uploadError?.message || 'Unknown error'}. Please try again or use a different image.`);
+          }
         }
         
         // Set main image (first in array)
@@ -277,7 +329,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         console.log('[CREATE_EVENT] ✅ All images uploaded successfully. Main image:', finalImageUrl);
       } catch (uploadError: any) {
         console.error('[CREATE_EVENT] ❌ Image upload failed:', uploadError);
-        alert(`Failed to upload image: ${uploadError?.message || 'Unknown error'}. Please try again or use a different image.`);
+        alert(`Failed to upload images: ${uploadError?.message || 'Unknown error'}. Please try again or use different images.`);
         setIsSubmitting(false);
         setUploadingImage(false);
         return;
@@ -304,7 +356,8 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       });
       
       // Add timeout to detect if addEvent is hanging
-      const EVENT_CREATION_TIMEOUT = 30000; // 30 seconds
+      // Increased timeout to 60 seconds to account for network latency and large data
+      const EVENT_CREATION_TIMEOUT = 60000; // 60 seconds
       const addEventPromise = addEvent({
         title,
         description,
@@ -330,13 +383,13 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         allowChat: true,
       } as any); // Type assertion needed for optional fields
       
-      const timeoutPromise = new Promise((_, reject) => {
+      const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => {
-          reject(new Error('Event creation timed out after 30 seconds. Firestore may be slow or unresponsive.'));
+          reject(new Error('Event creation timed out after 60 seconds. Firestore may be slow or unresponsive. Please check your internet connection and try again.'));
         }, EVENT_CREATION_TIMEOUT);
       });
       
-      console.log('[CREATE_EVENT] Waiting for addEvent to complete (timeout: 30s)...');
+      console.log('[CREATE_EVENT] Waiting for addEvent to complete (timeout: 60s)...');
       const createdEvent = await Promise.race([addEventPromise, timeoutPromise]) as any;
 
       console.log('[CREATE_EVENT] ✅ Event created successfully:', {
@@ -375,8 +428,8 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       });
       
       // Check for timeout
-      if (error?.message?.includes('timed out')) {
-        alert('Event creation timed out. This might be a network issue or Firestore is slow. Please try again.');
+      if (error?.message?.includes('timed out') || error?.message?.includes('timeout')) {
+        alert('Event creation timed out. This might be a network issue or Firestore is slow. Please check your internet connection and try again.');
       } else if (error?.code === 'permission-denied') {
         alert('Permission denied. You may not have permission to create events. Please check your account status.');
       } else if (error?.code === 'unavailable' || error?.message?.includes('offline') || error?.message?.includes('unavailable')) {

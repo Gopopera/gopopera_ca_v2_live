@@ -21,7 +21,10 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
   const user = useUserStore((state) => state.user);
   const userProfile = useUserStore((state) => state.userProfile);
   // Get profile picture from multiple sources (user store, userProfile, Firebase auth)
+  // This is reactive - will update when user or userProfile changes in the store
   const userPhoto = user?.photoURL || user?.profileImageUrl || userProfile?.photoURL || userProfile?.imageUrl;
+  // Get user initials for fallback
+  const userInitials = user?.displayName?.[0] || user?.name?.[0] || userProfile?.displayName?.[0] || userProfile?.name?.[0] || 'P';
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Load unread notification count
@@ -158,15 +161,30 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
                </button>
 
                <button 
-                 onClick={onProfileClick}
-                 className="w-10 h-10 rounded-full bg-[#e35e25] flex items-center justify-center text-white font-bold text-sm shadow-md hover:scale-105 transition-transform ring-2 ring-white overflow-hidden"
-               >
-                 {userPhoto ? (
-                   <img src={userPhoto} alt="Profile" className="w-full h-full object-cover" />
-                 ) : (
-                   <span>{user?.displayName?.[0] || user?.name?.[0] || 'P'}</span>
-                 )}
-               </button>
+                onClick={onProfileClick}
+                className="w-10 h-10 rounded-full bg-[#e35e25] flex items-center justify-center text-white font-bold text-sm shadow-md hover:scale-105 transition-transform ring-2 ring-white overflow-hidden"
+              >
+                {userPhoto ? (
+                  <img 
+                    src={userPhoto} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback to initials if image fails to load
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent && !parent.querySelector('span')) {
+                        const fallback = document.createElement('span');
+                        fallback.textContent = userInitials;
+                        parent.appendChild(fallback);
+                      }
+                    }}
+                  />
+                ) : (
+                  <span>{userInitials}</span>
+                )}
+              </button>
              </>
           ) : (
               <button 
@@ -195,9 +213,28 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
           {isLoggedIn && (
              <button 
                onClick={onProfileClick}
-               className="w-11 h-11 rounded-full bg-[#e35e25] flex items-center justify-center text-white font-bold text-sm shadow-md active:scale-[0.95] touch-manipulation ring-2 ring-white/20"
+               className="w-11 h-11 rounded-full bg-[#e35e25] flex items-center justify-center text-white font-bold text-sm shadow-md active:scale-[0.95] touch-manipulation ring-2 ring-white/20 overflow-hidden"
              >
-               P
+               {userPhoto ? (
+                 <img 
+                   src={userPhoto} 
+                   alt="Profile" 
+                   className="w-full h-full object-cover"
+                   onError={(e) => {
+                     // Fallback to initials if image fails to load
+                     const target = e.target as HTMLImageElement;
+                     target.style.display = 'none';
+                     const parent = target.parentElement;
+                     if (parent && !parent.querySelector('span')) {
+                       const fallback = document.createElement('span');
+                       fallback.textContent = userInitials;
+                       parent.appendChild(fallback);
+                     }
+                   }}
+                 />
+               ) : (
+                 <span>{userInitials}</span>
+               )}
              </button>
           )}
           

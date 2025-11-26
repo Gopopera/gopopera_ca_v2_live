@@ -40,6 +40,20 @@ export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
       const path = `users/${user.uid}/avatar.jpg`;
       const imageUrl = await uploadImage(path, file);
       
+      // Update Firebase Auth photoURL for immediate sync
+      const { getAuthSafe } = await import('../../src/lib/firebase');
+      const { updateProfile } = await import('firebase/auth');
+      const auth = getAuthSafe();
+      if (auth?.currentUser) {
+        try {
+          await updateProfile(auth.currentUser, { photoURL: imageUrl });
+          console.log('[PROFILE] Updated Firebase Auth photoURL');
+        } catch (authError) {
+          console.warn('[PROFILE] Failed to update Firebase Auth photoURL (non-critical):', authError);
+          // Continue even if Auth update fails - Firestore update is more important
+        }
+      }
+      
       // Update user profile in Firestore
       await createOrUpdateUserProfile(user.uid, {
         photoURL: imageUrl,
@@ -49,7 +63,7 @@ export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
       // Update local state
       setProfileImage(imageUrl);
       
-      // Update user store
+      // Update user store (this will trigger Header to re-render)
       useUserStore.getState().updateUser(user.uid, {
         photoURL: imageUrl,
         profileImageUrl: imageUrl,
@@ -57,6 +71,8 @@ export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
       
       // Refresh user profile to sync across all components
       await useUserStore.getState().refreshUserProfile();
+      
+      console.log('[PROFILE] Profile picture updated successfully and synced across all components');
     } catch (error) {
       console.error('Error uploading profile picture:', error);
       alert('Failed to upload profile picture. Please try again.');
