@@ -950,103 +950,94 @@ const AppContent: React.FC = () => {
                </div>
             </div>
 
-            {/* Conditional Render: Horizontal Lists vs Grid */}
-            {searchQuery === '' && activeCategory === 'All' && !location ? (
-              <div className="space-y-4 animate-fade-in">
-                 {/* Show events grouped by city if available */}
-                 {Object.keys(eventsByCity).length > 0 ? (
-                   Object.entries(eventsByCity).map(([city, cityEvents]) => (
-                     <div key={city} className="mb-8 sm:mb-10 md:mb-12 max-w-6xl mx-auto px-4 md:px-6 lg:px-8">
-                       <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">
-                         {city}
-                       </h2>
-                       {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
-                       <div className="flex md:grid overflow-x-auto md:overflow-x-visible gap-4 md:gap-6 lg:gap-8 pb-2 md:pb-6 snap-x snap-mandatory md:snap-none scroll-smooth md:place-items-center">
-                         {cityEvents.map(event => (
-                           <div key={event.id} className="snap-start shrink-0 md:col-span-1">
-                             <EventCard
-                               event={event}
-                               onClick={handleEventClick}
-                               onChatClick={handleChatClick}
-                               onReviewsClick={handleReviewsClick}
-                               isLoggedIn={isLoggedIn}
-                               isFavorite={favorites.includes(event.id)}
-                               onToggleFavorite={handleToggleFavorite}
-                             />
-                           </div>
-                         ))}
-                       </div>
-                     </div>
-                   ))
-                 ) : (
-                   <>
-                     <EventRow title={t('feed.thisWeek')} events={thisWeekEvents} />
-                     <EventRow title={t('feed.thisMonth')} events={thisMonthEvents} />
-                     <EventRow title="Later" events={laterEvents} />
-                   </>
-                 )}
-              </div>
-            ) : (
-              <div className="animate-fade-in">
-                 <div className="mb-6 text-gray-500 text-sm font-medium">
-                   Showing {filteredEvents.length} results 
-                   {location && location !== 'montreal' && ` in ${location.charAt(0).toUpperCase() + location.slice(1)}`}
-                 </div>
-                 {filteredEvents.length > 0 ? (
-                    // Group search results by category
-                    (() => {
-                      const groupedByCategory = filteredEvents.reduce((acc, event) => {
-                        const category = event.category || 'Other';
-                        if (!acc[category]) acc[category] = [];
-                        acc[category].push(event);
-                        return acc;
-                      }, {} as Record<string, Event[]>);
+            {/* Always show events grouped by city, with selected city first */}
+            <div className="space-y-4 animate-fade-in">
+              {/* Show results count if filters are applied */}
+              {(searchQuery.trim() || activeCategory !== 'All' || (location && location.trim() && location !== 'montreal')) && (
+                <div className="mb-6 text-gray-500 text-sm font-medium">
+                  Showing {filteredEvents.length} result{filteredEvents.length !== 1 ? 's' : ''}
+                  {location && location !== 'montreal' && ` in ${location.charAt(0).toUpperCase() + location.slice(1)}`}
+                </div>
+              )}
 
-                      return (
-                        <div className="space-y-8 sm:space-y-10 md:space-y-12">
-                          {Object.entries(groupedByCategory).map(([category, categoryEvents]) => (
-                            <div key={category} className="mb-fluid section-padding-fluid px-fluid">
-                              <h2 className="fluid-heading-2 font-heading font-bold text-[#15383c] mb-fluid">
-                                {category}
-                              </h2>
-                              {/* Desktop Grid */}
-                              <div className="hidden md:grid gap-fluid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 place-items-center w-full">
-                                {categoryEvents.map((event, index) => (
-                                  <div key={event.id} className="w-full h-auto animate-stagger" style={{ animationDelay: `${index * 0.1}s` }}>
-                                    <EventCard
-                                      event={event}
-                                      onClick={handleEventClick}
-                                      onChatClick={handleChatClick}
-                                      onReviewsClick={handleReviewsClick}
-                                      isLoggedIn={isLoggedIn}
-                                      isFavorite={favorites.includes(event.id)}
-                                      onToggleFavorite={handleToggleFavorite}
-                                    />
-                                  </div>
-                                ))}
-                              </div>
+              {/* Group filtered events by city, with selected city first */}
+              {(() => {
+                // Group filtered events by city
+                const filteredEventsByCity: Record<string, Event[]> = {};
+                filteredEvents.forEach((event) => {
+                  if (event?.city) {
+                    if (!filteredEventsByCity[event.city]) {
+                      filteredEventsByCity[event.city] = [];
+                    }
+                    filteredEventsByCity[event.city].push(event);
+                  }
+                });
+
+                // Sort cities: selected city first, then alphabetically
+                const cityEntries = Object.entries(filteredEventsByCity);
+                const selectedCityName = location && location !== 'montreal' 
+                  ? cityEntries.find(([city]) => 
+                      city.toLowerCase().includes(location.toLowerCase()) || 
+                      location.toLowerCase().includes(city.split(',')[0].toLowerCase())
+                    )?.[0]
+                  : null;
+
+                // Sort: selected city first, then alphabetically
+                cityEntries.sort(([cityA], [cityB]) => {
+                  if (selectedCityName) {
+                    if (cityA === selectedCityName) return -1;
+                    if (cityB === selectedCityName) return 1;
+                  }
+                  return cityA.localeCompare(cityB);
+                });
+
+                if (cityEntries.length === 0) {
+                  return (
+                    <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
+                      <p className="text-gray-500">No events found matching your criteria.</p>
+                      <button 
+                        onClick={() => { 
+                          setSearchQuery(''); 
+                          setCity('montreal'); 
+                          setActiveCategory('All');
+                        }}
+                        className="mt-4 text-[#e35e25] font-bold hover:underline"
+                      >
+                        Clear Filters
+                      </button>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-8 sm:space-y-10 md:space-y-12">
+                    {cityEntries.map(([cityName, cityEvents]) => (
+                      <div key={cityName} className="mb-8 sm:mb-10 md:mb-12 max-w-6xl mx-auto px-4 md:px-6 lg:px-8">
+                        <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">
+                          {cityName}
+                        </h2>
+                        {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
+                        <div className="flex md:grid overflow-x-auto md:overflow-x-visible gap-4 md:gap-6 lg:gap-8 pb-2 md:pb-6 snap-x snap-mandatory md:snap-none scroll-smooth md:grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 md:place-items-center">
+                          {cityEvents.map(event => (
+                            <div key={event.id} className="snap-start shrink-0 md:col-span-1 w-full md:w-auto">
+                              <EventCard
+                                event={event}
+                                onClick={handleEventClick}
+                                onChatClick={handleChatClick}
+                                onReviewsClick={handleReviewsClick}
+                                isLoggedIn={isLoggedIn}
+                                isFavorite={favorites.includes(event.id)}
+                                onToggleFavorite={handleToggleFavorite}
+                              />
                             </div>
                           ))}
                         </div>
-                      );
-                    })()
-                 ) : (
-                    <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
-                       <p className="text-gray-500">No events found matching your criteria.</p>
-                       <button 
-                         onClick={() => { 
-                           setSearchQuery(''); 
-                           setCity('montreal'); 
-                           setActiveCategory('All');
-                         }}
-                         className="mt-4 text-[#e35e25] font-bold hover:underline"
-                       >
-                         Clear Filters
-                       </button>
-                    </div>
-                 )}
-              </div>
-            )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
             
             {/* Mobile CTA FAB - Only show when logged in */}
             {isLoggedIn && (
