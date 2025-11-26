@@ -16,8 +16,9 @@ import { POPERA_EMAIL } from "../stores/userStore";
 // Helper to convert FirestoreEvent to Event (frontend type)
 // Exported for use in eventStore
 export const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event => {
-  return {
-    id: firestoreEvent.id,
+  // Standardize all fields to ensure consistent format
+  const standardizedEvent: Event = {
+    id: firestoreEvent.id || '',
     title: firestoreEvent.title || '',
     description: firestoreEvent.description || '',
     city: firestoreEvent.city || '',
@@ -30,27 +31,27 @@ export const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event 
     hostId: firestoreEvent.hostId || '',
     imageUrl: firestoreEvent.imageUrl || (firestoreEvent.imageUrls && firestoreEvent.imageUrls.length > 0 ? firestoreEvent.imageUrls[0] : ''),
     imageUrls: firestoreEvent.imageUrls || (firestoreEvent.imageUrl ? [firestoreEvent.imageUrl] : undefined),
-    attendeesCount: firestoreEvent.attendeesCount || 0,
-    createdAt: firestoreEvent.createdAt ? new Date(firestoreEvent.createdAt).toISOString() : new Date().toISOString(),
-    location: firestoreEvent.location || `${firestoreEvent.address || ''}, ${firestoreEvent.city || ''}`,
-    category: firestoreEvent.category as Event['category'] || 'Community',
+    attendeesCount: typeof firestoreEvent.attendeesCount === 'number' ? firestoreEvent.attendeesCount : 0,
+    createdAt: firestoreEvent.createdAt ? (typeof firestoreEvent.createdAt === 'number' ? new Date(firestoreEvent.createdAt).toISOString() : new Date(firestoreEvent.createdAt).toISOString()) : new Date().toISOString(),
+    location: firestoreEvent.location || `${firestoreEvent.address || ''}, ${firestoreEvent.city || ''}`.replace(/^,\s*/, '').replace(/,\s*$/, '') || firestoreEvent.city || '',
+    category: (firestoreEvent.category as Event['category']) || 'Community',
     price: firestoreEvent.price || 'Free',
-    rating: firestoreEvent.rating || 0,
-    reviewCount: firestoreEvent.reviewCount || 0,
-    attendees: firestoreEvent.attendeesCount || 0,
-    capacity: firestoreEvent.capacity,
-    lat: firestoreEvent.lat,
-    lng: firestoreEvent.lng,
-      isPoperaOwned: firestoreEvent.isPoperaOwned || false,
-      isDemo: firestoreEvent.isDemo || false,
-      demoPurpose: firestoreEvent.demoPurpose,
-      demoType: firestoreEvent.demoType, // Map demoType for filtering (e.g., "city-launch")
-      isOfficialLaunch: firestoreEvent.isOfficialLaunch || false,
-      aboutEvent: firestoreEvent.aboutEvent,
-      whatToExpect: firestoreEvent.whatToExpect,
-      // Note: managedBy, subtitle, startDate, endDate, isPublic, allowChat, allowRsvp
-      // are stored in Firestore but not mapped to Event type (not needed in UI)
+    rating: typeof firestoreEvent.rating === 'number' ? firestoreEvent.rating : 0,
+    reviewCount: typeof firestoreEvent.reviewCount === 'number' ? firestoreEvent.reviewCount : 0,
+    attendees: typeof firestoreEvent.attendeesCount === 'number' ? firestoreEvent.attendeesCount : 0,
+    capacity: typeof firestoreEvent.capacity === 'number' ? firestoreEvent.capacity : undefined,
+    lat: typeof firestoreEvent.lat === 'number' ? firestoreEvent.lat : undefined,
+    lng: typeof firestoreEvent.lng === 'number' ? firestoreEvent.lng : undefined,
+    isPoperaOwned: firestoreEvent.isPoperaOwned === true,
+    isDemo: firestoreEvent.isDemo === true,
+    demoPurpose: firestoreEvent.demoPurpose || undefined,
+    demoType: firestoreEvent.demoType || undefined,
+    isOfficialLaunch: firestoreEvent.isOfficialLaunch === true,
+    aboutEvent: firestoreEvent.aboutEvent || undefined,
+    whatToExpect: firestoreEvent.whatToExpect || undefined,
   };
+  
+  return standardizedEvent;
 };
 
 // Events

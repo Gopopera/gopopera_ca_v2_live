@@ -31,15 +31,17 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
   // Safe fallback if hostName is missing
   const displayName = hostName || 'Unknown Host';
   
-  // Get real data from profile store
-  const isFollowing = hostId ? useProfileStore((state) => state.isFollowing(currentUser?.id || '', hostId)) : false;
-  const followersCount = hostId ? useProfileStore((state) => state.getFollowersCount(hostId)) : 0;
-  const reviews = hostId ? useProfileStore((state) => state.getReviews(hostId)) : [];
-  const averageRating = hostId ? useProfileStore((state) => state.getAverageRating(hostId)) : 0;
-  const reviewCount = hostId ? useProfileStore((state) => state.getReviewCount(hostId)) : 0;
-  
+  // FIX: Always call hooks unconditionally (React rules)
   const followHost = useProfileStore((state) => state.followHost);
   const unfollowHost = useProfileStore((state) => state.unfollowHost);
+  const profileStore = useProfileStore();
+  
+  // Get real data from profile store - call hooks unconditionally, then use conditionally
+  const isFollowing = hostId ? profileStore.isFollowing(currentUser?.id || '', hostId) : false;
+  const followersCount = hostId ? profileStore.getFollowersCount(hostId) : 0;
+  const reviews = hostId ? profileStore.getReviews(hostId) : [];
+  const averageRating = hostId ? profileStore.getAverageRating(hostId) : 0;
+  const reviewCount = hostId ? profileStore.getReviewCount(hostId) : 0;
   
   // Filter events: For Popera profile, show launch events (city-launch demoType) and official launch events
   // For other hosts, show all their events

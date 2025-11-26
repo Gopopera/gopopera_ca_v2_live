@@ -219,7 +219,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               <div className="ml-3 flex-1">
                 <h3 className="text-sm font-bold text-amber-800 mb-1">Demo Popera Event</h3>
                 <p className="text-sm text-amber-700 leading-relaxed">
-                  {event.demoPurpose || "This is an example use case scenario created by Popera. It's meant to help you explore the app and imagine your own pop-ups. It is not an actual event and you should not attend it in real life."}
+                  {"This is an example use case scenario created by Popera. It's meant to help you explore the app and imagine your own pop-ups. It is not an actual event and you should not attend it in real life."}
                 </p>
               </div>
             </div>
