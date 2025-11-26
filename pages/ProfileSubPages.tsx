@@ -5,8 +5,9 @@ import { X, DollarSign, ArrowRight, Star, Camera } from 'lucide-react';
 import { useUserStore } from '../stores/userStore';
 import { uploadImage } from '../firebase/storage';
 import { createOrUpdateUserProfile } from '../firebase/db';
-import { getDbSafe } from '../src/lib/firebase';
+import { getDbSafe, getAuthSafe } from '../src/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import { updateProfile } from 'firebase/auth';
 
 interface SubPageProps {
   setViewState: (view: ViewState) => void;
@@ -41,8 +42,6 @@ export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
       const imageUrl = await uploadImage(path, file);
       
       // Update Firebase Auth photoURL for immediate sync
-      const { getAuthSafe } = await import('../../src/lib/firebase');
-      const { updateProfile } = await import('firebase/auth');
       const auth = getAuthSafe();
       if (auth?.currentUser) {
         try {
