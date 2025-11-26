@@ -74,12 +74,58 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
     ? "Popera is where pop-up culture comes alive. We help creators, organizers, and communities host micro-moments that bring people together. From spontaneous markets to meaningful gatherings, Popera makes it easy to activate your local crowd and create real-world connections. Join our early-user community and help shape the future of spontaneous, authentic experiences."
     : "Community organizer and event enthusiast.";
   
-  const handleFollowToggle = () => {
-    if (!currentUser || !hostId) return;
-    if (isFollowing) {
-      unfollowHost(currentUser.id, hostId);
-    } else {
-      followHost(currentUser.id, hostId);
+  const [isFollowingState, setIsFollowingState] = useState(false);
+  const [isUpdatingFollow, setIsUpdatingFollow] = useState(false);
+
+  // Sync follow state from Firestore on mount
+  React.useEffect(() => {
+    if (!currentUser?.id || !hostId) return;
+    
+    const checkFollowStatus = async () => {
+      try {
+        const { isFollowing: checkIsFollowing } = await import('../../firebase/follow');
+        const following = await checkIsFollowing(currentUser.id, hostId);
+        setIsFollowingState(following);
+      } catch (error) {
+        console.error('Error checking follow status:', error);
+        // Fallback to local state
+        setIsFollowingState(isFollowing);
+      }
+    };
+    
+    checkFollowStatus();
+  }, [currentUser?.id, hostId, isFollowing]);
+
+  const handleFollowToggle = async () => {
+    if (!currentUser || !hostId || isUpdatingFollow) return;
+    
+    setIsUpdatingFollow(true);
+    try {
+      const { followHost: firestoreFollowHost, unfollowHost: firestoreUnfollowHost } = await import('../../firebase/follow');
+      
+      if (isFollowingState) {
+        // Unfollow
+        await firestoreUnfollowHost(currentUser.id, hostId);
+        unfollowHost(currentUser.id, hostId); // Update local store
+        setIsFollowingState(false);
+      } else {
+        // Follow
+        await firestoreFollowHost(currentUser.id, hostId);
+        followHost(currentUser.id, hostId); // Update local store
+        setIsFollowingState(true);
+      }
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+      // Still update local state for immediate feedback
+      if (isFollowingState) {
+        unfollowHost(currentUser.id, hostId);
+        setIsFollowingState(false);
+      } else {
+        followHost(currentUser.id, hostId);
+        setIsFollowingState(true);
+      }
+    } finally {
+      setIsUpdatingFollow(false);
     }
   };
 
@@ -135,13 +181,14 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
                        <MapPin size={14} className="mr-1 text-popera-orange" /> {primaryCity}
                      </p>
                    </div>
-                   {isLoggedIn && (
+                   {isLoggedIn && currentUser?.id !== hostId && (
                      <div className="flex items-center gap-3">
                        <button 
-                         onClick={handleFollowToggle} 
-                         className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all shadow-sm ${isFollowing ? 'bg-gray-100 text-popera-teal border border-gray-200' : 'bg-popera-orange text-white hover:bg-[#cf4d1d] shadow-orange-900/20'}`}
+                         onClick={handleFollowToggle}
+                         disabled={isUpdatingFollow}
+                         className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed ${isFollowingState ? 'bg-gray-100 text-popera-teal border border-gray-200' : 'bg-popera-orange text-white hover:bg-[#cf4d1d] shadow-orange-900/20'}`}
                        >
-                         {isFollowing ? 'Following' : 'Follow'}
+                         {isUpdatingFollow ? '...' : (isFollowingState ? 'Following' : 'Follow')}
                        </button>
                        <button className="p-2.5 rounded-full border border-gray-200 text-gray-400 hover:text-popera-teal hover:border-popera-teal transition-all">
                          <MessageCircle size={20} />

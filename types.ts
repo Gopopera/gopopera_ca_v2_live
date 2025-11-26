@@ -34,6 +34,7 @@ export interface Event {
   hostId?: string; // User ID of the host
   aboutEvent?: string; // "About this event" section
   whatToExpect?: string; // "What to expect" section
+  isDraft?: boolean; // True for draft events (not published)
 }
 
 export enum ViewState {
@@ -57,6 +58,7 @@ export enum ViewState {
   PRESS = 'PRESS',
   AUTH = 'AUTH',
   CREATE_EVENT = 'CREATE_EVENT',
+  EDIT_EVENT = 'EDIT_EVENT',
   PROFILE = 'PROFILE',
   NOTIFICATIONS = 'NOTIFICATIONS',
   MY_POPS = 'MY_POPS',

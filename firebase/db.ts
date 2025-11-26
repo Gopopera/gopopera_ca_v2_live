@@ -49,6 +49,7 @@ export const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event 
     isOfficialLaunch: firestoreEvent.isOfficialLaunch === true,
     aboutEvent: firestoreEvent.aboutEvent || undefined,
     whatToExpect: firestoreEvent.whatToExpect || undefined,
+    isDraft: firestoreEvent.isDraft === true,
   };
   
   return standardizedEvent;

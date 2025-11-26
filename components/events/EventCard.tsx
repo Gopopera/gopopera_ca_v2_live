@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Calendar, MessageCircle, Star, Heart } from 'lucide-react';
+import { MapPin, Calendar, MessageCircle, Star, Heart, Edit } from 'lucide-react';
 import { Event } from '@/types';
 import { formatDate } from '@/utils/dateFormatter';
 import { formatRating } from '@/utils/formatRating';
@@ -12,6 +12,8 @@ interface EventCardProps {
   isLoggedIn?: boolean;
   isFavorite?: boolean;
   onToggleFavorite?: (e: React.MouseEvent, eventId: string) => void;
+  onEditClick?: (e: React.MouseEvent, event: Event) => void; // Edit button handler
+  showEditButton?: boolean; // Whether to show edit button (only for host's own events)
 }
 
 export const EventCard: React.FC<EventCardProps> = ({ 
@@ -21,7 +23,9 @@ export const EventCard: React.FC<EventCardProps> = ({
   onReviewsClick,
   isLoggedIn,
   isFavorite,
-  onToggleFavorite 
+  onToggleFavorite,
+  onEditClick,
+  showEditButton = false
 }) => {
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -71,6 +75,21 @@ export const EventCard: React.FC<EventCardProps> = ({
         <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-popera-teal shadow-sm">
           {event.price}
         </div>
+
+        {/* Edit Button - Bottom Right (only for host's own events) */}
+        {showEditButton && onEditClick && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditClick(e, event);
+            }}
+            className="absolute bottom-4 right-4 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-medium text-[#15383c] hover:bg-white transition-colors flex items-center gap-1.5 shadow-sm z-30"
+            aria-label="Edit Event"
+          >
+            <Edit size={14} />
+            Edit
+          </button>
+        )}
 
         {/* ACTION BUTTONS - Only Favorite and Chat in feed (no share) */}
         <div className="absolute top-3 sm:top-4 right-3 sm:right-4 flex items-center gap-2 sm:gap-2 z-20">

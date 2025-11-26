@@ -43,6 +43,7 @@ export interface FirestoreEvent {
   isPublic?: boolean; // Whether event is publicly visible
   allowChat?: boolean; // Whether chat is enabled
   allowRsvp?: boolean; // Whether RSVP is enabled
+  isDraft?: boolean; // True for draft events (not published)
 }
 
 export interface FirestoreUser {
