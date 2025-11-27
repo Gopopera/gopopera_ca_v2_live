@@ -8,7 +8,7 @@
  */
 
 import { getStorageSafe } from "../src/lib/firebase";
-import { ref, uploadBytesResumable, getDownloadURL, UploadTask } from "firebase/storage";
+import { ref, uploadBytesResumable, getDownloadURL, UploadTask, deleteObject } from "firebase/storage";
 
 export interface UploadProgress {
   progress: number; // 0-100
@@ -232,5 +232,32 @@ export async function getImageUrl(path: string): Promise<string | null> {
   } catch (error) {
     console.error("Error getting image URL:", error);
     return null;
+  }
+}
+
+/**
+ * Delete an image from Firebase Storage
+ * @param path - Storage path to the image (e.g., "events/userId/image.jpg")
+ * @returns Promise that resolves when deletion is complete
+ */
+export async function deleteImage(path: string): Promise<void> {
+  const storage = getStorageSafe();
+  if (!storage) {
+    throw new Error('Firebase Storage is not initialized. Please check your Firebase configuration.');
+  }
+  
+  try {
+    const storageRef = ref(storage, path);
+    await deleteObject(storageRef);
+    console.log(`[DELETE_IMAGE] ✅ Successfully deleted: ${path}`);
+  } catch (error: any) {
+    // If file doesn't exist, that's okay - log but don't throw
+    if (error?.code === 'storage/object-not-found') {
+      console.log(`[DELETE_IMAGE] Image not found (already deleted): ${path}`);
+      return;
+    }
+    
+    console.error(`[DELETE_IMAGE] ❌ Error deleting image: ${path}`, error);
+    throw new Error(`Failed to delete image: ${error?.message || 'Unknown error'}`);
   }
 }

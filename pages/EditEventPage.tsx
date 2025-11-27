@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { ViewState, Event } from '../types';
-import { ChevronLeft, Upload, MapPin, Calendar, Clock, Plus, X, ArrowUp, ArrowDown, Sparkles } from 'lucide-react';
+import { ChevronLeft, Upload, MapPin, Calendar, Clock, Plus, X, ArrowUp, ArrowDown, Sparkles, Trash2, FileText } from 'lucide-react';
 import { useEventStore } from '../stores/eventStore';
 import { useUserStore } from '../stores/userStore';
 import { uploadImage } from '../firebase/storage';
-import { compressImage, shouldCompressImage } from '../utils/imageCompression';
-import { getEventById } from '../firebase/db';
+import { processImageForUpload } from '../utils/imageProcessing';
+import { getEventById, updateEvent, deleteEvent } from '../firebase/db';
+import { geocodeAddress } from '../utils/geocoding';
 
 interface EditEventPageProps {
   setViewState: (view: ViewState) => void;
@@ -20,9 +21,12 @@ const POPULAR_CITIES = [
 ];
 
 export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, eventId, event: initialEvent }) => {
-  const updateEvent = useEventStore((state) => state.updateEvent);
+  const updateEventInStore = useEventStore((state) => state.updateEvent);
   const user = useUserStore((state) => state.user);
-  const [loading, setLoading] = useState(!!initialEvent); // Load if no initial event provided
+  const userProfile = useUserStore((state) => state.userProfile);
+  const [loading, setLoading] = useState(!initialEvent); // Load if no initial event provided
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const [title, setTitle] = useState(initialEvent?.title || '');
   const [description, setDescription] = useState(initialEvent?.description || '');
@@ -81,7 +85,7 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
     }
   }, [eventId, initialEvent, setViewState]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!user?.uid) {
@@ -114,29 +118,22 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
           console.log('[EDIT_EVENT] Uploading', imageFiles.length, 'new image(s)...');
           setUploadingImage(true);
           
-          const compressAndUploadImage = async (file: File, path: string): Promise<string> => {
-            let fileToUpload = file;
+          const processAndUploadImage = async (file: File, path: string): Promise<string> => {
+            // Process image (HEIC conversion + compression)
+            const processedFile = await processImageForUpload(file, {
+              maxWidth: 1600,
+              maxHeight: 1600,
+              quality: 0.80,
+              maxSizeMB: 2
+            });
             
-            if (shouldCompressImage(file, 1)) {
-              try {
-                fileToUpload = await compressImage(file, {
-                  maxWidth: 1600,
-                  maxHeight: 1600,
-                  quality: 0.80,
-                  maxSizeMB: 2
-                });
-              } catch (compressError) {
-                console.warn('[EDIT_EVENT] Compression failed, uploading original:', compressError);
-              }
-            }
-            
-            return await uploadImage(path, fileToUpload, { timeout: 90000 });
+            return await uploadImage(path, processedFile, { maxUploadTime: 90000 });
           };
           
           const timestamp = Date.now();
           const uploadPromises = imageFiles.map(async (file, i) => {
             const imagePath = `events/${user.uid}/${timestamp}_${i}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-            return await compressAndUploadImage(file, imagePath);
+            return await processAndUploadImage(file, imagePath);
           });
           
           const newImageUrls = await Promise.all(uploadPromises);
@@ -150,7 +147,27 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
         }
       }
 
-      // Update event in Firestore
+      // Geocode address if address changed
+      let lat = initialEvent?.lat;
+      let lng = initialEvent?.lng;
+      if (address && (address !== initialEvent?.address || city !== initialEvent?.city)) {
+        try {
+          const coords = await geocodeAddress(`${address}, ${city}`);
+          if (coords) {
+            lat = coords.lat;
+            lng = coords.lng;
+          }
+        } catch (geocodeError) {
+          console.warn('[EDIT_EVENT] Geocoding failed:', geocodeError);
+          // Continue without coordinates
+        }
+      }
+
+      // Get host name from user profile (most accurate)
+      const hostName = userProfile?.name || userProfile?.displayName || user?.displayName || user?.name || user?.email?.split('@')[0] || 'Unknown Host';
+      const hostPhotoURL = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || undefined;
+
+      // Update event in Firestore using the db function (ensures proper sync)
       console.log('[EDIT_EVENT] Updating event:', eventIdToUpdate);
       await updateEvent(eventIdToUpdate, {
         title,
@@ -165,7 +182,28 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
         whatToExpect: whatToExpect || undefined,
         attendeesCount,
         price,
-        host,
+        host: hostName, // Use actual name, never 'You'
+        hostPhotoURL, // Store host photo URL
+        capacity: attendeesCount || undefined,
+        lat,
+        lng,
+      });
+
+      // Also update in store for immediate UI sync
+      await updateEventInStore(eventIdToUpdate, {
+        title,
+        description,
+        city,
+        address,
+        time,
+        category: category as typeof CATEGORIES[number],
+        tags,
+        imageUrl: finalImageUrl,
+        imageUrls: finalImageUrls.length > 0 ? finalImageUrls : undefined,
+        whatToExpect: whatToExpect || undefined,
+        attendeesCount,
+        price,
+        host: hostName,
         capacity: attendeesCount || undefined,
       });
 
@@ -179,6 +217,87 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
     }
   };
 
+  const handleDraft = async () => {
+    if (!user?.uid) {
+      alert('You must be logged in to edit an event.');
+      return;
+    }
+
+    const eventIdToUpdate = eventId || initialEvent?.id || '';
+    if (!eventIdToUpdate) {
+      alert('Event ID is required.');
+      return;
+    }
+
+    if (!confirm('Convert this event to draft? It will be hidden from public pages but remain visible in your drafts.')) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Convert to draft by setting isDraft=true and isPublic=false
+      await updateEvent(eventIdToUpdate, {
+        isDraft: true,
+        isPublic: false,
+      });
+
+      // Also update in store
+      await updateEventInStore(eventIdToUpdate, {
+        isDraft: true,
+        isPublic: false,
+      });
+
+      alert('Event converted to draft successfully!');
+      setViewState(ViewState.MY_POPS);
+    } catch (error: any) {
+      console.error('[EDIT_EVENT] Error converting to draft:', error);
+      alert(`Failed to convert to draft: ${error?.message || 'Unknown error'}. Please try again.`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!user?.uid) {
+      alert('You must be logged in to delete an event.');
+      return;
+    }
+
+    const eventIdToDelete = eventId || initialEvent?.id || '';
+    if (!eventIdToDelete) {
+      alert('Event ID is required.');
+      return;
+    }
+
+    // Show confirmation modal
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    const eventIdToDelete = eventId || initialEvent?.id || '';
+    if (!eventIdToDelete) return;
+
+    setIsDeleting(true);
+    setShowDeleteConfirm(false);
+
+    try {
+      // Delete event from Firestore and Storage
+      await deleteEvent(eventIdToDelete, true);
+
+      // Also remove from store
+      useEventStore.getState().deleteEvent(eventIdToDelete);
+
+      alert('Event deleted successfully!');
+      setViewState(ViewState.MY_POPS);
+    } catch (error: any) {
+      console.error('[EDIT_EVENT] Error deleting event:', error);
+      alert(`Failed to delete event: ${error?.message || 'Unknown error'}. Please try again.`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -188,15 +307,27 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      if (!file.type.startsWith('image/')) {
-        alert(`"${file.name}" is not an image file.`);
+      
+      // Validate file type - HEIC will be converted automatically
+      const fileExtension = file.name.toLowerCase().split('.').pop();
+      const isHEIC = fileExtension === 'heic' || fileExtension === 'heif';
+      const isValidImageType = file.type.startsWith('image/') || isHEIC;
+      
+      if (!isValidImageType) {
+        alert(`"${file.name}" is not a supported image file. Please select JPEG, PNG, GIF, WebP, or HEIC files.`);
         continue;
       }
-      if (file.size > 50 * 1024 * 1024) {
-        alert(`"${file.name}" is too large. Maximum size is 50MB.`);
+      
+      // Accept larger files - they will be compressed before upload
+      const MAX_INPUT_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+      if (file.size > MAX_INPUT_FILE_SIZE) {
+        alert(`"${file.name}" is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum size is 50MB. Please use a smaller image.`);
         continue;
       }
+      
       newFiles.push(file);
+      
+      // Create preview immediately using data URL (for UI only)
       const reader = new FileReader();
       reader.onloadend = () => {
         const preview = reader.result as string;
@@ -273,7 +404,7 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
           </h1>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleUpdate}>
           {/* Basic Information */}
           <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 lg:p-10 border border-gray-100 shadow-sm mb-6 sm:mb-8 space-y-4 sm:space-y-5 md:space-y-6">
             <div className="space-y-2">
@@ -505,24 +636,78 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
             </div>
           </div>
 
-          {/* Submit Buttons */}
+          {/* Action Buttons */}
           <div className="flex flex-col gap-3 sm:gap-4 md:gap-5">
+            {/* Update Button */}
             <button 
               type="submit"
-              disabled={isSubmitting || uploadingImage}
+              disabled={isSubmitting || uploadingImage || isDeleting}
               className="w-full py-3.5 sm:py-4 md:py-4.5 bg-[#15383c] text-white font-bold rounded-full hover:bg-[#1f4d52] transition-colors shadow-lg touch-manipulation active:scale-95 text-sm sm:text-base md:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {uploadingImage ? 'Uploading Images...' : isSubmitting ? 'Updating Event...' : 'Update Event'}
+              {uploadingImage ? 'Uploading Images...' : isSubmitting ? 'Updating Event...' : 'Update'}
             </button>
+            
+            {/* Draft Button */}
+            <button 
+              type="button"
+              onClick={handleDraft}
+              disabled={isSubmitting || uploadingImage || isDeleting}
+              className="w-full py-3.5 sm:py-4 md:py-4.5 bg-orange-100 text-[#e35e25] font-bold rounded-full hover:bg-orange-200 transition-colors border border-orange-200 touch-manipulation active:scale-95 text-sm sm:text-base md:text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <FileText size={18} />
+              Draft
+            </button>
+            
+            {/* Delete Button */}
+            <button 
+              type="button"
+              onClick={handleDelete}
+              disabled={isSubmitting || uploadingImage || isDeleting}
+              className="w-full py-3.5 sm:py-4 md:py-4.5 bg-red-50 text-red-600 font-bold rounded-full hover:bg-red-100 transition-colors border border-red-200 touch-manipulation active:scale-95 text-sm sm:text-base md:text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <Trash2 size={18} />
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </button>
+            
+            {/* Cancel Button */}
             <button 
               type="button"
               onClick={() => setViewState(ViewState.MY_POPS)}
-              className="w-full py-3.5 sm:py-4 md:py-4.5 bg-gray-100 text-gray-500 font-bold rounded-full hover:bg-gray-200 transition-colors border border-gray-200 touch-manipulation active:scale-95 text-sm sm:text-base md:text-lg"
+              disabled={isSubmitting || uploadingImage || isDeleting}
+              className="w-full py-3.5 sm:py-4 md:py-4.5 bg-gray-100 text-gray-500 font-bold rounded-full hover:bg-gray-200 transition-colors border border-gray-200 touch-manipulation active:scale-95 text-sm sm:text-base md:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
           </div>
         </form>
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-xl">
+              <h3 className="text-xl font-bold text-[#15383c] mb-4">Delete Event</h3>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete this event? This action cannot be undone. All associated images will also be deleted.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={confirmDelete}
+                  disabled={isDeleting}
+                  className="flex-1 py-3 bg-red-600 text-white font-bold rounded-full hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDeleting ? 'Deleting...' : 'Yes, Delete'}
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isDeleting}
+                  className="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-full hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  No, Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

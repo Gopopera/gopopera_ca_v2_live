@@ -55,27 +55,28 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
   // Prevent body scroll when mobile menu is open
   useEffect(() => {
     if (mobileMenuOpen) {
-      // Lock body scroll
+      // Lock body scroll - save original value
       const originalOverflow = document.body.style.overflow;
+      const originalPosition = document.body.style.position;
+      const scrollY = window.scrollY;
+      
+      // Lock scroll
       document.body.style.overflow = 'hidden';
-      // Ensure menu is visible by scrolling to top if needed
-      window.scrollTo({ top: 0, behavior: 'instant' });
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
       
       // Cleanup: restore scroll on close or unmount
       return () => {
         document.body.style.overflow = originalOverflow || '';
+        document.body.style.position = originalPosition || '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        // Restore scroll position
+        window.scrollTo({ top: scrollY, behavior: 'instant' });
       };
-    } else {
-      // Restore body scroll when menu closes
-      document.body.style.overflow = '';
     }
-    // Always return cleanup function
-    return () => {
-      // Only restore if menu was open
-      if (mobileMenuOpen) {
-        document.body.style.overflow = '';
-      }
-    };
+    // No cleanup needed when menu is closed
   }, [mobileMenuOpen]);
 
   const handleNav = (view: ViewState, event?: any, hostId?: string) => {
@@ -110,11 +111,13 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
 
   const isDetailView = viewState === ViewState.DETAIL;
   
-  const navClasses = `fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-    isScrolled ? 'bg-white/95 backdrop-blur-md shadow-sm py-4' : 'bg-transparent py-6'
-  } ${isDetailView ? 'hidden lg:block' : ''}`;
-
+  // Determine header background: white if scrolled, on light page, or menu is open
   const isLightPage = viewState === ViewState.FEED || viewState === ViewState.PROFILE || viewState === ViewState.NOTIFICATIONS || viewState === ViewState.MY_POPS || viewState === ViewState.FAVORITES || viewState === ViewState.DELETE_ACCOUNT || viewState === ViewState.CREATE_EVENT;
+  const shouldShowWhiteBg = isScrolled || isLightPage || mobileMenuOpen;
+  
+  const navClasses = `fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+    shouldShowWhiteBg ? 'bg-white/95 backdrop-blur-md shadow-sm py-4' : 'bg-transparent py-6'
+  } ${isDetailView ? 'hidden lg:block' : ''}`;
 
   const getTextColor = (isMobile: boolean) => {
      if (isMobile) return 'text-popera-teal';
@@ -288,7 +291,14 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
             right: 0, 
             bottom: 0,
             willChange: 'transform',
-            WebkitOverflowScrolling: 'touch'
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehavior: 'contain'
+          }}
+          onClick={(e) => {
+            // Close menu when clicking on overlay (not on menu content)
+            if (e.target === e.currentTarget) {
+              setMobileMenuOpen(false);
+            }
           }}
         >
           {/* Back Button - Always visible at top of menu */}

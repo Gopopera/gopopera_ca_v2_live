@@ -101,8 +101,11 @@ export const EventCard: React.FC<EventCardProps> = ({
   }, [event.hostId, event.hostName, user?.uid, user?.photoURL, user?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl]);
   
   const handleFavoriteClick = (e: React.MouseEvent) => {
+    // CRITICAL: Prevent any navigation or card click
     e.stopPropagation();
     e.preventDefault();
+    e.nativeEvent.stopImmediatePropagation();
+    
     if (onToggleFavorite) {
       // Always call handler - it will handle login redirect if needed
       onToggleFavorite(e, event.id);
@@ -228,9 +231,12 @@ export const EventCard: React.FC<EventCardProps> = ({
            {onToggleFavorite && (
              <button
                onClick={handleFavoriteClick}
+               onMouseDown={(e) => e.stopPropagation()}
+               onTouchStart={(e) => e.stopPropagation()}
                className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center transition-colors shadow-lg hover:bg-white active:scale-[0.92] touch-manipulation border border-white/50 shrink-0 pointer-events-auto z-30"
                aria-label="Toggle Favorite"
                type="button"
+               style={{ pointerEvents: 'auto' }}
              >
                <Heart 
                  size={20} 
@@ -258,19 +264,20 @@ export const EventCard: React.FC<EventCardProps> = ({
         <div className="mb-3 flex items-center justify-between gap-2">
            {/* Host Info */}
            <div className="flex items-center space-x-2 overflow-hidden min-w-0 flex-1">
-             <span className="w-6 h-6 shrink-0 rounded-full bg-gray-200 overflow-hidden ring-1 ring-gray-200">
+             <span className="w-6 h-6 shrink-0 rounded-full bg-gray-200 overflow-hidden ring-1 ring-gray-200 aspect-square flex-shrink-0">
                {hostProfilePicture ? (
                  <img 
                    src={hostProfilePicture} 
                    alt={displayHostName} 
-                   className="w-full h-full object-cover"
+                   className="w-full h-full object-cover aspect-square"
+                   style={{ objectFit: 'cover', aspectRatio: '1 / 1' }}
                    onError={(e) => {
                      const target = e.target as HTMLImageElement;
                      target.src = `https://picsum.photos/seed/${displayHostName}/50/50`;
                    }}
                  />
                ) : (
-                 <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-xs">
+                 <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-xs aspect-square">
                    {displayHostName?.[0]?.toUpperCase() || 'H'}
                  </div>
                )}

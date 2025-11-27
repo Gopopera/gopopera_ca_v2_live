@@ -1308,6 +1308,10 @@ const AppContent: React.FC = () => {
             isLoggedIn={isLoggedIn}
             favorites={favorites}
             onToggleFavorite={handleToggleFavorite}
+            onEditEvent={(event) => {
+              setSelectedEvent(event);
+              setViewState(ViewState.EDIT_EVENT);
+            }}
           />
         )}
         {viewState === ViewState.FAVORITES && (

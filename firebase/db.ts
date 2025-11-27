@@ -343,6 +343,13 @@ export async function updateEvent(eventId: string, eventData: Partial<Omit<Event
     if (eventData.aboutEvent !== undefined) updateData.aboutEvent = eventData.aboutEvent;
     if (eventData.capacity !== undefined) updateData.capacity = eventData.capacity;
     if (eventData.attendeesCount !== undefined) updateData.attendeesCount = eventData.attendeesCount;
+    if ((eventData as any).hostPhotoURL !== undefined) updateData.hostPhotoURL = (eventData as any).hostPhotoURL;
+    if ((eventData as any).lat !== undefined) updateData.lat = (eventData as any).lat;
+    if ((eventData as any).lng !== undefined) updateData.lng = (eventData as any).lng;
+    if ((eventData as any).isDraft !== undefined) updateData.isDraft = (eventData as any).isDraft === true;
+    if ((eventData as any).isPublic !== undefined) updateData.isPublic = (eventData as any).isPublic === true;
+    if ((eventData as any).allowChat !== undefined) updateData.allowChat = (eventData as any).allowChat === true;
+    if ((eventData as any).allowRsvp !== undefined) updateData.allowRsvp = (eventData as any).allowRsvp === true;
     
     // Validate and sanitize update data
     const sanitizedUpdate = sanitizeFirestoreData(updateData);
@@ -1082,6 +1089,91 @@ export async function recalculateEventRating(eventId: string): Promise<void> {
     // which will automatically sync the rating everywhere the event is displayed
   } catch (error: any) {
     console.error('Firestore write failed:', { path: `events/${eventId}`, error: error.message || 'Unknown error', operation: 'recalculateRating' });
+    throw error;
+  }
+}
+
+/**
+ * Delete an event from Firestore and optionally its associated images from Storage
+ * @param eventId - The ID of the event to delete
+ * @param deleteImages - Whether to also delete associated images from Storage (default: true)
+ * @returns Promise that resolves when deletion is complete
+ */
+export async function deleteEvent(eventId: string, deleteImages: boolean = true): Promise<void> {
+  const db = getDbSafe();
+  if (!db) {
+    throw new Error('Firestore not initialized');
+  }
+  
+  // Ensure Firestore is ready before calling collection()
+  if (typeof db === 'undefined' || db === null) {
+    throw new Error('Firestore not initialized');
+  }
+  
+  try {
+    // First, get the event to access image URLs
+    const eventRef = doc(db, "events", eventId);
+    const eventSnap = await getDoc(eventRef);
+    
+    if (!eventSnap.exists()) {
+      console.warn(`[DELETE_EVENT] Event ${eventId} does not exist`);
+      return; // Event already deleted, nothing to do
+    }
+    
+    const eventData = eventSnap.data() as FirestoreEvent;
+    
+    // Delete associated images from Storage if requested
+    if (deleteImages) {
+      try {
+        const { deleteImage } = await import('./storage');
+        const imagesToDelete: string[] = [];
+        
+        // Collect all image URLs
+        if (eventData.imageUrl) {
+          imagesToDelete.push(eventData.imageUrl);
+        }
+        if (eventData.imageUrls && Array.isArray(eventData.imageUrls)) {
+          imagesToDelete.push(...eventData.imageUrls);
+        }
+        
+        // Extract Storage paths from URLs and delete
+        // Firebase Storage URLs format: https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{path}?alt=media
+        for (const imageUrl of imagesToDelete) {
+          try {
+            // Extract path from URL
+            const urlMatch = imageUrl.match(/\/o\/([^?]+)/);
+            if (urlMatch) {
+              const encodedPath = urlMatch[1];
+              const storagePath = decodeURIComponent(encodedPath);
+              await deleteImage(storagePath);
+            } else {
+              console.warn(`[DELETE_EVENT] Could not extract path from URL: ${imageUrl}`);
+            }
+          } catch (imageError: any) {
+            // Log but don't fail - image deletion is best effort
+            console.warn(`[DELETE_EVENT] Failed to delete image ${imageUrl}:`, imageError);
+          }
+        }
+      } catch (storageError: any) {
+        // Log but don't fail - image deletion is best effort
+        console.warn(`[DELETE_EVENT] Error deleting images:`, storageError);
+      }
+    }
+    
+    // Delete the event document from Firestore
+    await deleteDoc(eventRef);
+    
+    console.log(`[DELETE_EVENT] ✅ Successfully deleted event: ${eventId}`);
+    
+    // Note: Associated subcollections (reviews, messages, reservations) will remain
+    // They can be manually cleaned up if needed, but won't cause issues
+    
+  } catch (error: any) {
+    console.error('[DELETE_EVENT] ❌ Error deleting event:', {
+      eventId,
+      error: error.message || 'Unknown error',
+      code: error.code
+    });
     throw error;
   }
 }

@@ -13,6 +13,7 @@ interface MyPopsPageProps {
   isLoggedIn?: boolean;
   favorites?: string[];
   onToggleFavorite?: (e: React.MouseEvent, eventId: string) => void;
+  onEditEvent?: (event: Event) => void; // Handler for edit button
 }
 
 type TabType = 'hosting' | 'attending' | 'draft' | 'past';
@@ -48,7 +49,8 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
   onReviewsClick, 
   isLoggedIn, 
   favorites = [], 
-  onToggleFavorite 
+  onToggleFavorite,
+  onEditEvent
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('hosting');
   const user = useUserStore((state) => state.user);
@@ -332,11 +334,14 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
                             onClick={(e) => {
                               e.stopPropagation();
                               // Navigate to edit page
-                              onEventClick(event);
-                              // Trigger edit mode via custom event
-                              setTimeout(() => {
-                                window.dispatchEvent(new CustomEvent('editEvent', { detail: { eventId: event.id } }));
-                              }, 100);
+                              if (onEditEvent) {
+                                onEditEvent(event);
+                              } else {
+                                // Fallback: use custom event if handler not provided
+                                setTimeout(() => {
+                                  window.dispatchEvent(new CustomEvent('editEvent', { detail: { eventId: event.id } }));
+                                }, 100);
+                              }
                             }}
                             className="px-3 py-1.5 bg-gray-100 text-[#15383c] text-xs font-bold rounded-full hover:bg-gray-200 transition-colors flex items-center justify-center gap-1.5 border border-gray-200"
                           >
