@@ -515,7 +515,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         title,
         city,
         hostId: user.uid,
-        host: user.displayName || user.email || 'You',
+        host: hostName,
         hostPhoneNumber: hostPhoneNumber ? '***' : 'not set',
         imageUrl: finalImageUrl.substring(0, 50) + '...',
         imageUrlsCount: finalImageUrls.length,
