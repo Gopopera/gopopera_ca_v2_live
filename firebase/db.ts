@@ -916,10 +916,10 @@ export async function listHostReviews(hostId: string): Promise<FirestoreReview[]
     
     const eventIds = eventsSnapshot.docs.map(doc => doc.id);
     
-    // Then, get all reviews from all their events
+    // Then, get all reviews from all their events (include pending for host's review management)
     const allReviews: FirestoreReview[] = [];
     for (const eventId of eventIds) {
-      const reviews = await listReviews(eventId);
+      const reviews = await listReviews(eventId, true); // Include pending reviews for host management
       allReviews.push(...reviews);
     }
     
