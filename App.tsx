@@ -489,19 +489,20 @@ const AppContent: React.FC = () => {
       }
     }, 7000); // 7 second delay to not interfere with initial load
 
-    // Seed community events for eatezca@gmail.com (background process, idempotent)
+    // Verify and seed community events for eatezca@gmail.com (background process, idempotent)
     // Creates 2 events per city in different categories - all public, free, unlimited capacity
+    // This function verifies existing events and creates missing ones
     setTimeout(async () => {
       try {
-        const { seedCommunityEvents } = await import('./firebase/seedCommunityEvents');
+        const { verifyAndSeedCommunityEvents } = await import('./firebase/verifyAndSeedCommunityEvents');
         // Run in background, don't block UI
-        seedCommunityEvents().then(() => {
-          console.log('[APP] ✅ Community events seeding complete for eatezca@gmail.com');
+        verifyAndSeedCommunityEvents().then(() => {
+          console.log('[APP] ✅ Community events verification and seeding complete for eatezca@gmail.com');
         }).catch((error) => {
-          console.error('[APP] Error seeding community events:', error);
+          console.error('[APP] Error verifying/seeding community events:', error);
         });
       } catch (error) {
-        console.error('[APP] Failed to load community events seeding utility:', error);
+        console.error('[APP] Failed to load community events verification utility:', error);
       }
     }, 15000); // 15 second delay to ensure Firestore is ready
     
