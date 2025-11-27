@@ -477,6 +477,35 @@ const AppContent: React.FC = () => {
         console.error('[APP] Failed to load geocoding utility:', error);
       }
     }, 5000); // 5 second delay to not interfere with initial load
+
+    // CRITICAL: Diagnostic scan for user events (background process, read-only)
+    // This helps identify any events that might be incorrectly hidden
+    // It does NOT modify or delete any data - only reads and reports
+    setTimeout(async () => {
+      try {
+        const { generateEventReport, getEventsByHost } = await import('./utils/restoreUserEvents');
+        // Run diagnostic in background, don't block UI
+        getEventsByHost().then((summaries) => {
+          // Only log if there are hidden events that might need restoration
+          const totalHidden = summaries.reduce((sum, s) => sum + s.hiddenEvents, 0);
+          if (totalHidden > 0) {
+            console.warn(`[APP] ⚠️ Found ${totalHidden} hidden events that may need restoration`);
+            console.log('[APP] Run restoreUserEvents.generateEventReport() in console for details');
+          } else {
+            console.log('[APP] ✅ All user events are visible (no restoration needed)');
+          }
+        }).catch((error: any) => {
+          // Handle permission errors gracefully
+          if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+            console.warn('[APP] Permission denied when scanning events (expected if not logged in)');
+          } else {
+            console.error('[APP] Error scanning events:', error);
+          }
+        });
+      } catch (error) {
+        console.error('[APP] Failed to load event restoration utility:', error);
+      }
+    }, 7000); // 7 second delay to not interfere with initial load
     
     // Seed reviews for eatezca@gmail.com (background process, idempotent)
     // This ensures all events have 3 fake reviews (all 5 stars) and profile shows correct count
