@@ -1278,7 +1278,7 @@ const AppContent: React.FC = () => {
                  <PlusCircle size={28} />
               </button>
             )}
-            
+            </div>
           </main>
         )}
 
