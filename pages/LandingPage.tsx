@@ -297,41 +297,30 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* 3. Pop-ups and Crowd Activation section */}
-      <section className="py-12 sm:py-16 md:py-20 lg:py-24 xl:py-28 bg-gradient-to-b from-[#15383c] via-[#1a4549] to-[#f8fafb] relative overflow-hidden w-full">
-        {/* Decorative gradient overlay for smooth transition */}
-        <div className="absolute bottom-0 left-0 right-0 h-32 sm:h-40 md:h-48 lg:h-56 bg-gradient-to-b from-transparent via-[#f8fafb]/50 to-[#f8fafb] pointer-events-none"></div>
-        
-        {/* Background decorative elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-[#e35e25] rounded-full blur-[120px] opacity-10"></div>
-          <div className="absolute bottom-1/4 left-1/4 w-80 h-80 bg-[#15383c] rounded-full blur-[100px] opacity-15"></div>
-        </div>
-
+      <section className="py-12 sm:py-16 md:py-20 lg:py-24 xl:py-28 bg-[#FAFAFA] relative overflow-hidden w-full">
          <div className="max-w-5xl md:max-w-6xl lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-            <div className="mb-6 sm:mb-8 md:mb-10 animate-fade-in-up">
-              <span className="inline-block py-1.5 sm:py-2 md:py-2.5 px-4 sm:px-5 md:px-6 rounded-full bg-white/10 border border-white/20 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase backdrop-blur-md shadow-lg">
+            <div className="mb-6 sm:mb-8 md:mb-10">
+              <span className="inline-flex items-center gap-2 py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">
+                <Sparkles size={10} className="sm:w-3 sm:h-3 -mt-0.5" />
                 {t('landing.badge')}
               </span>
             </div>
 
-            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-heading font-bold text-white mb-5 sm:mb-6 md:mb-8 tracking-tight leading-[1.1] px-2 sm:px-4 drop-shadow-lg">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-heading font-bold text-[#15383c] mb-5 sm:mb-6 md:mb-8 tracking-tight leading-[1.1] px-2 sm:px-4">
               {t('landing.title')} <br />
-              <span className="text-[#e35e25] relative inline-block">
+              <span className="text-[#e35e25]">
                 {t('landing.titleHighlight')}
-                <svg className="absolute w-full h-3 sm:h-4 -bottom-2 left-0 text-[#e35e25]/30" viewBox="0 0 100 10" preserveAspectRatio="none">
-                   <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="2.5" fill="none" />
-                </svg>
               </span>
             </h2>
             
-            <p className="text-base sm:text-lg md:text-xl lg:text-2xl xl:text-3xl text-gray-100 font-light leading-relaxed mb-8 sm:mb-10 md:mb-12 max-w-4xl mx-auto px-4 sm:px-6">
-              {t('landing.description')} <span className="text-white font-medium border-b-2 border-white/30 pb-1">{t('landing.descriptionHighlight')}</span>{t('landing.descriptionEnd')}
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-600 font-light leading-relaxed mb-8 sm:mb-10 md:mb-12 max-w-4xl mx-auto px-4 sm:px-6">
+              {t('landing.description')} <span className="text-[#15383c] font-medium border-b-2 border-[#15383c]/20 pb-1">{t('landing.descriptionHighlight')}</span>{t('landing.descriptionEnd')}
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-5 md:gap-6 px-4">
               <button 
                 onClick={() => setViewState(ViewState.AUTH)}
-                className="w-auto mx-auto sm:w-auto px-10 sm:px-12 md:px-14 py-4 sm:py-5 md:py-6 min-h-[52px] sm:min-h-0 rounded-full bg-[#e35e25] text-white font-bold text-base sm:text-lg md:text-xl lg:text-2xl hover:bg-[#cf4d1d] transition-all shadow-2xl shadow-orange-900/40 hover:-translate-y-1 hover:shadow-orange-900/50 ring-4 ring-[#e35e25]/30 touch-manipulation active:scale-[0.97] active:bg-[#cf4d1d]">
+                className="w-auto mx-auto sm:w-auto px-10 sm:px-12 md:px-14 py-4 sm:py-5 md:py-6 min-h-[52px] sm:min-h-0 rounded-full bg-[#e35e25] text-white font-bold text-base sm:text-lg md:text-xl lg:text-2xl hover:bg-[#cf4d1d] transition-all shadow-lg shadow-orange-900/20 hover:-translate-y-1 hover:shadow-xl hover:shadow-orange-900/30 touch-manipulation active:scale-[0.97] active:bg-[#cf4d1d]">
                 {t('landing.signUp')}
               </button>
             </div>
