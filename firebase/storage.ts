@@ -8,7 +8,7 @@
  */
 
 import { getStorageSafe } from "../src/lib/firebase";
-import { ref, uploadBytesResumable, getDownloadURL, UploadTask, StorageError } from "firebase/storage";
+import { ref, uploadBytesResumable, getDownloadURL, UploadTask } from "firebase/storage";
 
 export interface UploadProgress {
   progress: number; // 0-100
@@ -126,17 +126,21 @@ export async function uploadImage(
                 break;
             }
           },
-          (error: StorageError) => {
+          (error: any) => {
             // Handle upload errors
+            // Firebase Storage errors have a code property (e.g., 'storage/unauthorized')
+            const errorCode = error?.code || 'storage/unknown';
+            const errorMessage = error?.message || 'Unknown error';
+            
             console.error(`[UPLOAD_IMAGE] Upload error for: ${path}`, {
-              code: error.code,
-              message: error.message,
-              serverResponse: error.serverResponse
+              code: errorCode,
+              message: errorMessage,
+              serverResponse: error?.serverResponse
             });
             
             // Map Firebase Storage error codes to user-friendly messages
-            let errorMessage = error.message || 'Unknown error';
-            switch (error.code) {
+            let userFriendlyMessage = errorMessage;
+            switch (errorCode) {
               case 'storage/unauthorized':
                 errorMessage = 'Permission denied. You may not have permission to upload images. Please check Firebase Storage security rules.';
                 break;
@@ -156,11 +160,11 @@ export async function uploadImage(
                 errorMessage = 'File upload verification failed. Please try again.';
                 break;
               case 'storage/quota-exceeded':
-                errorMessage = 'Storage quota exceeded. Please contact support.';
+                userFriendlyMessage = 'Storage quota exceeded. Please contact support.';
                 break;
             }
             
-            safeReject(new Error(errorMessage));
+            safeReject(new Error(userFriendlyMessage));
           },
           async () => {
             // Upload completed successfully
