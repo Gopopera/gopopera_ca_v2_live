@@ -290,14 +290,22 @@ export async function seedCommunityEvents(): Promise<void> {
           whatToExpect: eventConfig.whatToExpect,
           capacity: undefined, // Unlimited capacity
           // CRITICAL: Don't set isPublic or isDraft - let them default to public/non-draft
-          isPublic: undefined,
-          isDraft: undefined,
+          // These fields will be removed by sanitizeFirestoreData, making events public by default
           allowChat: true,
           allowRsvp: true,
         };
 
-        // Sanitize event data - remove undefined values (Firestore doesn't accept undefined)
-        const sanitizedEventData = sanitizeFirestoreData(eventData);
+        // Remove undefined values before sanitizing (sanitizeFirestoreData uses JSON.stringify which removes undefined)
+        // This ensures isPublic and isDraft are not set, making events public by default
+        const cleanedEventData: any = {};
+        for (const [key, value] of Object.entries(eventData)) {
+          if (value !== undefined) {
+            cleanedEventData[key] = value;
+          }
+        }
+
+        // Sanitize event data - removes any remaining undefined values
+        const sanitizedEventData = sanitizeFirestoreData(cleanedEventData);
 
         // Add to Firestore with sanitized data
         await addDoc(eventsCol, sanitizedEventData);
