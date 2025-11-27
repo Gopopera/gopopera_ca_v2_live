@@ -1,0 +1,16 @@
+[
+  {
+    "origin": ["https://www.gopopera.ca", "https://gopopera.ca"],
+    "method": ["GET", "PUT", "POST", "DELETE", "HEAD", "OPTIONS"],
+    "responseHeader": [
+      "Content-Type",
+      "Firebase-Storage-Resumable-Upload-Protocol",
+      "X-Firebase-Appcheck",
+      "x-goog-resumable",
+      "x-goog-requested-by",
+      "Authorization"
+    ],
+    "maxAgeSeconds": 3600
+  }
+]
+

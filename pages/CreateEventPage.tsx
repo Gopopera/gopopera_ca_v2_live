@@ -5,7 +5,7 @@ import { useEventStore } from '../stores/eventStore';
 import { useUserStore } from '../stores/userStore';
 import { HostPhoneVerificationModal } from '../components/auth/HostPhoneVerificationModal';
 import { uploadImage } from '../firebase/storage';
-import { compressImage, shouldCompressImage } from '../utils/imageCompression';
+import { processImageForUpload } from '../utils/imageProcessing';
 import { geocodeAddress } from '../utils/geocoding';
 
 interface CreateEventPageProps {
@@ -91,21 +91,17 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
 
-      // Validate file type - check extension for HEIC files (browsers don't recognize HEIC MIME type)
+      // Validate file type - HEIC will be converted automatically
       const fileExtension = file.name.toLowerCase().split('.').pop();
       const isHEIC = fileExtension === 'heic' || fileExtension === 'heif';
       const isValidImageType = file.type.startsWith('image/') || isHEIC;
       
       if (!isValidImageType) {
-        alert(`"${file.name}" is not a supported image file. Please select JPEG, PNG, GIF, or WebP files.`);
+        alert(`"${file.name}" is not a supported image file. Please select JPEG, PNG, GIF, WebP, or HEIC files.`);
         continue;
       }
       
-      // HEIC files are not supported by browsers - show helpful error
-      if (isHEIC) {
-        alert(`HEIC files are not supported. Please convert "${file.name}" to JPEG or PNG before uploading.\n\nTip: On iOS, go to Settings > Camera > Formats and select "Most Compatible" to save photos as JPEG.`);
-        continue;
-      }
+      // Note: HEIC files will be automatically converted to JPEG during processing
 
       // Accept larger files - they will be compressed before upload
       // Increased limit to 50MB (will be compressed to ~5MB or less)
@@ -301,34 +297,25 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         console.log('[CREATE_EVENT] Uploading', imageFiles.length, 'image(s) to Firebase Storage...');
         setUploadingImage(true);
         
-        // Helper function to compress and upload a single image
-        const compressAndUploadImage = async (file: File, path: string): Promise<string> => {
-          console.log(`[CREATE_EVENT] Starting compressAndUploadImage for "${file.name}"`);
-          let fileToUpload = file;
+        // Helper function to process (HEIC conversion + compression) and upload a single image
+        const processAndUploadImage = async (file: File, path: string): Promise<string> => {
+          console.log(`[CREATE_EVENT] Starting processAndUploadImage for "${file.name}"`);
           
-          // Compress image if it's large (over 1MB)
-          if (shouldCompressImage(file, 1)) {
-            console.log(`[CREATE_EVENT] Compressing image "${file.name}" (${(file.size / 1024 / 1024).toFixed(2)}MB)...`);
-            try {
-              fileToUpload = await compressImage(file, {
-                maxWidth: 1600,
-                maxHeight: 1600,
-                quality: 0.80,
-                maxSizeMB: 2
-              });
-              console.log(`[CREATE_EVENT] ✅ Compressed to ${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB (${((1 - fileToUpload.size / file.size) * 100).toFixed(1)}% reduction)`);
-            } catch (compressError: any) {
-              console.warn(`[CREATE_EVENT] Compression failed (${compressError?.message}), uploading original:`, compressError);
-              // Continue with original file if compression fails - don't block upload
-              fileToUpload = file;
-            }
-          } else {
-            console.log(`[CREATE_EVENT] Skipping compression for "${file.name}" (under 1MB)`);
+          // Process image: convert HEIC to JPEG if needed, then compress if needed
+          const processed = await processImageForUpload(file, {
+            maxWidth: 1600,
+            maxHeight: 1600,
+            quality: 0.80,
+            maxSizeMB: 2
+          });
+          
+          if (processed.wasConverted) {
+            console.log(`[CREATE_EVENT] ✅ Converted HEIC to JPEG: ${processed.originalName} → ${processed.file.name}`);
           }
           
-          console.log(`[CREATE_EVENT] Uploading image "${file.name}" (${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB)...`);
+          console.log(`[CREATE_EVENT] Uploading image "${processed.file.name}" (${(processed.file.size / 1024 / 1024).toFixed(2)}MB)...`);
           // uploadImage handles retries internally (2 retries = 3 total attempts)
-          const uploadedUrl = await uploadImage(path, fileToUpload, { 
+          const uploadedUrl = await uploadImage(path, processed.file, { 
             retries: 2 // 3 total attempts
           });
           console.log(`[CREATE_EVENT] ✅ Uploaded successfully: ${uploadedUrl.substring(0, 50)}...`);
@@ -355,7 +342,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
           
           // Each promise MUST settle - either resolve with URL or reject with error
           return withTimeout(
-            compressAndUploadImage(file, imagePath)
+            processAndUploadImage(file, imagePath)
               .then((url) => {
                 console.log(`[CREATE_EVENT] ✅ Image ${i + 1}/${imageFiles.length} uploaded successfully`);
                 return url;
