@@ -8,6 +8,7 @@ import { getDbSafe } from '../src/lib/firebase';
 import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
 import { geocodeAddress } from '../utils/geocoding';
 import { POPERA_EMAIL } from '../stores/userStore';
+import { sanitizeFirestoreData } from '../utils/firestoreValidation';
 import type { FirestoreEvent } from './types';
 
 interface CityEventConfig {
@@ -295,13 +296,13 @@ export async function seedCommunityEvents(): Promise<void> {
           allowRsvp: true,
         };
 
-        // Remove undefined values
-        const cleanEventData = Object.fromEntries(
-          Object.entries(eventData).filter(([_, value]) => value !== undefined)
-        ) as Omit<FirestoreEvent, 'id'>;
+        // Sanitize and validate event data before adding to Firestore
+        const sanitizedEventData = sanitizeFirestoreData(eventData, [
+          'title', 'description', 'date', 'time', 'city', 'host', 'hostId', 'createdAt'
+        ], 'seedCommunityEvents');
 
-        // Add to Firestore
-        await addDoc(eventsCol, eventData);
+        // Add to Firestore with sanitized data
+        await addDoc(eventsCol, sanitizedEventData);
         console.log(`[SEED_COMMUNITY_EVENTS] ✅ Created: ${eventConfig.title} in ${cityConfig.city}`);
         createdCount++;
 
