@@ -68,9 +68,9 @@ export const ChatMockupSection: React.FC = () => {
              </div>
           </div>
 
-          {/* Right Visual - Chat Mockup */}
-          <div className="relative mx-auto lg:mx-0 w-full max-w-[340px] sm:max-w-md lg:max-w-lg order-1 lg:order-2">
-             <div className="bg-white rounded-3xl sm:rounded-[2.5rem] md:rounded-[3rem] lg:rounded-[3.5rem] shadow-[0_40px_80px_-20px_rgba(21,56,60,0.25)] border-[4px] sm:border-[6px] md:border-[8px] border-white overflow-hidden relative z-10 scale-95 sm:scale-100 transform transition-transform hover:scale-[1.02] duration-300">
+          {/* Right Visual - Chat Mockup - 2x smaller on mobile with internal scrolling */}
+          <div className="relative mx-auto lg:mx-0 w-full max-w-[170px] sm:max-w-md lg:max-w-lg order-1 lg:order-2">
+             <div className="bg-white rounded-3xl sm:rounded-[2.5rem] md:rounded-[3rem] lg:rounded-[3.5rem] shadow-[0_40px_80px_-20px_rgba(21,56,60,0.25)] border-[2px] sm:border-[6px] md:border-[8px] border-white overflow-hidden relative z-10 scale-50 sm:scale-100 transform transition-transform hover:scale-[1.02] duration-300 origin-top-left sm:origin-center">
                 <div className="bg-gradient-to-br from-[#15383c] via-[#1a4549] to-[#15383c] p-5 sm:p-6 md:p-7 pb-6 sm:pb-7 md:pb-8 text-white relative shadow-lg">
                    <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none"></div>
                    <div className="flex justify-between items-center mb-4 sm:mb-5 relative z-10">
@@ -85,8 +85,8 @@ export const ChatMockupSection: React.FC = () => {
                    </div>
                 </div>
 
-                {/* Desktop: max-height with scroll, Mobile: auto height */}
-                <div className="bg-gradient-to-b from-[#f8fafb] to-white p-5 lg:p-7 space-y-3 sm:space-y-4 md:space-y-5 h-auto min-h-[380px] sm:h-[440px] md:h-[480px] md:max-h-[540px] overflow-y-auto overflow-x-hidden relative">
+                {/* Desktop: max-height with scroll, Mobile: 2x smaller with internal scrolling */}
+                <div className="bg-gradient-to-b from-[#f8fafb] to-white p-5 lg:p-7 space-y-3 sm:space-y-4 md:space-y-5 h-[190px] sm:h-[440px] md:h-[480px] md:max-h-[540px] overflow-y-auto overflow-x-hidden relative" style={{ WebkitOverflowScrolling: 'touch' }}>
                    <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-[#f8fafb] to-transparent z-10 pointer-events-none"></div>
                    
                    <div className="flex justify-center pt-2"><span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider bg-white px-4 py-1.5 rounded-full shadow-md border border-gray-200">Today</span></div>
