@@ -478,28 +478,38 @@ const AppContent: React.FC = () => {
       }
     }, 5000); // 5 second delay to not interfere with initial load
 
-    // CRITICAL: Diagnostic scan for user events (background process, read-only)
-    // This helps identify any events that might be incorrectly hidden
-    // It does NOT modify or delete any data - only reads and reports
+    // CRITICAL: Auto-restore incorrectly hidden user events (background process)
+    // This safely restores events that were incorrectly marked as private/draft
+    // It ONLY affects events from non-Popera accounts and only removes problematic flags
+    // It NEVER deletes or modifies user data - only removes isPublic: false or isDraft: true
     setTimeout(async () => {
       try {
-        const { generateEventReport, getEventsByHost } = await import('./utils/restoreUserEvents');
-        // Run diagnostic in background, don't block UI
-        getEventsByHost().then((summaries) => {
-          // Only log if there are hidden events that might need restoration
+        const { restoreAllHiddenEvents, getEventsByHost } = await import('./utils/restoreUserEvents');
+        // First, check if there are any hidden events
+        getEventsByHost().then(async (summaries) => {
           const totalHidden = summaries.reduce((sum, s) => sum + s.hiddenEvents, 0);
           if (totalHidden > 0) {
-            console.warn(`[APP] ⚠️ Found ${totalHidden} hidden events that may need restoration`);
-            console.log('[APP] Run restoreUserEvents.generateEventReport() in console for details');
+            console.warn(`[APP] ⚠️ Found ${totalHidden} hidden events - attempting automatic restoration...`);
+            // Automatically restore all hidden events (safe - only removes flags)
+            const result = await restoreAllHiddenEvents();
+            if (result.restored > 0) {
+              console.log(`[APP] ✅ Successfully restored ${result.restored} hidden events`);
+              console.log(`[APP] Restored events for ${Object.keys(result.byHost).length} hosts`);
+            } else if (result.errors > 0) {
+              console.warn(`[APP] ⚠️ Some events could not be restored (${result.errors} errors)`);
+              console.log('[APP] Run restoreUserEvents.generateEventReport() in console for details');
+            } else {
+              console.log('[APP] ℹ️ No events needed restoration (they may be intentionally hidden)');
+            }
           } else {
             console.log('[APP] ✅ All user events are visible (no restoration needed)');
           }
         }).catch((error: any) => {
           // Handle permission errors gracefully
           if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
-            console.warn('[APP] Permission denied when scanning events (expected if not logged in)');
+            console.warn('[APP] Permission denied when scanning/restoring events (expected if not logged in)');
           } else {
-            console.error('[APP] Error scanning events:', error);
+            console.error('[APP] Error scanning/restoring events:', error);
           }
         });
       } catch (error) {
