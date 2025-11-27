@@ -54,12 +54,6 @@ export const ChatMockupSection: React.FC = () => {
                       <p className="text-sm sm:text-base text-gray-600 leading-relaxed">Broadcast changes or hype directly to everyone.</p>
                    </div>
                 </div>
-                
-                {/* Text above Build local trust component */}
-                <p className="text-sm sm:text-base text-gray-600 font-light mb-4 sm:mb-5 leading-relaxed text-center lg:text-left">
-                  The simplest way to gather your crowd and keep them connected.
-                </p>
-                
                 <div className="flex gap-4 sm:gap-5 p-4 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-md hover:shadow-xl hover:border-[#15383c]/30 transition-all duration-300 group">
                    <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-[#15383c] to-[#1a4549] flex items-center justify-center text-white shrink-0 shadow-lg group-hover:scale-110 transition-transform">
                      <BarChart2 size={20} className="sm:w-6 sm:h-6" />
@@ -69,6 +63,11 @@ export const ChatMockupSection: React.FC = () => {
                       <p className="text-sm sm:text-base text-gray-600 leading-relaxed">Transparent ratings and community-led moderation.</p>
                    </div>
                 </div>
+                
+                {/* Text below Build local trust component */}
+                <p className="text-sm sm:text-base text-gray-600 font-light mt-4 sm:mt-5 leading-relaxed text-center lg:text-left">
+                  The simplest way to gather your crowd and keep them connected.
+                </p>
              </div>
           </div>
 
