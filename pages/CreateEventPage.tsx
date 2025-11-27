@@ -91,9 +91,19 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
 
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        alert(`"${file.name}" is not an image file. Please select image files only.`);
+      // Validate file type - check extension for HEIC files (browsers don't recognize HEIC MIME type)
+      const fileExtension = file.name.toLowerCase().split('.').pop();
+      const isHEIC = fileExtension === 'heic' || fileExtension === 'heif';
+      const isValidImageType = file.type.startsWith('image/') || isHEIC;
+      
+      if (!isValidImageType) {
+        alert(`"${file.name}" is not a supported image file. Please select JPEG, PNG, GIF, or WebP files.`);
+        continue;
+      }
+      
+      // HEIC files are not supported by browsers - show helpful error
+      if (isHEIC) {
+        alert(`HEIC files are not supported. Please convert "${file.name}" to JPEG or PNG before uploading.\n\nTip: On iOS, go to Settings > Camera > Formats and select "Most Compatible" to save photos as JPEG.`);
         continue;
       }
 

@@ -25,6 +25,13 @@ export async function compressImage(
     maxSizeMB = 2 // Reduced from 5MB for faster uploads
   } = options;
 
+  // Check for HEIC files (browsers can't read them)
+  const fileExtension = file.name.toLowerCase().split('.').pop();
+  const isHEIC = fileExtension === 'heic' || fileExtension === 'heif';
+  if (isHEIC) {
+    throw new Error('HEIC files are not supported. Please convert to JPEG or PNG before uploading.');
+  }
+  
   console.log(`[COMPRESS_IMAGE] Starting compression for "${file.name}" (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
   
   // Add timeout to compression (30 seconds max)
