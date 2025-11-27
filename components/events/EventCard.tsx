@@ -4,7 +4,7 @@ import { Event } from '@/types';
 import { formatDate } from '@/utils/dateFormatter';
 import { formatRating } from '@/utils/formatRating';
 import { useUserStore } from '@/stores/userStore';
-import { getUserProfile } from '../../firebase/db';
+import { getUserProfile, listHostReviews } from '../../firebase/db';
 
 interface EventCardProps {
   event: Event;
@@ -37,6 +37,10 @@ export const EventCard: React.FC<EventCardProps> = ({
   
   // State for host name (may need to be fetched if missing)
   const [displayHostName, setDisplayHostName] = React.useState<string>(event.hostName || '');
+  
+  // State for host's overall rating (from all their events)
+  const [hostOverallRating, setHostOverallRating] = React.useState<number | null>(null);
+  const [hostOverallReviewCount, setHostOverallReviewCount] = React.useState<number>(0);
   
   React.useEffect(() => {
     const fetchHostProfile = async () => {
@@ -89,6 +93,46 @@ export const EventCard: React.FC<EventCardProps> = ({
     
     fetchHostProfile();
   }, [event.hostId, event.hostName, event.hostPhotoURL, user?.uid, user?.photoURL, user?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl]);
+  
+  // Fetch host's overall rating from all their events
+  React.useEffect(() => {
+    const fetchHostOverallRating = async () => {
+      if (!event.hostId) {
+        setHostOverallRating(null);
+        setHostOverallReviewCount(0);
+        return;
+      }
+      
+      try {
+        const allReviews = await listHostReviews(event.hostId);
+        // Filter only accepted reviews
+        const acceptedReviews = allReviews.filter(review => {
+          // Check if review has status field and it's 'accepted', or if no status field (legacy reviews are considered accepted)
+          return !('status' in review) || (review as any).status === 'accepted' || (review as any).status === undefined;
+        });
+        
+        if (acceptedReviews.length === 0) {
+          setHostOverallRating(null);
+          setHostOverallReviewCount(0);
+          return;
+        }
+        
+        // Calculate average rating
+        const totalRating = acceptedReviews.reduce((sum, review) => sum + review.rating, 0);
+        const averageRating = totalRating / acceptedReviews.length;
+        
+        setHostOverallRating(averageRating);
+        setHostOverallReviewCount(acceptedReviews.length);
+      } catch (error) {
+        console.warn('[EVENT_CARD] Failed to fetch host overall rating:', error);
+        // Fallback to event rating if host rating fetch fails
+        setHostOverallRating(null);
+        setHostOverallReviewCount(0);
+      }
+    };
+    
+    fetchHostOverallRating();
+  }, [event.hostId]);
   
   const handleFavoriteClick = (e: React.MouseEvent) => {
     // CRITICAL: Prevent any navigation or card click
@@ -277,18 +321,22 @@ export const EventCard: React.FC<EventCardProps> = ({
              </p>
            </div>
 
-           {/* FEATURE: Clickable Ratings */}
+           {/* FEATURE: Clickable Ratings - Shows host's overall rating from all events */}
            <button 
              onClick={(e) => { e.stopPropagation(); onReviewsClick(e, event); }}
              className="flex items-center space-x-1.5 bg-gray-50 hover:bg-orange-50 px-2.5 sm:px-2 py-1.5 sm:py-1 rounded-lg transition-colors border border-gray-100 hover:border-orange-100 group/rating shrink-0 touch-manipulation active:scale-[0.95] min-h-[32px] sm:min-h-0"
            >
               <Star size={14} className="sm:w-3 sm:h-3 text-gray-300 group-hover/rating:text-popera-orange group-hover/rating:fill-popera-orange transition-colors" fill="currentColor" />
-              <span className="text-xs font-bold text-popera-teal">{formatRating(event.rating)}</span>
-              <span className="text-[10px] text-gray-500 sm:text-gray-400 group-hover/rating:text-orange-400">({event.reviewCount})</span>
+              <span className="text-xs font-bold text-popera-teal">
+                {hostOverallRating !== null ? formatRating(hostOverallRating) : formatRating(event.rating || 0)}
+              </span>
+              <span className="text-[10px] text-gray-500 sm:text-gray-400 group-hover/rating:text-orange-400">
+                ({hostOverallReviewCount > 0 ? hostOverallReviewCount : (event.reviewCount || 0)})
+              </span>
            </button>
         </div>
 
-        <h3 className="text-lg lg:text-xl font-heading font-semibold text-popera-teal mb-3 group-hover:text-popera-orange transition-colors line-clamp-2 leading-snug">
+        <h3 className="text-lg lg:text-xl font-heading font-semibold text-popera-teal mb-3 lg:mb-1.5 group-hover:text-popera-orange transition-colors line-clamp-2 leading-snug">
           {event.title}
         </h3>
 

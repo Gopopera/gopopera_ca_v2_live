@@ -8,7 +8,7 @@ import { MockMap } from '../components/map/MockMap';
 import { FakeEventReservationModal } from '../components/events/FakeEventReservationModal';
 import { formatDate } from '../utils/dateFormatter';
 import { formatRating } from '../utils/formatRating';
-import { getUserProfile, getReservationCountForEvent } from '../firebase/db';
+import { getUserProfile, getReservationCountForEvent, listHostReviews } from '../firebase/db';
 
 interface EventDetailPageProps {
   event: Event;
@@ -71,21 +71,70 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   // State for host name (may need to be fetched if missing)
   const [displayHostName, setDisplayHostName] = useState<string>(event.hostName || '');
   
-  // State for rating - ensure it's always from the event document (updated by recalculateEventRating)
-  // The event.rating should already be calculated from accepted reviews via recalculateEventRating
-  // This state is just for display - the actual rating comes from event.rating
+  // State for host's overall rating (from all their events)
+  const [hostOverallRating, setHostOverallRating] = useState<number | null>(null);
+  const [hostOverallReviewCount, setHostOverallReviewCount] = useState<number>(0);
+  
+  // State for rating - use host's overall rating if available, otherwise fallback to event rating
   const [currentRating, setCurrentRating] = useState<{ rating: number; reviewCount: number }>({
     rating: event.rating || 0,
     reviewCount: event.reviewCount || 0
   });
   
-  // Update rating when event changes (from Firestore real-time updates)
+  // Fetch host's overall rating from all their events
   useEffect(() => {
-    setCurrentRating({
-      rating: event.rating || 0,
-      reviewCount: event.reviewCount || 0
-    });
-  }, [event.rating, event.reviewCount]);
+    const fetchHostOverallRating = async () => {
+      if (!event.hostId) {
+        setHostOverallRating(null);
+        setHostOverallReviewCount(0);
+        return;
+      }
+      
+      try {
+        const allReviews = await listHostReviews(event.hostId);
+        // Filter only accepted reviews
+        const acceptedReviews = allReviews.filter(review => {
+          const status = (review as any).status;
+          return !status || status === 'accepted' || status === undefined;
+        });
+        
+        if (acceptedReviews.length === 0) {
+          setHostOverallRating(null);
+          setHostOverallReviewCount(0);
+          return;
+        }
+        
+        // Calculate average rating
+        const totalRating = acceptedReviews.reduce((sum, review) => sum + review.rating, 0);
+        const averageRating = totalRating / acceptedReviews.length;
+        
+        setHostOverallRating(averageRating);
+        setHostOverallReviewCount(acceptedReviews.length);
+      } catch (error) {
+        console.warn('[EVENT_DETAIL] Failed to fetch host overall rating:', error);
+        setHostOverallRating(null);
+        setHostOverallReviewCount(0);
+      }
+    };
+    
+    fetchHostOverallRating();
+  }, [event.hostId]);
+  
+  // Update rating when host overall rating or event changes
+  useEffect(() => {
+    if (hostOverallRating !== null) {
+      setCurrentRating({
+        rating: hostOverallRating,
+        reviewCount: hostOverallReviewCount
+      });
+    } else {
+      // Fallback to event rating if host rating not available
+      setCurrentRating({
+        rating: event.rating || 0,
+        reviewCount: event.reviewCount || 0
+      });
+    }
+  }, [hostOverallRating, hostOverallReviewCount, event.rating, event.reviewCount]);
   
   // Fetch host profile picture and name - always fetch from Firestore for accuracy (works when not logged in)
   useEffect(() => {
