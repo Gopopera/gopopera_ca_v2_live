@@ -27,7 +27,7 @@ export const MockMap: React.FC<MockMapProps> = ({
   city,
   className = '' 
 }) => {
-  const [map, setMap] = useState<google.maps.Map | null>(null);
+  const [map, setMap] = useState<any>(null);
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const hasCoordinates = lat !== undefined && lng !== undefined;
 
@@ -35,7 +35,7 @@ export const MockMap: React.FC<MockMapProps> = ({
     ? { lat: lat!, lng: lng! }
     : defaultCenter;
 
-  const onLoad = useCallback((map: google.maps.Map) => {
+  const onLoad = useCallback((map: any) => {
     setMap(map);
   }, []);
 
@@ -156,11 +156,12 @@ export const MockMap: React.FC<MockMapProps> = ({
   }
 
   // Custom marker icon (Popera orange pin)
-  const markerIcon = {
+  // Only create marker icon if google.maps is available
+  const markerIcon = typeof window !== 'undefined' && (window as any).google?.maps ? {
     url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDBDMTIuMjY4IDAgNiA2LjI2OCA2IDE0QzYgMjEuNzMyIDEyLjI2OCAyOCAyMCAyOEMyNy43MzIgMjggMzQgMjEuNzMyIDM0IDE0QzM0IDYuMjY4IDI3LjczMiAwIDIwIDBaIiBmaWxsPSIjRTM1RTI1Ii8+CjxwYXRoIGQ9Ik0yMCAyMEMxOC4zNDMgMjAgMTcgMTguNjU3IDE3IDE3QzE3IDE1LjM0MyAxOC4zNDMgMTQgMjAgMTRDMjEuNjU3IDE0IDIzIDE1LjM0MyAyMyAxN0MyMyAxOC42NTcgMjEuNjU3IDIwIDIwIDIwWiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+',
-    scaledSize: new google.maps.Size(40, 40),
-    anchor: new google.maps.Point(20, 40)
-  };
+    scaledSize: new (window as any).google.maps.Size(40, 40),
+    anchor: new (window as any).google.maps.Point(20, 40)
+  } : undefined;
 
   return (
     <div className={`relative ${className}`}>
@@ -186,7 +187,7 @@ export const MockMap: React.FC<MockMapProps> = ({
             ]
           }}
         >
-          {hasCoordinates && MarkerComponent && (
+          {hasCoordinates && MarkerComponent && markerIcon && (
             <MarkerComponent
               position={{ lat: lat!, lng: lng! }}
               icon={markerIcon}
