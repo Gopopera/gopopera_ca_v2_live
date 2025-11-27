@@ -123,8 +123,18 @@ fi
 echo "✅ Found cors.json"
 echo ""
 
-# Apply CORS configuration
-echo "Applying CORS configuration..."
+# Step 1: Remove CORS from wrong bucket (if it exists)
+WRONG_BUCKET="gs://gopopera2026.firebasestorage.app"
+echo "Step 1: Removing any incorrect CORS from wrong bucket (${WRONG_BUCKET})..."
+if gsutil cors set - "$WRONG_BUCKET" 2>/dev/null; then
+    echo "✅ Removed CORS from wrong bucket"
+else
+    echo "ℹ️  No CORS found on wrong bucket (this is OK)"
+fi
+echo ""
+
+# Step 2: Apply CORS configuration to correct bucket
+echo "Step 2: Applying CORS configuration to correct bucket..."
 if gsutil cors set cors.json "$BUCKET"; then
     echo ""
     echo "✅ CORS configuration applied successfully!"
@@ -137,10 +147,18 @@ if gsutil cors set cors.json "$BUCKET"; then
     echo ""
     echo "✅ CORS configuration complete!"
     echo ""
+    echo "✅ CORS configuration complete!"
+    echo ""
+    echo "Important Notes:"
+    echo "- CORS is now configured on the correct GCS bucket: $BUCKET"
+    echo "- The Firebase Storage API will respect this CORS configuration"
+    echo "- CORS changes may take a few minutes to propagate"
+    echo ""
     echo "Next steps:"
-    echo "1. Clear your browser cache (important!)"
+    echo "1. Clear your browser cache completely (important!)"
+    echo "   - Or use incognito/private window to test"
     echo "2. Try uploading an image in your app"
-    echo "3. Check Network tab for OPTIONS request - should be 200 OK"
+    echo "3. Check Network tab for OPTIONS request - should be 200 OK with POST/PUT methods allowed"
 else
     echo ""
     echo "❌ Error: Failed to apply CORS configuration"
