@@ -40,6 +40,10 @@ export const ChatMockupSection: React.FC = () => {
                The simplest way to gather your crowd and keep them connected.
              </p>
 
+             <p className="text-sm sm:text-base text-gray-600 font-light mb-6 sm:mb-8 leading-relaxed text-center lg:text-left">
+               The simplest way to gather your crowd and keep them connected.
+             </p>
+             
              <div className="space-y-4 sm:space-y-5 text-left max-w-lg mx-auto lg:mx-0">
                 <div className="flex gap-4 sm:gap-5 p-4 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-md hover:shadow-xl hover:border-[#15383c]/30 transition-all duration-300 group">
                    <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-[#15383c] to-[#1a4549] flex items-center justify-center text-white shrink-0 shadow-lg group-hover:scale-110 transition-transform">
@@ -65,8 +69,7 @@ export const ChatMockupSection: React.FC = () => {
                    </div>
                    <div className="min-w-0 flex-1">
                       <h3 className="font-bold text-base sm:text-lg text-[#15383c] mb-1">Build local trust</h3>
-                      <p className="text-sm sm:text-base text-gray-600 leading-relaxed mb-2">Transparent ratings and community-led moderation.</p>
-                      <p className="font-bold text-base sm:text-lg text-[#15383c]">The simplest way to gather your crowd and keep them connected.</p>
+                      <p className="text-sm sm:text-base text-gray-600 leading-relaxed">Transparent ratings and community-led moderation.</p>
                    </div>
                 </div>
              </div>
