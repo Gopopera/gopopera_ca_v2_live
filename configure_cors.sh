@@ -23,16 +23,36 @@ echo ""
 
 # Check authentication
 echo "Checking authentication..."
-if ! gcloud auth list 2>&1 | grep -q "ACTIVE"; then
+AUTH_OUTPUT=$(gcloud auth list 2>&1)
+if ! echo "$AUTH_OUTPUT" | grep -q "ACTIVE"; then
     echo "⚠️  You need to authenticate first."
     echo ""
-    echo "Please run this command in your terminal:"
-    echo "   gcloud auth login"
+    echo "Starting authentication process..."
     echo ""
-    echo "This will open your browser to sign in with your Google account."
-    echo "Use the account that has access to the gopopera2026 Firebase project."
+    echo "This will open your browser. Please sign in with the account that has access to gopopera2026."
     echo ""
-    read -p "Press Enter after you've authenticated, or Ctrl+C to cancel..."
+    
+    # Try to authenticate (this will open browser)
+    if gcloud auth login --no-launch-browser 2>&1 | head -5; then
+        echo ""
+        echo "✅ Authentication initiated. Please complete the process in your browser."
+        echo ""
+        echo "If browser didn't open, copy the URL above and open it manually."
+        echo ""
+        read -p "Press Enter after you've completed authentication..."
+    else
+        # Fallback: try with browser launch
+        echo "Attempting to open browser for authentication..."
+        gcloud auth login
+    fi
+    
+    # Verify authentication worked
+    if ! gcloud auth list 2>&1 | grep -q "ACTIVE"; then
+        echo ""
+        echo "❌ Authentication failed or incomplete. Please try again:"
+        echo "   gcloud auth login"
+        exit 1
+    fi
 fi
 
 # Set project
