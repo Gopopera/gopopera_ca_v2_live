@@ -130,34 +130,34 @@ export async function uploadImage(
             // Handle upload errors
             // Firebase Storage errors have a code property (e.g., 'storage/unauthorized')
             const errorCode = error?.code || 'storage/unknown';
-            const errorMessage = error?.message || 'Unknown error';
+            const originalErrorMessage = error?.message || 'Unknown error';
             
             console.error(`[UPLOAD_IMAGE] Upload error for: ${path}`, {
               code: errorCode,
-              message: errorMessage,
+              message: originalErrorMessage,
               serverResponse: error?.serverResponse
             });
             
             // Map Firebase Storage error codes to user-friendly messages
-            let userFriendlyMessage = errorMessage;
+            let userFriendlyMessage = originalErrorMessage;
             switch (errorCode) {
               case 'storage/unauthorized':
-                errorMessage = 'Permission denied. You may not have permission to upload images. Please check Firebase Storage security rules.';
+                userFriendlyMessage = 'Permission denied. You may not have permission to upload images. Please check Firebase Storage security rules.';
                 break;
               case 'storage/canceled':
-                errorMessage = 'Upload was canceled.';
+                userFriendlyMessage = 'Upload was canceled.';
                 break;
               case 'storage/unknown':
-                errorMessage = 'An unknown error occurred. Please try again.';
+                userFriendlyMessage = 'An unknown error occurred. Please try again.';
                 break;
               case 'storage/invalid-format':
-                errorMessage = 'Invalid file format. Please select an image file.';
+                userFriendlyMessage = 'Invalid file format. Please select an image file.';
                 break;
               case 'storage/retry-limit-exceeded':
-                errorMessage = 'Upload failed after multiple retries. Please check your internet connection and try again.';
+                userFriendlyMessage = 'Upload failed after multiple retries. Please check your internet connection and try again.';
                 break;
               case 'storage/invalid-checksum':
-                errorMessage = 'File upload verification failed. Please try again.';
+                userFriendlyMessage = 'File upload verification failed. Please try again.';
                 break;
               case 'storage/quota-exceeded':
                 userFriendlyMessage = 'Storage quota exceeded. Please contact support.';
