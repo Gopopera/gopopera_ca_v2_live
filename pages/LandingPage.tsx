@@ -481,8 +481,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     email,
                     subscribedAt: serverTimestamp(),
                     createdAt: Date.now(),
-                  }).catch((error) => {
-                    console.error('Error saving to Firestore:', error);
+                  }).catch((error: any) => {
+                    // Silently handle permission errors for newsletter subscription
+                    if (error?.code === 'permission-denied') {
+                      console.warn('[NEWSLETTER] Permission denied - newsletter subscription not saved to Firestore');
+                    } else {
+                      console.error('[NEWSLETTER] Error saving to Firestore:', error);
+                    }
                   });
                 }
 

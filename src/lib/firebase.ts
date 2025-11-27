@@ -100,6 +100,10 @@ export function getAppSafe(): FirebaseApp | null {
             });
             projectInfoLogged = true;
           }
+        } catch (initError: any) {
+          console.error('[FIREBASE] Failed to initialize app:', initError);
+          // Don't throw - return null instead
+          return null;
         } catch (initError) {
           console.error('[FIREBASE] initializeApp failed:', initError);
           return null;

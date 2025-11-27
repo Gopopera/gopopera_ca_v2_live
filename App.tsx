@@ -1,5 +1,36 @@
 import React, { useState, useEffect, useMemo } from 'react';
 
+// Global error handler for unhandled promise rejections
+if (typeof window !== 'undefined') {
+  window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason;
+    
+    // Handle Firebase permission errors gracefully
+    if (reason?.code === 'permission-denied' || reason?.message?.includes('permission')) {
+      console.warn('[FIREBASE_PERMISSION] Permission denied:', reason.message || reason);
+      // Prevent the error from showing to users - it's a backend configuration issue
+      event.preventDefault();
+      return;
+    }
+    
+    // Log other unhandled rejections for debugging
+    console.error('[UNHANDLED_REJECTION]', reason);
+    // Prevent the default browser error display
+    event.preventDefault();
+    
+    // Log to console for debugging
+    if (reason) {
+      console.error('[UNHANDLED_REJECTION] Reason:', reason);
+      if (reason.message) {
+        console.error('[UNHANDLED_REJECTION] Message:', reason.message);
+      }
+      if (reason.stack) {
+        console.error('[UNHANDLED_REJECTION] Stack:', reason.stack);
+      }
+    }
+  });
+}
+
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
@@ -412,9 +443,20 @@ const AppContent: React.FC = () => {
       console.warn('[APP] Failed to load visual debugger:', err);
     });
     
-    useUserStore.getState().init();
-    // Initialize events store with real-time Firestore subscription
-    useEventStore.getState().init();
+    // Initialize stores with error handling
+    try {
+      useUserStore.getState().init();
+    } catch (error) {
+      console.error('[APP] Error initializing user store:', error);
+    }
+    
+    try {
+      // Initialize events store with real-time Firestore subscription
+      useEventStore.getState().init();
+    } catch (error) {
+      console.error('[APP] Error initializing event store:', error);
+    }
+    
     setAuthBootChecked(true);
   }, []);
 
