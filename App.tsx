@@ -5,18 +5,21 @@ if (typeof window !== 'undefined') {
   window.addEventListener('unhandledrejection', (event) => {
     const reason = event.reason;
     
-    // Handle Firebase permission errors gracefully
-    if (reason?.code === 'permission-denied' || reason?.message?.includes('permission')) {
-      console.warn('[FIREBASE_PERMISSION] Permission denied:', reason.message || reason);
-      // Prevent the error from showing to users - it's a backend configuration issue
+    // Handle Firebase permission errors gracefully - prevent all error displays
+    if (reason?.code === 'permission-denied' || 
+        reason?.message?.includes('permission') || 
+        reason?.message?.includes('Missing or insufficient permissions') ||
+        (reason?.name === 'FirebaseError' && reason?.code === 'permission-denied')) {
+      // Silently handle - these are expected and already logged elsewhere
       event.preventDefault();
+      event.stopPropagation();
       return;
     }
     
-    // Log other unhandled rejections for debugging
+    // Log other unhandled rejections for debugging (but still prevent default display)
     console.error('[UNHANDLED_REJECTION]', reason);
-    // Prevent the default browser error display
     event.preventDefault();
+    event.stopPropagation();
     
     // Log to console for debugging
     if (reason) {
@@ -999,7 +1002,7 @@ const AppContent: React.FC = () => {
         </button>
       </div>
       {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
-      <div className="flex md:grid overflow-x-auto md:overflow-x-visible gap-4 md:gap-6 lg:gap-8 pb-2 md:pb-6 snap-x snap-mandatory md:snap-none scroll-smooth md:place-items-center">
+      <div className="flex md:grid overflow-x-auto md:overflow-x-visible gap-4 md:gap-5 lg:gap-6 pb-2 md:pb-6 snap-x snap-mandatory md:snap-none scroll-smooth md:place-items-center">
          {events.map(event => (
            <div key={event.id} className="snap-start shrink-0 md:col-span-1">
               <EventCard 
@@ -1368,7 +1371,7 @@ const AppContent: React.FC = () => {
                             {/* Scrollable Container - Scrollable anywhere on screen */}
                             <div 
                               id={scrollContainerId}
-                              className="flex overflow-x-auto gap-4 md:gap-6 lg:gap-8 pb-2 md:pb-6 snap-x snap-mandatory scroll-smooth hide-scrollbar w-full touch-pan-x overscroll-x-contain scroll-pl-4 md:scroll-pl-0 cursor-grab active:cursor-grabbing"
+                              className="flex overflow-x-auto gap-4 md:gap-5 lg:gap-6 pb-2 md:pb-6 snap-x snap-mandatory scroll-smooth hide-scrollbar w-full touch-pan-x overscroll-x-contain scroll-pl-4 md:scroll-pl-0 cursor-grab active:cursor-grabbing"
                               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-x pan-y', WebkitOverflowScrolling: 'touch' }}
                               onWheel={(e) => {
                                 // Allow horizontal scrolling with mouse wheel when hovering over the container
