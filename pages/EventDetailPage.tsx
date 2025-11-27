@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Event, ViewState } from '../types';
 import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info, Star, Sparkles, X, UserPlus, UserCheck, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { followHost, unfollowHost, isFollowing } from '../firebase/follow';
@@ -39,10 +39,12 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
 }) => {
   const recommendedEvents = allEvents.filter(e => e.id !== event.id).slice(0, 5);
   const hasRSVPed = rsvps.includes(event.id);
-  const isFakeEvent = event.isFakeEvent === true;
-  const isDemo = event.isDemo === true || isFakeEvent; // Check both flags for compatibility
-  const isPoperaOwned = event.isPoperaOwned === true;
-  const isOfficialLaunch = event.isOfficialLaunch === true;
+  
+  // Memoize derived values to ensure consistent hook structure
+  const isFakeEvent = useMemo(() => event.isFakeEvent === true, [event.isFakeEvent]);
+  const isDemo = useMemo(() => event.isDemo === true || isFakeEvent, [event.isDemo, isFakeEvent]);
+  const isPoperaOwned = useMemo(() => event.isPoperaOwned === true, [event.isPoperaOwned]);
+  const isOfficialLaunch = useMemo(() => event.isOfficialLaunch === true, [event.isOfficialLaunch]);
   const [showFakeEventModal, setShowFakeEventModal] = useState(false);
   const [showShareToast, setShowShareToast] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
