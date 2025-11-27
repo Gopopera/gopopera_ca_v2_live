@@ -1153,7 +1153,7 @@ const AppContent: React.FC = () => {
                             <div 
                               id={scrollContainerId}
                               className="flex overflow-x-auto gap-4 md:gap-6 lg:gap-8 pb-2 md:pb-6 snap-x snap-mandatory scroll-smooth hide-scrollbar w-full touch-pan-x overscroll-x-contain scroll-pl-4 md:scroll-pl-0 cursor-grab active:cursor-grabbing"
-                              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-x pan-y', WebkitOverflowScrolling: 'touch' }}
                               onWheel={(e) => {
                                 // Allow horizontal scrolling with mouse wheel when hovering over the container
                                 const container = e.currentTarget;
@@ -1188,7 +1188,7 @@ const AppContent: React.FC = () => {
                               }}
                             >
                               {cityEvents.map(event => (
-                                <div key={event.id} className="snap-start shrink-0 w-[85vw] sm:w-[70vw] md:w-[calc(25%-1.5rem)] lg:w-[calc(25%-2rem)] flex-shrink-0 pointer-events-auto">
+                                <div key={event.id} className="snap-start shrink-0 w-[85vw] sm:w-[70vw] md:w-[calc(25%-1.5rem)] lg:w-[calc(25%-2rem)] flex-shrink-0" style={{ touchAction: 'pan-x pan-y' }}>
                                   <EventCard
                                     event={event}
                                     onClick={handleEventClick}

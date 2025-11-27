@@ -5,6 +5,7 @@ import { useEventStore } from '../stores/eventStore';
 import { useUserStore } from '../stores/userStore';
 import { HostPhoneVerificationModal } from '../components/auth/HostPhoneVerificationModal';
 import { uploadImage } from '../firebase/storage';
+import { compressImage, shouldCompressImage } from '../utils/imageCompression';
 
 interface CreateEventPageProps {
   setViewState: (view: ViewState) => void;
@@ -95,9 +96,11 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         continue;
       }
 
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert(`"${file.name}" is too large. Image size must be less than 5MB.`);
+      // Accept larger files - they will be compressed before upload
+      // Increased limit to 50MB (will be compressed to ~5MB or less)
+      const MAX_INPUT_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+      if (file.size > MAX_INPUT_FILE_SIZE) {
+        alert(`"${file.name}" is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum size is 50MB. Please use a smaller image.`);
         continue;
       }
 
@@ -280,20 +283,32 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         console.log('[CREATE_EVENT] Uploading', imageFiles.length, 'image(s) to Firebase Storage...');
         setUploadingImage(true);
         
-        // Helper function to upload a single image with timeout and retry
-        const uploadImageWithTimeout = async (file: File, path: string, retries = 2): Promise<string> => {
-          const IMAGE_UPLOAD_TIMEOUT = 60000; // 60 seconds per image
+        // Helper function to compress and upload a single image with timeout and retry
+        const compressAndUploadImage = async (file: File, path: string, retries = 1): Promise<string> => {
+          const IMAGE_UPLOAD_TIMEOUT = 90000; // 90 seconds per image (reduced for faster feedback)
           
           for (let attempt = 0; attempt <= retries; attempt++) {
             try {
-              const uploadPromise = uploadImage(path, file);
-              const timeoutPromise = new Promise<never>((_, reject) => {
-                setTimeout(() => {
-                  reject(new Error(`Image upload timed out after ${IMAGE_UPLOAD_TIMEOUT / 1000} seconds`));
-                }, IMAGE_UPLOAD_TIMEOUT);
-              });
+              let fileToUpload = file;
               
-              const uploadedUrl = await Promise.race([uploadPromise, timeoutPromise]);
+              // Compress image if it's large (over 1MB) - lower threshold for faster uploads
+              if (shouldCompressImage(file, 1)) {
+                console.log(`[CREATE_EVENT] Compressing image "${file.name}" (${(file.size / 1024 / 1024).toFixed(2)}MB)...`);
+                try {
+                  fileToUpload = await compressImage(file, {
+                    maxWidth: 1600,
+                    maxHeight: 1600,
+                    quality: 0.80,
+                    maxSizeMB: 2
+                  });
+                  console.log(`[CREATE_EVENT] ✅ Compressed to ${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB (${((1 - fileToUpload.size / file.size) * 100).toFixed(1)}% reduction)`);
+                } catch (compressError) {
+                  console.warn(`[CREATE_EVENT] Compression failed, uploading original:`, compressError);
+                  // Continue with original file if compression fails
+                }
+              }
+              
+              const uploadedUrl = await uploadImage(path, fileToUpload, { timeout: IMAGE_UPLOAD_TIMEOUT });
               return uploadedUrl;
             } catch (error: any) {
               const isLastAttempt = attempt === retries;
@@ -301,28 +316,35 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                 throw error;
               }
               // Wait before retry (exponential backoff)
-              await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
-              console.log(`[CREATE_EVENT] Retrying image upload (attempt ${attempt + 2}/${retries + 1})...`);
+              const waitTime = 2000 * (attempt + 1);
+              console.log(`[CREATE_EVENT] Retrying image upload (attempt ${attempt + 2}/${retries + 1}) after ${waitTime}ms...`);
+              await new Promise(resolve => setTimeout(resolve, waitTime));
             }
           }
           throw new Error('Image upload failed after all retries');
         };
         
-        // Upload all images in order with progress tracking
-        for (let i = 0; i < imageFiles.length; i++) {
-          const file = imageFiles[i];
-          const imagePath = `events/${user.uid}/${Date.now()}_${i}_${file.name}`;
-          
+        // Upload all images in PARALLEL for maximum speed
+        const timestamp = Date.now();
+        const uploadPromises = imageFiles.map(async (file, i) => {
+          const imagePath = `events/${user.uid}/${timestamp}_${i}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+          console.log(`[CREATE_EVENT] Processing image ${i + 1}/${imageFiles.length}: "${file.name}" (${(file.size / 1024 / 1024).toFixed(2)}MB, ${file.type})...`);
           try {
-            console.log(`[CREATE_EVENT] Uploading image ${i + 1}/${imageFiles.length} (${(file.size / 1024 / 1024).toFixed(2)}MB)...`);
-            const uploadedUrl = await uploadImageWithTimeout(file, imagePath);
-            finalImageUrls.push(uploadedUrl);
-            console.log(`[CREATE_EVENT] ✅ Image ${i + 1}/${imageFiles.length} uploaded:`, uploadedUrl);
+            const uploadedUrl = await compressAndUploadImage(file, imagePath);
+            console.log(`[CREATE_EVENT] ✅ Image ${i + 1}/${imageFiles.length} uploaded successfully`);
+            return { index: i, url: uploadedUrl };
           } catch (uploadError: any) {
             console.error(`[CREATE_EVENT] ❌ Failed to upload image ${i + 1}/${imageFiles.length}:`, uploadError);
-            throw new Error(`Failed to upload image "${file.name}": ${uploadError?.message || 'Unknown error'}. Please try again or use a different image.`);
+            const errorMessage = uploadError?.message || 'Unknown error';
+            throw new Error(`Failed to upload image "${file.name}": ${errorMessage}. Please try again or use a different image.`);
           }
-        }
+        });
+        
+        // Wait for all uploads to complete and maintain order
+        const uploadResults = await Promise.all(uploadPromises);
+        // Sort by index to maintain original order
+        uploadResults.sort((a, b) => a.index - b.index);
+        finalImageUrls = uploadResults.map(result => result.url);
         
         // Set main image (first in array)
         finalImageUrl = finalImageUrls[0] || finalImageUrl;
@@ -357,7 +379,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       
       // Add timeout to detect if addEvent is hanging
       // Increased timeout to 60 seconds to account for network latency and large data
-      const EVENT_CREATION_TIMEOUT = 60000; // 60 seconds
+      const EVENT_CREATION_TIMEOUT = 45000; // 45 seconds (reduced for faster feedback)
       const addEventPromise = addEvent({
         title,
         description,
@@ -427,24 +449,30 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         stack: error?.stack?.substring(0, 300)
       });
       
+      // Always reset UI state, even on error
+      setIsSubmitting(false);
+      setUploadingImage(false);
+      
       // Check for timeout
       if (error?.message?.includes('timed out') || error?.message?.includes('timeout')) {
-        alert('Event creation timed out. This might be a network issue or Firestore is slow. Please check your internet connection and try again.');
+        alert('Event creation timed out. This might be a network issue or the server is slow. Please check your internet connection and try again. If the problem persists, try creating the event without images first.');
       } else if (error?.code === 'permission-denied') {
-        alert('Permission denied. You may not have permission to create events. Please check your account status.');
+        alert('Permission denied. You may not have permission to create events. Please check your account status or contact support.');
       } else if (error?.code === 'unavailable' || error?.message?.includes('offline') || error?.message?.includes('unavailable')) {
-        alert('Firestore is unavailable. The device may be offline or Firestore is experiencing issues. Please check your internet connection and try again.');
+        alert('Service is unavailable. The device may be offline or the server is experiencing issues. Please check your internet connection and try again.');
         console.error('[CREATE_EVENT] Offline/unavailable error:', {
           code: error?.code,
           message: error?.message,
           isOnline: navigator?.onLine
         });
+      } else if (error?.message?.includes('upload') || error?.message?.includes('image')) {
+        // Image upload specific errors
+        alert(`Image upload failed: ${error?.message || 'Unknown error'}. You can try creating the event without images, or use smaller/different images.`);
       } else {
-        alert(`Failed to create event: ${error?.message || 'Unknown error'}. Please check the console for details.`);
+        alert(`Failed to create event: ${error?.message || 'Unknown error'}. Please check the console for details or try again.`);
       }
-    } finally {
-      setIsSubmitting(false);
-      console.log('[CREATE_EVENT] Submission state cleared');
+      
+      console.log('[CREATE_EVENT] Error handled, UI state reset');
     }
   };
 
@@ -794,10 +822,10 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
           <div className="flex flex-col gap-3 sm:gap-4 md:gap-5">
             <button 
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || uploadingImage}
               className="w-full py-3.5 sm:py-4 md:py-4.5 bg-[#15383c] text-white font-bold rounded-full hover:bg-[#1f4d52] transition-colors shadow-lg touch-manipulation active:scale-95 text-sm sm:text-base md:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Creating Event...' : 'Host Event'}
+              {uploadingImage ? 'Uploading Images...' : isSubmitting ? 'Creating Event...' : 'Host Event'}
             </button>
             <button 
               type="button"

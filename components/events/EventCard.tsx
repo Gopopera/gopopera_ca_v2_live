@@ -75,6 +75,57 @@ export const EventCard: React.FC<EventCardProps> = ({
       onToggleFavorite(e, event.id);
     }
   };
+  const touchStartRef = React.useRef<{ x: number; y: number; time: number } | null>(null);
+  const isScrollingRef = React.useRef(false);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      time: Date.now()
+    };
+    isScrollingRef.current = false;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    
+    const touch = e.touches[0];
+    const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
+    const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+    
+    // If user is scrolling (either direction), mark as scrolling
+    if (deltaX > 5 || deltaY > 5) {
+      isScrollingRef.current = true;
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    
+    const touch = e.changedTouches[0];
+    const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
+    const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+    const deltaTime = Date.now() - touchStartRef.current.time;
+    
+    // Only trigger click if it was a tap (not a scroll) and within 300ms
+    if (!isScrollingRef.current && deltaX < 10 && deltaY < 10 && deltaTime < 300) {
+      // Small delay to ensure scroll events have processed
+      setTimeout(() => {
+        if (!isScrollingRef.current) {
+          onClick(event);
+        }
+      }, 50);
+    }
+    
+    touchStartRef.current = null;
+    // Reset after a short delay
+    setTimeout(() => {
+      isScrollingRef.current = false;
+    }, 100);
+  };
+
   return (
     <div 
       onClick={() => onClick(event)}
@@ -87,6 +138,10 @@ export const EventCard: React.FC<EventCardProps> = ({
           onClick(event);
         }
       }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      style={{ touchAction: 'manipulation' }}
       className={`group relative bg-white rounded-xl md:rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer h-full flex flex-col w-full max-w-[420px] min-h-[400px] sm:min-h-[450px] md:min-h-[480px] focus:outline-none focus:ring-2 focus:ring-[#15383c] focus:ring-offset-2`}
     >
       {/* Image Container - Fixed aspect ratio */}
@@ -95,7 +150,11 @@ export const EventCard: React.FC<EventCardProps> = ({
           src={event.imageUrls && event.imageUrls.length > 0 ? event.imageUrls[0] : (event.imageUrl || `https://picsum.photos/seed/${event.id || 'event'}/800/600`)} 
           alt={event.title} 
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+          style={{ userSelect: 'none', WebkitUserSelect: 'none', pointerEvents: 'auto' }}
           loading="lazy"
+          decoding="async"
+          fetchpriority="low"
+          draggable={false}
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             if (!target.src.includes('picsum.photos')) {

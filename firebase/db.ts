@@ -182,7 +182,7 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
     });
     
     // Add timeout wrapper for addDoc to prevent hanging
-    const FIRESTORE_WRITE_TIMEOUT = 45000; // 45 seconds (should complete well before this)
+    const FIRESTORE_WRITE_TIMEOUT = 30000; // 30 seconds (reduced for faster feedback, Firestore is usually very fast)
     const addDocPromise = addDoc(eventsCol, sanitizedEvent);
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => {
