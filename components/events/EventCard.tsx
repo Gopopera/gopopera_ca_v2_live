@@ -42,25 +42,27 @@ export const EventCard: React.FC<EventCardProps> = ({
         return;
       }
       
-      // If this is the current user's event, use their profile picture (always sync with latest)
-      if (event.hostId === user?.uid) {
+      // If this is the current user's event AND user is logged in, use their profile picture (always sync with latest)
+      if (event.hostId === user?.uid && user) {
         // Priority: userProfile (Firestore - most up-to-date) > user (Auth) > fallback
         const profilePic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl;
         setHostProfilePicture(profilePic || null);
         return;
       }
       
-      // For other hosts, fetch from Firestore (with refresh to get latest)
+      // For all hosts (including current user when not logged in), fetch from Firestore
+      // This ensures profile pictures are always accurate and work when not logged in
       try {
         const hostProfile = await getUserProfile(event.hostId);
         if (hostProfile) {
           // Priority: photoURL > imageUrl (both from Firestore)
-          setHostProfilePicture(hostProfile.photoURL || hostProfile.imageUrl || null);
+          const profilePic = hostProfile.photoURL || hostProfile.imageUrl || null;
+          setHostProfilePicture(profilePic);
         } else {
           setHostProfilePicture(null);
         }
       } catch (error) {
-        // Silently fail - will use placeholder
+        // Silently fail - will use placeholder with initial
         setHostProfilePicture(null);
       }
     };

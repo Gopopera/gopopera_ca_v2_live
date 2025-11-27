@@ -41,7 +41,8 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
   const [uploadingImage, setUploadingImage] = useState(false);
   const [whatToExpect, setWhatToExpect] = useState('');
   const [attendeesCount, setAttendeesCount] = useState(0);
-  const [host, setHost] = useState('You'); // Default host name
+  // Host name will be determined from user profile when creating event
+  // Don't use 'You' - always use actual name from profile
   const [price, setPrice] = useState('Free');
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);

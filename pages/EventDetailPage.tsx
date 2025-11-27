@@ -68,7 +68,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   );
   const hasRSVPed = useMemo(() => rsvps.includes(event?.id || ''), [rsvps, event?.id]);
   
-  // Fetch host profile picture - sync with user's profile if it's their event
+  // Fetch host profile picture - always fetch from Firestore for accuracy (works when not logged in)
   useEffect(() => {
     const fetchHostProfile = async () => {
       if (!event.hostId) {
@@ -76,15 +76,25 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         return;
       }
       
-      // If this is the current user's event, use their profile picture (always sync with latest)
-      if (event.hostId === user?.uid) {
+      // If this is the current user's event AND user is logged in, use their profile picture (always sync with latest)
+      if (event.hostId === user?.uid && user) {
         // Priority: userProfile (Firestore - most up-to-date) > user (Auth) > fallback
         const profilePic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl;
         setHostProfilePicture(profilePic || null);
+        // Still fetch from Firestore as backup to ensure we have the latest
+        try {
+          const hostProfile = await getUserProfile(event.hostId);
+          if (hostProfile && (hostProfile.photoURL || hostProfile.imageUrl)) {
+            setHostProfilePicture(hostProfile.photoURL || hostProfile.imageUrl || null);
+          }
+        } catch (error) {
+          // Silently fail - already have profile pic from user store
+        }
         return;
       }
       
-      // For other hosts, fetch from Firestore
+      // For all hosts (including current user when not logged in), fetch from Firestore
+      // This ensures profile pictures are always accurate and work when not logged in
       try {
         const hostProfile = await getUserProfile(event.hostId);
         if (hostProfile) {

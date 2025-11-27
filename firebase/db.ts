@@ -27,7 +27,12 @@ export const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event 
     time: firestoreEvent.time || '',
     tags: Array.isArray(firestoreEvent.tags) ? firestoreEvent.tags : [],
     host: firestoreEvent.host || '',
-    hostName: firestoreEvent.hostName || firestoreEvent.host || '',
+    // Ensure hostName is never empty or 'You' - use host as fallback, but prefer hostName
+    hostName: (firestoreEvent.hostName && firestoreEvent.hostName !== 'You') 
+      ? firestoreEvent.hostName 
+      : (firestoreEvent.host && firestoreEvent.host !== 'You') 
+        ? firestoreEvent.host 
+        : 'Unknown Host',
     hostId: firestoreEvent.hostId || '',
     imageUrl: firestoreEvent.imageUrl || (firestoreEvent.imageUrls && firestoreEvent.imageUrls.length > 0 ? firestoreEvent.imageUrls[0] : ''),
     imageUrls: firestoreEvent.imageUrls || (firestoreEvent.imageUrl ? [firestoreEvent.imageUrl] : undefined),
