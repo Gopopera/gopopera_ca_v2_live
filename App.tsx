@@ -426,6 +426,17 @@ const AppContent: React.FC = () => {
   // allEvents is now just events from the shared store (real-time updates)
   const allEvents = events;
   
+  // Debug: Log events state
+  useEffect(() => {
+    console.log('[APP_DEBUG] Events state:', {
+      totalEvents: allEvents.length,
+      isLoading: isLoadingEvents,
+      error: eventsError,
+      eventIds: allEvents.map(e => e.id),
+      eventTitles: allEvents.map(e => e.title),
+    });
+  }, [allEvents.length, isLoadingEvents, eventsError]);
+  
   // Initialize auth listener and events store on mount
   // City store auto-initializes via Zustand persist middleware
   useEffect(() => {
@@ -516,6 +527,18 @@ const AppContent: React.FC = () => {
         console.error('[APP] Failed to load event restoration utility:', error);
       }
     }, 7000); // 7 second delay to not interfere with initial load
+
+    // Diagnostic: Check event loading status
+    setTimeout(async () => {
+      try {
+        const { diagnoseEvents } = await import('./utils/diagnoseEvents');
+        diagnoseEvents().catch((error) => {
+          console.error('[APP] Error running event diagnostic:', error);
+        });
+      } catch (error) {
+        console.error('[APP] Failed to load event diagnostic utility:', error);
+      }
+    }, 10000); // 10 second delay to check after everything loads
     
     // Seed reviews for eatezca@gmail.com (background process, idempotent)
     // This ensures all events have 3 fake reviews (all 5 stars) and profile shows correct count

@@ -51,18 +51,30 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const filteredEvents = useMemo(() => {
     let filtered = events;
     
+    // Debug logging
+    console.log('[LANDING_PAGE] Filtering events:', {
+      totalEvents: events.length,
+      activeCategory,
+      location,
+      searchQuery,
+      eventTitles: events.map(e => e.title),
+      eventCities: events.map(e => e.city),
+    });
+    
     // Apply category filter
     // Uses category mapper to handle plural/singular variations (e.g., "Markets" -> "Market")
     if (activeCategory !== 'All') {
       filtered = filtered.filter(event => 
         categoryMatches(event.category, activeCategory)
       );
+      console.log('[LANDING_PAGE] After category filter:', filtered.length);
     }
     
     // Apply city filter - match by city slug or city name
     // Handle "Canada" as showing all events
     if (location && location.trim() && location.toLowerCase() !== 'canada') {
       const citySlug = location.toLowerCase();
+      const beforeCityFilter = filtered.length;
       filtered = filtered.filter(event => {
         const eventCityLower = event.city.toLowerCase();
         // Normalize city name (remove ", CA" for comparison)
@@ -74,10 +86,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                eventCityLower.includes(citySlug) || 
                eventCityLower.includes(citySlug.replace('-', ' '));
       });
+      console.log('[LANDING_PAGE] After city filter:', {
+        before: beforeCityFilter,
+        after: filtered.length,
+        location,
+        filteredEventCities: filtered.map(e => e.city),
+      });
     }
     
     // Apply search filter
     if (searchQuery.trim()) {
+      const beforeSearch = filtered.length;
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(event => 
         event.title.toLowerCase().includes(query) ||
@@ -85,7 +104,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         event.hostName.toLowerCase().includes(query) ||
         event.tags.some(tag => tag.toLowerCase().includes(query))
       );
+      console.log('[LANDING_PAGE] After search filter:', {
+        before: beforeSearch,
+        after: filtered.length,
+        query: searchQuery,
+      });
     }
+    
+    console.log('[LANDING_PAGE] Final filtered events:', {
+      count: filtered.length,
+      titles: filtered.map(e => e.title),
+    });
     
     return filtered;
   }, [events, activeCategory, location, searchQuery]);
