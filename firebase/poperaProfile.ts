@@ -11,6 +11,7 @@ import { sanitizeFirestoreData } from "../utils/firestoreValidation";
 import { createOrUpdateUserProfile } from "./db";
 import type { User } from "firebase/auth";
 import { seedPoperaLaunchEventsForUser } from "./demoSeed";
+import { geocodeAddress } from "../utils/geocoding";
 
 const POPERA_DEMO_BIO =
   "This is a Popera demo host for example scenarios. These events are examples only.";
@@ -210,6 +211,22 @@ export async function ensureOneEventPerCity(hostUid: string): Promise<void> {
           'Social': `Social gathering in ${cityName}. Meet new people, make friends, and enjoy good conversation. Free event open to everyone.`,
         };
 
+        // Geocode city to get coordinates (use city center if no specific address)
+        let lat: number | undefined;
+        let lng: number | undefined;
+        const cityAddress = cityName; // Use city name as address for geocoding
+        
+        try {
+          const geocodeResult = await geocodeAddress(cityAddress, city.name);
+          if (geocodeResult) {
+            lat = geocodeResult.lat;
+            lng = geocodeResult.lng;
+            console.log(`[CITY_EVENT] Geocoded ${city.name}: (${lat}, ${lng})`);
+          }
+        } catch (error) {
+          console.warn(`[CITY_EVENT] Failed to geocode ${city.name}, continuing without coordinates:`, error);
+        }
+
         const eventData: Omit<FirestoreEvent, 'id'> = {
           title: eventTitles[randomCategory] || `Community Event in ${cityName}`,
           description: descriptions[randomCategory] || `Join us for a ${randomCategory.toLowerCase()} event in ${cityName}. This is a community gathering open to everyone.`,
@@ -238,6 +255,8 @@ export async function ensureOneEventPerCity(hostUid: string): Promise<void> {
           isPublic: true, // ✅ Will appear in all feeds
           allowChat: true,
           allowRsvp: true,
+          lat, // Add geocoded coordinates
+          lng, // Add geocoded coordinates
           // No capacity field = infinite limit
         };
 
