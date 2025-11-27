@@ -160,12 +160,17 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
 
   // Check if user is following the host
   useEffect(() => {
+    // CRITICAL: Always call the effect, but conditionally execute logic inside
+    // This ensures consistent hook order across renders
     if (user?.uid && event.hostId) {
       const checkFollowStatus = async () => {
         const following = await isFollowing(user.uid, event.hostId);
         setIsFollowingHost(following);
       };
       checkFollowStatus();
+    } else {
+      // Reset follow status if user or hostId is missing
+      setIsFollowingHost(false);
     }
   }, [user?.uid, event.hostId]);
 
