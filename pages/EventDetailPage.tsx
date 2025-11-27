@@ -37,14 +37,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   onRSVP,
   rsvps = []
 }) => {
-  const recommendedEvents = allEvents.filter(e => e.id !== event.id).slice(0, 5);
-  const hasRSVPed = rsvps.includes(event.id);
+  // CRITICAL: All hooks must be called unconditionally and in the same order every render
+  // Call ALL hooks first, before any conditional logic or early returns
   
-  // Memoize derived values to ensure consistent hook structure
-  const isFakeEvent = useMemo(() => event.isFakeEvent === true, [event.isFakeEvent]);
-  const isDemo = useMemo(() => event.isDemo === true || isFakeEvent, [event.isDemo, isFakeEvent]);
-  const isPoperaOwned = useMemo(() => event.isPoperaOwned === true, [event.isPoperaOwned]);
-  const isOfficialLaunch = useMemo(() => event.isOfficialLaunch === true, [event.isOfficialLaunch]);
+  // State hooks - always called
   const [showFakeEventModal, setShowFakeEventModal] = useState(false);
   const [showShareToast, setShowShareToast] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -54,8 +50,23 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const [reserving, setReserving] = useState(false);
   const [reservationSuccess, setReservationSuccess] = useState(false);
   const [hostProfilePicture, setHostProfilePicture] = useState<string | null>(null);
+  
+  // Store hooks - always called
   const user = useUserStore((state) => state.user);
   const userProfile = useUserStore((state) => state.userProfile);
+  
+  // Memoized values - always called (safe even if event is undefined)
+  const isFakeEvent = useMemo(() => event?.isFakeEvent === true, [event?.isFakeEvent]);
+  const isDemo = useMemo(() => event?.isDemo === true || isFakeEvent, [event?.isDemo, isFakeEvent]);
+  const isPoperaOwned = useMemo(() => event?.isPoperaOwned === true, [event?.isPoperaOwned]);
+  const isOfficialLaunch = useMemo(() => event?.isOfficialLaunch === true, [event?.isOfficialLaunch]);
+  
+  // Derived values - safe to compute after all hooks
+  const recommendedEvents = useMemo(() => 
+    allEvents.filter(e => e.id !== event?.id).slice(0, 5), 
+    [allEvents, event?.id]
+  );
+  const hasRSVPed = useMemo(() => rsvps.includes(event?.id || ''), [rsvps, event?.id]);
   
   // Fetch host profile picture - sync with user's profile if it's their event
   useEffect(() => {
