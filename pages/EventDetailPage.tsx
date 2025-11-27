@@ -97,7 +97,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     // Always set initial count first
     if (!event.id || isDemo) {
       setReservationCount(event.attendeesCount || 0);
-      return; // Always return cleanup function (even if no-op)
+      // CRITICAL: Always return a cleanup function (even if no-op) to maintain hook order
+      return () => {
+        // No-op cleanup
+      };
     }
     
     let hasPermissionError = false;
