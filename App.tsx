@@ -1045,7 +1045,9 @@ const AppContent: React.FC = () => {
             )}
 
             {viewState === ViewState.FEED && (
-          <main className="min-h-screen pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-12 sm:pb-16 md:pb-20 lg:pb-24 md:container md:mx-auto md:px-6 lg:px-8">
+          <main className="min-h-screen pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-12 sm:pb-16 md:pb-20 lg:pb-24">
+            {/* Container wrapper for consistent alignment */}
+            <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
             
             {/* Header Section with Search */}
             <div className="mb-8 sm:mb-10 md:mb-12">
@@ -1181,7 +1183,7 @@ const AppContent: React.FC = () => {
                       };
                       
                       return (
-                        <div key={cityName} className="mb-8 sm:mb-10 md:mb-12 max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
+                        <div key={cityName} className="mb-8 sm:mb-10 md:mb-12">
                           <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">
                             {cityName}
                           </h2>
