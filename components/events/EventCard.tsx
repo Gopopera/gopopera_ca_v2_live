@@ -48,6 +48,7 @@ export const EventCard: React.FC<EventCardProps> = ({
       
       // ALWAYS fetch from Firestore to ensure we have the latest host information
       // This prevents stale/cached data from showing wrong names or pictures
+      // Even if event.hostName exists, we fetch to ensure it's up-to-date
       try {
         const hostProfile = await getUserProfile(event.hostId);
         if (hostProfile) {
@@ -57,22 +58,32 @@ export const EventCard: React.FC<EventCardProps> = ({
           
           // Always use Firestore name as source of truth (most up-to-date)
           const firestoreName = hostProfile.name || hostProfile.displayName;
-          if (firestoreName && firestoreName.trim() !== '') {
+          if (firestoreName && firestoreName.trim() !== '' && firestoreName !== 'You') {
             setDisplayHostName(firestoreName);
           } else {
-            // Fallback to event.hostName only if Firestore doesn't have a name
-            setDisplayHostName(event.hostName || 'Unknown Host');
+            // Fallback to event.hostName only if Firestore doesn't have a valid name
+            const fallbackName = event.hostName && event.hostName !== 'You' && event.hostName !== 'Unknown Host' 
+              ? event.hostName 
+              : 'Unknown Host';
+            setDisplayHostName(fallbackName);
           }
         } else {
           // If profile doesn't exist in Firestore, use event data as fallback
+          // But clean up "You" and empty strings
+          const fallbackName = event.hostName && event.hostName !== 'You' && event.hostName.trim() !== ''
+            ? event.hostName 
+            : 'Unknown Host';
           setHostProfilePicture(event.hostPhotoURL || null);
-          setDisplayHostName(event.hostName || 'Unknown Host');
+          setDisplayHostName(fallbackName);
         }
       } catch (error) {
-        // On error, use event data as fallback
+        // On error, use event data as fallback (but clean up invalid values)
         console.warn('[EVENT_CARD] Failed to fetch host profile:', error);
+        const fallbackName = event.hostName && event.hostName !== 'You' && event.hostName.trim() !== ''
+          ? event.hostName 
+          : 'Unknown Host';
         setHostProfilePicture(event.hostPhotoURL || null);
-        setDisplayHostName(event.hostName || 'Unknown Host');
+        setDisplayHostName(fallbackName);
       }
     };
     

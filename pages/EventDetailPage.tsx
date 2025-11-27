@@ -96,64 +96,35 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         return;
       }
       
-      // If hostName is missing, empty, or 'Unknown', fetch from Firestore
-      const needsHostNameFetch = !event.hostName || 
-                                 event.hostName.trim() === '' || 
-                                 event.hostName === 'Unknown' || 
-                                 event.hostName === 'Unknown Host' ||
-                                 event.hostName === 'You';
-      
-      // If this is the current user's event AND user is logged in, use their profile picture (always sync with latest)
-      if (event.hostId === user?.uid && user) {
-        // Priority: userProfile (Firestore - most up-to-date) > user (Auth) > fallback
-        const profilePic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl;
-        setHostProfilePicture(profilePic || null);
-        
-        // Update host name from user profile if needed
-        if (needsHostNameFetch) {
-          const name = userProfile?.name || userProfile?.displayName || user?.displayName || user?.name || user?.email?.split('@')[0] || 'Unknown Host';
-          setDisplayHostName(name);
-        } else {
-          setDisplayHostName(event.hostName);
-        }
-        
-        // Still fetch from Firestore as backup to ensure we have the latest
-        try {
-          const hostProfile = await getUserProfile(event.hostId);
-          if (hostProfile) {
-            if (hostProfile.photoURL || hostProfile.imageUrl) {
-              setHostProfilePicture(hostProfile.photoURL || hostProfile.imageUrl || null);
-            }
-            // Update name if we fetched it
-            if (needsHostNameFetch) {
-              const name = hostProfile.name || hostProfile.displayName || displayHostName || 'Unknown Host';
-              setDisplayHostName(name);
-            }
-          }
-        } catch (error) {
-          // Silently fail - already have profile pic from user store
-        }
-        return;
-      }
-      
-      // For all hosts (including current user when not logged in), fetch from Firestore
-      // This ensures profile pictures and names are always accurate and work when not logged in
+      // ALWAYS fetch from Firestore to ensure we have the latest host information
+      // This prevents stale/cached data from showing wrong names or pictures
+      // Even if event.hostName exists, we fetch to ensure it's up-to-date
       try {
         const hostProfile = await getUserProfile(event.hostId);
         if (hostProfile) {
-          setHostProfilePicture(hostProfile.photoURL || hostProfile.imageUrl || null);
+          // Priority: photoURL > imageUrl (both from Firestore - always latest)
+          const profilePic = hostProfile.photoURL || hostProfile.imageUrl || null;
+          setHostProfilePicture(profilePic);
           
-          // Update host name from Firestore if needed
-          if (needsHostNameFetch) {
-            const name = hostProfile.name || hostProfile.displayName || event.hostName || 'Unknown Host';
-            setDisplayHostName(name);
+          // Always use Firestore name as source of truth (most up-to-date)
+          const firestoreName = hostProfile.name || hostProfile.displayName;
+          if (firestoreName && firestoreName.trim() !== '' && firestoreName !== 'You') {
+            setDisplayHostName(firestoreName);
           } else {
-            setDisplayHostName(event.hostName);
+            // Fallback to event.hostName only if Firestore doesn't have a valid name
+            const fallbackName = event.hostName && event.hostName !== 'You' && event.hostName !== 'Unknown Host' 
+              ? event.hostName 
+              : 'Unknown Host';
+            setDisplayHostName(fallbackName);
           }
         } else {
-          setHostProfilePicture(null);
-          // If we can't fetch profile, use event.hostName or fallback
-          setDisplayHostName(event.hostName || 'Unknown Host');
+          // If profile doesn't exist in Firestore, use event data as fallback
+          // But clean up "You" and empty strings
+          const fallbackName = event.hostName && event.hostName !== 'You' && event.hostName.trim() !== ''
+            ? event.hostName 
+            : 'Unknown Host';
+          setHostProfilePicture(event.hostPhotoURL || null);
+          setDisplayHostName(fallbackName);
         }
       } catch (error: any) {
         // Handle permission errors gracefully - don't spam console
@@ -392,7 +363,29 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
          <button onClick={() => setViewState(ViewState.FEED)} className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center text-popera-teal shadow-lg pointer-events-auto hover:scale-105 active:scale-[0.92] transition-transform touch-manipulation border border-white/50"><ChevronLeft size={22} className="sm:w-6 sm:h-6" /></button>
          <div className="flex gap-2.5 sm:gap-3 pointer-events-auto">
              <button onClick={handleShare} className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center text-popera-teal shadow-lg hover:scale-105 active:scale-[0.92] transition-transform touch-manipulation border border-white/50" aria-label="Share Event"><Share2 size={20} className="sm:w-5 sm:h-5" /></button>
-             {isLoggedIn && onToggleFavorite && (<button onClick={(e) => onToggleFavorite(e, event.id)} className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center text-popera-teal shadow-lg hover:scale-105 active:scale-[0.92] transition-transform touch-manipulation border border-white/50"><Heart size={20} className="sm:w-5 sm:h-5" fill={favorites.includes(event.id) ? "#e35e25" : "none"} style={{ color: favorites.includes(event.id) ? "#e35e25" : "currentColor" }} /></button>)}
+             {onToggleFavorite && (
+               <button 
+                 onClick={(e) => {
+                   e.stopPropagation();
+                   e.preventDefault();
+                   if (!isLoggedIn) {
+                     // If not logged in, show auth modal or redirect to login
+                     setShowAuthModal(true);
+                     return;
+                   }
+                   onToggleFavorite(e, event.id);
+                 }} 
+                 className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center text-popera-teal shadow-lg hover:scale-105 active:scale-[0.92] transition-transform touch-manipulation border border-white/50"
+                 aria-label={favorites.includes(event.id) ? "Remove from favorites" : "Add to favorites"}
+               >
+                 <Heart 
+                   size={20} 
+                   className="sm:w-5 sm:h-5" 
+                   fill={favorites.includes(event.id) ? "#e35e25" : "none"} 
+                   style={{ color: favorites.includes(event.id) ? "#e35e25" : "currentColor" }} 
+                 />
+               </button>
+             )}
          </div>
          {showShareToast && (
            <div className="fixed bottom-4 right-4 bg-[#15383c] text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg z-50 animate-fade-in pointer-events-none">

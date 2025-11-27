@@ -146,7 +146,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
           <button onClick={() => handleNav(ViewState.ABOUT)} className={`font-medium text-sm hover:opacity-80 transition-opacity ${getTextColor(false)}`}>{t('header.about')}</button>
         </nav>
 
-        {/* Desktop Actions */}
+        {/* Desktop Actions - Right Side */}
         <div className="hidden lg:flex items-center space-x-6">
           {/* Language Toggle */}
           <button
@@ -227,9 +227,18 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
                 {t('header.signIn')}
               </button>
           )}
+          
+          {/* Desktop Menu Toggle - Right Side */}
+          <button 
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className={`${isScrolled || isLightPage || mobileMenuOpen ? 'text-popera-teal' : 'text-white'} w-10 h-10 flex items-center justify-center hover:bg-white/10 transition-colors rounded-full`}
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
         </div>
 
-        {/* Mobile Toggle */}
+        {/* Mobile Toggle - Right Side */}
         <div className="lg:hidden z-[55] flex items-center gap-2.5 relative">
           {/* Language Toggle - Mobile */}
           <button
@@ -281,10 +290,10 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
         </div>
       </div>
 
-      {/* Mobile Menu Overlay - Rendered via Portal to avoid z-index issues */}
+      {/* Menu Overlay - Rendered via Portal to avoid z-index issues - Works on Mobile and Desktop */}
       {mobileMenuOpen && typeof document !== 'undefined' && createPortal(
         <div 
-          className="fixed inset-0 bg-white z-[9999] flex flex-col pt-20 sm:pt-24 md:pt-28 px-4 sm:px-6 md:px-8 lg:hidden overflow-y-auto" 
+          className="fixed inset-0 bg-white z-[9999] flex flex-col pt-20 sm:pt-24 md:pt-28 px-4 sm:px-6 md:px-8 overflow-y-auto" 
           style={{ 
             position: 'fixed', 
             top: 0, 
