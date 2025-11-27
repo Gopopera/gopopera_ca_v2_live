@@ -198,30 +198,39 @@ export const useEventStore = create<EventStore>((set, get) => ({
           return event;
         })
       }));
-    } catch (error) {
-      console.error('[EVENT_STORE] Error updating event in Firestore:', error);
-      // Still update local store optimistically
-      set((state) => ({
-        events: state.events.map(event => {
-          if (event.id === eventId) {
-            const updated = { ...event, ...updates };
-            // Recalculate location if city or address changed
-            if (updates.city || updates.address) {
-              updated.location = formatLocation(updated.city || event.city, updated.address || event.address);
+    } catch (error: any) {
+      // Don't log permission errors - they're expected and handled elsewhere
+      if (error?.code !== 'permission-denied' && !error?.message?.includes('permission')) {
+        console.error('[EVENT_STORE] Error updating event in Firestore:', error);
+      }
+      
+      // Only update local store optimistically if it's not a permission error
+      // Permission errors mean we shouldn't update at all
+      if (error?.code !== 'permission-denied' && !error?.message?.includes('permission')) {
+        set((state) => ({
+          events: state.events.map(event => {
+            if (event.id === eventId) {
+              const updated = { ...event, ...updates };
+              // Recalculate location if city or address changed
+              if (updates.city || updates.address) {
+                updated.location = formatLocation(updated.city || event.city, updated.address || event.address);
+              }
+              // Update hostName if host changed
+              if (updates.host) {
+                updated.hostName = updates.host;
+              }
+              // Update attendees alias if attendeesCount changed
+              if (updates.attendeesCount !== undefined) {
+                updated.attendees = updates.attendeesCount;
+              }
+              return updated;
             }
-            // Update hostName if host changed
-            if (updates.host) {
-              updated.hostName = updates.host;
-            }
-            // Update attendees alias if attendeesCount changed
-            if (updates.attendeesCount !== undefined) {
-              updated.attendees = updates.attendeesCount;
-            }
-            return updated;
-          }
-          return event;
-        })
-      }));
+            return event;
+          })
+        }));
+      }
+      
+      // Re-throw to let callers handle it
       throw error;
     }
   },

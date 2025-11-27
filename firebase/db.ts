@@ -350,11 +350,14 @@ export async function updateEvent(eventId: string, eventData: Partial<Omit<Event
     
     return mapFirestoreEventToEvent(updatedFirestoreEvent);
   } catch (error: any) {
-    console.error('[UPDATE_EVENT_DB] ❌ Error updating event:', {
-      eventId,
-      error: error?.message,
-      code: error?.code
-    });
+    // Don't log permission errors - they're expected and handled elsewhere
+    if (error?.code !== 'permission-denied' && !error?.message?.includes('permission')) {
+      console.error('[UPDATE_EVENT_DB] ❌ Error updating event:', {
+        eventId,
+        error: error?.message,
+        code: error?.code
+      });
+    }
     throw error;
   }
 }

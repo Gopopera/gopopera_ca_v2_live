@@ -646,37 +646,65 @@ const AppContent: React.FC = () => {
   
   // Update attendee counts when RSVPs change
   // Sync event attendee counts from Firestore reservations for all events
+  // CRITICAL: Only sync if user is authenticated to avoid permission errors
   useEffect(() => {
+    // Don't sync if user is not authenticated - will cause permission errors
+    if (!user || allEvents.length === 0) return;
+    
+    let isMounted = true;
+    let hasPermissionError = false;
+    
     const syncEventCounts = async () => {
-      if (allEvents.length === 0) return;
+      // Stop syncing if we've encountered permission errors
+      if (hasPermissionError || !isMounted) return;
       
       try {
         const { getReservationCountForEvent } = await import('./firebase/db');
         const countPromises = allEvents
           .filter(event => event.id && !event.isDemo)
           .map(async (event) => {
+            if (!isMounted || hasPermissionError) return;
+            
             try {
               const count = await getReservationCountForEvent(event.id);
-              // Only update if count is different to avoid unnecessary updates
-              if (event.attendeesCount !== count) {
-                updateEvent(event.id, { attendeesCount: count });
+              // Only update if count is different and we still have permission
+              if (isMounted && !hasPermissionError && event.attendeesCount !== count) {
+                await updateEvent(event.id, { attendeesCount: count });
               }
-            } catch (error) {
-              console.error(`Error syncing count for event ${event.id}:`, error);
+            } catch (error: any) {
+              // If permission error, stop all future syncs
+              if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+                hasPermissionError = true;
+                console.warn('[SYNC_COUNTS] Permission denied - stopping sync to prevent infinite loop');
+                return;
+              }
+              // Silently ignore other errors for individual events
             }
           });
         
         await Promise.all(countPromises);
-      } catch (error) {
-        console.error('Error syncing event counts:', error);
+      } catch (error: any) {
+        // If permission error, stop all future syncs
+        if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+          hasPermissionError = true;
+          console.warn('[SYNC_COUNTS] Permission denied - stopping sync to prevent infinite loop');
+        }
       }
     };
     
-    // Sync immediately and then every 10 seconds
+    // Sync immediately, then every 30 seconds (reduced frequency)
     syncEventCounts();
-    const interval = setInterval(syncEventCounts, 10000);
-    return () => clearInterval(interval);
-  }, [allEvents, updateEvent]);
+    const interval = setInterval(() => {
+      if (!hasPermissionError && isMounted) {
+        syncEventCounts();
+      }
+    }, 30000); // Increased to 30 seconds to reduce load
+    
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [allEvents.length, user?.uid, updateEvent]); // Only depend on length and user, not the full array
 
   // Filter events based on search, location, category, and tags
   // Apply all filters in sequence for proper combined filtering

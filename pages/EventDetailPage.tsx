@@ -111,10 +111,44 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     };
     
     if (event.id && !isDemo) {
-      fetchReservationCount();
-      // Refresh count every 5 seconds to keep it updated
-      const interval = setInterval(fetchReservationCount, 5000);
-      return () => clearInterval(interval);
+      let hasPermissionError = false;
+      let isMounted = true;
+      
+      const safeFetchReservationCount = async () => {
+        if (hasPermissionError || !isMounted) return;
+        
+        try {
+          const count = await getReservationCountForEvent(event.id);
+          if (isMounted) {
+            setReservationCount(count);
+          }
+        } catch (error: any) {
+          if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+            hasPermissionError = true;
+            // Stop polling on permission errors to prevent infinite loops
+            console.warn('[EVENT_DETAIL] Permission denied for reservation count - stopping polling');
+            setReservationCount(event.attendeesCount || 0);
+            return;
+          }
+          // Fallback to event.attendeesCount if available
+          if (isMounted) {
+            setReservationCount(event.attendeesCount || 0);
+          }
+        }
+      };
+      
+      safeFetchReservationCount();
+      // Refresh count every 30 seconds (reduced frequency) - only if no permission errors
+      const interval = setInterval(() => {
+        if (!hasPermissionError && isMounted) {
+          safeFetchReservationCount();
+        }
+      }, 30000);
+      
+      return () => {
+        isMounted = false;
+        clearInterval(interval);
+      };
     } else {
       setReservationCount(event.attendeesCount || 0);
     }
