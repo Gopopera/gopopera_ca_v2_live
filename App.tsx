@@ -457,6 +457,22 @@ const AppContent: React.FC = () => {
       console.error('[APP] Error initializing event store:', error);
     }
     
+    // Geocode all existing events that don't have coordinates (background process)
+    // This runs once when the app loads, geocoding events in the background
+    setTimeout(async () => {
+      try {
+        const { geocodeAllEvents } = await import('./utils/geocodeAllEvents');
+        // Run in background, don't block UI
+        geocodeAllEvents().then((summary) => {
+          console.log('[APP] ✅ Geocoding complete:', summary);
+        }).catch((error) => {
+          console.error('[APP] Error geocoding events:', error);
+        });
+      } catch (error) {
+        console.error('[APP] Failed to load geocoding utility:', error);
+      }
+    }, 5000); // 5 second delay to not interfere with initial load
+    
     setAuthBootChecked(true);
   }, []);
 
