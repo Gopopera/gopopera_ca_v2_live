@@ -67,6 +67,7 @@ const CreateEventPage = React.lazy(() => import('./pages/CreateEventPage').then(
 const EditEventPage = React.lazy(() => import('./pages/EditEventPage').then(m => ({ default: m.EditEventPage })));
 const DebugEnvPage = React.lazy(() => import('./pages/DebugEnvPage').then(m => ({ default: m.DebugEnvPage })));
 const DebugSeedDemoEventsPage = React.lazy(() => import('./pages/DebugSeedDemoEventsPage').then(m => ({ default: m.DebugSeedDemoEventsPage })));
+const VerifyFirebasePage = React.lazy(() => import('./pages/VerifyFirebasePage').then(m => ({ default: m.VerifyFirebasePage })));
 
 // Consolidated Imports - lazy loaded
 const BasicDetailsPage = React.lazy(() => import('./pages/ProfileSubPages').then(m => ({ default: m.BasicDetailsPage })));
@@ -1326,6 +1327,11 @@ const AppContent: React.FC = () => {
         {viewState === ViewState.CAREERS && <CareersPage setViewState={setViewState} />}
         {viewState === ViewState.CONTACT && <ContactPage setViewState={setViewState} />}
         {viewState === ViewState.DEBUG_ENV && <DebugEnvPage setViewState={setViewState} />}
+        {viewState === ViewState.VERIFY_FIREBASE && (
+          <React.Suspense fallback={<PageSkeleton />}>
+            <VerifyFirebasePage />
+          </React.Suspense>
+        )}
         {viewState === ViewState.DEBUG_SEED_DEMO && (
           <React.Suspense fallback={<PageSkeleton />}>
             <DebugSeedDemoEventsPage setViewState={setViewState} />
