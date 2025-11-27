@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Menu, X, Search, User, Bell, PlusCircle, Heart, ArrowLeft } from 'lucide-react';
 import { ViewState } from '@/types';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -280,17 +281,17 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
         </div>
       </div>
 
-      {/* Mobile Menu Overlay - Fixed z-index and overflow */}
-      {mobileMenuOpen && (
+      {/* Mobile Menu Overlay - Rendered via Portal to avoid z-index issues */}
+      {mobileMenuOpen && typeof document !== 'undefined' && createPortal(
         <div 
-          className="fixed inset-0 bg-white z-[100] flex flex-col pt-20 sm:pt-24 md:pt-28 px-4 sm:px-6 md:px-8 lg:hidden overflow-y-auto" 
+          className="fixed inset-0 bg-white z-[9999] flex flex-col pt-20 sm:pt-24 md:pt-28 px-4 sm:px-6 md:px-8 lg:hidden overflow-y-auto" 
           style={{ 
             position: 'fixed', 
             top: 0, 
             left: 0, 
             right: 0, 
             bottom: 0,
-            zIndex: 100,
+            zIndex: 9999,
             WebkitOverflowScrolling: 'touch',
             overscrollBehavior: 'contain'
           }}
@@ -364,7 +365,8 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
                </>
             )}
           </nav>
-        </div>
+        </div>,
+        document.body
       )}
     </header>
   );

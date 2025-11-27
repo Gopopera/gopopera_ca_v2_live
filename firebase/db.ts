@@ -1177,3 +1177,94 @@ export async function deleteEvent(eventId: string, deleteImages: boolean = true)
     throw error;
   }
 }
+
+/**
+ * Update all events in Firestore with correct hostName and hostPhotoURL from user profiles
+ * This ensures all events have accurate host information synced from the users collection
+ */
+export async function updateAllEventsHostInfo(): Promise<{ updated: number; errors: number }> {
+  const db = getDbSafe();
+  if (!db) {
+    throw new Error('Firestore not initialized');
+  }
+
+  try {
+    console.log('[UPDATE_EVENTS_HOST] Starting batch update of all events...');
+    
+    // Get all events
+    const eventsCol = collection(db, 'events');
+    const eventsSnapshot = await getDocs(eventsCol);
+    
+    let updated = 0;
+    let errors = 0;
+    
+    // Process events in batches to avoid overwhelming Firestore
+    const batchSize = 10;
+    const events = eventsSnapshot.docs;
+    
+    for (let i = 0; i < events.length; i += batchSize) {
+      const batch = events.slice(i, i + batchSize);
+      
+      await Promise.all(
+        batch.map(async (eventDoc) => {
+          try {
+            const eventData = eventDoc.data() as FirestoreEvent;
+            const eventId = eventDoc.id;
+            
+            // Skip if no hostId
+            if (!eventData.hostId) {
+              console.warn(`[UPDATE_EVENTS_HOST] Event ${eventId} has no hostId, skipping`);
+              return;
+            }
+            
+            // Fetch host profile
+            const hostProfile = await getUserProfile(eventData.hostId);
+            
+            if (!hostProfile) {
+              console.warn(`[UPDATE_EVENTS_HOST] Host profile not found for event ${eventId}, hostId: ${eventData.hostId}`);
+              return;
+            }
+            
+            // Get correct host name and photo
+            const correctHostName = hostProfile.name || hostProfile.displayName || eventData.hostName || eventData.host || '';
+            const correctHostPhotoURL = hostProfile.photoURL || hostProfile.imageUrl || eventData.hostPhotoURL || undefined;
+            
+            // Only update if data has changed
+            if (
+              eventData.hostName !== correctHostName ||
+              eventData.hostPhotoURL !== correctHostPhotoURL ||
+              eventData.host !== correctHostName
+            ) {
+              const eventRef = doc(db, 'events', eventId);
+              await updateDoc(eventRef, {
+                hostName: correctHostName,
+                host: correctHostName,
+                hostPhotoURL: correctHostPhotoURL || null,
+                updatedAt: Date.now(),
+              });
+              
+              console.log(`[UPDATE_EVENTS_HOST] ✅ Updated event ${eventId}: hostName="${correctHostName}", hostPhotoURL=${correctHostPhotoURL ? 'set' : 'null'}`);
+              updated++;
+            } else {
+              console.log(`[UPDATE_EVENTS_HOST] ⏭️  Event ${eventId} already has correct host info, skipping`);
+            }
+          } catch (error: any) {
+            console.error(`[UPDATE_EVENTS_HOST] ❌ Error updating event ${eventDoc.id}:`, error.message);
+            errors++;
+          }
+        })
+      );
+      
+      // Small delay between batches to avoid rate limiting
+      if (i + batchSize < events.length) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+    
+    console.log(`[UPDATE_EVENTS_HOST] ✅ Completed: ${updated} updated, ${errors} errors out of ${events.length} total events`);
+    return { updated, errors };
+  } catch (error: any) {
+    console.error('[UPDATE_EVENTS_HOST] ❌ Fatal error:', error);
+    throw error;
+  }
+}

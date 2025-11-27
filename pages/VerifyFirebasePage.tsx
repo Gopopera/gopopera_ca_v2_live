@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getAppSafe, getStorageSafe, getAuthSafe, getDbSafe } from '../src/lib/firebase';
 import { ref, uploadBytesResumable } from 'firebase/storage';
 import { uploadImage } from '../firebase/storage';
+import { updateAllEventsHostInfo } from '../firebase/db';
 
 interface VerificationResult {
   category: string;
@@ -14,6 +15,10 @@ export const VerifyFirebasePage: React.FC = () => {
   const [results, setResults] = useState<VerificationResult[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [uploadTest, setUploadTest] = useState<{ status: 'idle' | 'testing' | 'success' | 'error'; message: string; details?: string[] }>({
+    status: 'idle',
+    message: ''
+  });
+  const [hostUpdateStatus, setHostUpdateStatus] = useState<{ status: 'idle' | 'running' | 'success' | 'error'; message: string; updated?: number; errors?: number }>({
     status: 'idle',
     message: ''
   });
@@ -354,7 +359,39 @@ export const VerifyFirebasePage: React.FC = () => {
           >
             {uploadTest.status === 'testing' ? 'Uploading...' : 'Test Actual Upload'}
           </button>
+          <button
+            onClick={async () => {
+              setHostUpdateStatus({ status: 'running', message: 'Updating all events with correct host information...' });
+              try {
+                const result = await updateAllEventsHostInfo();
+                setHostUpdateStatus({
+                  status: 'success',
+                  message: `✅ Successfully updated ${result.updated} events${result.errors > 0 ? ` (${result.errors} errors)` : ''}`,
+                  updated: result.updated,
+                  errors: result.errors
+                });
+              } catch (error: any) {
+                setHostUpdateStatus({
+                  status: 'error',
+                  message: `❌ Error: ${error.message || 'Unknown error'}`,
+                });
+              }
+            }}
+            disabled={hostUpdateStatus.status === 'running'}
+            className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {hostUpdateStatus.status === 'running' ? 'Updating Events...' : 'Update All Events Host Info'}
+          </button>
         </div>
+        
+        {hostUpdateStatus.status !== 'idle' && (
+          <div className={`mb-6 p-4 rounded-lg ${hostUpdateStatus.status === 'success' ? 'bg-green-50 text-green-800' : hostUpdateStatus.status === 'error' ? 'bg-red-50 text-red-800' : 'bg-blue-50 text-blue-800'}`}>
+            <p className="font-semibold">{hostUpdateStatus.message}</p>
+            {hostUpdateStatus.updated !== undefined && (
+              <p className="text-sm mt-1">Updated: {hostUpdateStatus.updated}, Errors: {hostUpdateStatus.errors || 0}</p>
+            )}
+          </div>
+        )}
 
         {uploadTest.status !== 'idle' && (
           <div className={`mb-6 p-4 rounded-lg ${
