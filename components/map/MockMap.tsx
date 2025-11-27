@@ -27,7 +27,15 @@ export const MockMap: React.FC<MockMapProps> = ({
   city,
   className = '' 
 }) => {
+  // CRITICAL: Call ALL hooks first, before any early returns
+  // This ensures consistent hook order across all renders
   const [map, setMap] = useState<any>(null);
+  const [GoogleMapComponent, setGoogleMapComponent] = useState<React.ComponentType<any> | null>(null);
+  const [LoadScriptComponent, setLoadScriptComponent] = useState<React.ComponentType<any> | null>(null);
+  const [MarkerComponent, setMarkerComponent] = useState<React.ComponentType<any> | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [markerIcon, setMarkerIcon] = React.useState<any>(undefined);
+
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const hasCoordinates = lat !== undefined && lng !== undefined;
 
@@ -43,6 +51,47 @@ export const MockMap: React.FC<MockMapProps> = ({
     setMap(null);
   }, []);
 
+  // Callback to create marker icon after LoadScript loads google.maps
+  const onLoadScript = React.useCallback(() => {
+    if (typeof window !== 'undefined' && (window as any).google?.maps) {
+      try {
+        const google = (window as any).google;
+        setMarkerIcon({
+          url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDBDMTIuMjY4IDAgNiA2LjI2OCA2IDE0QzYgMjEuNzMyIDEyLjI2OCAyOCAyMCAyOEMyNy43MzIgMjggMzQgMjEuNzMyIDM0IDE0QzM0IDYuMjY4IDI3LjczMiAwIDIwIDBaIiBmaWxsPSIjRTM1RTI1Ii8+CjxwYXRoIGQ9Ik0yMCAyMEMxOC4zNDMgMjAgMTcgMTguNjU3IDE3IDE3QzE3IDE1LjM0MyAxOC4zNDMgMTQgMjAgMTRDMjEuNjU3IDE0IDIzIDE1LjM0MyAyMyAxN0MyMyAxOC42NTcgMjEuNjU3IDIwIDIwIDIwWiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+',
+          scaledSize: new google.maps.Size(40, 40),
+          anchor: new google.maps.Point(20, 40)
+        });
+      } catch (error) {
+        console.warn('[MOCK_MAP] Error creating marker icon:', error);
+        setMarkerIcon(undefined);
+      }
+    }
+  }, []);
+
+  // Load Google Maps components if API key is available
+  React.useEffect(() => {
+    if (apiKey) {
+      // Dynamically import Google Maps components
+      Promise.all([
+        import('@react-google-maps/api').then(m => m.GoogleMap),
+        import('@react-google-maps/api').then(m => m.LoadScript),
+        import('@react-google-maps/api').then(m => m.Marker),
+      ]).then(([GoogleMap, LoadScript, Marker]) => {
+        setGoogleMapComponent(() => GoogleMap);
+        setLoadScriptComponent(() => LoadScript);
+        setMarkerComponent(() => Marker);
+        setIsLoading(false);
+      }).catch((error) => {
+        console.error('[MOCK_MAP] Error loading Google Maps components:', error);
+        setIsLoading(false);
+      });
+    } else {
+      // No API key, don't try to load Google Maps
+      setIsLoading(false);
+    }
+  }, [apiKey]);
+
+  // NOW safe to have early returns - all hooks have been called
   // If no API key, show fallback mock map
   if (!apiKey) {
     return (
@@ -120,35 +169,6 @@ export const MockMap: React.FC<MockMapProps> = ({
     );
   }
 
-  // Use real Google Maps when API key is available
-  // Dynamically import to avoid loading if API key is missing
-  const [GoogleMapComponent, setGoogleMapComponent] = useState<React.ComponentType<any> | null>(null);
-  const [LoadScriptComponent, setLoadScriptComponent] = useState<React.ComponentType<any> | null>(null);
-  const [MarkerComponent, setMarkerComponent] = useState<React.ComponentType<any> | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  React.useEffect(() => {
-    if (apiKey) {
-      // Dynamically import Google Maps components
-      Promise.all([
-        import('@react-google-maps/api').then(m => m.GoogleMap),
-        import('@react-google-maps/api').then(m => m.LoadScript),
-        import('@react-google-maps/api').then(m => m.Marker),
-      ]).then(([GoogleMap, LoadScript, Marker]) => {
-        setGoogleMapComponent(() => GoogleMap);
-        setLoadScriptComponent(() => LoadScript);
-        setMarkerComponent(() => Marker);
-        setIsLoading(false);
-      }).catch((error) => {
-        console.error('[MOCK_MAP] Error loading Google Maps components:', error);
-        setIsLoading(false);
-      });
-    } else {
-      // No API key, don't try to load Google Maps
-      setIsLoading(false);
-    }
-  }, [apiKey]);
-
   // Show loading state
   if (isLoading || !GoogleMapComponent || !LoadScriptComponent) {
     return (
@@ -158,27 +178,7 @@ export const MockMap: React.FC<MockMapProps> = ({
     );
   }
 
-  // Custom marker icon (Popera orange pin)
-  // Create marker icon only after google.maps is loaded by LoadScript
-  const [markerIcon, setMarkerIcon] = React.useState<any>(undefined);
-
-  // Callback to create marker icon after LoadScript loads google.maps
-  const onLoadScript = React.useCallback(() => {
-    if (typeof window !== 'undefined' && (window as any).google?.maps) {
-      try {
-        const google = (window as any).google;
-        setMarkerIcon({
-          url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDBDMTIuMjY4IDAgNiA2LjI2OCA2IDE0QzYgMjEuNzMyIDEyLjI2OCAyOCAyMCAyOEMyNy43MzIgMjggMzQgMjEuNzMyIDM0IDE0QzM0IDYuMjY4IDI3LjczMiAwIDIwIDBaIiBmaWxsPSIjRTM1RTI1Ii8+CjxwYXRoIGQ9Ik0yMCAyMEMxOC4zNDMgMjAgMTcgMTguNjU3IDE3IDE3QzE3IDE1LjM0MyAxOC4zNDMgMTQgMjAgMTRDMjEuNjU3IDE0IDIzIDE1LjM0MyAyMyAxN0MyMyAxOC42NTcgMjEuNjU3IDIwIDIwIDIwWiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+',
-          scaledSize: new google.maps.Size(40, 40),
-          anchor: new google.maps.Point(20, 40)
-        });
-      } catch (error) {
-        console.warn('[MOCK_MAP] Error creating marker icon:', error);
-        setMarkerIcon(undefined);
-      }
-    }
-  }, []);
-
+  // Use real Google Maps when API key is available
   return (
     <div className={`relative ${className}`}>
       <LoadScriptComponent 

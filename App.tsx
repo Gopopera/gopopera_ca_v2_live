@@ -1471,6 +1471,7 @@ const AppContent: React.FC = () => {
             {viewState === ViewState.DETAIL && selectedEvent && (
               <React.Suspense fallback={<PageSkeleton />}>
                 <EventDetailPage 
+                  key={selectedEvent.id}
                   event={selectedEvent} 
                   setViewState={setViewState} 
                   onReviewsClick={handleReviewsClick}
