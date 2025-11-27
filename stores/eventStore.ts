@@ -122,13 +122,14 @@ export const useEventStore = create<EventStore>((set, get) => ({
                 return dateA.localeCompare(dateB);
               });
             
-            console.log('[EVENT_STORE] Events updated from Firestore:', events.length, {
+            console.log('[EVENT_STORE] ✅ Events updated from Firestore:', {
+              totalEvents: events.length,
+              totalDocsInFirestore: snapshot.docs.length,
+              filteredOut: snapshot.docs.length - events.length,
               eventIds: events.map(e => e.id),
               eventTitles: events.map(e => e.title),
-              eventHosts: events.map(e => e.hostName),
               eventCities: events.map(e => e.city),
-              totalDocs: snapshot.docs.length,
-              filteredOut: snapshot.docs.length - events.length
+              note: 'All events without explicit isPublic=false or isDraft=true are shown'
             });
             set({ events, isLoading: false, error: null });
           } catch (error) {
