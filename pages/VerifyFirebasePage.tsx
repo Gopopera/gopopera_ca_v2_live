@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getAppSafe, getStorageSafe, getAuthSafe, getDbSafe } from '../src/lib/firebase';
-import { ref } from 'firebase/storage';
+import { ref, uploadBytesResumable } from 'firebase/storage';
+import { uploadImage } from '../firebase/storage';
 
 interface VerificationResult {
   category: string;
@@ -12,6 +13,10 @@ interface VerificationResult {
 export const VerifyFirebasePage: React.FC = () => {
   const [results, setResults] = useState<VerificationResult[]>([]);
   const [isRunning, setIsRunning] = useState(false);
+  const [uploadTest, setUploadTest] = useState<{ status: 'idle' | 'testing' | 'success' | 'error'; message: string; details?: string[] }>({
+    status: 'idle',
+    message: ''
+  });
 
   const runVerification = async () => {
     setIsRunning(true);
@@ -126,6 +131,179 @@ export const VerifyFirebasePage: React.FC = () => {
     setIsRunning(false);
   };
 
+  const testActualUpload = async () => {
+    setUploadTest({ status: 'testing', message: 'Testing actual file upload...' });
+    
+    try {
+      const storage = getStorageSafe();
+      if (!storage) {
+        setUploadTest({ 
+          status: 'error', 
+          message: '❌ Storage not initialized',
+          details: ['Cannot test upload without storage instance']
+        });
+        return;
+      }
+
+      // Create a small test file (1x1 pixel PNG)
+      const testImageData = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+      const testBlob = new Blob([Uint8Array.from(atob(testImageData), c => c.charCodeAt(0))], { type: 'image/png' });
+      const testFile = new File([testBlob], 'test-verification.png', { type: 'image/png' });
+
+      console.log('[VERIFY] Starting test upload...');
+      const testPath = `verification/test-${Date.now()}.png`;
+      
+      // Test with uploadImage function (uses uploadBytesResumable)
+      const uploadPromise = uploadImage(testPath, testFile, {
+        maxUploadTime: 10000, // 10 second timeout for test
+        onProgress: (progress) => {
+          console.log(`[VERIFY] Upload progress: ${progress.progress.toFixed(1)}%`);
+        }
+      });
+
+      // Also test the URL that will be generated
+      const testRef = ref(storage, testPath);
+      const expectedUrl = `https://firebasestorage.googleapis.com/v0/b/${testRef.bucket}/o/${encodeURIComponent(testRef.fullPath)}`;
+      const hasPercent0A = expectedUrl.includes('%0A');
+      
+      const details: string[] = [
+        `Test file: ${testFile.name} (${testFile.size} bytes)`,
+        `Upload path: ${testPath}`,
+        `Expected URL: ${expectedUrl.substring(0, 100)}...`,
+        `URL contains %0A: ${hasPercent0A ? '❌ YES (BAD!)' : '✅ NO (GOOD)'}`
+      ];
+
+      if (hasPercent0A) {
+        setUploadTest({
+          status: 'error',
+          message: '❌ URL contains %0A - upload will fail!',
+          details
+        });
+        return;
+      }
+
+      // Try the actual upload
+      try {
+        const downloadUrl = await Promise.race([
+          uploadPromise,
+          new Promise<string>((_, reject) => 
+            setTimeout(() => reject(new Error('Upload timeout after 10s')), 10000)
+          )
+        ]);
+
+        setUploadTest({
+          status: 'success',
+          message: '✅ Upload test successful!',
+          details: [
+            ...details,
+            `Download URL: ${downloadUrl.substring(0, 80)}...`,
+            '✅ CORS is working correctly',
+            '✅ Firebase Storage is accessible'
+          ]
+        });
+      } catch (uploadError: any) {
+        const errorMessage = uploadError?.message || 'Unknown error';
+        const isCorsError = errorMessage.includes('CORS') || errorMessage.includes('cors') || errorMessage.includes('preflight');
+        const isNetworkError = errorMessage.includes('ERR_FAILED') || errorMessage.includes('network');
+        
+        setUploadTest({
+          status: 'error',
+          message: isCorsError ? '❌ CORS error detected!' : isNetworkError ? '❌ Network error!' : '❌ Upload failed',
+          details: [
+            ...details,
+            `Error: ${errorMessage}`,
+            isCorsError ? '⚠️ This is likely a CORS configuration issue' : '',
+            isNetworkError ? '⚠️ Check Network tab for blocked requests' : '',
+            '💡 Check browser console for more details'
+          ].filter(Boolean)
+        });
+      }
+    } catch (error: any) {
+      setUploadTest({
+        status: 'error',
+        message: `❌ Test failed: ${error.message}`,
+        details: ['Check browser console for details']
+      });
+    }
+  };
+
+  const testCorsPreflight = async () => {
+    setUploadTest({ status: 'testing', message: 'Testing CORS preflight request...' });
+    
+    try {
+      const storage = getStorageSafe();
+      if (!storage) {
+        setUploadTest({ 
+          status: 'error', 
+          message: '❌ Storage not initialized',
+          details: []
+        });
+        return;
+      }
+
+      const testRef = ref(storage, 'verification/test-preflight.txt');
+      const bucket = testRef.bucket;
+      const testUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o`;
+
+      // Test OPTIONS preflight request
+      const response = await fetch(testUrl, {
+        method: 'OPTIONS',
+        headers: {
+          'Origin': window.location.origin,
+          'Access-Control-Request-Method': 'POST',
+          'Access-Control-Request-Headers': 'Content-Type,Authorization,x-goog-resumable'
+        }
+      });
+
+      const corsHeaders = {
+        'access-control-allow-origin': response.headers.get('access-control-allow-origin'),
+        'access-control-allow-methods': response.headers.get('access-control-allow-methods'),
+        'access-control-allow-headers': response.headers.get('access-control-allow-headers'),
+        'access-control-max-age': response.headers.get('access-control-max-age')
+      };
+
+      const allowsPost = corsHeaders['access-control-allow-methods']?.includes('POST') || false;
+      const allowsPut = corsHeaders['access-control-allow-methods']?.includes('PUT') || false;
+      const allowsOrigin = corsHeaders['access-control-allow-origin'] === '*' || 
+                          corsHeaders['access-control-allow-origin']?.includes(window.location.origin);
+
+      const details: string[] = [
+        `Test URL: ${testUrl}`,
+        `Status: ${response.status} ${response.statusText}`,
+        `Allow-Origin: ${corsHeaders['access-control-allow-origin'] || 'NOT SET'}`,
+        `Allow-Methods: ${corsHeaders['access-control-allow-methods'] || 'NOT SET'}`,
+        `Allows POST: ${allowsPost ? '✅ YES' : '❌ NO'}`,
+        `Allows PUT: ${allowsPut ? '✅ YES' : '❌ NO'}`,
+        `Allows Origin: ${allowsOrigin ? '✅ YES' : '❌ NO'}`
+      ];
+
+      if (response.status === 200 && allowsPost && allowsPut && allowsOrigin) {
+        setUploadTest({
+          status: 'success',
+          message: '✅ CORS preflight test passed!',
+          details
+        });
+      } else {
+        setUploadTest({
+          status: 'error',
+          message: '❌ CORS preflight test failed',
+          details: [
+            ...details,
+            allowsPost ? '' : '⚠️ POST method not allowed',
+            allowsPut ? '' : '⚠️ PUT method not allowed',
+            allowsOrigin ? '' : '⚠️ Origin not allowed'
+          ].filter(Boolean)
+        });
+      }
+    } catch (error: any) {
+      setUploadTest({
+        status: 'error',
+        message: `❌ Preflight test failed: ${error.message}`,
+        details: ['Check browser console and Network tab for details']
+      });
+    }
+  };
+
   useEffect(() => {
     runVerification();
   }, []);
@@ -154,13 +332,61 @@ export const VerifyFirebasePage: React.FC = () => {
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Firebase SDK Verification</h1>
         <p className="text-gray-600 mb-6">Check if Firebase is properly configured and enabled</p>
 
-        <button
-          onClick={runVerification}
-          disabled={isRunning}
-          className="mb-6 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-        >
-          {isRunning ? 'Running...' : 'Run Verification'}
-        </button>
+        <div className="mb-6 flex gap-4 flex-wrap">
+          <button
+            onClick={runVerification}
+            disabled={isRunning}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            {isRunning ? 'Running...' : 'Run Verification'}
+          </button>
+          <button
+            onClick={testCorsPreflight}
+            disabled={uploadTest.status === 'testing'}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+          >
+            {uploadTest.status === 'testing' ? 'Testing...' : 'Test CORS Preflight'}
+          </button>
+          <button
+            onClick={testActualUpload}
+            disabled={uploadTest.status === 'testing'}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+          >
+            {uploadTest.status === 'testing' ? 'Uploading...' : 'Test Actual Upload'}
+          </button>
+        </div>
+
+        {uploadTest.status !== 'idle' && (
+          <div className={`mb-6 p-4 rounded-lg ${
+            uploadTest.status === 'success' ? 'bg-green-50 border border-green-200' :
+            uploadTest.status === 'error' ? 'bg-red-50 border border-red-200' :
+            'bg-blue-50 border border-blue-200'
+          }`}>
+            <div className="flex items-center mb-2">
+              <span className="text-xl mr-2">
+                {uploadTest.status === 'success' ? '✅' : uploadTest.status === 'error' ? '❌' : '⏳'}
+              </span>
+              <h3 className={`font-semibold ${
+                uploadTest.status === 'success' ? 'text-green-900' :
+                uploadTest.status === 'error' ? 'text-red-900' :
+                'text-blue-900'
+              }`}>
+                {uploadTest.message}
+              </h3>
+            </div>
+            {uploadTest.details && uploadTest.details.length > 0 && (
+              <ul className="list-disc list-inside text-sm space-y-1 mt-2">
+                {uploadTest.details.map((detail, i) => (
+                  <li key={i} className={
+                    uploadTest.status === 'success' ? 'text-green-800' :
+                    uploadTest.status === 'error' ? 'text-red-800' :
+                    'text-blue-800'
+                  }>{detail}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         <div className="space-y-4">
           {results.map((result, index) => (
