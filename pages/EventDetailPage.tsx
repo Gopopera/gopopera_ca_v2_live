@@ -94,64 +94,63 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   
   // Fetch real reservation count from Firestore
   useEffect(() => {
-    const fetchReservationCount = async () => {
+    // Always set initial count first
+    if (!event.id || isDemo) {
+      setReservationCount(event.attendeesCount || 0);
+      return; // Always return cleanup function (even if no-op)
+    }
+    
+    let hasPermissionError = false;
+    let isMounted = true;
+    let interval: NodeJS.Timeout | null = null;
+    
+    const safeFetchReservationCount = async () => {
+      if (hasPermissionError || !isMounted) return;
+      
       try {
         const count = await getReservationCountForEvent(event.id);
-        setReservationCount(count);
+        if (isMounted) {
+          setReservationCount(count);
+        }
       } catch (error: any) {
-        // Handle permission errors gracefully - don't spam console
         if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
-          console.warn('[EVENT_DETAIL] Permission denied for reservation count, using fallback');
-        } else {
-          console.error('Error fetching reservation count:', error);
+          hasPermissionError = true;
+          // Stop polling on permission errors to prevent infinite loops
+          console.warn('[EVENT_DETAIL] Permission denied for reservation count - stopping polling');
+          if (isMounted) {
+            setReservationCount(event.attendeesCount || 0);
+          }
+          // Clear interval if it exists
+          if (interval) {
+            clearInterval(interval);
+            interval = null;
+          }
+          return;
         }
         // Fallback to event.attendeesCount if available
-        setReservationCount(event.attendeesCount || 0);
+        if (isMounted) {
+          setReservationCount(event.attendeesCount || 0);
+        }
       }
     };
     
-    if (event.id && !isDemo) {
-      let hasPermissionError = false;
-      let isMounted = true;
-      
-      const safeFetchReservationCount = async () => {
-        if (hasPermissionError || !isMounted) return;
-        
-        try {
-          const count = await getReservationCountForEvent(event.id);
-          if (isMounted) {
-            setReservationCount(count);
-          }
-        } catch (error: any) {
-          if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
-            hasPermissionError = true;
-            // Stop polling on permission errors to prevent infinite loops
-            console.warn('[EVENT_DETAIL] Permission denied for reservation count - stopping polling');
-            setReservationCount(event.attendeesCount || 0);
-            return;
-          }
-          // Fallback to event.attendeesCount if available
-          if (isMounted) {
-            setReservationCount(event.attendeesCount || 0);
-          }
-        }
-      };
-      
-      safeFetchReservationCount();
-      // Refresh count every 30 seconds (reduced frequency) - only if no permission errors
-      const interval = setInterval(() => {
-        if (!hasPermissionError && isMounted) {
-          safeFetchReservationCount();
-        }
-      }, 30000);
-      
-      return () => {
-        isMounted = false;
+    // Initial fetch
+    safeFetchReservationCount();
+    
+    // Refresh count every 30 seconds (reduced frequency) - only if no permission errors
+    interval = setInterval(() => {
+      if (!hasPermissionError && isMounted) {
+        safeFetchReservationCount();
+      }
+    }, 30000);
+    
+    // Always return cleanup function (React hook rule)
+    return () => {
+      isMounted = false;
+      if (interval) {
         clearInterval(interval);
-      };
-    } else {
-      setReservationCount(event.attendeesCount || 0);
-    }
+      }
+    };
   }, [event.id, event.attendeesCount, isDemo]);
 
   // Check if user is following the host
