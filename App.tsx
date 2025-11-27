@@ -489,10 +489,11 @@ const AppContent: React.FC = () => {
       }
     }, 7000); // 7 second delay to not interfere with initial load
 
-    // Verify and seed community events for eatezca@gmail.com (background process, idempotent)
+    // Verify and seed community events for eatezca@gmail.com (runs immediately when Firestore is ready)
     // Creates 2 events per city in different categories - all public, free, unlimited capacity
     // This function verifies existing events and creates missing ones
-    setTimeout(async () => {
+    // Run immediately - Firestore should be ready by now
+    (async () => {
       try {
         const { verifyAndSeedCommunityEvents } = await import('./firebase/verifyAndSeedCommunityEvents');
         // Run in background, don't block UI
@@ -504,7 +505,7 @@ const AppContent: React.FC = () => {
       } catch (error) {
         console.error('[APP] Failed to load community events verification utility:', error);
       }
-    }, 15000); // 15 second delay to ensure Firestore is ready
+    })();
     
     setAuthBootChecked(true);
   }, []);
