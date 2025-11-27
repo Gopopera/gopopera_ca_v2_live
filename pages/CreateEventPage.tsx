@@ -293,6 +293,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         
         // Helper function to compress and upload a single image
         const compressAndUploadImage = async (file: File, path: string): Promise<string> => {
+          console.log(`[CREATE_EVENT] Starting compressAndUploadImage for "${file.name}"`);
           let fileToUpload = file;
           
           // Compress image if it's large (over 1MB)
@@ -311,6 +312,8 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
               // Continue with original file if compression fails - don't block upload
               fileToUpload = file;
             }
+          } else {
+            console.log(`[CREATE_EVENT] Skipping compression for "${file.name}" (under 1MB)`);
           }
           
           console.log(`[CREATE_EVENT] Uploading image "${file.name}" (${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB)...`);
@@ -342,7 +345,9 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         });
         
         // Wait for all uploads to complete - allSettled ALWAYS resolves
+        console.log(`[CREATE_EVENT] Waiting for Promise.allSettled with ${uploadPromises.length} promises...`);
         const uploadResults = await Promise.allSettled(uploadPromises);
+        console.log(`[CREATE_EVENT] Promise.allSettled completed. Processing ${uploadResults.length} results...`);
         
         // Process results - allSettled guarantees all promises have settled
         const successfulUploads: string[] = [];

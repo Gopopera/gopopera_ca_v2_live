@@ -25,112 +25,155 @@ export async function compressImage(
     maxSizeMB = 2 // Reduced from 5MB for faster uploads
   } = options;
 
+  console.log(`[COMPRESS_IMAGE] Starting compression for "${file.name}" (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+  
   // Add timeout to compression (30 seconds max)
   const COMPRESSION_TIMEOUT = 30000;
   
   return new Promise((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      reject(new Error('Image compression timed out. The image may be too large or corrupted.'));
+    let timeoutId: NodeJS.Timeout | null = null;
+    let isResolved = false;
+    let isRejected = false;
+    
+    // Safety: ensure promise always settles
+    const safeResolve = (value: File) => {
+      if (isResolved || isRejected) return;
+      isResolved = true;
+      if (timeoutId) clearTimeout(timeoutId);
+      console.log(`[COMPRESS_IMAGE] ✅ Compression resolved for "${file.name}"`);
+      resolve(value);
+    };
+    
+    const safeReject = (error: Error) => {
+      if (isResolved || isRejected) return;
+      isRejected = true;
+      if (timeoutId) clearTimeout(timeoutId);
+      console.error(`[COMPRESS_IMAGE] ❌ Compression rejected for "${file.name}":`, error);
+      reject(error);
+    };
+    
+    timeoutId = setTimeout(() => {
+      safeReject(new Error('Image compression timed out. The image may be too large or corrupted.'));
     }, COMPRESSION_TIMEOUT);
     
     const reader = new FileReader();
     
+    reader.onerror = (error) => {
+      console.error(`[COMPRESS_IMAGE] FileReader error for "${file.name}":`, error);
+      safeReject(new Error('Failed to read image file'));
+    };
+    
     reader.onload = (e) => {
-      const img = new Image();
-      
-      img.onload = () => {
-        clearTimeout(timeoutId);
-        // Calculate new dimensions
-        let width = img.width;
-        let height = img.height;
+      try {
+        const img = new Image();
         
-        if (width > maxWidth || height > maxHeight) {
-          const ratio = Math.min(maxWidth / width, maxHeight / height);
-          width = width * ratio;
-          height = height * ratio;
-        }
+        img.onerror = (error) => {
+          console.error(`[COMPRESS_IMAGE] Image load error for "${file.name}":`, error);
+          safeReject(new Error('Failed to load image for compression'));
+        };
         
-        // Create canvas and compress
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Failed to get canvas context'));
-          return;
-        }
-        
-        // Draw image to canvas
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        // Use JPEG for better compression (unless it's already WebP or PNG with transparency)
-        const outputType = file.type === 'image/png' && file.size > 500000 ? 'image/jpeg' : (file.type || 'image/jpeg');
-        
-        // Convert to blob with quality settings
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) {
-              reject(new Error('Failed to compress image'));
+        img.onload = () => {
+          try {
+            if (timeoutId) clearTimeout(timeoutId);
+            // Calculate new dimensions
+            let width = img.width;
+            let height = img.height;
+            
+            if (width > maxWidth || height > maxHeight) {
+              const ratio = Math.min(maxWidth / width, maxHeight / height);
+              width = width * ratio;
+              height = height * ratio;
+            }
+            
+            // Create canvas and compress
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+              safeReject(new Error('Failed to get canvas context'));
               return;
             }
             
-            // If still too large, reduce quality further (more aggressive)
-            if (blob.size > maxSizeMB * 1024 * 1024) {
-              // Recursively compress with lower quality
-              const lowerQuality = Math.max(0.4, quality - 0.25);
-              canvas.toBlob(
-                (smallerBlob) => {
-                  if (!smallerBlob) {
-                    // Fallback: use original blob even if large
-                    const compressedFile = new File([blob], file.name, {
-                      type: outputType,
-                      lastModified: Date.now()
-                    });
-                    resolve(compressedFile);
-                    return;
-                  }
-                  
-                  const compressedFile = new File([smallerBlob], file.name, {
+            // Draw image to canvas
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // Use JPEG for better compression (unless it's already WebP or PNG with transparency)
+            const outputType = file.type === 'image/png' && file.size > 500000 ? 'image/jpeg' : (file.type || 'image/jpeg');
+            
+            // Convert to blob with quality settings - CRITICAL: use safeResolve/safeReject
+            canvas.toBlob(
+              (blob) => {
+                if (!blob) {
+                  safeReject(new Error('Failed to compress image - toBlob returned null'));
+                  return;
+                }
+                
+                // If still too large, reduce quality further (more aggressive)
+                if (blob.size > maxSizeMB * 1024 * 1024) {
+                  // Recursively compress with lower quality
+                  const lowerQuality = Math.max(0.4, quality - 0.25);
+                  canvas.toBlob(
+                    (smallerBlob) => {
+                      if (!smallerBlob) {
+                        // Fallback: use original blob even if large
+                        const compressedFile = new File([blob], file.name, {
+                          type: outputType,
+                          lastModified: Date.now()
+                        });
+                        safeResolve(compressedFile);
+                        return;
+                      }
+                      
+                      const compressedFile = new File([smallerBlob], file.name, {
+                        type: outputType,
+                        lastModified: Date.now()
+                      });
+                      safeResolve(compressedFile);
+                    },
+                    outputType,
+                    lowerQuality
+                  );
+                } else {
+                  const compressedFile = new File([blob], file.name, {
                     type: outputType,
                     lastModified: Date.now()
                   });
-                  resolve(compressedFile);
-                },
-                outputType,
-                lowerQuality
-              );
-            } else {
-              const compressedFile = new File([blob], file.name, {
-                type: outputType,
-                lastModified: Date.now()
-              });
-              resolve(compressedFile);
-            }
-          },
-          outputType,
-          quality
-        );
-      };
-      
-      img.onerror = () => {
-        clearTimeout(timeoutId);
-        reject(new Error('Failed to load image'));
-      };
-      
-      img.src = e.target?.result as string;
+                  safeResolve(compressedFile);
+                }
+              },
+              outputType,
+              quality
+            );
+          } catch (error: any) {
+            console.error(`[COMPRESS_IMAGE] Error in img.onload for "${file.name}":`, error);
+            safeReject(new Error(`Compression error: ${error?.message || 'Unknown error'}`));
+          }
+        };
+        
+        img.onerror = (error) => {
+          console.error(`[COMPRESS_IMAGE] Image load error for "${file.name}":`, error);
+          safeReject(new Error('Failed to load image for compression'));
+        };
+        
+        img.src = e.target?.result as string;
+      } catch (error: any) {
+        console.error(`[COMPRESS_IMAGE] Error in reader.onload for "${file.name}":`, error);
+        safeReject(new Error(`File read error: ${error?.message || 'Unknown error'}`));
+      }
     };
     
-    reader.onerror = () => {
-      clearTimeout(timeoutId);
-      reject(new Error('Failed to read file'));
+    reader.onerror = (error) => {
+      console.error(`[COMPRESS_IMAGE] FileReader error for "${file.name}":`, error);
+      safeReject(new Error('Failed to read image file'));
     };
     
     try {
       reader.readAsDataURL(file);
-    } catch (error) {
-      clearTimeout(timeoutId);
-      reject(new Error('Failed to read file: ' + (error instanceof Error ? error.message : 'Unknown error')));
+    } catch (error: any) {
+      console.error(`[COMPRESS_IMAGE] Error calling readAsDataURL for "${file.name}":`, error);
+      safeReject(new Error('Failed to read file: ' + (error instanceof Error ? error.message : 'Unknown error')));
     }
   });
 }

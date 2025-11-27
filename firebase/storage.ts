@@ -49,14 +49,19 @@ export async function uploadImage(path: string, file: File | Blob, options?: { r
       }
       
       // Upload bytes - NO timeout wrapper, let Firebase handle it
+      console.log(`[UPLOAD_IMAGE] Starting uploadBytes for: ${path}`);
       const snapshot = await uploadBytes(storageRef, file);
+      console.log(`[UPLOAD_IMAGE] uploadBytes snapshot received for: ${path}`);
       console.log(`[UPLOAD_IMAGE] Upload complete, getting download URL...`);
       
       // Get download URL - separate try/catch to handle URL retrieval failures
       let downloadUrl: string;
       try {
+        console.log(`[UPLOAD_IMAGE] Starting getDownloadURL for: ${path}`);
         downloadUrl = await getDownloadURL(snapshot.ref);
+        console.log(`[UPLOAD_IMAGE] getDownloadURL resolved for: ${path} - ${downloadUrl.substring(0, 50)}...`);
       } catch (urlError: any) {
+        console.error(`[UPLOAD_IMAGE] getDownloadURL failed for: ${path}`, urlError);
         // Treat URL retrieval failure as a failed upload
         throw new Error(`Failed to get image URL after upload: ${urlError?.message || 'Unknown error'}`);
       }
