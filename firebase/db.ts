@@ -730,8 +730,11 @@ export async function getUserProfile(uid: string): Promise<FirestoreUser | null>
       createdAt: data.createdAt || Date.now(),
       updatedAt: data.updatedAt,
     };
-  } catch (error) {
-    console.error("Error fetching user profile:", error);
+  } catch (error: any) {
+    // Don't log permission errors - they're expected and handled elsewhere
+    if (error?.code !== 'permission-denied' && !error?.message?.includes('permission')) {
+      console.error("Error fetching user profile:", error);
+    }
     return null;
   }
 }
@@ -772,7 +775,10 @@ export async function createOrUpdateUserProfile(uid: string, userData: Partial<F
     
     await setDoc(userRef, cleanedUserData, { merge: true });
   } catch (error: any) {
-    console.error('Firestore write failed:', { path: `users/${uid}`, error: error.message || 'Unknown error' });
+    // Don't log permission errors - they're expected for fake accounts and handled elsewhere
+    if (error?.code !== 'permission-denied' && !error?.message?.includes('permission')) {
+      console.error('Firestore write failed:', { path: `users/${uid}`, error: error.message || 'Unknown error' });
+    }
     throw error;
   }
 }

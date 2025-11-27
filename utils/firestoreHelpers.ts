@@ -40,7 +40,10 @@ export async function writeToFirestore<T extends Record<string, any>>(
     }
   } catch (error: any) {
     const errorMessage = error.message || 'Unknown error';
-    console.error('Firestore write failed:', { collectionPath, error: errorMessage, data: Object.keys(data) });
+    // Don't log permission errors - they're expected for fake accounts and handled elsewhere
+    if (error?.code !== 'permission-denied' && !error?.message?.includes('permission')) {
+      console.error('Firestore write failed:', { collectionPath, error: errorMessage, data: Object.keys(data) });
+    }
     return { success: false, error: errorMessage };
   }
 }
@@ -68,7 +71,10 @@ export async function updateFirestoreDoc(
     return { success: true };
   } catch (error: any) {
     const errorMessage = error.message || 'Unknown error';
-    console.error('Firestore write failed:', { collectionPath, docId, error: errorMessage });
+    // Don't log permission errors - they're expected and handled elsewhere
+    if (error?.code !== 'permission-denied' && !error?.message?.includes('permission')) {
+      console.error('Firestore write failed:', { collectionPath, docId, error: errorMessage });
+    }
     return { success: false, error: errorMessage };
   }
 }

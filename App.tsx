@@ -543,21 +543,6 @@ const AppContent: React.FC = () => {
       }
     }, 10000); // 10 second delay to check after everything loads
     
-    // Seed reviews for eatezca@gmail.com (background process, idempotent)
-    // This ensures all events have 3 fake reviews (all 5 stars) and profile shows correct count
-    setTimeout(async () => {
-      try {
-        const { seedReviewsForEatezca } = await import('./utils/seedReviewsForEatezca');
-        // Run in background, don't block UI
-        seedReviewsForEatezca().then(() => {
-          console.log('[APP] ✅ Review seeding complete for eatezca@gmail.com');
-        }).catch((error) => {
-          console.error('[APP] Error seeding reviews:', error);
-        });
-      } catch (error) {
-        console.error('[APP] Failed to load review seeding utility:', error);
-      }
-    }, 7000); // 7 second delay to not interfere with initial load
 
     // Verify and seed community events for eatezca@gmail.com (runs immediately when Firestore is ready)
     // Creates 2 events per city in different categories - all public, free, unlimited capacity

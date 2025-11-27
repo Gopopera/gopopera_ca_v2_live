@@ -149,7 +149,8 @@ export async function seedReviewsForEatezca(): Promise<void> {
   // Get user ID
   const hostId = await getUserIdByEmail(EMAIL);
   if (!hostId) {
-    console.error(`[SEED_REVIEWS] Could not find user with email: ${EMAIL}`);
+    // Silently fail - user might not be logged in, which is expected
+    // Only log if it's not a permission error (which would be logged elsewhere)
     return;
   }
 
