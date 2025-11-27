@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Event, ViewState } from '../types';
-import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info, Star, Sparkles, X, UserPlus, UserCheck, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info, Star, Sparkles, X, UserPlus, UserCheck, ChevronRight, CheckCircle2, Edit } from 'lucide-react';
 import { followHost, unfollowHost, isFollowing } from '../firebase/follow';
 import { useUserStore } from '../stores/userStore';
 import { EventCard } from '../components/events/EventCard';
@@ -562,6 +562,15 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
            <div className="sticky top-32 bg-white rounded-[2.5rem] shadow-[0_20px_40px_rgba(0,0,0,0.04)] border border-gray-100 p-6 lg:p-8">
               <div className="flex justify-between items-center mb-6 lg:mb-8"><div><span className="text-3xl lg:text-4xl font-heading font-bold text-popera-teal">{event.price}</span><p className="text-xs lg:text-sm text-gray-500 font-medium mt-1">per person</p></div></div>
               <div className="space-y-3">
+                {/* Edit Event Button - Only for host */}
+                {isLoggedIn && user?.uid === event.hostId && (
+                  <button
+                    onClick={() => setViewState(ViewState.EDIT_EVENT)}
+                    className="w-full py-3.5 lg:py-4 bg-gray-100 text-[#15383c] rounded-full text-base lg:text-lg font-bold hover:bg-gray-200 transition-colors shadow-md whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2 border border-gray-200"
+                  >
+                    <Edit size={18} /> Edit Event
+                  </button>
+                )}
                 <button 
                   onClick={handleRSVP}
                   disabled={isDemo || reserving}

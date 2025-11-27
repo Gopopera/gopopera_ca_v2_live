@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ViewState, Event } from '../types';
-import { ChevronLeft, Calendar, MapPin, Clock, Star, MessageCircle } from 'lucide-react';
+import { ChevronLeft, Calendar, MapPin, Clock, Star, MessageCircle, Edit } from 'lucide-react';
 import { useUserStore } from '../stores/userStore';
 import { getUserProfile } from '../firebase/db';
 
@@ -315,11 +315,34 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
                         )}
                       </div>
 
-                      {/* Action indicator for hosting events */}
+                      {/* Action buttons for hosting events */}
                       {activeTab === 'hosting' && (
-                        <div className="mt-2 flex items-center gap-2 text-xs text-[#e35e25] font-medium">
-                          <MessageCircle size={14} />
-                          <span>Tap to manage conversation</span>
+                        <div className="mt-3 flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEventClick(event);
+                            }}
+                            className="flex-1 px-3 py-1.5 bg-[#e35e25] text-white text-xs font-bold rounded-full hover:bg-[#cf4d1d] transition-colors flex items-center justify-center gap-1.5"
+                          >
+                            <MessageCircle size={12} />
+                            Manage
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Navigate to edit page
+                              onEventClick(event);
+                              // Trigger edit mode via custom event
+                              setTimeout(() => {
+                                window.dispatchEvent(new CustomEvent('editEvent', { detail: { eventId: event.id } }));
+                              }, 100);
+                            }}
+                            className="px-3 py-1.5 bg-gray-100 text-[#15383c] text-xs font-bold rounded-full hover:bg-gray-200 transition-colors flex items-center justify-center gap-1.5 border border-gray-200"
+                          >
+                            <Edit size={12} />
+                            Edit
+                          </button>
                         </div>
                       )}
                     </div>

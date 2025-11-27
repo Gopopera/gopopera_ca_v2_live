@@ -55,16 +55,25 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
   useEffect(() => {
     if (mobileMenuOpen) {
       // Lock body scroll
+      const originalOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
       // Ensure menu is visible by scrolling to top if needed
       window.scrollTo({ top: 0, behavior: 'instant' });
+      
+      // Cleanup: restore scroll on close or unmount
+      return () => {
+        document.body.style.overflow = originalOverflow || '';
+      };
     } else {
-      // Restore body scroll
+      // Restore body scroll when menu closes
       document.body.style.overflow = '';
     }
+    // Always return cleanup function
     return () => {
-      // Cleanup: restore scroll on unmount
-      document.body.style.overflow = '';
+      // Only restore if menu was open
+      if (mobileMenuOpen) {
+        document.body.style.overflow = '';
+      }
     };
   }, [mobileMenuOpen]);
 
