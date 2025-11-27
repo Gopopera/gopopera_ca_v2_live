@@ -65,8 +65,8 @@ export const Pillars: React.FC = () => {
               
               {/* Content */}
               <div className="absolute inset-0 p-5 sm:p-6 md:p-7 lg:p-8 flex flex-col justify-end z-20">
-                {/* Category Badge - High contrast with Popera orange accent - improved readability */}
-                <span className="text-white font-heading font-black tracking-[0.15em] sm:tracking-[0.2em] uppercase text-xs sm:text-sm md:text-base lg:text-lg mb-2 sm:mb-2.5 md:mb-3 bg-[#e35e25] px-3 py-1.5 sm:px-4 sm:py-2 md:px-5 md:py-2.5 lg:px-6 lg:py-3 rounded-full w-fit border-[2px] sm:border-[3px] border-white drop-shadow-[0_4px_10px_rgba(0,0,0,0.9)] shadow-xl">
+                {/* Category Badge - Matching LOCAL CROWD DISCOVERY style with font-heading */}
+                <span className="inline-block py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#15383c]/90 border border-[#15383c] text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-heading font-bold tracking-[0.2em] uppercase mb-2 sm:mb-2.5 md:mb-3 backdrop-blur-sm shadow-lg">
                   {pillar.category}
                 </span>
                 
