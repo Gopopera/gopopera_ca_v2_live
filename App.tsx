@@ -549,7 +549,28 @@ const AppContent: React.FC = () => {
       return;
     }
   }, [user, viewState, redirectAfterLogin, setRedirectAfterLogin, authInitialized]);
-  
+
+  // Verify and seed community events immediately when user is eatezca@gmail.com
+  useEffect(() => {
+    if (!authInitialized) return;
+    
+    // Only run for eatezca@gmail.com account
+    if (user?.email?.toLowerCase() === 'eatezca@gmail.com') {
+      (async () => {
+        try {
+          const { verifyAndSeedCommunityEvents } = await import('./firebase/verifyAndSeedCommunityEvents');
+          verifyAndSeedCommunityEvents().then(() => {
+            console.log('[APP] ✅ Community events verification and seeding complete for eatezca@gmail.com');
+          }).catch((error) => {
+            console.error('[APP] Error verifying/seeding community events:', error);
+          });
+        } catch (error) {
+          console.error('[APP] Failed to load community events verification utility:', error);
+        }
+      })();
+    }
+  }, [user?.email, authInitialized]);
+
   // Events are now loaded via real-time subscription in eventStore.init()
   // No need for manual loading or mock data initialization - events come from Firestore in real-time
   
