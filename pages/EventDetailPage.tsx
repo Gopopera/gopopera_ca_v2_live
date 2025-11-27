@@ -94,18 +94,20 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   
   // Fetch real reservation count from Firestore
   useEffect(() => {
+    // CRITICAL: Always initialize variables at the top to maintain consistent hook structure
+    let hasPermissionError = false;
+    let isMounted = true;
+    let interval: NodeJS.Timeout | null = null;
+    
     // Always set initial count first
     if (!event.id || isDemo) {
       setReservationCount(event.attendeesCount || 0);
       // CRITICAL: Always return a cleanup function (even if no-op) to maintain hook order
       return () => {
-        // No-op cleanup
+        isMounted = false;
+        // No-op cleanup - but structure must be consistent
       };
     }
-    
-    let hasPermissionError = false;
-    let isMounted = true;
-    let interval: NodeJS.Timeout | null = null;
     
     const safeFetchReservationCount = async () => {
       if (hasPermissionError || !isMounted) return;
