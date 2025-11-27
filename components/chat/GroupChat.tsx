@@ -1,12 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { X, Users, Send, Megaphone, BarChart2, MessageCircle, FileText, ChevronRight, Sparkles, ArrowLeft, MoreVertical, Pin, Image as ImageIcon } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { X, Users, Send, Megaphone, BarChart2, MessageCircle, FileText, ChevronRight, Sparkles, ArrowLeft, MoreVertical, Pin, Image as ImageIcon, Lock, Download, MessageSquareOff } from 'lucide-react';
 import { Event } from '@/types';
 import { useUserStore } from '@/stores/userStore';
 import { useChatStore } from '@/stores/chatStore';
 import { ChatReservationBlocker } from './ChatReservationBlocker';
 import { DemoEventBlocker } from './DemoEventBlocker';
 import { GroupChatHeader } from './GroupChatHeader';
+import { AttendeeList } from './AttendeeList';
+import { ExpelUserModal } from './ExpelUserModal';
+import { CreatePollModal } from './CreatePollModal';
 import { POPERA_HOST_ID } from '@/stores/userStore';
+import { getDbSafe } from '../../src/lib/firebase';
+import { doc, updateDoc, arrayUnion, arrayRemove, getDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
+import { processRefundForRemovedUser } from '../../utils/refundHelper';
+import { expelUserFromEvent } from '../../firebase/db';
 
 interface GroupChatProps {
   event: Event;
@@ -19,12 +26,17 @@ interface GroupChatProps {
 export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDetails, onReserve, isLoggedIn = false }) => {
   const [message, setMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showAttendeeList, setShowAttendeeList] = useState(false);
+  const [chatLocked, setChatLocked] = useState(false);
+  const [muteAll, setMuteAll] = useState(false);
+  const [showExpelModal, setShowExpelModal] = useState(false);
+  const [userToExpel, setUserToExpel] = useState<{ userId: string; userName: string } | null>(null);
+  const [showCreatePollModal, setShowCreatePollModal] = useState(false);
   const currentUser = useUserStore((state) => state.getCurrentUser());
   const getMessagesForEvent = useChatStore((state) => state.getMessagesForEvent);
   const addMessage = useChatStore((state) => state.addMessage);
   const subscribeToEventChat = useChatStore((state) => state.subscribeToEventChat);
   const unsubscribeFromEventChat = useChatStore((state) => state.unsubscribeFromEventChat);
-  const initializeEventChat = useChatStore((state) => state.initializeEventChat);
   const getPollForEvent = useChatStore((state) => state.getPollForEvent);
   const addPoll = useChatStore((state) => state.addPoll);
   
@@ -49,47 +61,98 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
     : (isPoperaOwned || hasReserved) 
     ? 'participant' 
     : 'blocked';
-  const canAccessChat = viewType === 'host' || viewType === 'participant';
-  const canSendMessages = canAccessChat && !isDemo && !!currentUser; // Require authentication and not demo
+  
+  // Check if user is banned
+  const isBanned = useMemo(() => {
+    if (!currentUser || !event.id) return false;
+    const bannedEvents = (currentUser as any).bannedEvents || [];
+    return bannedEvents.includes(event.id);
+  }, [currentUser, event.id]);
+  
+  const canAccessChat = (viewType === 'host' || viewType === 'participant') && !isBanned;
+  const canSendMessages = canAccessChat && !isDemo && !!currentUser && !chatLocked; // Require authentication and not demo
   
   const messages = getMessagesForEvent(event.id);
   const poll = getPollForEvent(event.id);
   
   // Subscribe to Firestore realtime chat updates
   useEffect(() => {
-    if (canAccessChat && !isDemo) {
+    if (canAccessChat && !isDemo && !isBanned) {
       subscribeToEventChat(event.id);
       return () => {
         unsubscribeFromEventChat(event.id);
       };
     }
-  }, [event.id, canAccessChat, isDemo, subscribeToEventChat, unsubscribeFromEventChat]);
+  }, [event.id, canAccessChat, isDemo, isBanned, subscribeToEventChat, unsubscribeFromEventChat]);
   
-  // Initialize chat for Popera events (including official launch events) - fallback for mock data
-  useEffect(() => {
-    if (isPoperaOwned && messages.length === 0 && !isDemo) {
-      initializeEventChat(event.id, event.hostName);
-    }
-  }, [event.id, event.hostName, isPoperaOwned, messages.length, initializeEventChat, isDemo]);
+  // NO AUTOMATIC MESSAGES - Chat is ready when user has access
+  // Messages are synced in real-time via Firestore subscriptions
+  // Only host and attendees can send messages (enforced by canSendMessages check)
   
   const handleSendMessage = async () => {
-    if (!message.trim() || !canSendMessages || !currentUser) return;
+    if (!message.trim() || !canSendMessages || !currentUser || chatLocked) return;
     
-    await addMessage(event.id, currentUser.id, currentUser.name, message, 'message', isHost);
+    const messageText = message.trim();
+    await addMessage(event.id, currentUser.id, currentUser.name, messageText, 'message', isHost);
     setMessage('');
+
+    // Notify attendees of new message (non-blocking, fire-and-forget)
+    import('../../utils/notificationHelpers').then(async ({ notifyAttendeesOfNewMessage }) => {
+      const { getDocs, collection, query, where } = await import('firebase/firestore');
+      const { getDbSafe } = await import('../../src/lib/firebase');
+      const db = getDbSafe();
+      
+      if (db && currentUser) {
+        try {
+          // Get all RSVPs for this event
+          const rsvpsRef = collection(db, 'reservations');
+          const rsvpsQuery = query(rsvpsRef, where('eventId', '==', event.id));
+          const rsvpsSnapshot = await getDocs(rsvpsQuery);
+          const attendeeIds = rsvpsSnapshot.docs.map(doc => doc.data().userId).filter(Boolean);
+          
+          // Also include host
+          if (event.hostId && !attendeeIds.includes(event.hostId)) {
+            attendeeIds.push(event.hostId);
+          }
+
+          await notifyAttendeesOfNewMessage(
+            event.id,
+            event.title,
+            currentUser.id,
+            currentUser.name,
+            messageText.slice(0, 100), // Snippet
+            attendeeIds
+          );
+        } catch (error) {
+          console.error('Error sending message notifications:', error);
+        }
+      }
+    }).catch((error) => {
+      console.error('Error loading notification helpers for new message:', error);
+    });
   };
   
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.type.startsWith('image/')) {
+      // CRITICAL: Only host and attendees can send images
+      if (!currentUser || !canSendMessages) {
+        console.warn('[GROUP_CHAT] Unauthorized image upload attempt blocked');
+        return;
+      }
+      
+      // Additional validation: Ensure user is either host or has reserved
+      if (!isHost && !hasReserved) {
+        console.warn('[GROUP_CHAT] Unauthorized image upload attempt blocked');
+        return;
+      }
+      
       const reader = new FileReader();
       reader.onloadend = () => {
         const imageUrl = reader.result as string;
         // Send image as message with data URL (format: [Image:dataUrl:filename])
-        if (currentUser && canSendMessages) {
-          // In real app, upload image to storage first, then send URL
-          addMessage(event.id, currentUser.id, currentUser.name, `[Image:${imageUrl}:${file.name}]`, 'message', isHost);
-        }
+        // Message will be saved to Firestore and synced in real-time
+        addMessage(event.id, currentUser.id, currentUser.name || currentUser.displayName || 'User', `[Image:${imageUrl}:${file.name}]`, 'message', isHost);
       };
       reader.readAsDataURL(file);
     }
@@ -103,6 +166,230 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
       onReserve();
     }
   };
+
+  // Host management functions
+  const handleRemoveUser = async (userId: string) => {
+    if (!isHost || !currentUser) return;
+
+    try {
+      const db = getDbSafe();
+      if (!db) return;
+
+      // Remove RSVP
+      const reservationsRef = collection(db, 'reservations');
+      const q = query(
+        reservationsRef,
+        where('userId', '==', userId),
+        where('eventId', '==', event.id),
+        where('status', '==', 'reserved')
+      );
+      const snapshot = await getDocs(q);
+      
+      if (!snapshot.empty) {
+        const reservation = snapshot.docs[0];
+        // Process refund
+        await processRefundForRemovedUser(userId, event.id);
+        // Update reservation status
+        await updateDoc(doc(db, 'reservations', reservation.id), {
+          status: 'cancelled',
+          cancelledBy: 'host',
+          cancelledAt: Date.now(),
+        });
+      }
+
+      // Remove from user's RSVPs
+      const userRef = doc(db, 'users', userId);
+      const userDoc = await getDoc(userRef);
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const rsvps = userData.rsvps || [];
+        await updateDoc(userRef, {
+          rsvps: rsvps.filter((id: string) => id !== event.id),
+        });
+      }
+
+      alert('User removed and refund processed');
+    } catch (error) {
+      console.error('Error removing user:', error);
+      alert('Failed to remove user. Please try again.');
+    }
+  };
+
+  const handleBanUser = async (userId: string) => {
+    if (!isHost || !currentUser) return;
+
+    try {
+      const db = getDbSafe();
+      if (!db) return;
+
+      const userRef = doc(db, 'users', userId);
+      const userDoc = await getDoc(userRef);
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const bannedEvents = userData.bannedEvents || [];
+        
+        if (!bannedEvents.includes(event.id)) {
+          await updateDoc(userRef, {
+            bannedEvents: arrayUnion(event.id),
+          });
+          alert('User banned from this event');
+        } else {
+          await updateDoc(userRef, {
+            bannedEvents: arrayRemove(event.id),
+          });
+          alert('User unbanned from this event');
+        }
+      }
+    } catch (error) {
+      console.error('Error banning user:', error);
+      alert('Failed to ban user. Please try again.');
+    }
+  };
+
+  const handleExpelUser = (userId: string) => {
+    if (!isHost || !currentUser) return;
+    
+    // Get user name for modal
+    const db = getDbSafe();
+    if (!db) return;
+    
+    getDoc(doc(db, 'users', userId))
+      .then((userDoc) => {
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const userName = userData.name || userData.displayName || 'User';
+          setUserToExpel({ userId, userName });
+          setShowExpelModal(true);
+        }
+      })
+      .catch((error) => {
+        console.error('Error fetching user:', error);
+        // Still show modal with default name
+        setUserToExpel({ userId, userName: 'User' });
+        setShowExpelModal(true);
+      });
+  };
+
+  const handleConfirmExpel = async (reason: string, description: string) => {
+    if (!isHost || !currentUser || !userToExpel) return;
+
+    try {
+      await expelUserFromEvent(
+        event.id,
+        userToExpel.userId,
+        currentUser.id,
+        reason,
+        description
+      );
+
+      // Process refund if needed
+      try {
+        await processRefundForRemovedUser(userToExpel.userId, event.id);
+      } catch (refundError) {
+        console.error('Error processing refund:', refundError);
+        // Don't fail expulsion if refund fails
+      }
+
+      alert(`${userToExpel.userName} has been expelled from this event.`);
+      
+      // Close modals and refresh attendee list
+      setShowExpelModal(false);
+      setUserToExpel(null);
+      setShowAttendeeList(false);
+      
+      // Refresh attendee list by closing and reopening
+      setTimeout(() => {
+        setShowAttendeeList(true);
+      }, 100);
+    } catch (error) {
+      console.error('Error expelling user:', error);
+      alert('Failed to expel user. Please try again.');
+    }
+  };
+
+  const handleCloseChatEarly = async () => {
+    if (!isHost || !confirm('Close chat early? This will prevent new messages.')) return;
+    
+    try {
+      const db = getDbSafe();
+      if (db) {
+        await updateDoc(doc(db, 'events', event.id), {
+          chatClosed: true,
+          chatClosedAt: Date.now(),
+        });
+        setChatLocked(true);
+        alert('Chat closed');
+      }
+    } catch (error) {
+      console.error('Error closing chat:', error);
+    }
+  };
+
+  const handleDownloadChatHistory = () => {
+    const chatData = {
+      event: event.title,
+      date: new Date().toISOString(),
+      messages: messages.map(msg => ({
+        user: msg.userName,
+        message: msg.message,
+        timestamp: msg.timestamp,
+        type: msg.type,
+      })),
+    };
+    
+    const blob = new Blob([JSON.stringify(chatData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `popera-chat-${event.id}-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // AI Insights - Soft implementation
+  const aiInsights = useMemo(() => {
+    if (messages.length === 0) {
+      return {
+        summary: 'No activity yet. Start the conversation!',
+        concerns: [],
+        topAnnouncement: null,
+        vibe: 'quiet',
+      };
+    }
+
+    const recentMessages = messages.slice(-20);
+    const announcements = recentMessages.filter(m => m.type === 'announcement');
+    const hostMessages = recentMessages.filter(m => m.isHost);
+    
+    const summary = recentMessages.length > 0
+      ? `Your crowd is actively engaging with ${recentMessages.length} recent messages.`
+      : 'Conversation is starting.';
+
+    const concerns: string[] = [];
+    const questionWords = ['?', 'how', 'what', 'when', 'where', 'why'];
+    recentMessages.forEach(msg => {
+      if (questionWords.some(word => msg.message.toLowerCase().includes(word))) {
+        concerns.push(msg.message.slice(0, 50) + '...');
+      }
+    });
+
+    const topAnnouncement = announcements.length > 0
+      ? announcements[announcements.length - 1]
+      : null;
+
+    let vibe = 'active';
+    if (recentMessages.length < 5) vibe = 'quiet';
+    else if (hostMessages.length > recentMessages.length / 2) vibe = 'host-led';
+    else if (recentMessages.length > 15) vibe = 'very-active';
+
+    return {
+      summary,
+      concerns: concerns.slice(0, 3),
+      topAnnouncement: topAnnouncement ? topAnnouncement.message.slice(0, 100) : null,
+      vibe,
+    };
+  }, [messages]);
   
   // Calculate real member count from RSVPs (for Popera events) or use static for demo events
   const memberCount = isPoperaOwned 
@@ -160,6 +447,15 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                {tab.name}
              </button>
            ))}
+           
+           {/* Attendee List Button */}
+           <button
+             onClick={() => setShowAttendeeList(true)}
+             className="w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all text-gray-300 hover:bg-white/10 group"
+           >
+             <Users size={18} className="mr-3 text-gray-400 group-hover:text-white" />
+             Attendees
+           </button>
         </div>
 
         <div className="p-6 mt-auto border-t border-white/10 bg-[#0f2a2d]">
@@ -184,20 +480,30 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
         
         {/* Reservation Blocker - shown if user hasn't reserved and event is not Popera-owned and not demo */}
         {!isDemo && !canAccessChat && (
-          <ChatReservationBlocker 
-            onReserve={handleReserve}
-            isLoggedIn={isLoggedIn}
-          />
+          <>
+            {/* Blurred chat preview */}
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-8 space-y-4 sm:space-y-6 filter blur-sm pointer-events-none">
+              {messages.slice(0, 3).map((msg) => (
+                <div key={msg.id} className="bg-white rounded-xl p-4 opacity-50">
+                  <p className="text-sm text-gray-600">{msg.message}</p>
+                </div>
+              ))}
+            </div>
+            <ChatReservationBlocker 
+              onReserve={handleReserve}
+              isLoggedIn={isLoggedIn}
+            />
+          </>
         )}
 
         {/* New Header - Desktop */}
         <div className="hidden md:block">
-          <GroupChatHeader event={event} onClose={onClose} isMobile={false} />
+          <GroupChatHeader event={event} onClose={onClose} onViewDetails={onViewDetails} isMobile={false} />
         </div>
         
         {/* New Header - Mobile */}
         <div className="md:hidden">
-          <GroupChatHeader event={event} onClose={onClose} isMobile={true} />
+          <GroupChatHeader event={event} onClose={onClose} onViewDetails={onViewDetails} isMobile={true} />
         </div>
 
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-8 space-y-4 sm:space-y-6">
@@ -210,26 +516,65 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 <button
-                  onClick={() => {
-                    const question = prompt('Enter poll question:');
-                    if (question) {
-                      const option1 = prompt('Option 1:');
-                      const option2 = prompt('Option 2:');
-                      if (option1 && option2) {
-                        addPoll(event.id, question, [option1, option2]);
-                      }
-                    }
-                  }}
+                  onClick={() => setShowCreatePollModal(true)}
                   className="flex flex-col items-center gap-2 p-3 rounded-lg border border-gray-200 hover:border-[#e35e25] hover:bg-[#e35e25]/5 transition-colors touch-manipulation active:scale-95"
                 >
                   <BarChart2 size={20} className="text-[#15383c]" />
                   <span className="text-xs font-medium text-gray-700">Create Poll</span>
                 </button>
                 <button
-                  onClick={() => {
-                    const announcement = prompt('Enter announcement:');
-                    if (announcement && currentUser) {
-                      addMessage(event.id, currentUser.id, currentUser.name, announcement, 'announcement', true);
+                  onClick={async () => {
+                    const title = prompt('Announcement title:');
+                    if (!title) return;
+                    const message = prompt('Announcement message:');
+                    if (!message || !currentUser) return;
+
+                    try {
+                      // Create announcement in Firestore
+                      const { createAnnouncement } = await import('../../firebase/notifications');
+                      await createAnnouncement(event.id, {
+                        type: 'announcement',
+                        title,
+                        message,
+                        createdBy: event.hostId,
+                      });
+
+                      // Also add to chat
+                      await addMessage(event.id, currentUser.id, currentUser.name, `${title}: ${message}`, 'announcement', true);
+
+                      // Notify attendees (non-blocking)
+                      import('../../utils/notificationHelpers').then(async ({ notifyAttendeesOfAnnouncement }) => {
+                        const { getDocs, collection, query, where } = await import('firebase/firestore');
+                        const { getDbSafe } = await import('../../src/lib/firebase');
+                        const db = getDbSafe();
+                        
+                        if (db) {
+                          try {
+                            const rsvpsRef = collection(db, 'reservations');
+                            const rsvpsQuery = query(rsvpsRef, where('eventId', '==', event.id));
+                            const rsvpsSnapshot = await getDocs(rsvpsQuery);
+                            const attendeeIds = rsvpsSnapshot.docs.map(doc => doc.data().userId).filter(Boolean);
+                            if (event.hostId && !attendeeIds.includes(event.hostId)) {
+                              attendeeIds.push(event.hostId);
+                            }
+
+                            await notifyAttendeesOfAnnouncement(
+                              event.id,
+                              title,
+                              message,
+                              event.title,
+                              attendeeIds
+                            );
+                          } catch (error) {
+                            console.error('Error notifying attendees of announcement:', error);
+                          }
+                        }
+                      }).catch((error) => {
+                        console.error('Error loading notification helpers for announcement:', error);
+                      });
+                    } catch (error) {
+                      console.error('Error creating announcement:', error);
+                      alert('Failed to create announcement. Please try again.');
                     }
                   }}
                   className="flex flex-col items-center gap-2 p-3 rounded-lg border border-gray-200 hover:border-[#e35e25] hover:bg-[#e35e25]/5 transition-colors touch-manipulation active:scale-95"
@@ -238,8 +583,45 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                   <span className="text-xs font-medium text-gray-700">Announcement</span>
                 </button>
                 <button
-                  onClick={() => {
-                    alert('Survey creation coming soon!');
+                  onClick={async () => {
+                    const numQuestions = prompt('How many questions? (1-3)', '1');
+                    if (!numQuestions || isNaN(parseInt(numQuestions)) || parseInt(numQuestions) < 1 || parseInt(numQuestions) > 3) return;
+                    
+                    const questions: Array<{ question: string; type: 'short' | 'multiple'; options?: string[] }> = [];
+                    
+                    for (let i = 0; i < parseInt(numQuestions); i++) {
+                      const question = prompt(`Question ${i + 1}:`);
+                      if (!question) return;
+                      
+                      const type = prompt('Type: "short" for short answer, "multiple" for multiple choice', 'short');
+                      if (type !== 'short' && type !== 'multiple') return;
+                      
+                      let options: string[] = [];
+                      if (type === 'multiple') {
+                        const option1 = prompt('Option 1:');
+                        const option2 = prompt('Option 2:');
+                        if (!option1 || !option2) return;
+                        options = [option1, option2];
+                      }
+                      
+                      questions.push({ question, type: type as 'short' | 'multiple', options });
+                    }
+
+                    try {
+                      const db = getDbSafe();
+                      if (db) {
+                        await addDoc(collection(db, 'events', event.id, 'surveys'), {
+                          questions,
+                          createdBy: event.hostId,
+                          createdAt: Date.now(),
+                          status: 'active',
+                        });
+                        alert('Survey created! Attendees can answer after the event.');
+                      }
+                    } catch (error) {
+                      console.error('Error creating survey:', error);
+                      alert('Failed to create survey. Please try again.');
+                    }
                   }}
                   className="flex flex-col items-center gap-2 p-3 rounded-lg border border-gray-200 hover:border-[#e35e25] hover:bg-[#e35e25]/5 transition-colors touch-manipulation active:scale-95"
                 >
@@ -248,7 +630,19 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                 </button>
                 <button
                   onClick={() => {
-                    alert('More host tools coming soon!');
+                    // Show more tools menu
+                    const action = prompt('More Tools:\n1. Close Chat Early\n2. Lock New Messages\n3. Mute All\n4. Download Chat History\n\nEnter number (1-4):');
+                    if (action === '1') {
+                      handleCloseChatEarly();
+                    } else if (action === '2') {
+                      setChatLocked(!chatLocked);
+                      alert(chatLocked ? 'Chat unlocked' : 'Chat locked - new messages disabled');
+                    } else if (action === '3') {
+                      setMuteAll(!muteAll);
+                      alert(muteAll ? 'All notifications unmuted' : 'All notifications muted');
+                    } else if (action === '4') {
+                      handleDownloadChatHistory();
+                    }
                   }}
                   className="flex flex-col items-center gap-2 p-3 rounded-lg border border-gray-200 hover:border-[#e35e25] hover:bg-[#e35e25]/5 transition-colors touch-manipulation active:scale-95"
                 >
@@ -276,20 +670,42 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
 
           {canAccessChat && !isDemo && (
             <>
-              <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 flex items-center justify-between border border-gray-100 shadow-sm max-w-3xl mx-auto w-full">
-                <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
-                   <div className="w-8 h-8 sm:w-10 sm:h-10 bg-popera-teal/5 rounded-full flex items-center justify-center text-[#15383c] shrink-0">
-                     <Sparkles size={18} className="sm:w-5 sm:h-5" />
-                   </div>
-                   <div className="min-w-0 flex-1">
-                     <h4 className="text-xs sm:text-sm font-bold text-[#15383c]">AI Insights</h4>
-                     <p className="text-[10px] sm:text-xs text-gray-500 hidden sm:block truncate">Summarizing key moments and logistics in real-time.</p>
-                   </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <span className="px-3 py-1 rounded-full border border-green-500/30 bg-green-50 text-[10px] font-bold text-green-600 flex items-center">
-                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-2 animate-pulse"></span> Live
+              <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-gray-100 shadow-sm max-w-3xl mx-auto w-full">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-3 min-w-0 flex-1">
+                     <div className="w-10 h-10 bg-popera-teal/5 rounded-full flex items-center justify-center text-[#15383c] shrink-0">
+                       <Sparkles size={20} className="text-[#15383c]" />
+                     </div>
+                     <div className="min-w-0 flex-1">
+                       <h4 className="text-sm font-bold text-[#15383c]">AI Insights</h4>
+                       <p className="text-xs text-gray-500 truncate">Here's what your crowd is talking about</p>
+                     </div>
+                  </div>
+                  <span className="px-3 py-1 rounded-full border border-orange-500/30 bg-orange-50 text-[10px] font-bold text-orange-600 flex items-center shrink-0">
+                    <span className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-2"></span> Beta
                   </span>
+                </div>
+                <div className="space-y-2 text-sm text-gray-700">
+                  <p className="font-medium">{aiInsights.summary}</p>
+                  {aiInsights.concerns.length > 0 && (
+                    <div>
+                      <p className="font-semibold text-xs text-gray-500 mb-1">Key concerns:</p>
+                      <ul className="list-disc list-inside space-y-1 text-xs">
+                        {aiInsights.concerns.map((concern, idx) => (
+                          <li key={idx}>{concern}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {aiInsights.topAnnouncement && (
+                    <div>
+                      <p className="font-semibold text-xs text-gray-500 mb-1">Most recent announcement:</p>
+                      <p className="text-xs italic">{aiInsights.topAnnouncement}</p>
+                    </div>
+                  )}
+                  <p className="text-xs text-gray-500">
+                    Attendance vibe: <span className="font-semibold capitalize">{aiInsights.vibe}</span>
+                  </p>
                 </div>
               </div>
 
@@ -376,7 +792,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
           )}
         </div>
 
-        {canSendMessages && (
+        {canSendMessages && !chatLocked && (
           <div className="bg-white p-3 sm:p-4 md:p-6 border-t border-gray-100 shrink-0 z-10 safe-area-inset-bottom">
              <div className="max-w-3xl mx-auto relative flex items-center gap-2">
                 {/* Image Upload Button - Only for host and participants */}
@@ -412,7 +828,97 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
              </div>
           </div>
         )}
+        
+        {chatLocked && (
+          <div className="bg-yellow-50 border-t border-yellow-200 p-4 text-center">
+            <p className="text-sm text-yellow-800 flex items-center justify-center gap-2">
+              <Lock size={16} />
+              Chat is locked. New messages are disabled.
+            </p>
+          </div>
+        )}
       </main>
+
+      {/* Attendee List Modal */}
+      <AttendeeList
+        eventId={event.id}
+        hostId={event.hostId || ''}
+        isHost={isHost}
+        onRemoveUser={handleRemoveUser}
+        onBanUser={handleBanUser}
+        onExpelUser={handleExpelUser}
+        isOpen={showAttendeeList}
+        onClose={() => setShowAttendeeList(false)}
+      />
+
+      {/* Expel User Modal */}
+      {userToExpel && (
+        <ExpelUserModal
+          userName={userToExpel.userName}
+          isOpen={showExpelModal}
+          onClose={() => {
+            setShowExpelModal(false);
+            setUserToExpel(null);
+          }}
+          onConfirm={handleConfirmExpel}
+        />
+      )}
+
+      {/* Create Poll Modal */}
+      <CreatePollModal
+        isOpen={showCreatePollModal}
+        onClose={() => setShowCreatePollModal(false)}
+        onCreatePoll={async (question, options) => {
+          try {
+            // Create poll message in Firestore
+            await addMessage(
+              event.id,
+              currentUser?.id || '',
+              currentUser?.name || 'Host',
+              `Poll: ${question}`,
+              'poll',
+              true
+            );
+            
+            // Add poll to store
+            addPoll(event.id, question, options);
+            
+            // Notify attendees of new poll (non-blocking)
+            import('../../utils/notificationHelpers').then(async ({ notifyAttendeesOfPoll }) => {
+              try {
+                const db = getDbSafe();
+                if (db) {
+                  const reservationsRef = collection(db, 'reservations');
+                  const q = query(
+                    reservationsRef,
+                    where('eventId', '==', event.id),
+                    where('status', '==', 'reserved')
+                  );
+                  const snapshot = await getDocs(q);
+                  const attendeeIds = snapshot.docs.map(doc => doc.data().userId).filter(Boolean);
+                  
+                  if (attendeeIds.length > 0) {
+                    await notifyAttendeesOfPoll(
+                      event.hostId || '',
+                      attendeeIds,
+                      event.id,
+                      event.title || 'Event',
+                      question
+                    );
+                  }
+                }
+              } catch (error) {
+                console.error('Error notifying attendees of poll:', error);
+              }
+            }).catch((error) => {
+              console.error('Error loading notification helpers for poll:', error);
+            });
+          } catch (error) {
+            console.error('Error creating poll:', error);
+            alert('Failed to create poll. Please try again.');
+          }
+        }}
+      />
     </div>
   );
 };

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, Search, User, Bell, PlusCircle, Heart } from 'lucide-react';
+import { Menu, X, Search, User, Bell, PlusCircle, Heart, ArrowLeft } from 'lucide-react';
 import { ViewState } from '@/types';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useUserStore } from '../../stores/userStore';
+import { getUnreadNotificationCount } from '../../firebase/notifications';
 
 interface HeaderProps {
   setViewState: (view: ViewState) => void;
@@ -16,6 +18,30 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { language, setLanguage, t } = useLanguage();
+  const user = useUserStore((state) => state.user);
+  const userProfile = useUserStore((state) => state.userProfile);
+  // Get profile picture from multiple sources (user store, userProfile, Firebase auth)
+  // This is reactive - will update when user or userProfile changes in the store
+  const userPhoto = user?.photoURL || user?.profileImageUrl || userProfile?.photoURL || userProfile?.imageUrl;
+  // Get user initials for fallback
+  const userInitials = user?.displayName?.[0] || user?.name?.[0] || userProfile?.displayName?.[0] || userProfile?.name?.[0] || 'P';
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Load unread notification count
+  useEffect(() => {
+    if (user?.uid) {
+      const loadUnreadCount = async () => {
+        const count = await getUnreadNotificationCount(user.uid);
+        setUnreadCount(count);
+      };
+      loadUnreadCount();
+      // Refresh every 30 seconds
+      const interval = setInterval(loadUnreadCount, 30000);
+      return () => clearInterval(interval);
+    } else {
+      setUnreadCount(0);
+    }
+  }, [user?.uid]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -25,10 +51,55 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const handleNav = (view: ViewState) => {
-    setViewState(view);
-    window.scrollTo({ top: 0, behavior: 'instant' });
-    setMobileMenuOpen(false);
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      // Lock body scroll
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      // Ensure menu is visible by scrolling to top if needed
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      
+      // Cleanup: restore scroll on close or unmount
+      return () => {
+        document.body.style.overflow = originalOverflow || '';
+      };
+    } else {
+      // Restore body scroll when menu closes
+      document.body.style.overflow = '';
+    }
+    // Always return cleanup function
+    return () => {
+      // Only restore if menu was open
+      if (mobileMenuOpen) {
+        document.body.style.overflow = '';
+      }
+    };
+  }, [mobileMenuOpen]);
+
+  const handleNav = (view: ViewState, event?: any, hostId?: string) => {
+    // Safe navigation - ensure we don't navigate to views that require state
+    // If navigating from DETAIL view, ensure we have proper state for the target view
+    try {
+      setViewState(view);
+      // Update browser history safely
+      if (view === ViewState.FEED) {
+        window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
+      } else if (view === ViewState.LANDING) {
+        window.history.replaceState({ viewState: ViewState.LANDING }, '', '/');
+      } else if (view === ViewState.PROFILE || view === ViewState.MY_POPS || view === ViewState.FAVORITES) {
+        // These views don't require additional state, safe to navigate
+        window.history.replaceState({ viewState: view }, '', `/${view.toLowerCase()}`);
+      }
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      setMobileMenuOpen(false);
+    } catch (error) {
+      console.error('[HEADER] Navigation error:', error);
+      // Fallback to safe view
+      setViewState(ViewState.FEED);
+      window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
+      setMobileMenuOpen(false);
+    }
   };
 
   const handleLogoutClick = () => {
@@ -110,20 +181,43 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
                  className={`p-2 rounded-full hover:bg-black/5 transition-colors relative group ${getTextColor(false)}`}
                >
                  <Bell size={20} />
-                 <span className="absolute top-1 right-2 w-2 h-2 bg-[#e35e25] rounded-full border-2 border-white"></span>
+                 {unreadCount > 0 && (
+                   <span className="absolute top-0 right-0 w-5 h-5 bg-[#e35e25] text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                     {unreadCount > 9 ? '9+' : unreadCount}
+                   </span>
+                 )}
                </button>
 
                <button 
-                 onClick={onProfileClick}
-                 className="w-10 h-10 rounded-full bg-[#e35e25] flex items-center justify-center text-white font-bold text-sm shadow-md hover:scale-105 transition-transform ring-2 ring-white"
-               >
-                 P
-               </button>
+                onClick={onProfileClick}
+                className="w-10 h-10 rounded-full bg-[#e35e25] flex items-center justify-center text-white font-bold text-sm shadow-md hover:scale-105 transition-transform ring-2 ring-white overflow-hidden"
+              >
+                {userPhoto ? (
+                  <img 
+                    src={userPhoto} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback to initials if image fails to load
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent && !parent.querySelector('span')) {
+                        const fallback = document.createElement('span');
+                        fallback.textContent = userInitials;
+                        parent.appendChild(fallback);
+                      }
+                    }}
+                  />
+                ) : (
+                  <span>{userInitials}</span>
+                )}
+              </button>
              </>
           ) : (
               <button 
                 onClick={() => handleNav(ViewState.AUTH)}
-                className="px-6 py-2.5 rounded-full bg-popera-orange text-white font-medium text-sm hover:bg-[#cf4d1d] transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
+                className="px-6 py-2.5 rounded-full bg-[#e35e25] text-white font-medium text-sm hover:bg-[#cf4d1d] transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 border-2 border-[#e35e25]"
               >
                 {t('header.signIn')}
               </button>
@@ -131,7 +225,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
         </div>
 
         {/* Mobile Toggle */}
-        <div className="lg:hidden z-50 flex items-center gap-2.5">
+        <div className="lg:hidden z-[55] flex items-center gap-2.5 relative">
           {/* Language Toggle - Mobile */}
           <button
             onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
@@ -147,9 +241,28 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
           {isLoggedIn && (
              <button 
                onClick={onProfileClick}
-               className="w-11 h-11 rounded-full bg-[#e35e25] flex items-center justify-center text-white font-bold text-sm shadow-md active:scale-[0.95] touch-manipulation ring-2 ring-white/20"
+               className="w-11 h-11 rounded-full bg-[#e35e25] flex items-center justify-center text-white font-bold text-sm shadow-md active:scale-[0.95] touch-manipulation ring-2 ring-white/20 overflow-hidden"
              >
-               P
+               {userPhoto ? (
+                 <img 
+                   src={userPhoto} 
+                   alt="Profile" 
+                   className="w-full h-full object-cover"
+                   onError={(e) => {
+                     // Fallback to initials if image fails to load
+                     const target = e.target as HTMLImageElement;
+                     target.style.display = 'none';
+                     const parent = target.parentElement;
+                     if (parent && !parent.querySelector('span')) {
+                       const fallback = document.createElement('span');
+                       fallback.textContent = userInitials;
+                       parent.appendChild(fallback);
+                     }
+                   }}
+                 />
+               ) : (
+                 <span>{userInitials}</span>
+               )}
              </button>
           )}
           
@@ -163,10 +276,31 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
         </div>
       </div>
 
-      {/* Mobile Menu Overlay */}
+      {/* Mobile Menu Overlay - Fixed z-index and overflow */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 bg-white z-[60] flex flex-col pt-20 sm:pt-24 md:pt-28 px-4 sm:px-6 md:px-8 lg:hidden animate-fade-in safe-area-inset-top overflow-y-auto">
-          <nav className="flex flex-col space-y-1 sm:space-y-2 md:space-y-3 text-lg sm:text-xl md:text-2xl font-heading font-bold text-popera-teal h-full overflow-y-auto pb-8 sm:pb-10 md:pb-12">
+        <div 
+          className="fixed inset-0 bg-white z-[70] flex flex-col pt-20 sm:pt-24 md:pt-28 px-4 sm:px-6 md:px-8 lg:hidden animate-fade-in safe-area-inset-top overflow-y-auto" 
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0,
+            willChange: 'transform',
+            WebkitOverflowScrolling: 'touch'
+          }}
+        >
+          {/* Back Button - Always visible at top of menu */}
+          <button
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center gap-2 text-popera-teal hover:text-popera-orange active:text-popera-orange transition-all touch-manipulation py-3 sm:py-2 mb-2 sm:mb-3 active:scale-[0.98] font-medium text-base sm:text-lg"
+            aria-label="Close menu"
+          >
+            <ArrowLeft size={20} className="sm:w-6 sm:h-6" />
+            <span>Back</span>
+          </button>
+          
+          <nav className="flex flex-col space-y-1 sm:space-y-2 md:space-y-3 text-lg sm:text-xl md:text-2xl font-heading font-bold text-popera-teal flex-1 overflow-y-auto pb-8 sm:pb-10 md:pb-12">
             
             {isLoggedIn ? (
                <>
@@ -179,7 +313,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
                  </button>
                  
                  <button onClick={onNotificationsClick} className="text-left hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all flex items-center gap-3 sm:gap-3 touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
-                   {t('header.notifications')} <span className="w-2 h-2 sm:w-2 sm:h-2 bg-[#e35e25] rounded-full"></span>
+                   {t('header.notifications')} {unreadCount > 0 && <span className="w-2 h-2 sm:w-2 sm:h-2 bg-[#e35e25] rounded-full"></span>}
                  </button>
                  
                  <button onClick={() => handleNav(ViewState.PROFILE)} className="text-left hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
@@ -205,6 +339,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
                </>
             ) : (
                <>
+                 <button onClick={() => handleNav(ViewState.LANDING)} className="text-left hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">{t('header.home')}</button>
                  <button onClick={() => handleNav(ViewState.FEED)} className="text-left hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">{t('header.exploreEvents')}</button>
                  <button onClick={() => handleNav(ViewState.GUIDELINES)} className="text-left hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">{t('header.community')}</button>
                  <button onClick={() => handleNav(ViewState.ABOUT)} className="text-left hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">{t('header.about')}</button>

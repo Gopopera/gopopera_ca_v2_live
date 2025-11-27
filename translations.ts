@@ -4,6 +4,7 @@ export const translations = {
   en: {
     // Header
     header: {
+      home: 'Home',
       exploreEvents: 'Explore Events',
       community: 'Community',
       about: 'About',
@@ -125,7 +126,7 @@ export const translations = {
       cancellationPolicy: 'Cancellation & Expulsion Policy',
       communityGuidelines: 'Community & Guidelines',
       other: 'Other',
-      reportEvent: 'Report an Event',
+      reportEvent: 'Report an Issue',
       helpSupport: 'Help & Support',
       social: 'Social',
       copyright: '© {year} Popera Inc. All rights reserved.',
@@ -134,6 +135,7 @@ export const translations = {
   fr: {
     // Header
     header: {
+      home: 'Accueil',
       exploreEvents: 'Explorer les événements',
       community: 'Communauté',
       about: 'À propos',
@@ -255,7 +257,7 @@ export const translations = {
       cancellationPolicy: 'Politique d\'annulation et d\'expulsion',
       communityGuidelines: 'Communauté et directives',
       other: 'Autre',
-      reportEvent: 'Signaler un événement',
+      reportEvent: 'Signaler un problème',
       helpSupport: 'Aide et support',
       social: 'Social',
       copyright: '© {year} Popera Inc. Tous droits réservés.',

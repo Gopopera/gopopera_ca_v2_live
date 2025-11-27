@@ -8,14 +8,16 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { auth, db } from '../src/lib/firebase';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { attachAuthListener } from '../firebase/listeners';
+import { getAuthInstance, initFirebaseAuth, listenToAuthChanges, signOutUser } from '../src/lib/firebaseAuth';
+import { doc, getDoc } from 'firebase/firestore';
 import { getUserProfile, createOrUpdateUserProfile, listUserReservations, createReservation, cancelReservation, listReservationsForUser } from '../firebase/db';
+import { getDbSafe, firebaseEnabled } from '../src/lib/firebase';
+import type { User as FirebaseUser } from 'firebase/auth';
 import type { FirestoreUser } from '../firebase/types';
-import type { Unsubscribe } from '../src/lib/firebase';
+import type { Unsubscribe } from 'firebase/auth';
 import type { ViewState } from '../types';
+import { completeGoogleRedirect, loginWithEmail, loginWithGoogle, signupWithEmail } from '../src/lib/authHelpers';
+import { ensurePoperaProfileAndSeed } from '../firebase/poperaProfile';
 
 // Simplified User interface matching Firebase Auth user
 export interface User {
@@ -33,12 +35,17 @@ export interface User {
   hostedEvents: string[]; // Event IDs user has created - always an array, never undefined
   attendingEvents?: string[]; // Event IDs user is attending
   profileImageUrl?: string; // Alias for photoURL
+  phone_verified?: boolean;
+  phone_number?: string;
 }
 
 interface UserStore {
   user: User | null;
+  userProfile: FirestoreUser | null; // Full Firestore user profile including phoneVerifiedForHosting
   loading: boolean;
   ready: boolean; // True when auth state has been determined
+  isAuthReady: boolean;
+  authInitialized: boolean; // True when auth state has been determined (prevents premature redirects)
   _authUnsub: Unsubscribe | null; // Internal unsubscribe function
   _initialized: boolean; // Track if init() has been called
   redirectAfterLogin: ViewState | null; // Redirect destination after login
@@ -47,6 +54,7 @@ interface UserStore {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   fetchUserProfile: (uid: string) => Promise<void>;
+  refreshUserProfile: () => Promise<void>; // Refresh current user's profile from Firestore
   // Backward compatibility aliases
   currentUser: User | null;
   signUp: (email: string, password: string, name: string, preferences: 'attend' | 'host' | 'both') => Promise<User>;
@@ -55,14 +63,18 @@ interface UserStore {
   updateUser: (userId: string, updates: Partial<User>) => Promise<void>;
   addFavorite: (userId: string, eventId: string) => Promise<void>;
   removeFavorite: (userId: string, eventId: string) => Promise<void>;
-  addRSVP: (userId: string, eventId: string) => Promise<void>;
+  addRSVP: (userId: string, eventId: string) => Promise<string>; // Returns reservation ID
   removeRSVP: (userId: string, eventId: string) => Promise<void>;
   getUserFavorites: (userId: string) => string[];
   getUserRSVPs: (userId: string) => string[];
   getUserHostedEvents: (userId: string) => string[];
+  handleAuthSuccess: (firebaseUser: FirebaseUser) => Promise<void>;
   init: () => void; // Explicit initialization method
+  _redirectHandled: boolean;
+  _justLoggedInFromRedirect: boolean; // Track if user just logged in from redirect (for navigation)
   setRedirectAfterLogin: (view: ViewState | null) => void;
   getRedirectAfterLogin: () => ViewState | null;
+  clearJustLoggedInFlag: () => void; // Clear the redirect login flag after navigation
 }
 
 // Official Popera account constants
@@ -74,69 +86,215 @@ export const useUserStore = create<UserStore>()(
   persist(
     (set, get) => ({
       user: null,
+      userProfile: null,
       loading: true,
       ready: false,
+      isAuthReady: false,
+      authInitialized: false,
       currentUser: null,
       _authUnsub: null,
       _initialized: false,
+      _redirectHandled: false,
+      _justLoggedInFromRedirect: false, // Track if user just logged in from redirect (for navigation)
       redirectAfterLogin: null,
+      async handleAuthSuccess(firebaseUser: FirebaseUser) {
+        console.log('[USER_STORE] handleAuthSuccess called', {
+          uid: firebaseUser?.uid,
+          email: firebaseUser?.email,
+        });
+        if (!firebaseUser?.uid) return;
+
+        const immediateUser: User = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          photoURL: firebaseUser.photoURL || '',
+          displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+          id: firebaseUser.uid,
+          name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+          profileImageUrl: firebaseUser.photoURL || '',
+          favorites: [],
+          rsvps: [],
+          hostedEvents: [],
+          attendingEvents: [],
+          phone_number: (firebaseUser as any)?.phoneNumber,
+        };
+
+        set({ user: immediateUser, currentUser: immediateUser, loading: false, ready: true, isAuthReady: true });
+
+        const baseProfile = {
+          id: firebaseUser.uid,
+          uid: firebaseUser.uid,
+          name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+          email: firebaseUser.email || '',
+          displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+          photoURL: firebaseUser.photoURL || '',
+        };
+
+        createOrUpdateUserProfile(firebaseUser.uid, baseProfile).catch(err => {
+          console.error('[AUTH] Background profile creation error:', err);
+        });
+
+        get().fetchUserProfile(firebaseUser.uid).catch(err => {
+          console.error('Background profile fetch error:', err);
+        });
+
+        // Ensure Popera profile and seed events (only runs for Popera account)
+        try {
+          await ensurePoperaProfileAndSeed(firebaseUser);
+        } catch (err) {
+          console.error('[AUTH] Popera profile/seeding failed, continuing', err);
+        }
+      },
 
       init: () => {
         if (get()._initialized) return; // Already initialized
-        set({ _initialized: true, loading: true, ready: false });
+        // Clear redirect flag on init (don't persist across page refreshes)
+        set({ _initialized: true, loading: true, ready: false, isAuthReady: false, _redirectHandled: false, _justLoggedInFromRedirect: false });
         
-        const unsub = attachAuthListener(async (firebaseUser) => {
-          if (firebaseUser) {
-            try {
-              await get().fetchUserProfile(firebaseUser.uid);
-            } catch (error) {
-              console.error("Error restoring user session:", error);
-              set({ user: null, currentUser: null, loading: false, ready: true });
+        if (!firebaseEnabled) {
+          console.error('[AUTH] Firebase disabled due to missing env vars; skipping auth init');
+          set({
+            user: null,
+            currentUser: null,
+            loading: false,
+            ready: true,
+            isAuthReady: true,
+            authInitialized: true,
+          });
+          return;
+        }
+        
+        (async () => {
+          try {
+            await initFirebaseAuth();
+
+            // CRITICAL: Mobile redirects are unreliable - onAuthStateChanged is the ONLY reliable way
+            // Don't try to process redirect result - just wait for onAuthStateChanged to fire
+            // This prevents timing issues where we check before Firebase is ready
+            if (!get()._redirectHandled) {
+              // Just try getRedirectResult() for logging, but don't rely on it
+              try {
+                const redirectResult = await completeGoogleRedirect();
+                if (redirectResult?.user) {
+                  console.log('[AUTH] ✅ Redirect result found (unusual on mobile):', redirectResult.user.email);
+                  await get().handleAuthSuccess(redirectResult.user);
+                  await ensurePoperaProfileAndSeed(redirectResult.user);
+                  const isOnLanding = typeof window !== 'undefined' && window.location.pathname === '/';
+                  set({ _redirectHandled: true, _justLoggedInFromRedirect: isOnLanding, authInitialized: true, isAuthReady: true });
+                } else {
+                  console.log('[AUTH] ⚠️ getRedirectResult() returned null (normal on mobile) - waiting for onAuthStateChanged');
+                  // Don't mark as handled - onAuthStateChanged will handle it
+                  // This is the correct flow for mobile
+                }
+              } catch (error) {
+                console.error('[AUTH] Error in getRedirectResult() (expected on mobile):', error);
+                // Don't mark as handled - onAuthStateChanged will handle it
+              }
             }
-          } else {
-            set({ user: null, currentUser: null, loading: false, ready: true });
+            
+            // Set up auth state listener - PRIMARY mechanism for mobile redirects
+            // onAuthStateChanged is the ONLY reliable way to detect mobile redirects
+            // CRITICAL: This MUST fire with the user after redirect completes
+            const unsub = listenToAuthChanges(async (firebaseUser) => {
+              try {
+                console.log('[AUTH] 🔔 onAuthStateChanged fired', {
+                  hasUser: !!firebaseUser,
+                  uid: firebaseUser?.uid,
+                  email: firebaseUser?.email,
+                  _redirectHandled: get()._redirectHandled,
+                  currentStoreUser: get().user?.email,
+                  pathname: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
+                });
+                
+                if (firebaseUser) {
+                  // If we already have this user in store, just ensure authInitialized is set
+                  const currentUser = get().user;
+                  if (currentUser && currentUser.uid === firebaseUser.uid) {
+                    console.log('[AUTH] ✅ User already in store');
+                    const isOnLanding = typeof window !== 'undefined' && window.location.pathname === '/';
+                    set({ 
+                      authInitialized: true, 
+                      isAuthReady: true,
+                      _redirectHandled: true,
+                      _justLoggedInFromRedirect: isOnLanding
+                    });
+                    return;
+                  }
+                  
+                  // User exists in Firebase but not in store - SET IT NOW
+                  console.log('[AUTH] ✅✅✅ CRITICAL: Setting user from onAuthStateChanged:', firebaseUser.email);
+                  await get().handleAuthSuccess(firebaseUser);
+                  await ensurePoperaProfileAndSeed(firebaseUser);
+                  
+                  // Check if this is a redirect login (user on landing page)
+                  const isOnLanding = typeof window !== 'undefined' && window.location.pathname === '/';
+                  console.log('[AUTH] User set, redirect flags:', { isOnLanding, pathname: window.location.pathname });
+                  set({ 
+                    authInitialized: true, 
+                    isAuthReady: true, 
+                    _redirectHandled: true,
+                    _justLoggedInFromRedirect: isOnLanding
+                  });
+                } else {
+                  // No user - ONLY clear if we're NOT on landing page (landing = might be redirect in progress)
+                  const isOnLanding = typeof window !== 'undefined' && window.location.pathname === '/';
+                  if (!isOnLanding && get()._redirectHandled) {
+                    console.log('[AUTH] No user and not on landing - clearing state');
+                    set({ user: null, userProfile: null, currentUser: null, loading: false, ready: true, isAuthReady: true, authInitialized: true });
+                  } else {
+                    console.log('[AUTH] ⚠️ No user but on landing page - redirect might be in progress, NOT clearing');
+                    // Don't clear user state if on landing page - wait for redirect to complete
+                    set({ authInitialized: true });
+                  }
+                }
+              } catch (error) {
+                console.error('[AUTH] onAuthStateChanged error', error);
+                set({ authInitialized: true });
+              }
+            });
+            set({ _authUnsub: unsub });
+            
+            // NOW check redirect result (but don't rely on it - onAuthStateChanged is primary)
+            if (!get()._redirectHandled) {
+              try {
+                const redirectResult = await completeGoogleRedirect();
+                if (redirectResult?.user) {
+                  console.log('[AUTH] ✅ Redirect result found (bonus - onAuthStateChanged is primary):', redirectResult.user.email);
+                  // onAuthStateChanged will also fire, but we can process this too
+                  if (!get().user || get().user.uid !== redirectResult.user.uid) {
+                    await get().handleAuthSuccess(redirectResult.user);
+                    await ensurePoperaProfileAndSeed(redirectResult.user);
+                  }
+                  const isOnLanding = typeof window !== 'undefined' && window.location.pathname === '/';
+                  set({ _redirectHandled: true, _justLoggedInFromRedirect: isOnLanding, authInitialized: true, isAuthReady: true });
+                  redirectUserProcessed = true;
+                } else {
+                  console.log('[AUTH] ⚠️ getRedirectResult() returned null (normal on mobile) - onAuthStateChanged will handle it');
+                }
+              } catch (error) {
+                console.error('[AUTH] Error in getRedirectResult() (expected on mobile):', error);
+              }
+            }
+
+            setTimeout(() => {
+              if (!get().authInitialized) {
+                console.warn('[AUTH] Fallback: onAuthStateChanged did not fire in time, marking authInitialized');
+                set({ authInitialized: true, isAuthReady: true, loading: false, ready: true, user: null, userProfile: null, currentUser: null });
+              }
+            }, 2000);
+          } catch (error) {
+            console.error('[AUTH] Initialization failed:', error);
+            set({ user: null, userProfile: null, currentUser: null, loading: false, ready: true, isAuthReady: true, authInitialized: true });
           }
-        });
-        set({ _authUnsub: unsub });
+        })();
       },
 
       // Core auth functions
       signup: async (email: string, password: string) => {
         try {
           set({ loading: true });
-          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          const firebaseUser = userCredential.user;
-          
-          const userDoc: FirestoreUser = {
-            id: firebaseUser.uid,
-            uid: firebaseUser.uid,
-            name: '',
-            email: firebaseUser.email || '',
-            displayName: '',
-            photoURL: '',
-            createdAt: Date.now(),
-          };
-          
-          await setDoc(doc(auth.app, 'users', firebaseUser.uid), {
-            ...userDoc,
-            createdAt: serverTimestamp(),
-          });
-          
-          const user: User = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email || '',
-            photoURL: firebaseUser.photoURL || '',
-            displayName: firebaseUser.displayName || '',
-            id: firebaseUser.uid,
-            name: firebaseUser.displayName || '',
-            profileImageUrl: firebaseUser.photoURL || '',
-            favorites: [],
-            rsvps: [],
-            hostedEvents: [],
-            attendingEvents: [],
-          };
-          
-          set({ user, currentUser: user, loading: false, ready: true });
+          const userCredential = await signupWithEmail(email, password);
+          await get().handleAuthSuccess(userCredential.user);
         } catch (error) {
           console.error("Signup error:", error);
           set({ loading: false });
@@ -147,11 +305,10 @@ export const useUserStore = create<UserStore>()(
       login: async (email: string, password: string) => {
         try {
           set({ loading: true });
-          const userCredential = await signInWithEmailAndPassword(auth, email, password);
-          const firebaseUser = userCredential.user;
-          
-          await get().fetchUserProfile(firebaseUser.uid);
-        } catch (error) {
+          const userCredential = await loginWithEmail(email, password);
+          await get().handleAuthSuccess(userCredential.user);
+          await ensurePoperaProfileAndSeed(userCredential.user);
+        } catch (error: any) {
           console.error("Login error:", error);
           set({ loading: false });
           throw error;
@@ -161,7 +318,29 @@ export const useUserStore = create<UserStore>()(
       logout: async () => {
         try {
           set({ loading: true });
-          await signOut(auth);
+          console.log('[USER_STORE] Logging out');
+          
+          // Flush any pending favorite writes before logout
+          const currentUser = get().user;
+          if (currentUser?.uid) {
+            try {
+              // Ensure favorites are synced to Firestore before logout
+              const firestoreUser = await getUserProfile(currentUser.uid);
+              const firestoreFavorites = Array.isArray(firestoreUser?.favorites) ? firestoreUser.favorites : [];
+              const localFavorites = Array.isArray(currentUser.favorites) ? currentUser.favorites : [];
+              
+              // If local and Firestore are out of sync, sync local to Firestore
+              if (JSON.stringify(firestoreFavorites.sort()) !== JSON.stringify(localFavorites.sort())) {
+                console.log('[USER_STORE] Syncing favorites before logout');
+                await createOrUpdateUserProfile(currentUser.uid, { favorites: localFavorites });
+              }
+            } catch (error) {
+              console.warn('[USER_STORE] Error syncing favorites before logout:', error);
+              // Don't block logout on sync error
+            }
+          }
+          
+          await signOutUser();
           
           // Clean up auth listener
           const unsub = get()._authUnsub;
@@ -170,7 +349,8 @@ export const useUserStore = create<UserStore>()(
             set({ _authUnsub: null });
           }
           
-          set({ user: null, currentUser: null, loading: false });
+          set({ user: null, userProfile: null, currentUser: null, loading: false, ready: true, isAuthReady: true });
+          console.log('[USER_STORE] User signed out');
         } catch (error) {
           console.error("Logout error:", error);
           set({ loading: false });
@@ -180,17 +360,68 @@ export const useUserStore = create<UserStore>()(
 
       fetchUserProfile: async (uid: string) => {
         try {
-          const firestoreUser = await getUserProfile(uid);
-          const firebaseUser = auth.currentUser;
-          
-          if (!firebaseUser) {
-            set({ user: null, currentUser: null, loading: false, ready: true });
+          // Avoid redundant fetches if user is already loaded
+          const currentUser = get().user;
+          if (currentUser && currentUser.uid === uid && get().ready) {
             return;
           }
+
+          let firebaseUser: FirebaseUser | null = null;
+          try {
+            firebaseUser = getAuthInstance().currentUser;
+          } catch {
+            firebaseUser = null;
+          }
+          if (!firebaseUser) {
+            set({ user: null, currentUser: null, loading: false, ready: true, isAuthReady: true });
+            return;
+          }
+
+          // OPTIMIZATION: Ensure Firestore is ready before queries
+          // Wait for Firestore with retry
+          let dbReady = false;
+          for (let i = 0; i < 5; i++) {
+            const db = getDbSafe();
+            if (db) {
+              dbReady = true;
+              break;
+            }
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+
+          if (!dbReady) {
+            console.warn('[fetchUserProfile] Firestore not ready, using minimal user data');
+            // Still set user with Firebase Auth data
+            const minimalUser: User = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              photoURL: firebaseUser.photoURL || '',
+              displayName: firebaseUser.displayName || '',
+              id: firebaseUser.uid,
+              name: firebaseUser.displayName || '',
+              profileImageUrl: firebaseUser.photoURL || '',
+              favorites: [],
+              rsvps: [],
+              hostedEvents: [],
+              attendingEvents: [],
+            };
+            set({ user: minimalUser, currentUser: minimalUser, loading: false, ready: true, isAuthReady: true });
+            return;
+          }
+
+          // OPTIMIZATION: Run Firestore queries in parallel for faster loading
+          // Use lightweight reservation IDs instead of full event objects
+          const [firestoreUser, reservationDocs] = await Promise.all([
+            getUserProfile(uid),
+            listReservationsForUser(uid) // Lightweight - only gets reservation IDs, not full events
+          ]);
           
+          // Store full Firestore user profile (includes phoneVerifiedForHosting, hostPhoneNumber, etc.)
+          set({ userProfile: firestoreUser });
+          
+          // Build user object immediately with available data
           const favorites = Array.isArray(firestoreUser?.favorites) ? firestoreUser.favorites : [];
-          const reservationEvents = await listUserReservations(uid);
-          const rsvps = Array.isArray(reservationEvents) ? reservationEvents.map(e => e?.id).filter(Boolean) : [];
+          const rsvps = Array.isArray(reservationDocs) ? reservationDocs.map(r => r.eventId).filter(Boolean) : [];
           const hostedEvents = Array.isArray(firestoreUser?.hostedEvents) ? firestoreUser.hostedEvents : [];
           
           const user: User = {
@@ -209,11 +440,30 @@ export const useUserStore = create<UserStore>()(
             attendingEvents: [],
           };
           
-          console.log('[Popera] userStore initialized', { userId: user.uid });
-          set({ user, currentUser: user, loading: false, ready: true });
+          // Set user state immediately - don't wait for anything else
+          set({ user, currentUser: user, loading: false, ready: true, isAuthReady: true });
         } catch (error) {
           console.error("Error fetching user profile:", error);
-          set({ user: null, currentUser: null, loading: false, ready: true });
+          set({ user: null, currentUser: null, loading: false, ready: true, isAuthReady: true });
+        }
+      },
+
+      refreshUserProfile: async () => {
+        const currentUser = get().user;
+        if (!currentUser?.uid) {
+          console.warn('[USER_STORE] Cannot refresh profile: no user logged in');
+          return;
+        }
+        try {
+          const firebaseUser = getAuthInstance().currentUser;
+          if (!firebaseUser) {
+            console.warn('[USER_STORE] Cannot refresh profile: no Firebase user');
+            return;
+          }
+          // Fetch and update both user and userProfile
+          await get().fetchUserProfile(currentUser.uid);
+        } catch (error) {
+          console.error('[USER_STORE] Error refreshing user profile:', error);
         }
       },
 
@@ -238,44 +488,17 @@ export const useUserStore = create<UserStore>()(
 
       signInWithGoogle: async () => {
         try {
-          console.log('[AUTH] Starting Google sign-in flow');
           set({ loading: true });
-          const authInstance = auth;
-          if (authInstance) {
-            // Set persistence before sign in
-            await setPersistence(authInstance, browserLocalPersistence);
+          const cred = await loginWithGoogle();
+          if (cred?.user) {
+            await get().handleAuthSuccess(cred.user);
+            await ensurePoperaProfileAndSeed(cred.user);
+            return get().user;
           }
-          const provider = new GoogleAuthProvider();
-          const userCredential = await signInWithPopup(auth, provider);
-          const firebaseUser = userCredential.user;
-          console.log('[AUTH] Google popup success, user:', firebaseUser.uid);
-          
-          const firestoreUser = await getUserProfile(firebaseUser.uid);
-          if (!firestoreUser) {
-            console.log('[AUTH] Creating new user profile');
-            await setDoc(doc(db, 'users', firebaseUser.uid), {
-              id: firebaseUser.uid,
-              uid: firebaseUser.uid,
-              name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-              email: firebaseUser.email || '',
-              displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-              photoURL: firebaseUser.photoURL || '',
-              createdAt: serverTimestamp(),
-            });
-          } else {
-            if (firebaseUser.photoURL && firestoreUser.photoURL !== firebaseUser.photoURL) {
-              await createOrUpdateUserProfile(firebaseUser.uid, {
-                photoURL: firebaseUser.photoURL,
-              });
-            }
-          }
-          
-          await get().fetchUserProfile(firebaseUser.uid);
-          console.log('[AUTH] User profile loaded, ready for redirect');
-          return get().user || null;
-        } catch (error) {
-          console.error('[AUTH] Google sign in error:', error);
-          set({ loading: false, ready: true });
+          return null; // redirect path
+        } catch (error: any) {
+          console.error("Google sign in error:", error);
+          set({ loading: false, ready: true, isAuthReady: true });
           throw error;
         }
       },
@@ -295,6 +518,13 @@ export const useUserStore = create<UserStore>()(
           if (updates.profileImageUrl || updates.photoURL) {
             firestoreUpdates.photoURL = updates.profileImageUrl || updates.photoURL || '';
           }
+          if (updates.phone_number) {
+            firestoreUpdates.phone_number = updates.phone_number;
+          }
+          if (updates.phone_verified !== undefined) {
+            firestoreUpdates.phone_verified = updates.phone_verified;
+            firestoreUpdates.phoneVerified = updates.phone_verified;
+          }
           
           await createOrUpdateUserProfile(userId, firestoreUpdates);
           
@@ -311,13 +541,23 @@ export const useUserStore = create<UserStore>()(
 
       addFavorite: async (userId: string, eventId: string) => {
         try {
-          const currentUser = get().user;
-          const currentFavorites = Array.isArray(currentUser?.favorites) ? currentUser.favorites : [];
-          if (currentFavorites.includes(eventId)) return;
+          // First, fetch current favorites from Firestore to ensure we have the latest state
+          const firestoreUser = await getUserProfile(userId);
+          const currentFavorites = Array.isArray(firestoreUser?.favorites) ? firestoreUser.favorites : [];
+          
+          // If already favorited, no-op
+          if (currentFavorites.includes(eventId)) {
+            console.log('[FAVORITES] Event already favorited, skipping');
+            return;
+          }
           
           const updatedFavorites = [...currentFavorites, eventId];
+          
+          // Persist to Firestore
           await createOrUpdateUserProfile(userId, { favorites: updatedFavorites });
           
+          // Update local state
+          const currentUser = get().user;
           if (currentUser && currentUser.uid === userId) {
             set({ user: { ...currentUser, favorites: updatedFavorites }, currentUser: { ...currentUser, favorites: updatedFavorites } });
           }
@@ -329,12 +569,23 @@ export const useUserStore = create<UserStore>()(
 
       removeFavorite: async (userId: string, eventId: string) => {
         try {
-          const currentUser = get().user;
-          const currentFavorites = Array.isArray(currentUser?.favorites) ? currentUser.favorites : [];
+          // First, fetch current favorites from Firestore to ensure we have the latest state
+          const firestoreUser = await getUserProfile(userId);
+          const currentFavorites = Array.isArray(firestoreUser?.favorites) ? firestoreUser.favorites : [];
+          
+          // If not favorited, no-op
+          if (!currentFavorites.includes(eventId)) {
+            console.log('[FAVORITES] Event not favorited, skipping');
+            return;
+          }
+          
           const updatedFavorites = currentFavorites.filter(id => id !== eventId);
           
+          // Persist to Firestore
           await createOrUpdateUserProfile(userId, { favorites: updatedFavorites });
           
+          // Update local state
+          const currentUser = get().user;
           if (currentUser && currentUser.uid === userId) {
             set({ user: { ...currentUser, favorites: updatedFavorites }, currentUser: { ...currentUser, favorites: updatedFavorites } });
           }
@@ -350,7 +601,7 @@ export const useUserStore = create<UserStore>()(
           const currentRSVPs = Array.isArray(currentUser?.rsvps) ? currentUser.rsvps : [];
           if (currentRSVPs.includes(eventId)) return;
           
-          await createReservation(eventId, userId);
+          const reservationId = await createReservation(eventId, userId);
           
           const reservationEvents = await listUserReservations(userId);
           const updatedRSVPs = Array.isArray(reservationEvents) ? reservationEvents.map(e => e?.id).filter(Boolean) : [];
@@ -358,6 +609,28 @@ export const useUserStore = create<UserStore>()(
           if (currentUser && currentUser.uid === userId) {
             set({ user: { ...currentUser, rsvps: updatedRSVPs }, currentUser: { ...currentUser, rsvps: updatedRSVPs } });
           }
+
+          // Notify host of new RSVP (non-blocking)
+          try {
+            const db = getDbSafe();
+            if (db) {
+              const eventDoc = await getDoc(doc(db, 'events', eventId));
+              if (eventDoc.exists()) {
+                const eventData = eventDoc.data();
+                const hostId = eventData.hostId;
+                if (hostId) {
+                  const { notifyHostOfRSVP } = await import('../utils/notificationHelpers');
+                  await notifyHostOfRSVP(hostId, userId, eventId, eventData.title || 'Event');
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error notifying host of RSVP:', error);
+            // Don't fail RSVP if notification fails
+          }
+          
+          // Return reservation ID for confirmation page
+          return reservationId;
         } catch (error) {
           console.error("Add RSVP error:", error);
           throw error;
@@ -416,6 +689,10 @@ export const useUserStore = create<UserStore>()(
 
       getRedirectAfterLogin: () => {
         return get().redirectAfterLogin;
+      },
+      
+      clearJustLoggedInFlag: () => {
+        set({ _justLoggedInFromRedirect: false });
       },
     }),
     {

@@ -6,6 +6,9 @@ const DEMO_LOCATIONS: Record<string, { address: string; lat: number; lng: number
   'Vancouver': { address: 'Stanley Park, Seawall', lat: 49.3027, lng: -123.1417 },
   'Toronto': { address: 'Harbourfront Centre, 235 Queens Quay W', lat: 43.6332, lng: -79.3732 },
   'Montreal': { address: 'Place des Festivals, Quartier des Spectacles', lat: 45.5017, lng: -73.5673 },
+  'Ottawa': { address: 'ByWard Market, 55 ByWard Market Square', lat: 45.4275, lng: -75.6931 },
+  'Quebec': { address: 'Old Quebec, Rue Saint-Jean', lat: 46.8139, lng: -71.2080 },
+  'Gatineau': { address: 'Canadian Museum of History, Laurier St', lat: 45.4292, lng: -75.7081 },
 };
 
 // Generate random price between $5-$20
@@ -28,100 +31,35 @@ export const generateFakeEvents = (): Event[] => {
       lng: 0 
     };
     
-    // 1. Sell & Shop Demo Event
     events.push({
-      id: `demo-${host.city.toLowerCase()}-sell-shop`,
-      title: `${host.city} Artisan Market: Local Crafts & Goods`,
-      description: `Discover unique handmade items from local artisans. Support small businesses and find one-of-a-kind treasures. This is a demo event created to show Popera use-case examples.`,
+      id: `demo-${host.city.toLowerCase()}-showcase`,
+      title: `${host.city} Pop-Up Showcase`,
+      description: `Experience a live Popera demo in ${host.city}. This sample event highlights how hosts can bring locals together with clear details, RSVP flow, and discovery. Favoriting, search, and browsing are enabled for preview.`,
       city: host.city,
       address: location.address,
-      date: '2026-02-15', // Future date
-      time: '11:00 AM',
-      tags: ['market', 'shopping', 'local', 'artisan', 'demo'],
+      date: '2026-03-01',
+      time: '6:30 PM',
+      tags: ['demo', 'community', 'local', 'popup'],
       host: host.name,
       hostName: host.name,
       hostId: host.id,
-      imageUrl: 'https://picsum.photos/seed/demo-market-' + host.city.toLowerCase() + '/800/600',
-      attendeesCount: Math.floor(Math.random() * 50) + 10,
+      imageUrl: `https://picsum.photos/seed/demo-${host.city.toLowerCase()}-showcase/800/600`,
+      attendeesCount: Math.floor(Math.random() * 40) + 5,
       createdAt: new Date('2024-01-20').toISOString(),
       location: `${location.address}, ${host.city}`,
-      category: 'Market',
+      category: 'Community',
       price: getRandomPrice(),
-      rating: Math.round((4.5 + Math.random() * 0.5) * 10) / 10, // 4.5-5.0, max 1 decimal
-      reviewCount: Math.floor(Math.random() * 100) + 20, // Integer only
-      capacity: 50,
+      rating: Math.round((4.4 + Math.random() * 0.6) * 10) / 10,
+      reviewCount: Math.floor(Math.random() * 60) + 10,
+      capacity: 60,
       lat: location.lat,
       lng: location.lng,
       isPoperaOwned: false,
       isFakeEvent: true,
       isDemo: true,
       isOfficialLaunch: false,
-      aboutEvent: `This is a demo event showcasing Popera's "Sell & Shop" value proposition. See how creators can set up their own marketplace events, manage vendors, and activate their local community.`,
-      whatToExpect: `This demo shows how a real marketplace event would work on Popera. You can browse the event details, but reservations and chat are disabled for demo purposes.`,
-    });
-
-    // 2. Connect & Promote Demo Event
-    events.push({
-      id: `demo-${host.city.toLowerCase()}-connect-promote`,
-      title: `${host.city} Creator Meetup: Networking & Collaboration`,
-      description: `Connect with fellow creators, influencers, and community organizers. Share ideas, build connections, and strengthen your network. This is a demo event created to show Popera use-case examples.`,
-      city: host.city,
-      address: location.address,
-      date: '2026-02-20',
-      time: '6:00 PM',
-      tags: ['networking', 'creators', 'community', 'social', 'demo'],
-      host: host.name,
-      hostName: host.name,
-      hostId: host.id,
-      imageUrl: 'https://picsum.photos/seed/demo-networking-' + host.city.toLowerCase() + '/800/600',
-      attendeesCount: Math.floor(Math.random() * 50) + 10,
-      createdAt: new Date('2024-01-20').toISOString(),
-      location: `${location.address}, ${host.city}`,
-      category: 'Social',
-      price: getRandomPrice(),
-      rating: Math.round((4.5 + Math.random() * 0.5) * 10) / 10, // 4.5-5.0, max 1 decimal
-      reviewCount: Math.floor(Math.random() * 100) + 20, // Integer only
-      capacity: 50,
-      lat: location.lat + 0.01,
-      lng: location.lng + 0.01,
-      isPoperaOwned: false,
-      isFakeEvent: true,
-      isDemo: true,
-      isOfficialLaunch: false,
-      aboutEvent: `This is a demo event showcasing Popera's "Connect & Promote" value proposition. See how creators build their profiles, connect with their audience, and use Popera's tools to grow their community.`,
-      whatToExpect: `This demo shows how a real networking event would work on Popera. You can browse the event details, but reservations and chat are disabled for demo purposes.`,
-    });
-
-    // 3. Mobilize & Support Demo Event
-    events.push({
-      id: `demo-${host.city.toLowerCase()}-mobilize-support`,
-      title: `${host.city} Community Gathering: Local Impact Event`,
-      description: `Join us for a community gathering focused on local impact and support. Connect with neighbors, share resources, and strengthen our community bonds. This is a demo event created to show Popera use-case examples.`,
-      city: host.city,
-      address: location.address,
-      date: '2026-02-25',
-      time: '2:00 PM',
-      tags: ['community', 'fundraiser', 'wellness', 'demo'],
-      host: host.name,
-      hostName: host.name,
-      hostId: host.id,
-      imageUrl: 'https://picsum.photos/seed/demo-community-' + host.city.toLowerCase() + '/800/600',
-      attendeesCount: Math.floor(Math.random() * 50) + 10,
-      createdAt: new Date('2024-01-20').toISOString(),
-      location: `${location.address}, ${host.city}`,
-      category: 'Community',
-      price: getRandomPrice(),
-      rating: Math.round((4.5 + Math.random() * 0.5) * 10) / 10, // 4.5-5.0, max 1 decimal
-      reviewCount: Math.floor(Math.random() * 100) + 20, // Integer only
-      capacity: 50,
-      lat: location.lat - 0.01,
-      lng: location.lng - 0.01,
-      isPoperaOwned: false,
-      isFakeEvent: true,
-      isDemo: true,
-      isOfficialLaunch: false,
-      aboutEvent: `This is a demo event showcasing Popera's "Mobilize & Support" value proposition. See how community organizers can create events, raise funds, and mobilize their crowd for causes.`,
-      whatToExpect: `This demo shows how a real community event would work on Popera. You can browse the event details, but reservations and chat are disabled for demo purposes.`,
+      aboutEvent: `This demo event is for display purposes so ${host.city} feeds are never empty. It shows how Popera events appear with host info, tags, and location.`,
+      whatToExpect: `Browse the details, favorite, and search this event. Reservations and chat stay disabled because it's a fake listing for preview only.`,
     });
   });
   

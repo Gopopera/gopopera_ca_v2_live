@@ -15,12 +15,25 @@ import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
 import { serverTimestamp, Timestamp } from 'firebase/firestore';
 
+// Cached instances for performance
+let cachedApp: FirebaseApp | null = null;
+let cachedDb: Firestore | null = null;
+let cachedAuth: Auth | null = null;
+let cachedStorage: FirebaseStorage | null = null;
+
+// Legacy variables (for backward compatibility)
 let app: FirebaseApp | null = null;
 let _auth: Auth | null = null;
 let _db: Firestore | null = null;
 let _storage: FirebaseStorage | null = null;
 
-const cfg = {
+// Track initialization state
+let initializationWarningLogged = false;
+
+// Environment variable logging removed for production
+
+// Validate required Firebase environment variables
+const requiredFirebaseVars = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
@@ -30,71 +43,192 @@ const cfg = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-const isDisabled =
-  import.meta.env.VITE_DISABLE_FIREBASE === '1' ||
-  !cfg.apiKey || !cfg.authDomain || !cfg.projectId || !cfg.appId;
+const missingVars: string[] = [];
+if (!requiredFirebaseVars.apiKey) missingVars.push('VITE_FIREBASE_API_KEY');
+if (!requiredFirebaseVars.authDomain) missingVars.push('VITE_FIREBASE_AUTH_DOMAIN');
+if (!requiredFirebaseVars.projectId) missingVars.push('VITE_FIREBASE_PROJECT_ID');
+if (!requiredFirebaseVars.storageBucket) missingVars.push('VITE_FIREBASE_STORAGE_BUCKET');
+if (!requiredFirebaseVars.messagingSenderId) missingVars.push('VITE_FIREBASE_MESSAGING_SENDER_ID');
+if (!requiredFirebaseVars.appId) missingVars.push('VITE_FIREBASE_APP_ID');
+
+export const firebaseEnabled =
+  missingVars.length === 0 && import.meta.env.VITE_DISABLE_FIREBASE !== '1';
+
+if (!firebaseEnabled) {
+  console.error('[FIREBASE] Missing environment variables; Firebase disabled.', missingVars);
+}
+
+const cfg = {
+  apiKey: requiredFirebaseVars.apiKey,
+  authDomain: requiredFirebaseVars.authDomain,
+  projectId: requiredFirebaseVars.projectId,
+  storageBucket: requiredFirebaseVars.storageBucket,
+  messagingSenderId: requiredFirebaseVars.messagingSenderId,
+  appId: requiredFirebaseVars.appId,
+  measurementId: requiredFirebaseVars.measurementId,
+};
+
+// Log Firebase project info on initialization (once)
+let projectInfoLogged = false;
 
 export function getAppSafe(): FirebaseApp | null {
-  if (isDisabled) {
-    console.warn('[FIREBASE] Disabled (missing env or VITE_DISABLE_FIREBASE=1)');
+  if (!firebaseEnabled) {
+    if (!initializationWarningLogged) {
+      console.error('[FIREBASE] Initialization skipped; firebaseEnabled is false');
+      initializationWarningLogged = true;
+    }
     return null;
   }
-  if (!app) {
+  if (!app && !cachedApp) {
     try {
       const existingApps = getApps();
       if (existingApps.length > 0) {
         app = existingApps[0];
+        cachedApp = app;
       } else {
-        app = initializeApp(cfg);
+        try {
+          app = initializeApp(cfg);
+          cachedApp = app;
+          
+          // Log Firebase project info once on initialization
+          if (!projectInfoLogged) {
+            console.log('[FIREBASE] ✅ Connected to Firebase project:', {
+              projectId: cfg.projectId,
+              authDomain: cfg.authDomain,
+              appId: cfg.appId?.substring(0, 20) + '...',
+              apiKey: cfg.apiKey?.substring(0, 20) + '...'
+            });
+            projectInfoLogged = true;
+          }
+        } catch (initError: any) {
+          console.error('[FIREBASE] Failed to initialize app:', initError);
+          // Don't throw - return null instead to prevent unhandled rejections
+          return null;
+        }
       }
     } catch (error) {
       console.error('[FIREBASE] Initialization failed:', error);
       return null;
     }
   }
-  return app;
+  return app || cachedApp;
 }
 
 export function getAuthSafe(): Auth | null {
   const a = getAppSafe();
   if (!a) return null;
-  if (!_auth) {
+  if (!_auth && !cachedAuth) {
     try {
       _auth = getAuth(a);
+      cachedAuth = _auth;
     } catch (error) {
       console.error('[FIREBASE] Auth initialization failed:', error);
       return null;
     }
   }
-  return _auth;
+  return _auth || cachedAuth;
 }
 
 export function getDbSafe(): Firestore | null {
   const a = getAppSafe();
-  if (!a) return null;
-  if (!_db) {
+  if (!a) {
+    if (!initializationWarningLogged) {
+      console.warn('[FIREBASE] getDbSafe: App not available');
+      initializationWarningLogged = true;
+    }
+    return null;
+  }
+  if (!_db && !cachedDb) {
     try {
-      _db = getFirestore(a);
+      // Specify database ID: 'gopopera2028' (user renamed the database)
+      // If you have multiple databases, you must specify which one to use
+      // Use '(default)' for the default database, or the database ID for named databases
+      const databaseId = 'gopopera2028'; // User's renamed database
+      _db = getFirestore(a, databaseId);
+      cachedDb = _db;
+      // Verify Firestore is actually ready
+      if (!_db) {
+        console.error('[FIRESTORE] getFirestore returned null/undefined');
+        return null;
+      }
+      
+      // Log Firestore database info
+      console.log('[FIRESTORE] ✅ Firestore initialized:', {
+        projectId: a.options.projectId,
+        databaseId: databaseId,
+        actualDatabaseId: (_db as any).databaseId || databaseId,
+        type: (_db as any).type || 'unknown',
+        // MongoDB compatibility mode databases might have different properties
+        isMongoDBCompatible: (_db as any).type === 'mongodb' || false
+      });
+      
+      if ((_db as any).type === 'mongodb') {
+        console.error('[FIRESTORE] ⚠️ WARNING: Database is in MongoDB compatibility mode!', {
+          databaseId: databaseId,
+          note: 'The app requires native Firestore. Please create a native Firestore database.'
+        });
+      }
     } catch (error) {
       console.error('[FIREBASE] Firestore initialization failed:', error);
       return null;
     }
   }
-  return _db;
+  const dbInstance = _db || cachedDb;
+  if (!dbInstance) {
+    console.error('[FIRESTORE] db is null after initialization attempt');
+    return null;
+  }
+  // Final validation: ensure it's a valid Firestore instance
+  if (typeof dbInstance !== 'object' || !('type' in dbInstance)) {
+    console.error('[FIRESTORE] Invalid Firestore instance');
+    return null;
+  }
+  return dbInstance;
+}
+
+
+/**
+ * Wrapper function that ensures Firebase app and Firestore are initialized
+ * Never returns undefined - throws error if initialization fails
+ */
+export function getDb(): Firestore {
+  const a = getAppSafe();
+  if (!a) {
+    throw new Error('Firebase app not initialized');
+  }
+  
+  if (!_db && !cachedDb) {
+    try {
+      // Use the same database ID as getDbSafe()
+      const databaseId = 'gopopera2028';
+      _db = getFirestore(a, databaseId);
+      cachedDb = _db;
+    } catch (error) {
+      throw new Error('Firestore not initialized');
+    }
+  }
+  
+  const db = _db || cachedDb;
+  if (!db) {
+    throw new Error('Firestore not initialized');
+  }
+  
+  return db;
 }
 
 export function getStorageSafe(): FirebaseStorage | null {
   const a = getAppSafe();
   if (!a) return null;
-  if (!_storage) {
+  if (!_storage && !cachedStorage) {
     try {
       _storage = getStorage(a);
+      cachedStorage = _storage;
     } catch (error) {
       console.error('[FIREBASE] Storage initialization failed:', error);
       return null;
     }
   }
-  return _storage;
+  return _storage || cachedStorage;
 }
 
 // Legacy exports for backward compatibility (lazy getters)
@@ -146,3 +280,10 @@ export const storage = new Proxy({} as FirebaseStorage, {
 // Re-export helpers
 export { serverTimestamp, Timestamp };
 export type Unsubscribe = () => void;
+
+// Remove console.log spam in production
+if (import.meta.env.PROD && typeof window !== 'undefined') {
+  console.log = () => {};
+  console.warn = () => {};
+  // Keep console.error for production debugging
+}

@@ -1,9 +1,43 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
-console.log('[BOOT] App module loaded');
+// Global error handler for unhandled promise rejections
+if (typeof window !== 'undefined') {
+  window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason;
+    
+    // Handle Firebase permission errors gracefully - prevent all error displays
+    if (reason?.code === 'permission-denied' || 
+        reason?.message?.includes('permission') || 
+        reason?.message?.includes('Missing or insufficient permissions') ||
+        (reason?.name === 'FirebaseError' && reason?.code === 'permission-denied')) {
+      // Silently handle - these are expected and already logged elsewhere
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    
+    // Log other unhandled rejections for debugging (but still prevent default display)
+    console.error('[UNHANDLED_REJECTION]', reason);
+    event.preventDefault();
+    event.stopPropagation();
+    
+    // Log to console for debugging
+    if (reason) {
+      console.error('[UNHANDLED_REJECTION] Reason:', reason);
+      if (reason.message) {
+        console.error('[UNHANDLED_REJECTION] Message:', reason.message);
+      }
+      if (reason.stack) {
+        console.error('[UNHANDLED_REJECTION] Stack:', reason.stack);
+      }
+    }
+  });
+}
+
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
+import { CityInput } from './components/layout/CityInput';
 // Route-level code splitting for performance
 const LandingPage = React.lazy(() => import('./pages/LandingPage').then(m => ({ default: m.LandingPage })));
 const EventDetailPage = React.lazy(() => import('./pages/EventDetailPage').then(m => ({ default: m.EventDetailPage })));
@@ -30,6 +64,9 @@ const FavoritesPage = React.lazy(() => import('./pages/FavoritesPage').then(m =>
 const MyCalendarPage = React.lazy(() => import('./pages/MyCalendarPage').then(m => ({ default: m.MyCalendarPage })));
 const DeleteAccountPage = React.lazy(() => import('./pages/DeleteAccountPage').then(m => ({ default: m.DeleteAccountPage })));
 const CreateEventPage = React.lazy(() => import('./pages/CreateEventPage').then(m => ({ default: m.CreateEventPage })));
+const EditEventPage = React.lazy(() => import('./pages/EditEventPage').then(m => ({ default: m.EditEventPage })));
+const DebugEnvPage = React.lazy(() => import('./pages/DebugEnvPage').then(m => ({ default: m.DebugEnvPage })));
+const DebugSeedDemoEventsPage = React.lazy(() => import('./pages/DebugSeedDemoEventsPage').then(m => ({ default: m.DebugSeedDemoEventsPage })));
 
 // Consolidated Imports - lazy loaded
 const BasicDetailsPage = React.lazy(() => import('./pages/ProfileSubPages').then(m => ({ default: m.BasicDetailsPage })));
@@ -37,20 +74,22 @@ const NotificationSettingsPage = React.lazy(() => import('./pages/ProfileSubPage
 const PrivacySettingsPage = React.lazy(() => import('./pages/ProfileSubPages').then(m => ({ default: m.PrivacySettingsPage })));
 const StripeSettingsPage = React.lazy(() => import('./pages/ProfileSubPages').then(m => ({ default: m.StripeSettingsPage })));
 const MyReviewsPage = React.lazy(() => import('./pages/ProfileSubPages').then(m => ({ default: m.MyReviewsPage })));
+const FollowingPage = React.lazy(() => import('./pages/ProfileSubPages').then(m => ({ default: m.FollowingPage })));
+const FollowersPage = React.lazy(() => import('./pages/ProfileSubPages').then(m => ({ default: m.FollowersPage })));
+const ReservationConfirmationPage = React.lazy(() => import('./pages/ReservationConfirmationPage').then(m => ({ default: m.ReservationConfirmationPage })));
+const ConfirmReservationPage = React.lazy(() => import('./pages/ConfirmReservationPage').then(m => ({ default: m.ConfirmReservationPage })));
 
 import { Event, ViewState } from './types';
-import { Search, ArrowRight, MapPin, PlusCircle } from 'lucide-react';
+import { Search, ArrowRight, MapPin, PlusCircle, ChevronRight, ChevronLeft } from 'lucide-react';
 import { EventCard } from './components/events/EventCard';
 import { useEventStore } from './stores/eventStore';
 import { useUserStore } from './stores/userStore';
-import { generatePoperaEvents } from './data/poperaEvents';
-import { generateFakeEvents } from './data/fakeEvents';
 import { categoryMatches } from './utils/categoryMapper';
-import { listUpcomingEvents } from './firebase/db';
 import { useDebouncedFavorite } from './hooks/useDebouncedFavorite';
 import { ConversationButtonModal } from './components/chat/ConversationButtonModal';
-import { CityInput } from './components/layout/CityInput';
 import { useSelectedCity, useSetCity, type City } from './src/stores/cityStore';
+import { NotificationsModal } from './components/notifications/NotificationsModal';
+import { isPrivateMode, getPrivateModeMessage } from './utils/browserDetection';
 
 // Mock Data Generator - Initial seed data
 const generateMockEvents = (): Event[] => [
@@ -106,7 +145,7 @@ const generateMockEvents = (): Event[] => [
     location: 'Heritage Hall, Toronto',
     hostName: 'Creative Collective',
     host: 'Creative Collective',
-    category: 'Market',
+    category: 'Markets',
     imageUrl: 'https://images.unsplash.com/photo-1531058020387-3be344556be6?q=80&w=2070&auto=format&fit=crop',
     price: 'Free',
     description: 'Discover unique handmade items from local artisans and creators.',
@@ -117,7 +156,7 @@ const generateMockEvents = (): Event[] => [
     capacity: 1000,
     city: 'Toronto',
     address: 'Heritage Hall',
-    tags: ['market', 'shopping', 'local', 'artisan'],
+    tags: ['markets', 'shopping', 'local', 'artisan'],
     createdAt: new Date('2024-10-01').toISOString()
   },
   {
@@ -332,15 +371,65 @@ const PageSkeleton: React.FC = () => (
 );
 
 const AppContent: React.FC = () => {
-  console.log("#BOOT: App mounted");
   const { t } = useLanguage();
+  
+  // Check for iOS/Safari private mode
+  const [privateModeWarning, setPrivateModeWarning] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (isPrivateMode()) {
+      setPrivateModeWarning(getPrivateModeMessage());
+    }
+  }, []);
   const city = useSelectedCity();
   
   // Dev guard for city state (no side effects, just for sanity)
   if (typeof window !== "undefined") {
     (window as any).__POPERA_CITY__ = city;
   }
-  const [viewState, setViewState] = useState<ViewState>(ViewState.LANDING);
+  // Parse initial route from URL to handle direct navigation and page refreshes
+  const getInitialViewState = (): ViewState => {
+    if (typeof window === 'undefined') return ViewState.LANDING;
+    const pathname = window.location.pathname;
+    
+    // Match routes from URL (without needing events loaded yet)
+    if (pathname === '/' || pathname === '') {
+      return ViewState.LANDING;
+    } else if (pathname === '/explore') {
+      return ViewState.FEED;
+    } else if (pathname.startsWith('/event/')) {
+      // Check if it's a chat route
+      if (pathname.includes('/chat')) {
+        return ViewState.CHAT;
+      }
+      return ViewState.DETAIL;
+    } else if (pathname === '/profile') {
+      return ViewState.PROFILE;
+    } else if (pathname === '/my-pops') {
+      return ViewState.MY_POPS;
+    } else if (pathname === '/favorites') {
+      return ViewState.FAVORITES;
+    } else if (pathname === '/create-event') {
+      return ViewState.CREATE_EVENT;
+    } else if (pathname === '/about') {
+      return ViewState.ABOUT;
+    } else if (pathname === '/contact') {
+      return ViewState.CONTACT;
+    } else if (pathname === '/guidelines') {
+      return ViewState.GUIDELINES;
+    } else if (pathname === '/terms') {
+      return ViewState.TERMS;
+    } else if (pathname === '/privacy') {
+      return ViewState.PRIVACY;
+    } else if (pathname === '/cancellation') {
+      return ViewState.CANCELLATION;
+    }
+    
+    // Default to landing page for unknown routes
+    return ViewState.LANDING;
+  };
+  
+  const [viewState, setViewState] = useState<ViewState>(getInitialViewState());
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [reviewEvent, setReviewEvent] = useState<Event | null>(null); 
   const [selectedHost, setSelectedHost] = useState<string | null>(null); 
@@ -350,209 +439,341 @@ const AppContent: React.FC = () => {
   const location = city;
   const [showConversationModal, setShowConversationModal] = useState(false);
   const [conversationModalEvent, setConversationModalEvent] = useState<Event | null>(null);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [authBootChecked, setAuthBootChecked] = useState(false);
+  const [hasHandledRedirectLogin, setHasHandledRedirectLogin] = useState(false);
   // Use Zustand stores
   const user = useUserStore((state) => state.user);
   const loading = useUserStore((state) => state.loading);
-  const ready = useUserStore((state) => state.ready);
+  const isAuthReady = useUserStore((state) => state.isAuthReady);
+  const authInitialized = useUserStore((state) => state.authInitialized);
   const addRSVP = useUserStore((state) => state.addRSVP);
   const removeRSVP = useUserStore((state) => state.removeRSVP);
   const addFavorite = useUserStore((state) => state.addFavorite);
   const removeFavorite = useUserStore((state) => state.removeFavorite);
   const updateEvent = useEventStore((state) => state.updateEvent);
   const currentUser = useUserStore((state) => state.getCurrentUser());
-  
+
   // Backward compatibility with safe defaults - use nullish coalescing
   const isLoggedIn = !!user;
   const favorites = (user?.favorites ?? []);
   const rsvps = (user?.rsvps ?? []);
   
-  // Use Zustand store for events (for backward compatibility with mock data)
-  const storeEvents = useEventStore((state) => state.getEvents());
+  // Use shared events store with real-time Firestore subscription
+  const events = useEventStore((state) => state.events);
+  const isLoadingEvents = useEventStore((state) => state.isLoading);
+  const eventsError = useEventStore((state) => state.error);
   const searchEvents = useEventStore((state) => state.searchEvents);
   const filterByCity = useEventStore((state) => state.filterByCity);
   const filterByTags = useEventStore((state) => state.filterByTags);
   const getEventsByCity = useEventStore((state) => state.getEventsByCity);
   
-  // State for Firestore events
-  const [firestoreEvents, setFirestoreEvents] = useState<Event[]>([]);
-  const [loadingEvents, setLoadingEvents] = useState(false);
+  // allEvents is now just events from the shared store (real-time updates)
+  const allEvents = events;
   
-  // Scroll and navigation state for "back to where I was" behavior
-  const [navigationHistory, setNavigationHistory] = useState<{ path: ViewState; scrollY: number } | null>(null);
+  // Debug: Log events state
+  useEffect(() => {
+    console.log('[APP_DEBUG] Events state:', {
+      totalEvents: allEvents.length,
+      isLoading: isLoadingEvents,
+      error: eventsError,
+      eventIds: allEvents.map(e => e.id),
+      eventTitles: allEvents.map(e => e.title),
+    });
+  }, [allEvents.length, isLoadingEvents, eventsError]);
   
-  // Initialize auth listener on mount
+  // Initialize auth listener and events store on mount
   // City store auto-initializes via Zustand persist middleware
   useEffect(() => {
-    useUserStore.getState().init();
+    // Initialize auth monitoring (tracks failures and redirect issues)
+    import('./src/lib/firebaseMonitoring').then(({ initAuthMonitoring }) => {
+      initAuthMonitoring();
+    }).catch((err) => {
+      console.warn('[APP] Failed to load auth monitoring:', err);
+    });
+    
+    // Initialize visual debugger (shows logs on screen - enable with ?debug=true)
+    import('./src/lib/visualDebugger').then(({ initVisualDebugger }) => {
+      initVisualDebugger();
+    }).catch((err) => {
+      console.warn('[APP] Failed to load visual debugger:', err);
+    });
+    
+    // Initialize stores with error handling
+    try {
+      useUserStore.getState().init();
+    } catch (error) {
+      console.error('[APP] Error initializing user store:', error);
+    }
+    
+    try {
+      // Initialize events store with real-time Firestore subscription
+      useEventStore.getState().init();
+    } catch (error) {
+      console.error('[APP] Error initializing event store:', error);
+    }
+    
+    // Geocode all existing events that don't have coordinates (background process)
+    // This runs once when the app loads, geocoding events in the background
+    setTimeout(async () => {
+      try {
+        const { geocodeAllEvents } = await import('./utils/geocodeAllEvents');
+        // Run in background, don't block UI
+        geocodeAllEvents().then((summary) => {
+          console.log('[APP] ✅ Geocoding complete:', summary);
+        }).catch((error: any) => {
+          // Handle permission errors gracefully
+          if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+            console.warn('[APP] Permission denied when geocoding events (expected if not logged in)');
+          } else {
+            console.error('[APP] Error geocoding events:', error);
+          }
+        });
+      } catch (error) {
+        console.error('[APP] Failed to load geocoding utility:', error);
+      }
+    }, 5000); // 5 second delay to not interfere with initial load
+
+    // CRITICAL: Auto-restore incorrectly hidden user events (background process)
+    // This safely restores events that were incorrectly marked as private/draft
+    // It ONLY affects events from non-Popera accounts and only removes problematic flags
+    // It NEVER deletes or modifies user data - only removes isPublic: false or isDraft: true
+    setTimeout(async () => {
+      try {
+        const { restoreAllHiddenEvents, getEventsByHost } = await import('./utils/restoreUserEvents');
+        // First, check if there are any hidden events
+        getEventsByHost().then(async (summaries) => {
+          const totalHidden = summaries.reduce((sum, s) => sum + s.hiddenEvents, 0);
+          if (totalHidden > 0) {
+            console.warn(`[APP] ⚠️ Found ${totalHidden} hidden events - attempting automatic restoration...`);
+            // Automatically restore all hidden events (safe - only removes flags)
+            const result = await restoreAllHiddenEvents();
+            if (result.restored > 0) {
+              console.log(`[APP] ✅ Successfully restored ${result.restored} hidden events`);
+              console.log(`[APP] Restored events for ${Object.keys(result.byHost).length} hosts`);
+            } else if (result.errors > 0) {
+              console.warn(`[APP] ⚠️ Some events could not be restored (${result.errors} errors)`);
+              console.log('[APP] Run restoreUserEvents.generateEventReport() in console for details');
+            } else {
+              console.log('[APP] ℹ️ No events needed restoration (they may be intentionally hidden)');
+            }
+          } else {
+            console.log('[APP] ✅ All user events are visible (no restoration needed)');
+          }
+        }).catch((error: any) => {
+          // Handle permission errors gracefully
+          if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+            console.warn('[APP] Permission denied when scanning/restoring events (expected if not logged in)');
+          } else {
+            console.error('[APP] Error scanning/restoring events:', error);
+          }
+        });
+      } catch (error) {
+        console.error('[APP] Failed to load event restoration utility:', error);
+      }
+    }, 7000); // 7 second delay to not interfere with initial load
+
+    // Diagnostic: Check event loading status
+    setTimeout(async () => {
+      try {
+        const { diagnoseEvents } = await import('./utils/diagnoseEvents');
+        diagnoseEvents().catch((error) => {
+          console.error('[APP] Error running event diagnostic:', error);
+        });
+      } catch (error) {
+        console.error('[APP] Failed to load event diagnostic utility:', error);
+      }
+    }, 10000); // 10 second delay to check after everything loads
+    
+
+    // Verify and seed community events for eatezca@gmail.com (runs immediately when Firestore is ready)
+    // Creates 2 events per city in different categories - all public, free, unlimited capacity
+    // This function verifies existing events and creates missing ones
+    // Run immediately - Firestore should be ready by now
+    (async () => {
+      try {
+        const { verifyAndSeedCommunityEvents } = await import('./firebase/verifyAndSeedCommunityEvents');
+        // Run in background, don't block UI
+        verifyAndSeedCommunityEvents().then(() => {
+          console.log('[APP] ✅ Community events verification and seeding complete for eatezca@gmail.com');
+        }).catch((error) => {
+          console.error('[APP] Error verifying/seeding community events:', error);
+        });
+      } catch (error) {
+        console.error('[APP] Failed to load community events verification utility:', error);
+      }
+    })();
+    
+    setAuthBootChecked(true);
   }, []);
 
+  if (viewState === ViewState.AUTH && !authInitialized) {
+    return (
+      <div className="min-h-screen bg-[#f8fafb] flex items-center justify-center text-[#15383c]">
+        Loading...
+      </div>
+    );
+  }
+
+
   // Handle redirect after successful login (including Google login)
-  // Redirect immediately when user is detected after auth
+  // Use persisted store flag instead of local state for reliability
   const redirectAfterLogin = useUserStore((state) => state.redirectAfterLogin);
   const setRedirectAfterLogin = useUserStore((state) => state.setRedirectAfterLogin);
+  const justLoggedInFromRedirect = useUserStore((state) => state._justLoggedInFromRedirect);
+  const clearJustLoggedInFlag = useUserStore((state) => state.clearJustLoggedInFlag);
   
+  // SIMPLE APPROACH: If user exists and we're on landing page, go to feed
+  // No complex logic, no flags, no polling - just check and navigate
   useEffect(() => {
-    if (user && viewState === ViewState.AUTH && !loading) {
-      // User just logged in, redirect immediately to intended destination or FEED
+    if (!authInitialized) return;
+    
+    // Simple rule: User logged in + on landing page = go to feed
+    if (user && viewState === ViewState.LANDING) {
       const redirect = redirectAfterLogin || ViewState.FEED;
-      console.log('[AUTH] Login success, navigating to:', redirect);
+      console.log('[APP] User logged in, navigating to:', redirect);
       setViewState(redirect);
       setRedirectAfterLogin(null);
+      return;
     }
-  }, [user, loading, viewState, redirectAfterLogin, setRedirectAfterLogin]);
-  
-  // Load events from Firestore (with fallback to mock data)
+    
+    // Handle login from AUTH page
+    if (user && viewState === ViewState.AUTH) {
+      const redirect = redirectAfterLogin || ViewState.FEED;
+      console.log('[APP] Redirecting after login from AUTH page:', redirect);
+      setViewState(redirect);
+      setRedirectAfterLogin(null);
+      return;
+    }
+  }, [user, viewState, redirectAfterLogin, setRedirectAfterLogin, authInitialized]);
+
+  // Verify and seed community events immediately when user is eatezca@gmail.com
   useEffect(() => {
-    const loadFirestoreEvents = async () => {
-      try {
-        setLoadingEvents(true);
-        const events = await listUpcomingEvents();
-        if (events.length > 0) {
-          setFirestoreEvents(events);
+    if (!authInitialized) return;
+    
+    // Only run for eatezca@gmail.com account
+    if (user?.email?.toLowerCase() === 'eatezca@gmail.com') {
+      (async () => {
+        try {
+          const { verifyAndSeedCommunityEvents } = await import('./firebase/verifyAndSeedCommunityEvents');
+          verifyAndSeedCommunityEvents().then(() => {
+            console.log('[APP] ✅ Community events verification and seeding complete for eatezca@gmail.com');
+          }).catch((error) => {
+            console.error('[APP] Error verifying/seeding community events:', error);
+          });
+        } catch (error) {
+          console.error('[APP] Failed to load community events verification utility:', error);
         }
-      } catch (error) {
-        console.error("Error loading Firestore events:", error);
-        // Fallback to mock data if Firestore fails
-      } finally {
-        setLoadingEvents(false);
+      })();
+    }
+  }, [user?.email, authInitialized]);
+
+  // Events are now loaded via real-time subscription in eventStore.init()
+  // No need for manual loading or mock data initialization - events come from Firestore in real-time
+  
+  // Update attendee counts when RSVPs change
+  // Sync event attendee counts from Firestore reservations for all events
+  // CRITICAL: Only sync if user is authenticated to avoid permission errors
+  useEffect(() => {
+    // Don't sync if user is not authenticated - will cause permission errors
+    if (!user || allEvents.length === 0) return;
+    
+    let isMounted = true;
+    let hasPermissionError = false;
+    
+    const syncEventCounts = async () => {
+      // Stop syncing if we've encountered permission errors
+      if (hasPermissionError || !isMounted) return;
+      
+      try {
+        const { getReservationCountForEvent } = await import('./firebase/db');
+        const countPromises = allEvents
+          .filter(event => event.id && !event.isDemo)
+          .map(async (event) => {
+            if (!isMounted || hasPermissionError) return;
+            
+            try {
+              const count = await getReservationCountForEvent(event.id);
+              // Only update if count is different and we still have permission
+              if (isMounted && !hasPermissionError && event.attendeesCount !== count) {
+                await updateEvent(event.id, { attendeesCount: count });
+              }
+            } catch (error: any) {
+              // If permission error, stop all future syncs
+              if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+                hasPermissionError = true;
+                console.warn('[SYNC_COUNTS] Permission denied - stopping sync to prevent infinite loop');
+                return;
+              }
+              // Silently ignore other errors for individual events
+            }
+          });
+        
+        await Promise.all(countPromises);
+      } catch (error: any) {
+        // If permission error, stop all future syncs
+        if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+          hasPermissionError = true;
+          console.warn('[SYNC_COUNTS] Permission denied - stopping sync to prevent infinite loop');
+        }
       }
     };
     
-    loadFirestoreEvents();
-  }, []);
-  
-  // Initialize store with Popera events and fake events (first load only, as fallback)
-  useEffect(() => {
-    if (storeEvents.length === 0 && firestoreEvents.length === 0) {
-      // 1. First, add official Popera launch events
-      const poperaEvents = (generatePoperaEvents() ?? []);
-      if (Array.isArray(poperaEvents)) {
-        poperaEvents?.forEach?.(event => {
-          // Fire-and-forget for mock data initialization
-          useEventStore.getState().addEvent({
-            title: event.title,
-            description: event.description,
-            city: event.city,
-            address: event.address,
-            date: event.date,
-            time: event.time,
-            tags: event.tags,
-            host: event.host,
-            hostId: event.hostId,
-            imageUrl: event.imageUrl,
-            attendeesCount: 0, // Start at 0, will increase with real RSVPs
-            category: event.category,
-            price: event.price,
-            rating: 0,
-            reviewCount: 0,
-            capacity: undefined,
-            lat: event.lat,
-            lng: event.lng,
-            isPoperaOwned: true,
-            isFakeEvent: false,
-            isOfficialLaunch: event.isOfficialLaunch || false,
-            aboutEvent: event.aboutEvent,
-            whatToExpect: event.whatToExpect,
-          }).catch(err => console.warn('Failed to add Popera event to Firestore:', err));
-        });
+    // Sync immediately, then every 30 seconds (reduced frequency)
+    syncEventCounts();
+    const interval = setInterval(() => {
+      if (!hasPermissionError && isMounted) {
+        syncEventCounts();
       }
-      
-      // 2. Then, add fake demo events (3 per city, one per value prop)
-      const fakeEvents = (generateFakeEvents() ?? []);
-      if (Array.isArray(fakeEvents)) {
-        fakeEvents?.forEach?.(event => {
-        // Fire-and-forget for mock data initialization
-        useEventStore.getState().addEvent({
-          title: event.title,
-          description: event.description,
-          city: event.city,
-          address: event.address,
-          date: event.date,
-          time: event.time,
-          tags: event.tags,
-          host: event.host,
-          hostId: event.hostId,
-          imageUrl: event.imageUrl,
-          attendeesCount: event.attendeesCount,
-          category: event.category,
-          price: event.price,
-          rating: event.rating,
-          reviewCount: event.reviewCount,
-          capacity: event.capacity,
-          lat: event.lat,
-          lng: event.lng,
-          isPoperaOwned: false,
-          isFakeEvent: true,
-          isDemo: true,
-          isOfficialLaunch: false,
-          aboutEvent: event.aboutEvent,
-          whatToExpect: event.whatToExpect,
-        }).catch(err => console.warn('Failed to add fake event to Firestore:', err));
-      });
-      }
-    }
-  }, []); // Only run once on mount
-  
-  // Update attendee counts when RSVPs change
-  useEffect(() => {
-    if (!user) return;
+    }, 30000); // Increased to 30 seconds to reduce load
     
-    // Count RSVPs per event (using current user's RSVPs only)
-    const eventRSVPCounts: Record<string, number> = {};
-    const userRSVPs = (user?.rsvps ?? []);
-    
-    // Safe forEach with array check
-    if (Array.isArray(userRSVPs)) {
-      userRSVPs?.forEach?.(eventId => {
-        if (eventId) {
-          eventRSVPCounts[eventId] = (eventRSVPCounts[eventId] || 0) + 1;
-        }
-      });
-    }
-    
-    // Update event attendee counts (only for Popera events)
-    const safeStoreEvents = (storeEvents ?? []);
-    if (Array.isArray(safeStoreEvents)) {
-      safeStoreEvents?.forEach?.(event => {
-        if (event?.isPoperaOwned && event?.id && eventRSVPCounts[event.id] !== undefined) {
-          const newCount = eventRSVPCounts[event.id];
-          if (event.attendeesCount !== newCount) {
-            updateEvent(event.id, { attendeesCount: newCount });
-          }
-        }
-      });
-    }
-  }, [user?.rsvps, storeEvents, updateEvent, user]);
-  
-  // Get all events from store
-  const allEvents = useEventStore((state) => state.getEvents());
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [allEvents.length, user?.uid, updateEvent]); // Only depend on length and user, not the full array
 
   // Filter events based on search, location, category, and tags
   // Apply all filters in sequence for proper combined filtering
-  // Filters work together: Category + City + Tags all apply simultaneously
+  // Filters work together: Category + City + Search all apply simultaneously
   let filteredEvents = allEvents;
   
-  // Apply search filter first (text search)
-  if (searchQuery.trim()) {
-    filteredEvents = searchEvents(searchQuery);
-  }
-  
-  // Apply city filter - match by city slug or city name
-  if (location && location.trim() && location !== 'montreal') {
-    const citySlug = location.toLowerCase();
-    filteredEvents = filteredEvents.filter(event => {
-      const eventCityLower = event.city.toLowerCase();
-      // Match by slug (e.g., "montreal" matches "Montreal, CA")
-      return eventCityLower.includes(citySlug) || 
-             eventCityLower.includes(citySlug.replace('-', ' '));
-    });
-  }
-  
-  // Apply category filter (e.g., "Sports", "Community") - works with city and tags
+  // Apply category filter first (e.g., "Sports", "Community")
   // Uses category mapper to handle plural/singular variations (e.g., "Markets" -> "Market")
   if (activeCategory !== 'All') {
     filteredEvents = filteredEvents.filter(event => 
       categoryMatches(event.category, activeCategory)
+    );
+  }
+  
+  // Apply city filter - match by city slug or city name
+  // "Canada" shows all events (no filter)
+  if (location && location.trim() && location.toLowerCase() !== 'canada') {
+    const citySlug = location.toLowerCase();
+    filteredEvents = filteredEvents.filter(event => {
+      const eventCityLower = event.city.toLowerCase();
+      // Normalize city name (remove ", CA" for comparison)
+      const normalizedEventCity = eventCityLower.replace(/,\s*ca$/, '').trim();
+      const normalizedLocation = citySlug.replace(/,\s*ca$/, '').trim();
+      // Match by slug (e.g., "montreal" matches "Montreal, CA")
+      return normalizedEventCity.includes(normalizedLocation) || 
+             normalizedLocation.includes(normalizedEventCity) ||
+             eventCityLower.includes(citySlug) || 
+             eventCityLower.includes(citySlug.replace('-', ' '));
+    });
+  }
+  
+  // Apply search filter last (text search in titles, descriptions, tags, hostName, aboutEvent, whatToExpect)
+  // This ensures search works with category and city filters
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase().trim();
+    filteredEvents = filteredEvents.filter(event => 
+      event.title.toLowerCase().includes(query) ||
+      event.description.toLowerCase().includes(query) ||
+      event.hostName.toLowerCase().includes(query) ||
+      (event.tags && event.tags.some(tag => tag.toLowerCase().includes(query))) ||
+      (event.aboutEvent && event.aboutEvent.toLowerCase().includes(query)) ||
+      (event.whatToExpect && event.whatToExpect.toLowerCase().includes(query))
     );
   }
   
@@ -578,9 +799,23 @@ const AppContent: React.FC = () => {
 
   const handleEventClick = (event: Event) => {
     setSelectedEvent(event);
+    // Use replaceState to avoid creating problematic history entries
+    window.history.replaceState({ viewState: ViewState.DETAIL, eventId: event.id }, '', `/event/${event.id}`);
     setViewState(ViewState.DETAIL);
     window.scrollTo(0, 0);
   };
+
+  // Listen for custom event to select event from ProfilePage
+  useEffect(() => {
+    const handleSelectEvent = (e: CustomEvent<{ eventId: string }>) => {
+      const event = allEvents.find(ev => ev.id === e.detail.eventId);
+      if (event) {
+        handleEventClick(event);
+      }
+    };
+    window.addEventListener('selectEvent', handleSelectEvent as EventListener);
+    return () => window.removeEventListener('selectEvent', handleSelectEvent as EventListener);
+  }, [allEvents]);
 
   const handleChatClick = (e: React.MouseEvent, event: Event) => {
     e.stopPropagation();
@@ -611,12 +846,14 @@ const AppContent: React.FC = () => {
     setReviewEvent(event);
   };
 
+  const handleReviewerClick = (userId: string, userName: string) => {
+    // Navigate to reviewer's profile
+    setSelectedHost(userName);
+    setViewState(ViewState.HOST_PROFILE);
+    window.scrollTo(0, 0);
+  };
 
   const handleHostClick = (hostName: string) => {
-    // Store current scroll position and view before navigating to host profile
-    const scrollKey = `scroll_${viewState}`;
-    sessionStorage.setItem(scrollKey, window.scrollY.toString());
-    sessionStorage.setItem('prevViewState', viewState);
     setSelectedHost(hostName);
     setViewState(ViewState.HOST_PROFILE);
     window.scrollTo(0, 0);
@@ -626,28 +863,28 @@ const AppContent: React.FC = () => {
   const handleViewDetailsFromChat = () => setViewState(ViewState.DETAIL);
 
   const handleProtectedNav = (view: ViewState) => {
-    // Store current scroll position and view before navigating to auth
-    const scrollKey = `scroll_${viewState}`;
-    sessionStorage.setItem(scrollKey, window.scrollY.toString());
-    sessionStorage.setItem('prevViewState', viewState);
+    // Save current scroll position and view state before navigating to auth
+    const listPages = [ViewState.LANDING, ViewState.FEED];
+    if (listPages.includes(viewState)) {
+      const scrollKey = `scroll_${viewState}`;
+      sessionStorage.setItem(scrollKey, window.scrollY.toString());
+      sessionStorage.setItem('prevViewState', viewState);
+    }
     useUserStore.getState().setRedirectAfterLogin(view);
     setViewState(ViewState.AUTH);
   };
 
   const handleLogin = async (email: string, password: string) => {
     try {
-      console.log('[AUTH] Email/password login initiated');
       const userStore = useUserStore.getState();
-      // Set redirect destination before login
-      if (!userStore.getRedirectAfterLogin()) {
-        userStore.setRedirectAfterLogin(ViewState.FEED);
-      }
       await userStore.login(email, password);
-      console.log('[AUTH] Login success, auth listener will handle redirect');
-      // Auth listener will update state and trigger redirect via useEffect
+      // Auth listener will update state automatically
+      // Redirect to intended destination or default to FEED
+      const redirect = userStore.getRedirectAfterLogin() || ViewState.FEED;
+      setViewState(redirect);
+      userStore.setRedirectAfterLogin(null);
     } catch (error) {
-      console.error('[AUTH] Login failed:', error);
-      alert('Login failed. Please check your email and password.');
+      console.error("Login failed:", error);
     }
   };
   
@@ -660,7 +897,10 @@ const AppContent: React.FC = () => {
     }
   };
   
-  const handleRSVP = (eventId: string) => {
+  const [confirmedReservation, setConfirmedReservation] = useState<{ event: Event; reservationId: string } | null>(null);
+
+  const handleRSVP = async (eventId: string, reservationId?: string) => {
+    if (!authInitialized) return null;
     if (!user) {
       // Redirect to auth if not logged in
       useUserStore.getState().setRedirectAfterLogin(ViewState.DETAIL);
@@ -668,20 +908,38 @@ const AppContent: React.FC = () => {
       return;
     }
     
-    if (rsvps.includes(eventId)) {
-      removeRSVP(user.uid || user.id || '', eventId);
-      // Decrease attendee count for Popera events
-      const event = storeEvents.find(e => e.id === eventId);
-      if (event?.isPoperaOwned && event.attendeesCount > 0) {
-        updateEvent(eventId, { attendeesCount: event.attendeesCount - 1 });
+    // Block RSVP for demo events
+    const event = allEvents.find(e => e.id === eventId);
+    if (event?.isDemo === true) {
+      // Demo events are handled by EventDetailPage's handleRSVP which shows modal
+      // This is a safety check in case handleRSVP is called from elsewhere
+      console.warn('[RSVP] Attempted to RSVP to demo event:', eventId);
+      return;
+    }
+    
+    try {
+      if (rsvps.includes(eventId)) {
+        await removeRSVP(user.uid || user.id || '', eventId);
+        // Update attendee count from actual Firestore reservations for all events
+        const { getReservationCountForEvent } = await import('./firebase/db');
+        const newCount = await getReservationCountForEvent(eventId);
+        updateEvent(eventId, { attendeesCount: newCount });
+      } else {
+        const resId = reservationId || await addRSVP(user.uid || user.id || '', eventId);
+        // Update attendee count from actual Firestore reservations for all events
+        const { getReservationCountForEvent } = await import('./firebase/db');
+        const newCount = await getReservationCountForEvent(eventId);
+        updateEvent(eventId, { attendeesCount: newCount });
+        
+        // If we have a reservation ID and event, navigate to confirmation page
+        if (resId && event) {
+          setConfirmedReservation({ event, reservationId: resId });
+          setViewState(ViewState.RESERVATION_CONFIRMED);
+        }
       }
-    } else {
-      addRSVP(user.uid || user.id || '', eventId);
-      // Increase attendee count for Popera events
-      const event = storeEvents.find(e => e.id === eventId);
-      if (event?.isPoperaOwned) {
-        updateEvent(eventId, { attendeesCount: (event.attendeesCount || 0) + 1 });
-      }
+    } catch (error) {
+      console.error('Error handling RSVP:', error);
+      // Don't show alert here - let EventDetailPage handle it
     }
   };
   
@@ -690,6 +948,7 @@ const AppContent: React.FC = () => {
   
   const handleToggleFavorite = (e: React.MouseEvent, eventId: string) => {
     e.stopPropagation();
+    if (!authInitialized) return null;
     if (!user) {
       useUserStore.getState().setRedirectAfterLogin(ViewState.FEED);
       setViewState(ViewState.AUTH);
@@ -704,43 +963,118 @@ const AppContent: React.FC = () => {
   };
 
   const handleNotificationsClick = () => {
-    setViewState(ViewState.NOTIFICATIONS);
-    window.scrollTo(0, 0);
+    setShowNotificationsModal(true);
+  };
+
+  const handleNotificationNavigate = (view: ViewState, eventId?: string) => {
+    if (eventId) {
+      const event = allEvents.find(e => e.id === eventId);
+      if (event) {
+        setSelectedEvent(event);
+        setViewState(ViewState.DETAIL);
+      }
+    } else {
+      setViewState(view);
+    }
   };
 
 
-  // Scroll restore for list pages and back navigation
+  // Browser history management - enable back button functionality
+  // Use replaceState to avoid creating problematic history entries that cause 404s
+  useEffect(() => {
+    // Update history safely for all view states - use replaceState to prevent 404s
+    const currentUrl = window.location.pathname;
+    
+    if (viewState === ViewState.FEED) {
+      if (currentUrl !== '/explore') {
+        window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
+      }
+    } else if (viewState === ViewState.LANDING) {
+      if (currentUrl !== '/') {
+        window.history.replaceState({ viewState: ViewState.LANDING }, '', '/');
+      }
+    } else if (viewState === ViewState.DETAIL && selectedEvent) {
+      // DETAIL view should have event ID in URL
+      const expectedUrl = `/event/${selectedEvent.id}`;
+      if (currentUrl !== expectedUrl) {
+        window.history.replaceState({ viewState: ViewState.DETAIL, eventId: selectedEvent.id }, '', expectedUrl);
+      }
+    } else if (viewState === ViewState.PROFILE) {
+      if (currentUrl !== '/profile') {
+        window.history.replaceState({ viewState: ViewState.PROFILE }, '', '/profile');
+      }
+    } else if (viewState === ViewState.MY_POPS) {
+      if (currentUrl !== '/my-pops') {
+        window.history.replaceState({ viewState: ViewState.MY_POPS }, '', '/my-pops');
+      }
+    } else if (viewState === ViewState.FAVORITES) {
+      if (currentUrl !== '/favorites') {
+        window.history.replaceState({ viewState: ViewState.FAVORITES }, '', '/favorites');
+      }
+    } else if (viewState === ViewState.CREATE_EVENT) {
+      if (currentUrl !== '/create-event') {
+        window.history.replaceState({ viewState: ViewState.CREATE_EVENT }, '', '/create-event');
+      }
+    } else if (viewState === ViewState.CHAT && selectedEvent) {
+      const expectedUrl = `/event/${selectedEvent.id}/chat`;
+      if (currentUrl !== expectedUrl) {
+        window.history.replaceState({ viewState: ViewState.CHAT, eventId: selectedEvent.id }, '', expectedUrl);
+      }
+    }
+
+    // Handle browser back/forward buttons
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && event.state.viewState) {
+        const targetView = event.state.viewState;
+        
+        // If navigating to DETAIL, ensure we have the event
+        if (targetView === ViewState.DETAIL && event.state.eventId) {
+          const event = allEvents.find(e => e.id === event.state.eventId);
+          if (event) {
+            setSelectedEvent(event);
+            setViewState(ViewState.DETAIL);
+          } else {
+            // Event not found, fallback to FEED
+            console.warn('[APP] Event not found for DETAIL view, falling back to FEED');
+            setViewState(ViewState.FEED);
+            window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
+          }
+        } else if (targetView === ViewState.CHAT && event.state.eventId) {
+          const event = allEvents.find(e => e.id === event.state.eventId);
+          if (event) {
+            setSelectedEvent(event);
+            setViewState(ViewState.CHAT);
+          } else {
+            // Event not found, fallback to FEED
+            console.warn('[APP] Event not found for CHAT view, falling back to FEED');
+            setViewState(ViewState.FEED);
+            window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
+          }
+        } else {
+          // Safe navigation to other views
+          setViewState(targetView);
+        }
+      } else {
+        // Default to landing page if no state
+        setViewState(ViewState.LANDING);
+        window.history.replaceState({ viewState: ViewState.LANDING }, '', '/');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [viewState, setViewState, selectedEvent, allEvents]);
+
+  // Scroll restore for list pages
   useEffect(() => {
     const listPages = [ViewState.LANDING, ViewState.FEED];
     if (listPages.includes(viewState)) {
       const scrollKey = `scroll_${viewState}`;
       const savedScroll = sessionStorage.getItem(scrollKey);
       if (savedScroll) {
-        // Use requestAnimationFrame to ensure DOM is ready
-        requestAnimationFrame(() => {
-          window.scrollTo({ top: parseInt(savedScroll, 10), behavior: 'auto' });
-        });
+        window.scrollTo({ top: parseInt(savedScroll, 10), behavior: 'auto' });
       }
     }
-  }, [viewState]);
-  
-  // Handle browser back button - restore previous view and scroll
-  useEffect(() => {
-    const handlePopState = () => {
-      const prevView = sessionStorage.getItem('prevViewState') as ViewState | null;
-      if (prevView && prevView !== viewState) {
-        setViewState(prevView);
-        const scrollKey = `scroll_${prevView}`;
-        const savedScroll = sessionStorage.getItem(scrollKey);
-        if (savedScroll) {
-          requestAnimationFrame(() => {
-            window.scrollTo({ top: parseInt(savedScroll, 10), behavior: 'auto' });
-          });
-        }
-      }
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
   }, [viewState]);
 
   // Save scroll position before navigating away from list pages
@@ -771,6 +1105,14 @@ const AppContent: React.FC = () => {
   };
 
   if (viewState === ViewState.CHAT && selectedEvent) {
+    // Ensure user is logged in before showing chat
+    if (!authInitialized) return null;
+    if (!user) {
+      useUserStore.getState().setRedirectAfterLogin(ViewState.CHAT);
+      setViewState(ViewState.AUTH);
+      return null;
+    }
+    
     return (
       <React.Suspense fallback={<PageSkeleton />}>
         <GroupChat 
@@ -792,7 +1134,7 @@ const AppContent: React.FC = () => {
   }
 
   const EventRow: React.FC<{ title: string; events: Event[] }> = ({ title, events }) => (
-    <section className="mb-8 sm:mb-10 md:mb-12 lg:mb-16">
+    <section className="mb-8 sm:mb-10 md:mb-12 lg:mb-16 max-w-6xl mx-auto px-4 md:px-6 lg:px-8">
       <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6">
         <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-heading font-bold text-[#15383c]">{title}</h2>
         <button className="text-xs sm:text-sm font-bold text-[#e35e25] hover:text-[#15383c] transition-colors flex items-center gap-1 touch-manipulation active:scale-95 shrink-0">
@@ -800,9 +1142,9 @@ const AppContent: React.FC = () => {
         </button>
       </div>
       {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
-      <div className="flex md:grid md:grid-cols-12 overflow-x-auto md:overflow-x-visible gap-6 xl:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+      <div className="flex md:grid overflow-x-auto md:overflow-x-visible gap-4 md:gap-5 lg:gap-6 pb-2 md:pb-6 snap-x snap-mandatory md:snap-none scroll-smooth md:place-items-center">
          {events.map(event => (
-           <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:col-span-6 lg:col-span-4 snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
+           <div key={event.id} className="snap-start shrink-0 md:col-span-1">
               <EventCard 
                 event={event} 
                 onClick={handleEventClick} 
@@ -823,6 +1165,12 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="font-sans text-popera-teal bg-gray-50 min-h-screen flex flex-col w-full max-w-full overflow-x-hidden">
+        <div id="recaptcha-container" style={{ display: 'none' }} />
+        {privateModeWarning && (
+          <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3 text-sm text-yellow-800 text-center">
+            {privateModeWarning}
+          </div>
+        )}
         {viewState !== ViewState.AUTH && (
           <Header 
            setViewState={setViewState} 
@@ -861,10 +1209,92 @@ const AppContent: React.FC = () => {
         {viewState === ViewState.PROFILE_NOTIFICATIONS && <NotificationSettingsPage setViewState={setViewState} />}
         {viewState === ViewState.PROFILE_PRIVACY && <PrivacySettingsPage setViewState={setViewState} />}
         {viewState === ViewState.PROFILE_STRIPE && <StripeSettingsPage setViewState={setViewState} />}
-        {viewState === ViewState.PROFILE_REVIEWS && <MyReviewsPage setViewState={setViewState} />}
+        {viewState === ViewState.PROFILE_REVIEWS && (
+          <React.Suspense fallback={<PageSkeleton />}>
+            <MyReviewsPage setViewState={setViewState} onHostClick={handleHostClick} />
+          </React.Suspense>
+        )}
+        {viewState === ViewState.PROFILE_FOLLOWING && (
+          <React.Suspense fallback={<PageSkeleton />}>
+            <FollowingPage setViewState={setViewState} onHostClick={handleHostClick} />
+          </React.Suspense>
+        )}
+        {viewState === ViewState.PROFILE_FOLLOWERS && (
+          <React.Suspense fallback={<PageSkeleton />}>
+            <FollowersPage setViewState={setViewState} onHostClick={handleHostClick} />
+          </React.Suspense>
+        )}
         {viewState === ViewState.DELETE_ACCOUNT && <DeleteAccountPage setViewState={setViewState} onConfirmDelete={handleLogout} />}
+        
+        {/* CONFIRM RESERVATION (Confirm & Pay) */}
+        {viewState === ViewState.CONFIRM_RESERVATION && selectedEvent && (
+          <React.Suspense fallback={<PageSkeleton />}>
+            <ConfirmReservationPage
+              event={selectedEvent}
+              setViewState={setViewState}
+              onHostClick={handleHostClick}
+              onConfirm={async (attendeeCount, supportContribution, paymentMethod) => {
+                if (!user?.uid) {
+                  setViewState(ViewState.AUTH);
+                  throw new Error('User not logged in');
+                }
+
+                // Create a single reservation with attendee count
+                // In the future, this will integrate with Stripe/Google Pay for payment processing
+                const { createReservation } = await import('./firebase/db');
+                
+                // Calculate total amount
+                const priceStr = selectedEvent.price?.replace(/[^0-9.]/g, '') || '0';
+                const pricePerAttendee = parseFloat(priceStr) || 0;
+                const subtotal = pricePerAttendee * attendeeCount;
+                const totalAmount = subtotal + supportContribution;
+                
+                const reservationId = await createReservation(selectedEvent.id, user.uid, {
+                  attendeeCount,
+                  supportContribution: supportContribution > 0 ? supportContribution : undefined,
+                  paymentMethod: !selectedEvent.price || selectedEvent.price.toLowerCase() === 'free' ? undefined : paymentMethod,
+                  totalAmount: totalAmount > 0 ? totalAmount : undefined,
+                });
+                
+                // Update user's RSVPs array
+                await addRSVP(user.uid, selectedEvent.id);
+
+                // Update attendee count
+                const { getReservationCountForEvent } = await import('./firebase/db');
+                const newCount = await getReservationCountForEvent(selectedEvent.id);
+                const { updateEvent: updateEventInStore } = useEventStore.getState();
+                updateEventInStore(selectedEvent.id, { attendeesCount: newCount });
+
+                // Refresh user profile
+                await useUserStore.getState().refreshUserProfile();
+
+                // Navigate to confirmation page
+                setConfirmedReservation({ event: selectedEvent, reservationId });
+                setViewState(ViewState.RESERVATION_CONFIRMED);
+
+                return reservationId;
+              }}
+            />
+          </React.Suspense>
+        )}
+
+        {/* RESERVATION CONFIRMATION */}
+        {viewState === ViewState.RESERVATION_CONFIRMED && confirmedReservation && (
+          <React.Suspense fallback={<PageSkeleton />}>
+            <ReservationConfirmationPage 
+              event={confirmedReservation.event} 
+              reservationId={confirmedReservation.reservationId}
+              setViewState={setViewState}
+            />
+          </React.Suspense>
+        )}
 
         {viewState === ViewState.CREATE_EVENT && <CreateEventPage setViewState={setViewState} />}
+        {viewState === ViewState.EDIT_EVENT && selectedEvent && (
+          <React.Suspense fallback={<PageSkeleton />}>
+            <EditEventPage setViewState={setViewState} event={selectedEvent} eventId={selectedEvent.id} />
+          </React.Suspense>
+        )}
 
         {viewState === ViewState.NOTIFICATIONS && <NotificationsPage setViewState={setViewState} />}
         {viewState === ViewState.MY_POPS && (
@@ -895,6 +1325,12 @@ const AppContent: React.FC = () => {
         {viewState === ViewState.ABOUT && <AboutPage setViewState={setViewState} />}
         {viewState === ViewState.CAREERS && <CareersPage setViewState={setViewState} />}
         {viewState === ViewState.CONTACT && <ContactPage setViewState={setViewState} />}
+        {viewState === ViewState.DEBUG_ENV && <DebugEnvPage setViewState={setViewState} />}
+        {viewState === ViewState.DEBUG_SEED_DEMO && (
+          <React.Suspense fallback={<PageSkeleton />}>
+            <DebugSeedDemoEventsPage setViewState={setViewState} />
+          </React.Suspense>
+        )}
         {viewState === ViewState.TERMS && <TermsPage setViewState={setViewState} />}
         {viewState === ViewState.PRIVACY && <PrivacyPage setViewState={setViewState} />}
         {viewState === ViewState.CANCELLATION && <CancellationPage setViewState={setViewState} />}
@@ -919,7 +1355,9 @@ const AppContent: React.FC = () => {
             )}
 
             {viewState === ViewState.FEED && (
-          <main className="min-h-screen pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-12 sm:pb-16 md:pb-20 lg:pb-24 md:container md:mx-auto md:px-6 lg:px-8">
+          <main className="min-h-screen pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-12 sm:pb-16 md:pb-20 lg:pb-24">
+            {/* Container wrapper for consistent alignment */}
+            <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
             
             {/* Header Section with Search */}
             <div className="mb-8 sm:mb-10 md:mb-12">
@@ -935,7 +1373,7 @@ const AppContent: React.FC = () => {
                   {/* Search Inputs Row - Location + Keyword */}
                   <div className="flex flex-col gap-3 w-full md:max-w-xl relative z-30">
                         
-                        {/* Location Input with Autocomplete */}
+                        {/* City Input with Autocomplete */}
                         <CityInput />
 
                         {/* Keyword Search Bar */}
@@ -976,119 +1414,191 @@ const AppContent: React.FC = () => {
                </div>
             </div>
 
-            {/* Conditional Render: Horizontal Lists vs Grid */}
-            {searchQuery === '' && activeCategory === 'All' && !location ? (
-              <div className="space-y-4 animate-fade-in">
-                 {/* Show events grouped by city if available */}
-                 {Object.keys(eventsByCity).length > 0 ? (
-                   Object.entries(eventsByCity).map(([city, cityEvents]) => (
-                     <div key={city} className="mb-8 sm:mb-10 md:mb-12">
-                       <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">
-                         {city}
-                       </h2>
-                       {/* Mobile: Horizontal scroll, Desktop: Grid layout - matches Landing */}
-                       <div className="flex md:grid md:grid-cols-12 overflow-x-auto md:overflow-x-visible gap-6 xl:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
-                         {cityEvents.map(event => (
-                           <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:col-span-6 lg:col-span-4 snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
-                             <EventCard
-                               event={event}
-                               onClick={handleEventClick}
-                               onChatClick={handleChatClick}
-                               onReviewsClick={handleReviewsClick}
-                               isLoggedIn={isLoggedIn}
-                               isFavorite={favorites.includes(event.id)}
-                               onToggleFavorite={handleToggleFavorite}
-                             />
-                           </div>
-                         ))}
-                       </div>
-                     </div>
-                   ))
-                 ) : (
-                   <>
-                     <EventRow title={t('feed.thisWeek')} events={thisWeekEvents} />
-                     <EventRow title={t('feed.thisMonth')} events={thisMonthEvents} />
-                     <EventRow title="Later" events={laterEvents} />
-                   </>
-                 )}
-              </div>
-            ) : (
-              <div className="animate-fade-in">
-                 <div className="mb-6 text-gray-500 text-sm font-medium">
-                   Showing {filteredEvents.length} results 
-                   {location && location !== 'montreal' && ` in ${location}`}
-                 </div>
-                 {filteredEvents.length > 0 ? (
-                    // Group search results by category
-                    (() => {
-                      const groupedByCategory = filteredEvents.reduce((acc, event) => {
-                        const category = event.category || 'Other';
-                        if (!acc[category]) acc[category] = [];
-                        acc[category].push(event);
-                        return acc;
-                      }, {} as Record<string, Event[]>);
+            {/* Always show events grouped by city, with selected city first */}
+            <div className="space-y-4 animate-fade-in">
+              {/* Show results count if filters are applied */}
+              {(searchQuery.trim() || activeCategory !== 'All' || (location && location.trim() && location !== 'montreal')) && (
+                <div className="mb-6 text-gray-500 text-sm font-medium">
+                  Showing {filteredEvents.length} result{filteredEvents.length !== 1 ? 's' : ''}
+                  {location && location !== 'montreal' && ` in ${location.charAt(0).toUpperCase() + location.slice(1)}`}
+                </div>
+              )}
 
+              {/* Group filtered events by city, with selected city first */}
+              {(() => {
+                // Group filtered events by city
+                const filteredEventsByCity: Record<string, Event[]> = {};
+                filteredEvents.forEach((event) => {
+                  if (event?.city) {
+                    if (!filteredEventsByCity[event.city]) {
+                      filteredEventsByCity[event.city] = [];
+                    }
+                    filteredEventsByCity[event.city].push(event);
+                  }
+                });
+
+                // Sort cities: selected city first, then alphabetically
+                const cityEntries = Object.entries(filteredEventsByCity);
+                const selectedCityName = location && location !== 'montreal' 
+                  ? cityEntries.find(([city]) => 
+                      city.toLowerCase().includes(location.toLowerCase()) || 
+                      location.toLowerCase().includes(city.split(',')[0].toLowerCase())
+                    )?.[0]
+                  : null;
+
+                // Sort: selected city first, then alphabetically
+                cityEntries.sort(([cityA], [cityB]) => {
+                  if (selectedCityName) {
+                    if (cityA === selectedCityName) return -1;
+                    if (cityB === selectedCityName) return 1;
+                  }
+                  return cityA.localeCompare(cityB);
+                });
+
+                if (cityEntries.length === 0) {
+                  return (
+                    <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
+                      <p className="text-gray-500">No events found matching your criteria.</p>
+                      <button 
+                        onClick={() => { 
+                          setSearchQuery(''); 
+                          setCity('montreal'); 
+                          setActiveCategory('All');
+                        }}
+                        className="mt-4 text-[#e35e25] font-bold hover:underline"
+                      >
+                        Clear Filters
+                      </button>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-8 sm:space-y-10 md:space-y-12">
+                    {cityEntries.map(([cityName, cityEvents]) => {
+                      const scrollContainerId = `city-scroll-${cityName.replace(/\s+/g, '-')}`;
+                      
+                      const scrollLeft = () => {
+                        const container = document.getElementById(scrollContainerId);
+                        if (container) {
+                          container.scrollBy({ left: -400, behavior: 'smooth' });
+                        }
+                      };
+                      
+                      const scrollRight = () => {
+                        const container = document.getElementById(scrollContainerId);
+                        if (container) {
+                          container.scrollBy({ left: 400, behavior: 'smooth' });
+                        }
+                      };
+                      
                       return (
-                        <div className="space-y-8 sm:space-y-10 md:space-y-12">
-                          {Object.entries(groupedByCategory).map(([category, categoryEvents]) => (
-                            <div key={category}>
-                              <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">
-                                {category}
-                              </h2>
-                              {/* Mobile: Horizontal scroll, Desktop: Grid layout - matches Landing */}
-                              <div className="flex md:grid md:grid-cols-12 overflow-x-auto md:overflow-x-visible gap-6 xl:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
-                                {categoryEvents.map(event => (
-                                  <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:col-span-6 lg:col-span-4 snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
-                                    <EventCard
-                                      event={event}
-                                      onClick={handleEventClick}
-                                      onChatClick={handleChatClick}
-                                      onReviewsClick={handleReviewsClick}
-                                      isLoggedIn={isLoggedIn}
-                                      isFavorite={favorites.includes(event.id)}
-                                      onToggleFavorite={handleToggleFavorite}
-                                    />
-                                  </div>
-                                ))}
-                              </div>
+                        <div key={cityName} className="mb-8 sm:mb-10 md:mb-12">
+                          <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">
+                            {cityName}
+                          </h2>
+                          {/* Mobile: Horizontal scroll, Desktop: Horizontal scroll with 4 per row */}
+                          <div className="relative group">
+                            {/* Left Arrow - Desktop only */}
+                            <button
+                              onClick={scrollLeft}
+                              className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100"
+                              aria-label="Scroll left"
+                            >
+                              <ChevronLeft size={20} />
+                            </button>
+                            
+                            {/* Scrollable Container - Scrollable anywhere on screen */}
+                            <div 
+                              id={scrollContainerId}
+                              className="flex overflow-x-auto gap-4 md:gap-5 lg:gap-6 pb-2 md:pb-6 snap-x snap-mandatory scroll-smooth hide-scrollbar w-full touch-pan-x overscroll-x-contain scroll-pl-4 md:scroll-pl-0 cursor-grab active:cursor-grabbing"
+                              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-x pan-y', WebkitOverflowScrolling: 'touch' }}
+                              onWheel={(e) => {
+                                // Allow horizontal scrolling with mouse wheel when hovering over the container
+                                const container = e.currentTarget;
+                                if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
+                                  // Use requestAnimationFrame to avoid passive listener warning
+                                  requestAnimationFrame(() => {
+                                    container.scrollLeft += e.deltaY;
+                                  });
+                                }
+                              }}
+                              onMouseDown={(e) => {
+                                // Enable drag scrolling - only on non-touch devices
+                                if ('ontouchstart' in window) return;
+                                
+                                const container = e.currentTarget;
+                                const startX = e.pageX - container.offsetLeft;
+                                const scrollLeft = container.scrollLeft;
+                                let isDown = true;
+
+                                const handleMouseMove = (e: MouseEvent) => {
+                                  if (!isDown) return;
+                                  const x = e.pageX - container.offsetLeft;
+                                  const walk = (x - startX) * 2;
+                                  container.scrollLeft = scrollLeft - walk;
+                                };
+
+                                const handleMouseUp = () => {
+                                  isDown = false;
+                                  document.removeEventListener('mousemove', handleMouseMove);
+                                  document.removeEventListener('mouseup', handleMouseUp);
+                                };
+
+                                document.addEventListener('mousemove', handleMouseMove, { passive: true });
+                                document.addEventListener('mouseup', handleMouseUp, { passive: true });
+                              }}
+                            >
+                              {cityEvents.map(event => (
+                                <div key={event.id} className="snap-start shrink-0 w-[85vw] sm:w-[70vw] md:w-[calc(25%-1.5rem)] lg:w-[calc(25%-2rem)] flex-shrink-0" style={{ touchAction: 'pan-x pan-y' }}>
+                                  <EventCard
+                                    event={event}
+                                    onClick={handleEventClick}
+                                    onChatClick={handleChatClick}
+                                    onReviewsClick={handleReviewsClick}
+                                    isLoggedIn={isLoggedIn}
+                                    isFavorite={favorites.includes(event.id)}
+                                    onToggleFavorite={handleToggleFavorite}
+                                  />
+                                </div>
+                              ))}
                             </div>
-                          ))}
+                            
+                            {/* Right Arrow - Desktop only */}
+                            <button
+                              onClick={scrollRight}
+                              className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100"
+                              aria-label="Scroll right"
+                            >
+                              <ChevronRight size={20} />
+                            </button>
+                          </div>
                         </div>
                       );
-                    })()
-                 ) : (
-                    <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
-                       <p className="text-gray-500">No events found matching your criteria.</p>
-                       <button 
-                         onClick={() => { 
-                           setSearchQuery(''); 
-                           setCity('montreal'); 
-                           setActiveCategory('All');
-                         }}
-                         className="mt-4 text-[#e35e25] font-bold hover:underline"
-                       >
-                         Clear Filters
-                       </button>
-                    </div>
-                 )}
-              </div>
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+            
+            {/* Mobile CTA FAB - Only show when logged in */}
+            {isLoggedIn && (
+              <button 
+                onClick={() => handleNav(ViewState.CREATE_EVENT)}
+                className="md:hidden fixed bottom-6 right-4 sm:right-6 w-14 h-14 bg-[#e35e25] rounded-full flex items-center justify-center text-white shadow-2xl shadow-orange-900/40 z-40 hover:scale-105 active:scale-95 transition-transform border-4 border-white touch-manipulation safe-area-inset-bottom"
+                aria-label="Create Pop-up"
+              >
+                 <PlusCircle size={28} />
+              </button>
             )}
-            
-            {/* Mobile CTA FAB */}
-            <button 
-              onClick={() => handleNav(ViewState.CREATE_EVENT)}
-              className="md:hidden fixed bottom-6 right-4 sm:right-6 w-14 h-14 bg-[#e35e25] rounded-full flex items-center justify-center text-white shadow-2xl shadow-orange-900/40 z-40 hover:scale-105 active:scale-95 transition-transform border-4 border-white touch-manipulation safe-area-inset-bottom"
-              aria-label="Create Pop-up"
-            >
-               <PlusCircle size={28} />
-            </button>
-            
+            </div>
           </main>
         )}
 
             {viewState === ViewState.DETAIL && selectedEvent && (
               <React.Suspense fallback={<PageSkeleton />}>
                 <EventDetailPage 
+                  key={selectedEvent.id}
                   event={selectedEvent} 
                   setViewState={setViewState} 
                   onReviewsClick={handleReviewsClick}
@@ -1108,7 +1618,11 @@ const AppContent: React.FC = () => {
 
       {reviewEvent && (
         <React.Suspense fallback={null}>
-          <ReviewsModal event={reviewEvent} onClose={() => setReviewEvent(null)} />
+          <ReviewsModal 
+            event={reviewEvent} 
+            onClose={() => setReviewEvent(null)}
+            onReviewerClick={handleReviewerClick}
+          />
         </React.Suspense>
       )}
 
@@ -1126,6 +1640,15 @@ const AppContent: React.FC = () => {
             }
           }}
           eventTitle={conversationModalEvent.title}
+        />
+      )}
+
+      {/* Notifications Modal */}
+      {isLoggedIn && (
+        <NotificationsModal
+          isOpen={showNotificationsModal}
+          onClose={() => setShowNotificationsModal(false)}
+          onNavigate={handleNotificationNavigate}
         />
       )}
 

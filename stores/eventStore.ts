@@ -1,12 +1,19 @@
 import { create } from 'zustand';
 import { Event } from '../types';
 import { categoryMatches } from '../utils/categoryMapper';
-import { createEvent as createFirestoreEvent } from '../firebase/db';
+import { createEvent as createFirestoreEvent, mapFirestoreEventToEvent } from '../firebase/db';
+import { getDbSafe } from '../src/lib/firebase';
+import { collection, onSnapshot, query, type Unsubscribe } from 'firebase/firestore';
+import type { FirestoreEvent } from '../firebase/types';
 
 interface EventStore {
   events: Event[];
+  isLoading: boolean;
+  error: string | null;
+  _unsubscribe: Unsubscribe | null; // Internal unsubscribe function for onSnapshot
+  init: () => void; // Initialize real-time subscription
   addEvent: (event: Omit<Event, 'id' | 'createdAt' | 'location' | 'hostName' | 'attendees'>) => Promise<Event>;
-  updateEvent: (eventId: string, updates: Partial<Omit<Event, 'id' | 'createdAt'>>) => void;
+  updateEvent: (eventId: string, updates: Partial<Omit<Event, 'id' | 'createdAt'>>) => Promise<void>;
   deleteEvent: (eventId: string) => void;
   getEvent: (eventId: string) => Event | undefined;
   getEvents: () => Event[];
@@ -44,54 +51,188 @@ const createEvent = (
 
 export const useEventStore = create<EventStore>((set, get) => ({
   events: [],
+  isLoading: true,
+  error: null,
+  _unsubscribe: null,
 
-  addEvent: async (eventData) => {
-    // Create event in local state first (for immediate UI update)
-    const newEvent = createEvent(eventData);
-    set((state) => ({
-      events: [...state.events, newEvent],
-    }));
-    
-    // Try to write to Firestore (non-blocking, fails gracefully)
+  /**
+   * Initialize real-time subscription to events collection
+   * This sets up onSnapshot to automatically update events when Firestore changes
+   * Should be called once when the app initializes
+   */
+  init: () => {
+    // Don't initialize twice
+    if (get()._unsubscribe) {
+      return;
+    }
+
+    const db = getDbSafe();
+    if (!db) {
+      console.warn('[EVENT_STORE] Firestore not available, cannot initialize events subscription');
+      set({ isLoading: false, error: 'Firestore not available' });
+      return;
+    }
+
     try {
-      const firestoreEvent = await createFirestoreEvent(eventData);
-      // Update local event with Firestore ID if successful
-      set((state) => ({
-        events: state.events.map(e => 
-          e.id === newEvent.id ? { ...e, id: firestoreEvent.id } : e
-        ),
-      }));
-      return { ...newEvent, id: firestoreEvent.id };
-    } catch (error) {
-      // Firestore write failed, but local state is updated
-      // Event will still appear in UI, just won't persist across sessions
-      console.warn('Failed to write event to Firestore, using local ID:', error);
-      return newEvent;
+      set({ isLoading: true, error: null });
+      
+      // Subscribe to events collection
+      // IMPORTANT: Query without orderBy first to avoid index requirements
+      // We'll sort client-side to ensure all events are loaded
+      const eventsCol = collection(db, 'events');
+      
+      // Use a simple query without orderBy to avoid index issues
+      // Filter for public events only (isPublic !== false, defaulting to true)
+      // Note: Firestore doesn't support != null, so we query all and filter client-side
+      const q = query(eventsCol);
+      
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          try {
+            // Map and filter events
+            const events: Event[] = snapshot.docs
+              .map((doc) => {
+                const data = doc.data();
+                // CRITICAL: Only filter out events that are EXPLICITLY marked as private or draft
+                // Events without isPublic field are PUBLIC by default - always show them
+                // Events without isDraft field are NOT drafts - always show them
+                // This ensures backward compatibility and never hides user events
+                const isExplicitlyPrivate = data.isPublic === false; // Must be explicitly false
+                const isExplicitlyDraft = data.isDraft === true; // Must be explicitly true
+                
+                if (isExplicitlyPrivate || isExplicitlyDraft) {
+                  return null; // Skip only explicitly private events and drafts
+                }
+                
+                const firestoreEvent: FirestoreEvent = {
+                  id: doc.id,
+                  ...(data as Omit<FirestoreEvent, 'id'>),
+                };
+                return mapFirestoreEventToEvent(firestoreEvent);
+              })
+              .filter((event): event is Event => event !== null) // Remove nulls
+              // Sort by date client-side (handle missing dates)
+              .sort((a, b) => {
+                const dateA = a.date || '';
+                const dateB = b.date || '';
+                if (!dateA && !dateB) return 0;
+                if (!dateA) return 1; // Events without dates go to end
+                if (!dateB) return -1;
+                return dateA.localeCompare(dateB);
+              });
+            
+            console.log('[EVENT_STORE] ✅ Events updated from Firestore:', {
+              totalEvents: events.length,
+              totalDocsInFirestore: snapshot.docs.length,
+              filteredOut: snapshot.docs.length - events.length,
+              eventIds: events.map(e => e.id),
+              eventTitles: events.map(e => e.title),
+              eventCities: events.map(e => e.city),
+              note: 'All events without explicit isPublic=false or isDraft=true are shown'
+            });
+            set({ events, isLoading: false, error: null });
+          } catch (error) {
+            console.error('[EVENT_STORE] Error processing snapshot:', error);
+            set({ isLoading: false, error: 'Error processing events' });
+          }
+        },
+        (error: any) => {
+          console.error('[EVENT_STORE] Snapshot error:', error);
+          // Handle permission errors gracefully
+          if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+            console.warn('[EVENT_STORE] Permission denied - user may not have access to events collection');
+            set({ isLoading: false, error: 'Permission denied. Please check your Firestore security rules.' });
+          } else {
+            set({ isLoading: false, error: error.message || 'Error loading events' });
+          }
+        }
+      );
+      
+      set({ _unsubscribe: unsubscribe });
+    } catch (error: any) {
+      console.error('[EVENT_STORE] Error initializing subscription:', error);
+      set({ isLoading: false, error: error.message || 'Failed to initialize events subscription' });
     }
   },
 
-  updateEvent: (eventId, updates) => {
-    set((state) => ({
-      events: state.events.map(event => {
-        if (event.id === eventId) {
-          const updated = { ...event, ...updates };
-          // Recalculate location if city or address changed
-          if (updates.city || updates.address) {
-            updated.location = formatLocation(updated.city, updated.address);
+  addEvent: async (eventData) => {
+    // Write to Firestore - onSnapshot will automatically update local state
+    // This ensures real-time updates across all pages (Landing, Explore, etc.)
+    try {
+      const firestoreEvent = await createFirestoreEvent(eventData);
+      // onSnapshot will pick up the new event and update the store automatically
+      // Return the created event for immediate use if needed
+      return firestoreEvent;
+    } catch (error) {
+      console.error('[EVENT_STORE] Failed to create event in Firestore:', error);
+      throw error;
+    }
+  },
+
+  updateEvent: async (eventId, updates) => {
+    // Update in Firestore first
+    try {
+      const { updateEvent: updateEventInFirestore } = await import('../firebase/db');
+      const updatedEvent = await updateEventInFirestore(eventId, updates);
+      
+      // Then update local store
+      set((state) => ({
+        events: state.events.map(event => {
+          if (event.id === eventId) {
+            const updated = { ...event, ...updatedEvent };
+            // Recalculate location if city or address changed
+            if (updates.city || updates.address) {
+              updated.location = formatLocation(updated.city || event.city, updated.address || event.address);
+            }
+            // Update hostName if host changed
+            if (updates.host) {
+              updated.hostName = updates.host;
+            }
+            // Update attendees alias if attendeesCount changed
+            if (updates.attendeesCount !== undefined) {
+              updated.attendees = updates.attendeesCount;
+            }
+            return updated;
           }
-          // Update hostName if host changed
-          if (updates.host) {
-            updated.hostName = updates.host;
-          }
-          // Update attendees alias if attendeesCount changed
-          if (updates.attendeesCount !== undefined) {
-            updated.attendees = updates.attendeesCount;
-          }
-          return updated;
-        }
-        return event;
-      }),
-    }));
+          return event;
+        })
+      }));
+    } catch (error: any) {
+      // Don't log permission errors - they're expected and handled elsewhere
+      if (error?.code !== 'permission-denied' && !error?.message?.includes('permission')) {
+        console.error('[EVENT_STORE] Error updating event in Firestore:', error);
+      }
+      
+      // Only update local store optimistically if it's not a permission error
+      // Permission errors mean we shouldn't update at all
+      if (error?.code !== 'permission-denied' && !error?.message?.includes('permission')) {
+        set((state) => ({
+          events: state.events.map(event => {
+            if (event.id === eventId) {
+              const updated = { ...event, ...updates };
+              // Recalculate location if city or address changed
+              if (updates.city || updates.address) {
+                updated.location = formatLocation(updated.city || event.city, updated.address || event.address);
+              }
+              // Update hostName if host changed
+              if (updates.host) {
+                updated.hostName = updates.host;
+              }
+              // Update attendees alias if attendeesCount changed
+              if (updates.attendeesCount !== undefined) {
+                updated.attendees = updates.attendeesCount;
+              }
+              return updated;
+            }
+            return event;
+          })
+        }));
+      }
+      
+      // Re-throw to let callers handle it
+      throw error;
+    }
   },
 
   deleteEvent: (eventId) => {
@@ -124,7 +265,10 @@ export const useEventStore = create<EventStore>((set, get) => ({
         event.description,
         event.city,
         event.address,
-        ...event.tags,
+        event.hostName,
+        event.aboutEvent || '',
+        event.whatToExpect || '',
+        ...(event.tags || []),
       ].join(' ').toLowerCase();
 
       return searchableText.includes(lowerQuery);
@@ -173,12 +317,25 @@ export const useEventStore = create<EventStore>((set, get) => ({
     const events = get().events || [];
     const grouped: Record<string, Event[]> = {};
 
+    // Helper to normalize city name to "City, CA" format
+    const normalizeCityName = (city: string): string => {
+      if (!city) return '';
+      // Remove any existing country code and whitespace
+      const cleaned = city.trim().replace(/,\s*CA$/, '').replace(/,\s*Canada$/, '').trim();
+      // Add ", CA" if not already present
+      return cleaned ? `${cleaned}, CA` : '';
+    };
+
     events.forEach((event) => {
       if (event?.city) {
-        if (!grouped[event.city]) {
-          grouped[event.city] = [];
+        // Normalize city name to ensure consistent format
+        const normalizedCity = normalizeCityName(event.city);
+        if (normalizedCity) {
+          if (!grouped[normalizedCity]) {
+            grouped[normalizedCity] = [];
+          }
+          grouped[normalizedCity].push(event);
         }
-        grouped[event.city].push(event);
       }
     });
 

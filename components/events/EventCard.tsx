@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { MapPin, Calendar, MessageCircle, Star, Heart, Share2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { MapPin, Calendar, MessageCircle, Star, Heart, Edit } from 'lucide-react';
 import { Event } from '@/types';
 import { formatDate } from '@/utils/dateFormatter';
 import { formatRating } from '@/utils/formatRating';
+import { useUserStore } from '@/stores/userStore';
+import { getUserProfile } from '../../firebase/db';
 
 interface EventCardProps {
   event: Event;
@@ -12,6 +14,8 @@ interface EventCardProps {
   isLoggedIn?: boolean;
   isFavorite?: boolean;
   onToggleFavorite?: (e: React.MouseEvent, eventId: string) => void;
+  onEditClick?: (e: React.MouseEvent, event: Event) => void; // Edit button handler
+  showEditButton?: boolean; // Whether to show edit button (only for host's own events)
 }
 
 export const EventCard: React.FC<EventCardProps> = ({ 
@@ -21,48 +25,106 @@ export const EventCard: React.FC<EventCardProps> = ({
   onReviewsClick,
   isLoggedIn,
   isFavorite,
-  onToggleFavorite 
+  onToggleFavorite,
+  onEditClick,
+  showEditButton = false
 }) => {
-  const [showShareToast, setShowShareToast] = useState(false);
-
-  const handleShare = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const url = window.location.origin + `/event/${event.id}`;
-    
-    if (navigator.share) {
+  const user = useUserStore((state) => state.user);
+  const userProfile = useUserStore((state) => state.userProfile);
+  
+  // Get host profile picture - sync with user's profile if it's their event, or fetch from Firestore
+  const [hostProfilePicture, setHostProfilePicture] = React.useState<string | null>(null);
+  
+  React.useEffect(() => {
+    const fetchHostProfile = async () => {
+      if (!event.hostId) {
+        setHostProfilePicture(null);
+        return;
+      }
+      
+      // If this is the current user's event, use their profile picture
+      if (event.hostId === user?.uid) {
+        const profilePic = user?.photoURL || user?.profileImageUrl || userProfile?.photoURL || userProfile?.imageUrl;
+        setHostProfilePicture(profilePic || null);
+        return;
+      }
+      
+      // For other hosts, fetch from Firestore
       try {
-        await navigator.share({
-          title: event.title,
-          text: event.description,
-          url: url,
-        });
-      } catch (err) {
-        // User cancelled or error occurred
-        if ((err as Error).name !== 'AbortError') {
-          console.error('Share failed:', err);
+        const hostProfile = await getUserProfile(event.hostId);
+        if (hostProfile) {
+          setHostProfilePicture(hostProfile.photoURL || hostProfile.imageUrl || null);
+        } else {
+          setHostProfilePicture(null);
         }
+      } catch (error) {
+        // Silently fail - will use placeholder
+        setHostProfilePicture(null);
       }
-    } else {
-      // Fallback: copy to clipboard
-      try {
-        await navigator.clipboard.writeText(url);
-        setShowShareToast(true);
-        setTimeout(() => setShowShareToast(false), 2000);
-      } catch (err) {
-        console.error('Failed to copy:', err);
-      }
-    }
-  };
-
+    };
+    
+    fetchHostProfile();
+  }, [event.hostId, user?.uid, user?.photoURL, user?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl]);
+  
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!isLoggedIn && onToggleFavorite) {
-      // Trigger login - the parent should handle this
-      onToggleFavorite(e, event.id);
-    } else if (onToggleFavorite) {
+    e.preventDefault();
+    if (onToggleFavorite) {
+      // Always call handler - it will handle login redirect if needed
       onToggleFavorite(e, event.id);
     }
   };
+  const touchStartRef = React.useRef<{ x: number; y: number; time: number } | null>(null);
+  const isScrollingRef = React.useRef(false);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      time: Date.now()
+    };
+    isScrollingRef.current = false;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    
+    const touch = e.touches[0];
+    const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
+    const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+    
+    // If user is scrolling (either direction), mark as scrolling
+    if (deltaX > 5 || deltaY > 5) {
+      isScrollingRef.current = true;
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    
+    const touch = e.changedTouches[0];
+    const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
+    const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+    const deltaTime = Date.now() - touchStartRef.current.time;
+    
+    // Only trigger click if it was a tap (not a scroll) and within 300ms
+    if (!isScrollingRef.current && deltaX < 10 && deltaY < 10 && deltaTime < 300) {
+      // Small delay to ensure scroll events have processed
+      setTimeout(() => {
+        if (!isScrollingRef.current) {
+          onClick(event);
+        }
+      }, 50);
+    }
+    
+    touchStartRef.current = null;
+    // Reset after a short delay
+    setTimeout(() => {
+      isScrollingRef.current = false;
+    }, 100);
+  };
+
   return (
     <div 
       onClick={() => onClick(event)}
@@ -75,24 +137,23 @@ export const EventCard: React.FC<EventCardProps> = ({
           onClick(event);
         }
       }}
-      className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer h-full flex flex-col w-full focus:outline-none focus:ring-2 focus:ring-[#15383c] focus:ring-offset-2"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      style={{ touchAction: 'manipulation' }}
+      className={`group relative bg-white rounded-xl md:rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer h-full flex flex-col w-full max-w-[420px] min-h-[400px] sm:min-h-[450px] md:min-h-[480px] focus:outline-none focus:ring-2 focus:ring-[#15383c] focus:ring-offset-2`}
     >
       {/* Image Container - Fixed aspect ratio */}
-      <div
-        className="
-          relative 
-          aspect-[4/3]
-          w-full
-          overflow-hidden 
-          rounded-xl
-          bg-gradient-to-br from-popera-teal to-[#1f4d52]
-        "
-      >
+      <div className={`relative w-full aspect-[4/3] overflow-hidden rounded-t-xl md:rounded-t-2xl bg-gradient-to-br from-popera-teal to-[#1f4d52]`}>
         <img 
-          src={event.imageUrl || `https://picsum.photos/seed/${event.id || 'event'}/800/600`} 
+          src={event.imageUrls && event.imageUrls.length > 0 ? event.imageUrls[0] : (event.imageUrl || `https://picsum.photos/seed/${event.id || 'event'}/800/600`)} 
           alt={event.title} 
-          className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+          style={{ userSelect: 'none', WebkitUserSelect: 'none', pointerEvents: 'auto' }}
           loading="lazy"
+          decoding="async"
+          fetchpriority="low"
+          draggable={false}
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             if (!target.src.includes('picsum.photos')) {
@@ -102,8 +163,8 @@ export const EventCard: React.FC<EventCardProps> = ({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-60" />
         
-        {/* Category Badge - Top Left with circular/pill background */}
-        <div className="absolute top-4 left-4 inline-flex items-center justify-center rounded-full px-3 py-1 bg-[#15383c]/90 backdrop-blur-sm text-[10px] font-medium text-white shadow-sm uppercase tracking-wider z-10">
+        {/* Category Badge - Top Left matching Hero badge style */}
+        <div className="absolute top-4 left-4 inline-block py-1 sm:py-1.5 px-3.5 sm:px-4 rounded-full bg-white/5 border border-white/10 text-[#e35e25] text-[9px] sm:text-[10px] font-bold tracking-[0.2em] uppercase backdrop-blur-sm z-10">
           {event.category}
         </div>
 
@@ -112,14 +173,30 @@ export const EventCard: React.FC<EventCardProps> = ({
           {event.price}
         </div>
 
+        {/* Edit Button - Bottom Right (only for host's own events) */}
+        {showEditButton && onEditClick && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditClick(e, event);
+            }}
+            className="absolute bottom-4 right-4 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-medium text-[#15383c] hover:bg-white transition-colors flex items-center gap-1.5 shadow-sm z-30"
+            aria-label="Edit Event"
+          >
+            <Edit size={14} />
+            Edit
+          </button>
+        )}
+
         {/* ACTION BUTTONS - Only Favorite and Chat in feed (no share) */}
-        <div className="absolute top-3 sm:top-4 right-3 sm:right-4 flex items-center gap-2 sm:gap-2 z-20">
+        <div className="absolute top-3 sm:top-4 right-3 sm:right-4 flex items-center gap-2 sm:gap-2 z-30 pointer-events-auto">
            {/* FEATURE: Favorite Heart (Always visible, triggers login if not logged in) */}
            {onToggleFavorite && (
              <button
                onClick={handleFavoriteClick}
-               className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center transition-colors shadow-lg hover:bg-white active:scale-[0.92] touch-manipulation border border-white/50 shrink-0"
+               className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center transition-colors shadow-lg hover:bg-white active:scale-[0.92] touch-manipulation border border-white/50 shrink-0 pointer-events-auto z-30"
                aria-label="Toggle Favorite"
+               type="button"
              >
                <Heart 
                  size={20} 
@@ -132,8 +209,9 @@ export const EventCard: React.FC<EventCardProps> = ({
            {/* FEATURE: Conversation Icon */}
            <button
              onClick={(e) => onChatClick(e, event)}
-             className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center text-popera-teal hover:bg-popera-orange hover:text-white transition-colors shadow-lg active:scale-[0.92] touch-manipulation border border-white/50 shrink-0"
+             className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center text-popera-teal hover:bg-popera-orange hover:text-white transition-colors shadow-lg active:scale-[0.92] touch-manipulation border border-white/50 shrink-0 pointer-events-auto z-30"
              aria-label="Join Event Chat"
+             type="button"
            >
              <MessageCircle size={20} className="sm:w-5 sm:h-5" strokeWidth={2} />
            </button>
@@ -147,7 +225,21 @@ export const EventCard: React.FC<EventCardProps> = ({
            {/* Host Info */}
            <div className="flex items-center space-x-2 overflow-hidden min-w-0 flex-1">
              <span className="w-6 h-6 shrink-0 rounded-full bg-gray-200 overflow-hidden ring-1 ring-gray-200">
-               <img src={`https://picsum.photos/seed/${event.hostName}/50/50`} alt="host" className="w-full h-full object-cover" />
+               {hostProfilePicture ? (
+                 <img 
+                   src={hostProfilePicture} 
+                   alt={event.hostName} 
+                   className="w-full h-full object-cover"
+                   onError={(e) => {
+                     const target = e.target as HTMLImageElement;
+                     target.src = `https://picsum.photos/seed/${event.hostName}/50/50`;
+                   }}
+                 />
+               ) : (
+                 <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-xs">
+                   {event.hostName?.[0]?.toUpperCase() || 'H'}
+                 </div>
+               )}
              </span>
              <p className="text-xs font-medium text-gray-600 sm:text-gray-500 uppercase tracking-wide truncate">
                Hosted by {event.hostName.split(' ')[0]}

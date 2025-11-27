@@ -1,10 +1,13 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ViewState } from '../types';
-import { X, DollarSign, ArrowRight, Star, Camera } from 'lucide-react';
+import { X, DollarSign, ArrowRight, Star, Camera, CheckCircle2 } from 'lucide-react';
 import { useUserStore } from '../stores/userStore';
 import { uploadImage } from '../firebase/storage';
 import { createOrUpdateUserProfile } from '../firebase/db';
+import { getDbSafe, getAuthSafe } from '../src/lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { updateProfile } from 'firebase/auth';
 
 interface SubPageProps {
   setViewState: (view: ViewState) => void;
@@ -38,6 +41,18 @@ export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
       const path = `users/${user.uid}/avatar.jpg`;
       const imageUrl = await uploadImage(path, file);
       
+      // Update Firebase Auth photoURL for immediate sync
+      const auth = getAuthSafe();
+      if (auth?.currentUser) {
+        try {
+          await updateProfile(auth.currentUser, { photoURL: imageUrl });
+          console.log('[PROFILE] Updated Firebase Auth photoURL');
+        } catch (authError) {
+          console.warn('[PROFILE] Failed to update Firebase Auth photoURL (non-critical):', authError);
+          // Continue even if Auth update fails - Firestore update is more important
+        }
+      }
+      
       // Update user profile in Firestore
       await createOrUpdateUserProfile(user.uid, {
         photoURL: imageUrl,
@@ -47,11 +62,16 @@ export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
       // Update local state
       setProfileImage(imageUrl);
       
-      // Update user store
+      // Update user store (this will trigger Header to re-render)
       useUserStore.getState().updateUser(user.uid, {
         photoURL: imageUrl,
         profileImageUrl: imageUrl,
       });
+      
+      // Refresh user profile to sync across all components
+      await useUserStore.getState().refreshUserProfile();
+      
+      console.log('[PROFILE] Profile picture updated successfully and synced across all components');
     } catch (error) {
       console.error('Error uploading profile picture:', error);
       alert('Failed to upload profile picture. Please try again.');
@@ -124,7 +144,7 @@ export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
               <input type="text" defaultValue="Jason" className="w-full bg-white border border-gray-200 rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all" />
            </div>
            <div className="space-y-2">
-              <label className="block text-xs sm:text-sm font-light text-gray-600 pl-1">Phone Number</label>
+              <label className="block text-xs sm:text-sm font-light text-gray-600 pl-1">Phone Number <span className="text-gray-400 font-normal">(not shared with anyone)</span></label>
               <input type="tel" defaultValue="(+1) 999-888-000" className="w-full bg-white border border-gray-200 rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all" />
            </div>
            <div className="space-y-2">
@@ -142,17 +162,63 @@ export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
 
 // --- Notification Settings Page ---
 export const NotificationSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => {
+  const user = useUserStore((state) => state.user);
   const [toggles, setToggles] = useState({
-    eventLive: true,
-    attendeeReservation: true,
-    groupMessages: true,
-    cancellations: true,
-    email: true,
-    sms: true
+    email_opt_in: true,
+    sms_opt_in: false,
+    notification_opt_in: true,
   });
+  const [loading, setLoading] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-  const handleToggle = (key: keyof typeof toggles) => {
-    setToggles(prev => ({ ...prev, [key]: !prev[key] }));
+  // Load current settings
+  React.useEffect(() => {
+    if (user?.uid) {
+      const settings = user.notification_settings || {};
+      setToggles({
+        email_opt_in: settings.email_opt_in ?? true,
+        sms_opt_in: settings.sms_opt_in ?? false,
+        notification_opt_in: settings.notification_opt_in ?? true,
+      });
+    }
+  }, [user]);
+
+  const handleToggle = async (key: keyof typeof toggles) => {
+    const newValue = !toggles[key];
+    setToggles(prev => ({ ...prev, [key]: newValue }));
+
+    // Save to Firestore
+    if (user?.uid) {
+      setLoading(true);
+      try {
+        const db = getDbSafe();
+        if (db) {
+          await setDoc(doc(db, 'users', user.uid), {
+            notification_settings: {
+              ...toggles,
+              [key]: newValue,
+            },
+          }, { merge: true });
+
+          // Update user store
+          useUserStore.getState().updateUser(user.uid, {
+            notification_settings: {
+              ...toggles,
+              [key]: newValue,
+            },
+          });
+
+          setSaved(true);
+          setTimeout(() => setSaved(false), 2000);
+        }
+      } catch (error) {
+        console.error('Error saving notification settings:', error);
+        // Revert on error
+        setToggles(prev => ({ ...prev, [key]: !newValue }));
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
   const ToggleItem = ({ label, description, isOn, onToggle }: any) => (
@@ -176,13 +242,30 @@ export const NotificationSettingsPage: React.FC<SubPageProps> = ({ setViewState 
              <X size={18} className="sm:w-5 sm:h-5" />
            </button>
         </div>
+        {saved && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+            Settings saved!
+          </div>
+        )}
         <div className="space-y-1 sm:space-y-2">
-           <ToggleItem label="Event gets live" description="Do you want to be notified when your event becomes public?" isOn={toggles.eventLive} onToggle={() => handleToggle('eventLive')} />
-           <ToggleItem label="Attendee Reservation" description="Do you want to be notified when someone becomes your attendee?" isOn={toggles.attendeeReservation} onToggle={() => handleToggle('attendeeReservation')} />
-           <ToggleItem label="Event Group Messages" description="Do you want to be notified when a message is sent in the group chat?" isOn={toggles.groupMessages} onToggle={() => handleToggle('groupMessages')} />
-           <ToggleItem label="Cancellation Notifications" description="Do you want to be notified when someone cancels their reservation?" isOn={toggles.cancellations} onToggle={() => handleToggle('cancellations')} />
-           <ToggleItem label="Email Notifications" description="Do you want to be notified by email?" isOn={toggles.email} onToggle={() => handleToggle('email')} />
-           <ToggleItem label="SMS Notifications" description="Do you want to be notified by sms?" isOn={toggles.sms} onToggle={() => handleToggle('sms')} />
+           <ToggleItem 
+             label="In-App Notifications" 
+             description="Receive notifications in the app" 
+             isOn={toggles.notification_opt_in} 
+             onToggle={() => handleToggle('notification_opt_in')} 
+           />
+           <ToggleItem 
+             label="Email Notifications" 
+             description="Receive notifications via email (requires email address)" 
+             isOn={toggles.email_opt_in} 
+             onToggle={() => handleToggle('email_opt_in')} 
+           />
+           <ToggleItem 
+             label="SMS Notifications" 
+             description="Receive notifications via SMS (requires phone verification)" 
+             isOn={toggles.sms_opt_in} 
+             onToggle={() => handleToggle('sms_opt_in')} 
+           />
         </div>
       </div>
     </div>
@@ -192,7 +275,7 @@ export const NotificationSettingsPage: React.FC<SubPageProps> = ({ setViewState 
 // --- Privacy Settings Page ---
 export const PrivacySettingsPage: React.FC<SubPageProps> = ({ setViewState }) => {
   return (
-    <div className="min-h-screen bg-white pt-24 pb-12 font-sans">
+    <div className="min-h-screen bg-white pt-20 sm:pt-24 pb-8 sm:pb-12 font-sans">
       <div className="max-w-4xl mx-auto px-6">
         <div className="flex items-center justify-between mb-8 border-b border-gray-100 pb-6">
            <h1 className="font-heading font-bold text-3xl text-[#15383c]">Privacy Settings</h1>
@@ -238,7 +321,7 @@ export const PrivacySettingsPage: React.FC<SubPageProps> = ({ setViewState }) =>
 // --- Stripe Settings Page ---
 export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => {
   return (
-    <div className="min-h-screen bg-white pt-24 pb-12 font-sans">
+    <div className="min-h-screen bg-white pt-20 sm:pt-24 pb-8 sm:pb-12 font-sans">
       <div className="max-w-4xl mx-auto px-6">
         <div className="flex items-center justify-between mb-8 border-b border-gray-100 pb-6">
            <h1 className="font-heading font-bold text-3xl text-[#15383c]">Stripe Payout Settings</h1>
@@ -262,36 +345,189 @@ export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => 
 };
 
 // --- My Reviews Page ---
-export const MyReviewsPage: React.FC<SubPageProps> = ({ setViewState }) => {
-  const reviews = [
-    {
-      id: 1,
-      name: "Fadel Gergab",
-      date: "Nov 8, 2025",
-      rating: 4.2,
-      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1000&auto=format&fit=crop",
-      comment: "The popup and event were well-organized and engaging. The setup attracted good attention, and the flow of activities kept visitors interested throughout. The overall presentation was visually appealing, and the team managed everything efficiently. Attendees appreciated the interactive elements and the professional approach.",
-      eventName: "Retro Record Fair Extravaganza"
-    },
-    {
-      id: 2,
-      name: "Sarah Jenkins",
-      date: "Oct 15, 2025",
-      rating: 5.0,
-      image: "https://images.unsplash.com/photo-1530836369250-ef72a3f5cda8?q=80&w=2070&auto=format&fit=crop", 
-      comment: "Absolutely loved the vibe! The host was incredibly welcoming and the venue was perfect for the occasion. Can't wait for the next one.",
-      eventName: "Urban Garden Workshop"
-    },
-    {
-      id: 3,
-      name: "Marcus Cole",
-      date: "Sep 22, 2025",
-      rating: 4.8,
-      image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=1000&auto=format&fit=crop",
-      comment: "Great networking opportunity. I met some really interesting people. The only downside was that it ended too soon!",
-      eventName: "Tech Networking Night"
+export const MyReviewsPage: React.FC<SubPageProps & { onHostClick?: (hostName: string) => void }> = ({ setViewState, onHostClick }) => {
+  const user = useUserStore((state) => state.user);
+  const [reviews, setReviews] = useState<Array<{
+    id: string;
+    name: string;
+    date: string;
+    rating: number;
+    image: string;
+    comment: string;
+    eventName: string;
+    userId: string;
+    eventId: string;
+    status?: 'pending' | 'accepted' | 'contested';
+    contestMessage?: string;
+  }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [contestingReviewId, setContestingReviewId] = useState<string | null>(null);
+  const [contestMessage, setContestMessage] = useState('');
+
+  useEffect(() => {
+    const loadReviews = async () => {
+      if (!user?.uid) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const { listHostReviews, getEventById, getUserProfile } = await import('@/firebase/db');
+        const firestoreReviews = await listHostReviews(user.uid);
+        
+        // Fetch event and user details for each review
+        const reviewsWithDetails = await Promise.all(
+          firestoreReviews.map(async (review) => {
+            const [event, reviewer] = await Promise.all([
+              review.eventId ? getEventById(review.eventId) : null,
+              getUserProfile(review.userId),
+            ]);
+
+            return {
+              id: review.id,
+              name: review.userName,
+              date: formatReviewDate(review.createdAt as number),
+              rating: review.rating,
+              image: reviewer?.photoURL || reviewer?.imageUrl || `https://i.pravatar.cc/150?img=${review.userId}`,
+              comment: review.comment || '',
+              eventName: event?.title || 'Unknown Event',
+              userId: review.userId,
+              eventId: review.eventId || '',
+              status: (review as any).status || 'pending', // Default to pending for new reviews
+              contestMessage: (review as any).contestMessage || '',
+            };
+          })
+        );
+
+        setReviews(reviewsWithDetails);
+      } catch (error) {
+        console.error('Error loading reviews:', error);
+        setReviews([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadReviews();
+  }, [user?.uid]);
+
+  const formatReviewDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const handleReviewerClick = (userId: string, userName: string) => {
+    if (onHostClick) {
+      onHostClick(userName);
     }
-  ];
+  };
+
+  const handleAcceptReview = async (reviewId: string) => {
+    try {
+      // Update review status to accepted in Firestore
+      const { getDbSafe } = await import('../src/lib/firebase');
+      const { doc, updateDoc } = await import('firebase/firestore');
+      const { recalculateEventRating } = await import('@/firebase/db');
+      const db = getDbSafe();
+      if (!db) return;
+      
+      // Find the review's eventId
+      const review = reviews.find(r => r.id === reviewId);
+      if (!review?.eventId) return;
+      
+      const reviewRef = doc(db, 'events', review.eventId, 'reviews', reviewId);
+      await updateDoc(reviewRef, { status: 'accepted' });
+      
+      // Recalculate event rating to include this accepted review
+      // This ensures the event's rating and review count are synced everywhere
+      await recalculateEventRating(review.eventId);
+      
+      // Update local state
+      setReviews(prev => prev.map(r => r.id === reviewId ? { ...r, status: 'accepted' as const } : r));
+    } catch (error) {
+      console.error('Error accepting review:', error);
+      alert('Failed to accept review. Please try again.');
+    }
+  };
+
+  const handleContestReview = async (reviewId: string) => {
+    if (!contestMessage.trim()) {
+      alert('Please provide a reason for contesting this review.');
+      return;
+    }
+
+    try {
+      const review = reviews.find(r => r.id === reviewId);
+      if (!review) return;
+
+      // Send contest email to support
+      const { sendEmail } = await import('../src/lib/email');
+      const hostName = user?.displayName || user?.name || 'Unknown';
+      const hostId = user?.uid || 'unknown';
+      const subject = `Review contest_${hostName}_${hostId}`;
+      
+      const emailHtml = `
+        <h2 style="margin: 0 0 24px 0; color: #15383c; font-size: 24px; font-weight: bold;">Review Contest</h2>
+        <div style="background-color: #f8fafb; padding: 24px; border-radius: 12px;">
+          <p style="margin: 0 0 12px 0; color: #374151; font-size: 16px; line-height: 1.6;">
+            <strong style="color: #15383c;">Host:</strong> ${hostName} (${hostId})
+          </p>
+          <p style="margin: 0 0 12px 0; color: #374151; font-size: 16px; line-height: 1.6;">
+            <strong style="color: #15383c;">Reviewer:</strong> ${review.name}
+          </p>
+          <p style="margin: 0 0 12px 0; color: #374151; font-size: 16px; line-height: 1.6;">
+            <strong style="color: #15383c;">Event:</strong> ${review.eventName}
+          </p>
+          <p style="margin: 0 0 12px 0; color: #374151; font-size: 16px; line-height: 1.6;">
+            <strong style="color: #15383c;">Rating:</strong> ${review.rating}/5
+          </p>
+          <p style="margin: 0 0 12px 0; color: #374151; font-size: 16px; line-height: 1.6;">
+            <strong style="color: #15383c;">Review Comment:</strong> ${review.comment || 'No comment'}
+          </p>
+          <div style="margin-top: 24px; padding-top: 24px; border-top: 2px solid #e5e7eb;">
+            <p style="margin: 0 0 12px 0; color: #15383c; font-size: 18px; font-weight: bold;">Contest Message:</p>
+            <p style="margin: 0; color: #374151; font-size: 16px; line-height: 1.6; white-space: pre-wrap;">${contestMessage}</p>
+          </div>
+        </div>
+      `;
+
+      await sendEmail({
+        to: 'support@gopopera.ca',
+        subject,
+        html: emailHtml,
+        templateName: 'review-contest',
+      });
+
+      // Update review status to contested in Firestore
+      const { getDbSafe } = await import('../src/lib/firebase');
+      const { doc, updateDoc } = await import('firebase/firestore');
+      const db = getDbSafe();
+      if (db && review.eventId) {
+        const reviewRef = doc(db, 'events', review.eventId, 'reviews', reviewId);
+        await updateDoc(reviewRef, { 
+          status: 'contested',
+          contestMessage: contestMessage,
+          contestedAt: Date.now(),
+        });
+      }
+
+      // Update local state
+      setReviews(prev => prev.map(r => 
+        r.id === reviewId 
+          ? { ...r, status: 'contested' as const, contestMessage } 
+          : r
+      ));
+
+      // Reset contest form
+      setContestingReviewId(null);
+      setContestMessage('');
+      alert('Review contest submitted. Our support team will review it shortly.');
+    } catch (error) {
+      console.error('Error contesting review:', error);
+      alert('Failed to submit contest. Please try again.');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#f8fafb] pt-24 pb-20 font-sans">
@@ -306,34 +542,350 @@ export const MyReviewsPage: React.FC<SubPageProps> = ({ setViewState }) => {
            </button>
         </div>
 
-        <div className="space-y-4">
-           {reviews.map((review) => (
-             <div key={review.id} className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 transition-transform hover:scale-[1.01] duration-300">
-                <div className="flex gap-4 mb-4">
-                   <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 shrink-0 ring-2 ring-white shadow-sm">
-                      <img src={review.image} alt={review.name} className="w-full h-full object-cover" />
-                   </div>
-                   <div className="flex-1">
-                      <div className="flex justify-between items-start">
-                          <h3 className="font-bold text-[#15383c] text-lg leading-tight">{review.name}</h3>
-                          <span className="text-xs text-gray-400 mt-1">{review.date}</span>
+        {loading ? (
+          <div className="text-center py-12 text-gray-500">Loading reviews...</div>
+        ) : reviews.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            <p className="text-lg mb-2">No reviews yet</p>
+            <p className="text-sm">Reviews from your events will appear here.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+             {reviews.map((review) => (
+               <div key={review.id} className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 transition-transform hover:scale-[1.01] duration-300">
+                  <div className="flex gap-4 mb-4">
+                     <div 
+                       className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 shrink-0 ring-2 ring-white shadow-sm cursor-pointer hover:ring-[#e35e25] transition-all"
+                       onClick={() => handleReviewerClick(review.userId, review.name)}
+                     >
+                        <img 
+                          src={review.image} 
+                          alt={review.name} 
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = `https://i.pravatar.cc/150?img=${review.userId}`;
+                          }}
+                        />
+                     </div>
+                     <div className="flex-1">
+                        <div className="flex justify-between items-start">
+                            <h3 
+                              className="font-bold text-[#15383c] text-lg leading-tight cursor-pointer hover:text-[#e35e25] transition-colors"
+                              onClick={() => handleReviewerClick(review.userId, review.name)}
+                            >
+                              {review.name}
+                            </h3>
+                            <span className="text-xs text-gray-400 mt-1">{review.date}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                           <Star size={16} className="fill-[#e35e25] text-[#e35e25]" />
+                           <span className="text-sm font-bold text-[#15383c]">{review.rating}</span>
+                        </div>
+                     </div>
+                  </div>
+                  {review.comment && (
+                    <p className="text-gray-600 leading-relaxed font-light text-sm md:text-base mb-4">
+                      "{review.comment}"
+                    </p>
+                  )}
+                  <div className="pt-4 border-t border-gray-50 flex justify-between items-center mb-4">
+                      <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Event</span>
+                      <span className="text-sm font-medium text-[#15383c]">{review.eventName}</span>
+                  </div>
+                  
+                  {/* Accept/Contest Actions - Only show for pending reviews */}
+                  {review.status === 'pending' && (
+                    <div className="pt-4 border-t border-gray-50 flex gap-3">
+                      <button
+                        onClick={() => handleAcceptReview(review.id)}
+                        className="flex-1 px-4 py-2 bg-[#15383c] text-white rounded-full text-sm font-medium hover:bg-[#1f4d52] transition-colors"
+                      >
+                        Accept
+                      </button>
+                      <button
+                        onClick={() => setContestingReviewId(review.id)}
+                        className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors"
+                      >
+                        Contest
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Contest Form */}
+                  {contestingReviewId === review.id && (
+                    <div className="pt-4 border-t border-gray-50 mt-4">
+                      <textarea
+                        value={contestMessage}
+                        onChange={(e) => setContestMessage(e.target.value)}
+                        placeholder="Please explain why you're contesting this review..."
+                        className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#15383c] mb-3"
+                        rows={4}
+                      />
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => handleContestReview(review.id)}
+                          className="flex-1 px-4 py-2 bg-[#e35e25] text-white rounded-full text-sm font-medium hover:bg-[#cf4d1d] transition-colors"
+                        >
+                          Submit Contest
+                        </button>
+                        <button
+                          onClick={() => {
+                            setContestingReviewId(null);
+                            setContestMessage('');
+                          }}
+                          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors"
+                        >
+                          Cancel
+                        </button>
                       </div>
-                      <div className="flex items-center gap-2 mt-1">
-                         <Star size={16} className="fill-[#e35e25] text-[#e35e25]" />
-                         <span className="text-sm font-bold text-[#15383c]">{review.rating}</span>
-                      </div>
-                   </div>
-                </div>
-                <p className="text-gray-600 leading-relaxed font-light text-sm md:text-base mb-4">
-                  "{review.comment}"
-                </p>
-                <div className="pt-4 border-t border-gray-50 flex justify-between items-center">
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Event</span>
-                    <span className="text-sm font-medium text-[#15383c]">{review.eventName}</span>
-                </div>
-             </div>
-           ))}
+                    </div>
+                  )}
+                  
+                  {/* Status Badge */}
+                  {review.status === 'accepted' && (
+                    <div className="pt-4 border-t border-gray-50">
+                      <span className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium">
+                        <CheckCircle2 size={14} />
+                        Accepted
+                      </span>
+                    </div>
+                  )}
+                  
+                  {review.status === 'contested' && (
+                    <div className="pt-4 border-t border-gray-50">
+                      <span className="inline-flex items-center gap-2 px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-xs font-medium">
+                        Under Review
+                      </span>
+                    </div>
+                  )}
+               </div>
+             ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// --- Following Page ---
+export const FollowingPage: React.FC<SubPageProps & { onHostClick?: (hostName: string) => void }> = ({ setViewState, onHostClick }) => {
+  const user = useUserStore((state) => state.user);
+  const [following, setFollowing] = useState<Array<{ id: string; name: string; photoURL?: string; imageUrl?: string }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadFollowing = async () => {
+      if (!user?.uid) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const { getFollowingHosts } = await import('../firebase/follow');
+        const { getUserProfile } = await import('../firebase/db');
+        const followingIds = await getFollowingHosts(user.uid);
+        
+        const followingProfiles = await Promise.all(
+          followingIds.map(async (hostId) => {
+            const profile = await getUserProfile(hostId);
+            return {
+              id: hostId,
+              name: profile?.name || profile?.displayName || 'Unknown',
+              photoURL: profile?.photoURL,
+              imageUrl: profile?.imageUrl,
+            };
+          })
+        );
+        
+        setFollowing(followingProfiles);
+      } catch (error) {
+        console.error('Error loading following:', error);
+        setFollowing([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadFollowing();
+  }, [user?.uid]);
+
+  const handleUnfollow = async (hostId: string) => {
+    if (!user?.uid) return;
+    
+    try {
+      const { unfollowHost } = await import('../firebase/follow');
+      await unfollowHost(user.uid, hostId);
+      setFollowing(prev => prev.filter(f => f.id !== hostId));
+    } catch (error) {
+      console.error('Error unfollowing:', error);
+      alert('Failed to unfollow. Please try again.');
+    }
+  };
+
+  const handleProfileClick = (hostName: string) => {
+    if (onHostClick) {
+      onHostClick(hostName);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#f8fafb] pt-24 pb-20 font-sans">
+      <div className="max-w-4xl mx-auto px-6">
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="font-heading font-bold text-3xl text-[#15383c]">Following</h1>
+          <button 
+            onClick={() => setViewState(ViewState.PROFILE)}
+            className="w-10 h-10 bg-[#15383c] rounded-lg flex items-center justify-center text-white hover:opacity-90 transition-opacity shadow-sm"
+          >
+            <X size={20} />
+          </button>
         </div>
+
+        {loading ? (
+          <div className="text-center py-12 text-gray-500">Loading...</div>
+        ) : following.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            <p className="text-lg mb-2">Not following anyone yet</p>
+            <p className="text-sm">Start following hosts to see their events in your feed.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {following.map((host) => {
+              const photo = host.photoURL || host.imageUrl;
+              const initials = host.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+              
+              return (
+                <div key={host.id} className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+                  <div 
+                    className="flex items-center gap-4 flex-1 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => handleProfileClick(host.name)}
+                  >
+                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-[#e35e25] flex items-center justify-center overflow-hidden shrink-0">
+                      {photo ? (
+                        <img src={photo} alt={host.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="font-heading font-bold text-white text-lg">{initials}</span>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-[#15383c] text-base md:text-lg">{host.name}</h3>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleUnfollow(host.id)}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors"
+                  >
+                    Unfollow
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// --- Followers Page ---
+export const FollowersPage: React.FC<SubPageProps & { onHostClick?: (hostName: string) => void }> = ({ setViewState, onHostClick }) => {
+  const user = useUserStore((state) => state.user);
+  const [followers, setFollowers] = useState<Array<{ id: string; name: string; photoURL?: string; imageUrl?: string }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadFollowers = async () => {
+      if (!user?.uid) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const { getHostFollowers } = await import('../firebase/follow');
+        const { getUserProfile } = await import('../firebase/db');
+        const followersIds = await getHostFollowers(user.uid);
+        
+        const followersProfiles = await Promise.all(
+          followersIds.map(async (followerId) => {
+            const profile = await getUserProfile(followerId);
+            return {
+              id: followerId,
+              name: profile?.name || profile?.displayName || 'Unknown',
+              photoURL: profile?.photoURL,
+              imageUrl: profile?.imageUrl,
+            };
+          })
+        );
+        
+        setFollowers(followersProfiles);
+      } catch (error) {
+        console.error('Error loading followers:', error);
+        setFollowers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadFollowers();
+  }, [user?.uid]);
+
+  const handleProfileClick = (hostName: string) => {
+    if (onHostClick) {
+      onHostClick(hostName);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#f8fafb] pt-24 pb-20 font-sans">
+      <div className="max-w-4xl mx-auto px-6">
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="font-heading font-bold text-3xl text-[#15383c]">Followers</h1>
+          <button 
+            onClick={() => setViewState(ViewState.PROFILE)}
+            className="w-10 h-10 bg-[#15383c] rounded-lg flex items-center justify-center text-white hover:opacity-90 transition-opacity shadow-sm"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-12 text-gray-500">Loading...</div>
+        ) : followers.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            <p className="text-lg mb-2">No followers yet</p>
+            <p className="text-sm">Start hosting events to gain followers.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {followers.map((follower) => {
+              const photo = follower.photoURL || follower.imageUrl;
+              const initials = follower.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+              
+              return (
+                <div key={follower.id} className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100">
+                  <div 
+                    className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => handleProfileClick(follower.name)}
+                  >
+                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-[#e35e25] flex items-center justify-center overflow-hidden shrink-0">
+                      {photo ? (
+                        <img src={photo} alt={follower.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="font-heading font-bold text-white text-lg">{initials}</span>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-[#15383c] text-base md:text-lg">{follower.name}</h3>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

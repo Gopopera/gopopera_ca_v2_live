@@ -37,7 +37,7 @@ export const generatePoperaEvents = (): Event[] => {
       attendeesCount: 0, // Starts at 0, increases with real RSVPs
       createdAt: new Date('2024-01-15').toISOString(),
       location: `${city.landmark}, ${city.name}`,
-      category: 'Market',
+      category: 'Markets',
       price: 'Free',
       rating: 0,
       reviewCount: 0,

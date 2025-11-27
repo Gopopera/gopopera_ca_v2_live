@@ -66,12 +66,16 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   unsubscribeCallbacks: {},
 
   addMessage: async (eventId, userId, userName, message, type = 'message', isHost = false) => {
+    // CRITICAL: Save message to Firestore - real-time sync handles UI updates
+    // Messages are constantly saved and synced across all devices via onSnapshot
+    // Only host and attendees can send messages (enforced by GroupChat component)
     try {
       await addChatMessage(eventId, userId, userName, message, type, isHost);
-      // The realtime listener will update the messages automatically
+      // The realtime listener (onSnapshot) will update the messages automatically
+      // This ensures messages are synced with past, current, and future content
     } catch (error) {
-      console.error("Error adding message to Firestore:", error);
-      // Fallback to local state if Firestore fails
+      console.error("[CHAT_STORE] Error adding message to Firestore:", error);
+      // Fallback to local state if Firestore fails (offline mode)
       const newMessage: ChatMessage = {
         id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         eventId,
@@ -190,20 +194,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   initializeEventChat: (eventId, hostName) => {
-    // Check if chat already initialized
-    const existingMessages = get().getMessagesForEvent(eventId);
-    if (existingMessages.length > 0) {
-      return; // Chat already initialized
-    }
-
-    // Add welcome message
-    get().addMessage(
-      eventId,
-      'system',
-      'System',
-      `Welcome to the ${eventId} group chat! Start the conversation.`,
-      'system',
-      false
-    );
+    // NO AUTOMATIC MESSAGES - Chat is initialized silently
+    // Only host and attendees can send messages manually
+    // Messages are synced in real-time via Firestore subscriptions
+    // This function exists for backward compatibility but does nothing
+    return;
   },
 }));

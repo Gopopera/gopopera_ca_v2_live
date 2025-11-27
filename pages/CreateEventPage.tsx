@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { ViewState } from '../types';
-import { ChevronLeft, Upload, MapPin, Calendar, Clock, Plus, X, Phone } from 'lucide-react';
+import { ChevronLeft, Upload, MapPin, Calendar, Clock, Plus, X, ArrowUp, ArrowDown, Sparkles } from 'lucide-react';
 import { useEventStore } from '../stores/eventStore';
 import { useUserStore } from '../stores/userStore';
-import { getDbSafe } from '../src/lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { HostPhoneVerificationModal } from '../components/auth/HostPhoneVerificationModal';
+import { uploadImage } from '../firebase/storage';
+import { processImageForUpload } from '../utils/imageProcessing';
+import { geocodeAddress } from '../utils/geocoding';
 
 interface CreateEventPageProps {
   setViewState: (view: ViewState) => void;
 }
 
-const CATEGORIES = ['Music', 'Community', 'Market', 'Workshop', 'Wellness', 'Shows', 'Food & Drink', 'Sports', 'Social'] as const;
+const CATEGORIES = ['Music', 'Community', 'Markets', 'Workshop', 'Wellness', 'Shows', 'Food & Drink', 'Sports', 'Social'] as const;
 const POPULAR_CITIES = [
   'Montreal, CA', 'Toronto, CA', 'Vancouver, CA', 'Ottawa, CA', 'Quebec City, CA',
   'Calgary, CA', 'Edmonton, CA', 'New York, US', 'Los Angeles, US', 'Chicago, US'
@@ -19,8 +21,9 @@ const POPULAR_CITIES = [
 export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }) => {
   const addEvent = useEventStore((state) => state.addEvent);
   const user = useUserStore((state) => state.user);
-  const [phoneVerified, setPhoneVerified] = useState<boolean | null>(null);
-  const [showSMSModal, setShowSMSModal] = useState(false);
+  const userProfile = useUserStore((state) => state.userProfile);
+  const refreshUserProfile = useUserStore((state) => state.refreshUserProfile);
+  const [showHostVerificationModal, setShowHostVerificationModal] = useState(false);
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -31,60 +34,39 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
   const [category, setCategory] = useState<typeof CATEGORIES[number] | ''>('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
+  const [imageUrl, setImageUrl] = useState(''); // Legacy single image (for preview)
+  const [imageUrls, setImageUrls] = useState<string[]>([]); // Array of uploaded image URLs
+  const [imageFiles, setImageFiles] = useState<File[]>([]); // Array of files to upload
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]); // Base64 previews for UI
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [whatToExpect, setWhatToExpect] = useState('');
   const [attendeesCount, setAttendeesCount] = useState(0);
   const [host, setHost] = useState('You'); // Default host name
   const [price, setPrice] = useState('Free');
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Check phone verification status on mount
+  // Check host phone verification status on mount
+  // This determines if user can create events (phoneVerifiedForHosting must be true)
   useEffect(() => {
-    const checkPhoneVerification = async () => {
+    const checkHostPhoneVerification = async () => {
       if (!user?.uid) {
-        setPhoneVerified(false);
         return;
       }
       
-      const db = getDbSafe();
-      if (!db) {
-        setPhoneVerified(false);
-        return;
-      }
-
-      try {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        const verified = userDoc.data()?.phone_verified ?? false;
-        setPhoneVerified(verified);
-        
-        // Show modal if not verified and user tries to create event
-        if (!verified) {
-          setShowSMSModal(true);
-        }
-      } catch (err) {
-        console.warn('Error checking phone verification:', err);
-        setPhoneVerified(false);
-        setShowSMSModal(true);
-      }
+      // Refresh user profile to get latest phoneVerifiedForHosting status
+      await refreshUserProfile();
     };
-
-    checkPhoneVerification();
-  }, [user]);
-
-  const handleBypassSMS = async () => {
-    if (!user?.uid) return;
     
-    const db = getDbSafe();
-    if (!db) return;
+    checkHostPhoneVerification();
+  }, [user, refreshUserProfile]);
 
-    try {
-      await setDoc(doc(db, 'users', user.uid), {
-        phone_verified: false,
-      }, { merge: true });
-      setPhoneVerified(false);
-      setShowSMSModal(false);
-    } catch (err) {
-      console.error('Error bypassing SMS:', err);
-    }
+  const handleHostVerificationSuccess = async () => {
+    // Pull fresh profile from Firestore and close the modal
+    await refreshUserProfile();
+    setShowHostVerificationModal(false);
+    // User can now click Submit again and this time the gating will allow publishing
+    // without reopening the modal (phoneVerifiedForHosting is now true)
   };
 
   const handleAddTag = () => {
@@ -98,35 +80,429 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Mock upload - create a data URL or use a placeholder
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const newFiles: File[] = [];
+    const newPreviews: string[] = [];
+
+    // Process each selected file
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+
+      // Validate file type - HEIC will be converted automatically
+      const fileExtension = file.name.toLowerCase().split('.').pop();
+      const isHEIC = fileExtension === 'heic' || fileExtension === 'heif';
+      const isValidImageType = file.type.startsWith('image/') || isHEIC;
+      
+      if (!isValidImageType) {
+        alert(`"${file.name}" is not a supported image file. Please select JPEG, PNG, GIF, WebP, or HEIC files.`);
+        continue;
+      }
+      
+      // Note: HEIC files will be automatically converted to JPEG during processing
+
+      // Accept larger files - they will be compressed before upload
+      // Increased limit to 50MB (will be compressed to ~5MB or less)
+      const MAX_INPUT_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+      if (file.size > MAX_INPUT_FILE_SIZE) {
+        alert(`"${file.name}" is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum size is 50MB. Please use a smaller image.`);
+        continue;
+      }
+
+      newFiles.push(file);
+      
+      // Create preview immediately using data URL (for UI only)
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImageUrl(reader.result as string);
+        const preview = reader.result as string;
+        setImagePreviews(prev => [...prev, preview]);
       };
       reader.readAsDataURL(file);
     }
+
+    if (newFiles.length > 0) {
+      setImageFiles(prev => [...prev, ...newFiles]);
+      console.log('[CREATE_EVENT] Images selected, will upload to Storage on submit:', {
+        count: newFiles.length,
+        files: newFiles.map(f => ({ name: f.name, size: f.size, type: f.type }))
+      });
+    }
+
+    // Reset input
+    if (e.target) {
+      e.target.value = '';
+    }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleRemoveImage = (index: number) => {
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+    setImageUrls(prev => prev.filter((_, i) => i !== index));
+    // Update legacy imageUrl if this was the first image
+    if (index === 0 && imageUrls.length > 1) {
+      setImageUrl(imageUrls[1] || '');
+    } else if (index === 0) {
+      setImageUrl('');
+    }
+  };
+
+  const handleMoveImage = (index: number, direction: 'up' | 'down') => {
+    if (direction === 'up' && index === 0) return;
+    if (direction === 'down' && index === imageFiles.length - 1) return;
+
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    
+    // Swap files
+    const newFiles = [...imageFiles];
+    [newFiles[index], newFiles[newIndex]] = [newFiles[newIndex], newFiles[index]];
+    setImageFiles(newFiles);
+
+    // Swap previews
+    const newPreviews = [...imagePreviews];
+    [newPreviews[index], newPreviews[newIndex]] = [newPreviews[newIndex], newPreviews[index]];
+    setImagePreviews(newPreviews);
+
+    // Swap URLs if already uploaded
+    if (imageUrls.length > 0) {
+      const newUrls = [...imageUrls];
+      [newUrls[index], newUrls[newIndex]] = [newUrls[newIndex], newUrls[index]];
+      setImageUrls(newUrls);
+      // Update legacy imageUrl
+      if (newIndex === 0) {
+        setImageUrl(newUrls[0] || '');
+      }
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent, saveAsDraft: boolean = false) => {
     e.preventDefault();
     
-    // Check phone verification
-    if (phoneVerified === false && !showSMSModal) {
-      setShowSMSModal(true);
+    // Prevent double submission
+    if (isSubmitting) {
+      console.log('[CREATE_EVENT] Already submitting, ignoring duplicate call');
       return;
     }
     
+    console.log('[CREATE_EVENT] Form submitted', {
+      hasUser: !!user,
+      userId: user?.uid,
+      title,
+      city,
+      date,
+      time,
+      category
+    });
+    
+    // TEMPORARILY DISABLED: Phone verification gating
+    // TODO: Re-enable phone verification once SMS delivery issues are resolved
+    // Gate: Check if user has verified phone for hosting
+    // Refresh profile first to ensure we have latest data
+    // await refreshUserProfile();
+    // const freshProfile = useUserStore.getState().userProfile;
+    
+    // Use OR logic: userProfile.phoneVerifiedForHosting OR user.phone_verified (backward compatibility)
+    // const isHostPhoneVerified = !!(freshProfile?.phoneVerifiedForHosting || user?.phone_verified);
+    
+    // if (!isHostPhoneVerified) {
+    //   setShowHostVerificationModal(true);
+    //   return;
+    // }
+    
+    // Check if user is logged in
+    if (!user?.uid) {
+      alert('You must be logged in to create an event. Please sign in first.');
+      console.error('[CREATE_EVENT] No user logged in');
+      return;
+    }
+    
+    // Validate required fields
     if (!title || !description || !city || !date || !time || !category) {
-      alert('Please fill in all required fields');
+      const missingFields = [];
+      if (!title) missingFields.push('Title');
+      if (!description) missingFields.push('Description');
+      if (!city) missingFields.push('City');
+      if (!date) missingFields.push('Date');
+      if (!time) missingFields.push('Time');
+      if (!category) missingFields.push('Category');
+      alert(`Please fill in all required fields: ${missingFields.join(', ')}`);
+      console.warn('[CREATE_EVENT] Missing required fields:', missingFields);
       return;
     }
 
+    // Check if device is online before attempting Firestore write
+    if (typeof navigator !== 'undefined' && 'onLine' in navigator && !navigator.onLine) {
+      alert('You appear to be offline. Please check your internet connection and try again.');
+      console.error('[CREATE_EVENT] Device is offline');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    // Log Firebase project info for verification
+    const app = (await import('../src/lib/firebase')).getAppSafe();
+    const projectId = app?.options?.projectId;
+    console.log('[CREATE_EVENT] Starting event creation...', {
+      isOnline: navigator?.onLine,
+      connectionType: (navigator as any)?.connection?.effectiveType || 'unknown',
+      firebaseProjectId: projectId || 'NOT CONNECTED',
+      userId: user?.uid,
+      userEmail: user?.email
+    });
+    
+    if (!projectId) {
+      alert('Firebase is not connected. Please refresh the page and try again.');
+      setIsSubmitting(false);
+      return;
+    }
+    
+    if (projectId !== 'gopopera2026') {
+      console.warn('[CREATE_EVENT] ⚠️ WARNING: Connected to wrong Firebase project!', {
+        expected: 'gopopera2026',
+        actual: projectId
+      });
+    }
+    
+    // Validate text field sizes to prevent Firestore document size issues (1MB limit)
+    // Firestore has a 1MB document size limit, so we need to ensure text fields aren't too large
+    const MAX_DESCRIPTION_LENGTH = 50000; // ~50KB of text (safe margin)
+    const MAX_WHAT_TO_EXPECT_LENGTH = 20000; // ~20KB of text
+    
+    if (description.length > MAX_DESCRIPTION_LENGTH) {
+      alert(`Description is too long (${description.length} characters). Please keep it under ${MAX_DESCRIPTION_LENGTH.toLocaleString()} characters.`);
+      setIsSubmitting(false);
+      return;
+    }
+    
+    if (whatToExpect.length > MAX_WHAT_TO_EXPECT_LENGTH) {
+      alert(`"What to Expect" is too long (${whatToExpect.length} characters). Please keep it under ${MAX_WHAT_TO_EXPECT_LENGTH.toLocaleString()} characters.`);
+      setIsSubmitting(false);
+      return;
+    }
+    
+    // Upload images to Firebase Storage if image files were selected
+    let finalImageUrls: string[] = [];
+    let finalImageUrl = `https://picsum.photos/seed/${title || 'event'}/800/600`; // Default placeholder
+    
+    console.log('[CREATE_EVENT] Image upload check:', {
+      imageFilesCount: imageFiles.length,
+      imageUrlsCount: imageUrls?.length || 0,
+      hasImageUrl: !!imageUrl,
+      userId: user?.uid
+    });
+    
+    if (imageFiles.length > 0 && user?.uid) {
+      try {
+        console.log('[CREATE_EVENT] Uploading', imageFiles.length, 'image(s) to Firebase Storage...');
+        setUploadingImage(true);
+        
+        // Helper function to process (HEIC conversion + compression) and upload a single image
+        const processAndUploadImage = async (file: File, path: string): Promise<string> => {
+          console.log(`[CREATE_EVENT] Starting processAndUploadImage for "${file.name}"`);
+          
+          // Process image: convert HEIC to JPEG if needed, then compress if needed
+          const processed = await processImageForUpload(file, {
+            maxWidth: 1600,
+            maxHeight: 1600,
+            quality: 0.80,
+            maxSizeMB: 2
+          });
+          
+          if (processed.wasConverted) {
+            console.log(`[CREATE_EVENT] ✅ Converted HEIC to JPEG: ${processed.originalName} → ${processed.file.name}`);
+          }
+          
+          console.log(`[CREATE_EVENT] Uploading image "${processed.file.name}" (${(processed.file.size / 1024 / 1024).toFixed(2)}MB)...`);
+          // uploadImage handles retries internally (2 retries = 3 total attempts)
+          const uploadedUrl = await uploadImage(path, processed.file, { 
+            retries: 2 // 3 total attempts
+          });
+          console.log(`[CREATE_EVENT] ✅ Uploaded successfully: ${uploadedUrl.substring(0, 50)}...`);
+          return uploadedUrl;
+        };
+        
+        // Upload all images in PARALLEL with AGGRESSIVE TIMEOUT - create event even if uploads hang
+        const timestamp = Date.now();
+        const UPLOAD_TIMEOUT_MS = 15000; // 15 seconds timeout (reduced for faster fallback)
+        
+        // Helper to add timeout to a promise
+        const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> => {
+          return Promise.race([
+            promise,
+            new Promise<T>((_, reject) => 
+              setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs)
+            )
+          ]);
+        };
+        
+        const uploadPromises = imageFiles.map((file, i) => {
+          const imagePath = `events/${user.uid}/${timestamp}_${i}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+          console.log(`[CREATE_EVENT] Processing image ${i + 1}/${imageFiles.length}: "${file.name}" (${(file.size / 1024 / 1024).toFixed(2)}MB, ${file.type})...`);
+          
+          // Each promise MUST settle - either resolve with URL or reject with error
+          return withTimeout(
+            processAndUploadImage(file, imagePath)
+              .then((url) => {
+                console.log(`[CREATE_EVENT] ✅ Image ${i + 1}/${imageFiles.length} uploaded successfully`);
+                return url;
+              })
+              .catch((error: any) => {
+                console.error(`[CREATE_EVENT] ❌ Failed to upload image ${i + 1}/${imageFiles.length}:`, error);
+                // Re-throw to ensure Promise.allSettled sees it as rejected
+                throw error;
+              }),
+            UPLOAD_TIMEOUT_MS,
+            `Upload timeout after ${UPLOAD_TIMEOUT_MS / 1000}s`
+          );
+        });
+        
+        // Wait for all uploads to complete with timeout - allSettled ALWAYS resolves
+        // Add an additional overall timeout to force completion even if Promise.allSettled hangs
+        console.log(`[CREATE_EVENT] Waiting for Promise.allSettled with ${uploadPromises.length} promises (${UPLOAD_TIMEOUT_MS / 1000}s timeout per image, 20s overall timeout)...`);
+        
+        // Add overall timeout to prevent hanging - if Promise.allSettled takes too long, force completion
+        type UploadResult = PromiseSettledResult<string>;
+        const overallTimeoutPromise = new Promise<UploadResult[]>((resolve) => {
+          setTimeout(() => {
+            console.warn('[CREATE_EVENT] ⚠️ Overall upload timeout reached (20s) - forcing completion with placeholder images');
+            // Return rejected results to force placeholder usage
+            resolve(uploadPromises.map(() => ({ status: 'rejected' as const, reason: new Error('Overall timeout after 20s') })));
+          }, 20000); // 20 seconds overall timeout
+        });
+        
+        const uploadResults = await Promise.race([
+          Promise.allSettled(uploadPromises),
+          overallTimeoutPromise
+        ]);
+        console.log(`[CREATE_EVENT] Promise.allSettled completed. Processing ${uploadResults.length} results...`);
+        
+        // Process results - allSettled guarantees all promises have settled
+        const successfulUploads: string[] = [];
+        const failedUploads: Array<{ fileName: string; error: string }> = [];
+        
+        uploadResults.forEach((result, i) => {
+          if (result.status === 'fulfilled') {
+            // Success - we got a URL
+            successfulUploads.push(result.value);
+          } else {
+            // Failed - record the error
+            const fileName = imageFiles[i]?.name || `Image ${i + 1}`;
+            const errorMessage = result.reason?.message || 'Unknown error';
+            failedUploads.push({ fileName, error: errorMessage });
+          }
+        });
+        
+        // If all uploads failed or timed out, use placeholder and continue
+        if (successfulUploads.length === 0 && imageFiles.length > 0) {
+          const errorMessages = failedUploads.map(f => `${f.fileName}: ${f.error}`).join('; ');
+          console.warn(`[CREATE_EVENT] ⚠️ All image uploads failed or timed out: ${errorMessages}. Creating event with placeholder images.`);
+          // Don't throw - continue with placeholder images
+          finalImageUrl = `https://picsum.photos/seed/${title || 'event'}/800/600`;
+          finalImageUrls = [finalImageUrl];
+          // Note: Images that timed out will need to be uploaded later via edit functionality
+          console.log('[CREATE_EVENT] Event will be created with placeholder. Images can be added later via edit.');
+        } else if (failedUploads.length > 0) {
+          // If some uploads failed, warn but continue with successful ones
+          console.warn(`[CREATE_EVENT] ⚠️ Some images failed to upload:`, failedUploads);
+          const failedNames = failedUploads.map(f => f.fileName).join(', ');
+          // Don't show alert - just log and continue
+          console.log(`[CREATE_EVENT] Continuing with ${successfulUploads.length} successful upload(s). Failed: ${failedNames}`);
+          finalImageUrls = successfulUploads;
+          if (finalImageUrls.length > 0) {
+            finalImageUrl = finalImageUrls[0];
+          } else {
+            finalImageUrl = `https://picsum.photos/seed/${title || 'event'}/800/600`;
+            finalImageUrls = [finalImageUrl];
+          }
+        } else {
+          // All uploads succeeded
+          finalImageUrls = successfulUploads;
+          if (finalImageUrls.length > 0) {
+            finalImageUrl = finalImageUrls[0];
+            console.log('[CREATE_EVENT] ✅ All images uploaded successfully. Main image:', finalImageUrl);
+          } else {
+            // Fallback to placeholder if no images uploaded (shouldn't happen, but safety)
+            finalImageUrl = `https://picsum.photos/seed/${title || 'event'}/800/600`;
+            finalImageUrls = [finalImageUrl];
+            console.log('[CREATE_EVENT] ⚠️ No images uploaded, using placeholder');
+          }
+        }
+      } catch (uploadError: any) {
+        console.error('[CREATE_EVENT] ❌ Image upload failed:', uploadError);
+        const errorMessage = uploadError?.message || 'Unknown error';
+        
+        // If all uploads failed, show error and stop
+        if (errorMessage.includes('All image uploads failed')) {
+          alert(`Failed to upload images: ${errorMessage}. Please try again with smaller images or check your internet connection.`);
+          setIsSubmitting(false);
+          setUploadingImage(false);
+          return;
+        }
+        
+        // For other errors, ask user if they want to continue without images
+        const shouldContinue = confirm(`Image upload failed: ${errorMessage}. Would you like to create the event without images?`);
+        if (!shouldContinue) {
+          setIsSubmitting(false);
+          setUploadingImage(false);
+          return;
+        }
+        
+        // Use placeholder if user chooses to continue
+        finalImageUrl = `https://picsum.photos/seed/${title || 'event'}/800/600`;
+        finalImageUrls = [finalImageUrl];
+        console.log('[CREATE_EVENT] Continuing with placeholder image after upload failure');
+      } finally {
+        // CRITICAL: Always reset state - this ensures spinner stops even if something goes wrong
+        setUploadingImage(false);
+        console.log('[CREATE_EVENT] Image upload process completed, uploadingImage set to false');
+      }
+    } else if (imageUrls.length > 0) {
+      // Images were already uploaded in a previous attempt
+      finalImageUrls = imageUrls;
+      finalImageUrl = imageUrls[0] || finalImageUrl;
+    } else if (imageUrl && !imageUrl.startsWith('data:')) {
+      // Legacy single image URL (not base64)
+      finalImageUrl = imageUrl;
+      finalImageUrls = [imageUrl];
+    }
+    
     try {
+      // Geocode address to get coordinates (if API key is available)
+      let lat: number | undefined;
+      let lng: number | undefined;
+      
+      if (address && city) {
+        try {
+          console.log('[CREATE_EVENT] Geocoding address:', address, city);
+          const geocodeResult = await geocodeAddress(address, city);
+          if (geocodeResult) {
+            lat = geocodeResult.lat;
+            lng = geocodeResult.lng;
+            console.log('[CREATE_EVENT] Geocoding successful:', { lat, lng });
+          } else {
+            console.warn('[CREATE_EVENT] Geocoding failed or API key not available. Event will be created without coordinates.');
+          }
+        } catch (error) {
+          console.error('[CREATE_EVENT] Error geocoding address:', error);
+          // Continue without coordinates - not a critical error
+        }
+      }
+      
       // Create event with all required fields
-      await addEvent({
+      console.log('[CREATE_EVENT] Calling addEvent with:', {
+        title,
+        city,
+        hostId: user.uid,
+        host: user.displayName || user.email || 'You',
+        lat,
+        lng
+      });
+      
+      // Add timeout to detect if addEvent is hanging
+      // Increased timeout to 60 seconds to account for network latency and large data
+      const EVENT_CREATION_TIMEOUT = 45000; // 45 seconds (reduced for faster feedback)
+      const addEventPromise = addEvent({
         title,
         description,
         city,
@@ -136,14 +512,46 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         tags,
         host,
         hostId: user?.uid || '',
-        imageUrl: imageUrl || `https://picsum.photos/seed/${title}/800/600`,
+        imageUrl: finalImageUrl, // Main image (backward compatibility)
+        imageUrls: finalImageUrls.length > 0 ? finalImageUrls : undefined, // Array of all images
+        whatToExpect: whatToExpect || undefined,
         attendeesCount,
         category: category as typeof CATEGORIES[number],
         price,
         rating: 0,
         reviewCount: 0,
         capacity: attendeesCount || undefined,
+        // Ensure events are public and joinable by default (unless draft)
+        isPublic: !saveAsDraft,
+        allowRsvp: !saveAsDraft,
+        allowChat: !saveAsDraft,
+        isDraft: saveAsDraft,
+        lat, // Add geocoded coordinates
+        lng, // Add geocoded coordinates
+      } as any); // Type assertion needed for optional fields
+      
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Event creation timed out after 60 seconds. Firestore may be slow or unresponsive. Please check your internet connection and try again.'));
+        }, EVENT_CREATION_TIMEOUT);
       });
+      
+      console.log('[CREATE_EVENT] Waiting for addEvent to complete (timeout: 60s)...');
+      const createdEvent = await Promise.race([addEventPromise, timeoutPromise]) as any;
+
+      console.log('[CREATE_EVENT] ✅ Event created successfully:', {
+        eventId: createdEvent.id,
+        title: createdEvent.title,
+        hostId: createdEvent.hostId,
+        isDraft: saveAsDraft
+      });
+
+      // Show success message
+      if (saveAsDraft) {
+        alert('Event saved as draft! You can find it in the Drafts tab in My Pop-Ups.');
+      } else {
+        alert('Event created successfully!');
+      }
 
       // Reset form
       setTitle('');
@@ -155,14 +563,56 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       setCategory('');
       setTags([]);
       setImageUrl('');
+      setImageUrls([]);
+      setImageFiles([]);
+      setImagePreviews([]);
+      setUploadingImage(false);
+      setWhatToExpect('');
       setAttendeesCount(0);
       setPrice('Free');
 
-      // Redirect to feed
+      // Redirect to feed - ensure proper navigation without 404 errors
+      console.log('[CREATE_EVENT] Redirecting to feed...');
+      // Clear any selected event to prevent navigation issues
+      // Navigate directly without setTimeout to avoid race conditions
       setViewState(ViewState.FEED);
-    } catch (error) {
-      console.error('Error creating event:', error);
-      alert('Failed to create event. Please try again.');
+      // Ensure URL is updated correctly (but don't force it if already correct)
+      if (typeof window !== 'undefined' && window.location.pathname !== '/explore') {
+        // Use replaceState instead of pushState to avoid creating history entry
+        window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
+      }
+    } catch (error: any) {
+      console.error('[CREATE_EVENT] ❌ Error creating event:', {
+        error,
+        message: error?.message,
+        code: error?.code,
+        stack: error?.stack?.substring(0, 300)
+      });
+      
+      // Always reset UI state, even on error
+      setIsSubmitting(false);
+      setUploadingImage(false);
+      
+      // Check for timeout
+      if (error?.message?.includes('timed out') || error?.message?.includes('timeout')) {
+        alert('Event creation timed out. This might be a network issue or the server is slow. Please check your internet connection and try again. If the problem persists, try creating the event without images first.');
+      } else if (error?.code === 'permission-denied') {
+        alert('Permission denied. You may not have permission to create events. Please check your account status or contact support.');
+      } else if (error?.code === 'unavailable' || error?.message?.includes('offline') || error?.message?.includes('unavailable')) {
+        alert('Service is unavailable. The device may be offline or the server is experiencing issues. Please check your internet connection and try again.');
+        console.error('[CREATE_EVENT] Offline/unavailable error:', {
+          code: error?.code,
+          message: error?.message,
+          isOnline: navigator?.onLine
+        });
+      } else if (error?.message?.includes('upload') || error?.message?.includes('image')) {
+        // Image upload specific errors
+        alert(`Image upload failed: ${error?.message || 'Unknown error'}. You can try creating the event without images, or use smaller/different images.`);
+      } else {
+        alert(`Failed to create event: ${error?.message || 'Unknown error'}. Please check the console for details or try again.`);
+      }
+      
+      console.log('[CREATE_EVENT] Error handled, UI state reset');
     }
   };
 
@@ -231,6 +681,21 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 required
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl sm:rounded-2xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all resize-none" 
+              />
+            </div>
+            
+            {/* What to Expect - Optional */}
+            <div className="space-y-2">
+              <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1 flex items-center gap-2">
+                <Sparkles size={16} className="text-popera-orange" />
+                What to Expect <span className="text-gray-400 font-normal">(Optional)</span>
+              </label>
+              <textarea 
+                rows={4} 
+                placeholder="Describe what attendees can expect at your event..." 
+                value={whatToExpect}
+                onChange={(e) => setWhatToExpect(e.target.value)}
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl sm:rounded-2xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all resize-none" 
               />
             </div>
@@ -330,24 +795,86 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
             </div>
           </div>
 
-          {/* Image Upload */}
+          {/* Image Upload - Multiple Images */}
           <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 lg:p-10 border border-gray-100 shadow-sm mb-6 sm:mb-8">
             <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1 mb-3 sm:mb-4 md:mb-5">
-              Add Event Picture
+              Add Event Pictures <span className="text-gray-400 font-normal">(First image is the main photo)</span>
             </label>
+            
+            {/* Image Gallery Preview */}
+            {(imagePreviews.length > 0 || imageUrls.length > 0) && (
+              <div className="mb-4 space-y-3">
+                <div className="flex flex-wrap gap-3">
+                  {(imagePreviews.length > 0 ? imagePreviews : imageUrls).map((preview, index) => (
+                    <div key={index} className="relative group">
+                      <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-lg overflow-hidden border-2 border-gray-200">
+                        <img 
+                          src={preview} 
+                          alt={`Preview ${index + 1}`} 
+                          className="w-full h-full object-cover"
+                        />
+                        {index === 0 && (
+                          <div className="absolute top-1 left-1 bg-popera-orange text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                            Main
+                          </div>
+                        )}
+                        {/* Delete Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage(index)}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          aria-label="Remove image"
+                        >
+                          <X size={14} />
+                        </button>
+                        {/* Reorder Buttons */}
+                        {index > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleMoveImage(index, 'up')}
+                            className="absolute bottom-1 left-1 bg-white/90 text-gray-700 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                            aria-label="Move up"
+                          >
+                            <ArrowUp size={12} />
+                          </button>
+                        )}
+                        {index < (imagePreviews.length > 0 ? imagePreviews.length : imageUrls.length) - 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleMoveImage(index, 'down')}
+                            className="absolute bottom-1 right-1 bg-white/90 text-gray-700 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                            aria-label="Move down"
+                          >
+                            <ArrowDown size={12} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Upload Area */}
             <div className="border-2 border-dashed border-gray-200 rounded-xl sm:rounded-2xl p-6 sm:p-8 md:p-10 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer relative">
               <input
                 type="file"
                 accept="image/*"
+                multiple
                 onChange={handleImageUpload}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                disabled={uploadingImage}
               />
-              {imageUrl ? (
-                <img src={imageUrl} alt="Preview" className="max-w-full max-h-64 rounded-lg" />
+              {uploadingImage ? (
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#15383c] mx-auto mb-2"></div>
+                  <p className="text-xs sm:text-sm text-gray-600">Uploading images...</p>
+                </div>
               ) : (
                 <>
                   <Upload size={24} className="sm:w-7 sm:h-7 md:w-8 md:h-8 text-gray-400 mb-2" />
-                  <span className="text-xs sm:text-sm md:text-base font-medium text-gray-500">Click to Upload</span>
+                  <p className="text-xs sm:text-sm md:text-base text-gray-600 font-medium">Click to upload or drag and drop</p>
+                  <p className="text-[10px] sm:text-xs text-gray-400 mt-1">PNG, JPG, GIF up to 5MB each (multiple images supported)</p>
                 </>
               )}
             </div>
@@ -435,60 +962,34 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
           <div className="flex flex-col gap-3 sm:gap-4 md:gap-5">
             <button 
               type="submit"
-              className="w-full py-3.5 sm:py-4 md:py-4.5 bg-[#15383c] text-white font-bold rounded-full hover:bg-[#1f4d52] transition-colors shadow-lg touch-manipulation active:scale-95 text-sm sm:text-base md:text-lg"
+              disabled={isSubmitting || uploadingImage}
+              className="w-full py-3.5 sm:py-4 md:py-4.5 bg-[#15383c] text-white font-bold rounded-full hover:bg-[#1f4d52] transition-colors shadow-lg touch-manipulation active:scale-95 text-sm sm:text-base md:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Host Event
+              {uploadingImage ? 'Uploading Images...' : isSubmitting ? 'Creating Event...' : 'Host Event'}
             </button>
             <button 
               type="button"
-              onClick={() => setViewState(ViewState.FEED)}
-              className="w-full py-3.5 sm:py-4 md:py-4.5 bg-gray-100 text-gray-500 font-bold rounded-full hover:bg-gray-200 transition-colors border border-gray-200 touch-manipulation active:scale-95 text-sm sm:text-base md:text-lg"
+              onClick={async (e) => {
+                e.preventDefault();
+                await handleSubmit(e as any, true); // Pass true for draft
+              }}
+              disabled={isSubmitting || uploadingImage}
+              className="w-full py-3.5 sm:py-4 md:py-4.5 bg-white border-2 border-[#15383c] text-[#15383c] font-bold rounded-full hover:bg-gray-50 transition-colors touch-manipulation active:scale-95 text-sm sm:text-base md:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Cancel
+              {isSubmitting ? 'Saving...' : 'Save as Draft'}
             </button>
           </div>
         </form>
       </div>
 
-      {/* SMS Verification Modal */}
-      {showSMSModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 sm:p-8 animate-fade-in">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-[#eef4f5] rounded-full flex items-center justify-center mx-auto mb-4">
-                <Phone size={32} className="text-[#e35e25]" />
-              </div>
-              <h2 className="text-2xl font-heading font-bold text-[#15383c] mb-2">
-                SMS Verification Required
-              </h2>
-              <p className="text-gray-600 text-sm mb-4">
-                We require SMS verification to host events. This helps ensure safety and trust in our community.
-              </p>
-              <p className="text-gray-500 text-xs mb-4">
-                If SMS verification is not configured in your environment, you can bypass this requirement for development purposes.
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              <button
-                onClick={() => {
-                  // Placeholder: In production, this would trigger real phone auth
-                  alert('SMS verification requires Firebase Phone Auth setup. Please configure in Firebase Console.');
-                }}
-                className="w-full px-6 py-3 bg-[#e35e25] text-white rounded-full font-medium hover:bg-[#d14e1a] transition-colors"
-              >
-                Verify Now
-              </button>
-              <button
-                onClick={handleBypassSMS}
-                className="w-full px-6 py-3 bg-gray-100 text-[#15383c] rounded-full font-medium hover:bg-gray-200 transition-colors"
-              >
-                Bypass for Now (Dev Only)
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Host Phone Verification Modal */}
+      {/* This modal gates event creation - users must verify phone once to host events */}
+      <HostPhoneVerificationModal
+        isOpen={showHostVerificationModal}
+        onClose={() => setShowHostVerificationModal(false)}
+        onSuccess={handleHostVerificationSuccess}
+        required={true}
+      />
     </div>
   );
 };

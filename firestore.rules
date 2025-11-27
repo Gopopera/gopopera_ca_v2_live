@@ -1,0 +1,100 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    match /events/{eventId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        (resource.data.hostId == request.auth.uid || 
+         request.resource.data.hostId == request.auth.uid);
+      allow delete: if isAuthenticated() && resource.data.hostId == request.auth.uid;
+    }
+    
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (userId == request.auth.uid || resource.data.isPublic == true);
+      allow create: if isAuthenticated() && userId == request.auth.uid;
+      allow update: if isAuthenticated() && userId == request.auth.uid;
+      allow delete: if isAuthenticated() && userId == request.auth.uid;
+    }
+    
+    match /reservations/{reservationId} {
+      allow read: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || 
+         get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.hostId == request.auth.uid);
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || 
+         get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.hostId == request.auth.uid);
+      allow delete: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || 
+         get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.hostId == request.auth.uid);
+    }
+    
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+    
+    match /newsletter_subscribers/{subscriberId} {
+      allow read: if isAuthenticated();
+      allow create: if true;
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+    
+    match /contact_inquiries/{inquiryId} {
+      allow read: if isAuthenticated();
+      allow create: if true;
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+    
+    match /reports/{reportId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+    
+    match /events/{eventId}/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    match /events/{eventId}/reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+    
+    match /events/{eventId}/messages/{messageId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+    
+    match /events/{eventId}/expulsions/{expulsionId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+        get(/databases/$(database)/documents/events/$(eventId)).data.hostId == request.auth.uid;
+      allow update: if isAuthenticated() && 
+        get(/databases/$(database)/documents/events/$(eventId)).data.hostId == request.auth.uid;
+      allow delete: if isAuthenticated() && 
+        get(/databases/$(database)/documents/events/$(eventId)).data.hostId == request.auth.uid;
+    }
+  }
+}
+

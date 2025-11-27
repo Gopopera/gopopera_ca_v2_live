@@ -33,7 +33,7 @@ export const FakeEventReservationModal: React.FC<FakeEventReservationModalProps>
             Demo Event
           </h3>
           <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
-            This is a demo event created to show Popera use-case examples. It is not a real event. Browse real events to reserve and join group conversations.
+            This is a Popera demo event. It's just an example to show what's possible — you can't reserve this event. Create your own pop-up instead!
           </p>
         </div>
 

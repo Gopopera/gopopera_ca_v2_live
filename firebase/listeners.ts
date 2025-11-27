@@ -19,7 +19,9 @@ import { FirestoreChatMessage } from "./types";
 export function attachAuthListener(onChange: (user: FirebaseUser | null) => void): Unsubscribe {
   const auth = getAuthSafe();
   if (!auth) {
-    console.warn('[FIREBASE] Auth not available, returning no-op unsubscribe');
+    if (import.meta.env.DEV) {
+      console.warn('[FIREBASE] Auth not available, returning no-op unsubscribe');
+    }
     onChange(null);
     return () => {};
   }
@@ -32,7 +34,9 @@ export function subscribeToChat(
 ): Unsubscribe {
   const db = getDbSafe();
   if (!db) {
-    console.warn('[FIREBASE] Firestore not available, returning no-op unsubscribe');
+    if (import.meta.env.DEV) {
+      console.warn('[FIREBASE] Firestore not available, returning no-op unsubscribe');
+    }
     cb([]);
     return () => {};
   }
@@ -47,11 +51,15 @@ export function subscribeToChat(
       })) as FirestoreChatMessage[];
       cb(msgs);
     }, (error) => {
-      console.error("Error in chat subscription:", error);
+      if (import.meta.env.DEV) {
+        console.error("[FIREBASE] Error in chat subscription:", error);
+      }
       cb([]);
     });
   } catch (error) {
-    console.error("Error setting up chat subscription:", error);
+    if (import.meta.env.DEV) {
+      console.error("[FIREBASE] Error setting up chat subscription:", error);
+    }
     return () => {};
   }
 }

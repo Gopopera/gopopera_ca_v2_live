@@ -6,10 +6,13 @@ import { EventCard } from '../components/events/EventCard';
 import { ChatMockupSection } from '../components/landing/ChatMockupSection';
 import { CityInput } from '../components/layout/CityInput';
 import { Event, ViewState } from '../types';
-import { ArrowRight, Sparkles, Check, ChevronDown, Search, MapPin, PlusCircle } from 'lucide-react';
+import { ArrowRight, Sparkles, Check, ChevronDown, Search, MapPin, PlusCircle, CheckCircle2, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { categoryMatches } from '../utils/categoryMapper';
 import { useSelectedCity, useSetCity, type City } from '../src/stores/cityStore';
+import { getDbSafe } from '../src/lib/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { sendEmail } from '../src/lib/email';
 
 interface LandingPageProps {
   setViewState: (view: ViewState) => void;
@@ -37,6 +40,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
+  const [newsletterSuccess, setNewsletterSuccess] = useState(false);
   const city = useSelectedCity();
   const setCity = useSetCity();
   const location = city;
@@ -45,27 +51,52 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const filteredEvents = useMemo(() => {
     let filtered = events;
     
+    // Debug logging
+    console.log('[LANDING_PAGE] Filtering events:', {
+      totalEvents: events.length,
+      activeCategory,
+      location,
+      searchQuery,
+      eventTitles: events.map(e => e.title),
+      eventCities: events.map(e => e.city),
+    });
+    
     // Apply category filter
     // Uses category mapper to handle plural/singular variations (e.g., "Markets" -> "Market")
     if (activeCategory !== 'All') {
       filtered = filtered.filter(event => 
         categoryMatches(event.category, activeCategory)
       );
+      console.log('[LANDING_PAGE] After category filter:', filtered.length);
     }
     
     // Apply city filter - match by city slug or city name
-    if (location && location.trim() && location !== 'montreal') {
+    // Handle "Canada" as showing all events
+    if (location && location.trim() && location.toLowerCase() !== 'canada') {
       const citySlug = location.toLowerCase();
+      const beforeCityFilter = filtered.length;
       filtered = filtered.filter(event => {
         const eventCityLower = event.city.toLowerCase();
+        // Normalize city name (remove ", CA" for comparison)
+        const normalizedEventCity = eventCityLower.replace(/,\s*ca$/, '').trim();
+        const normalizedLocation = citySlug.replace(/,\s*ca$/, '').trim();
         // Match by slug (e.g., "montreal" matches "Montreal, CA")
-        return eventCityLower.includes(citySlug) || 
+        return normalizedEventCity.includes(normalizedLocation) || 
+               normalizedLocation.includes(normalizedEventCity) ||
+               eventCityLower.includes(citySlug) || 
                eventCityLower.includes(citySlug.replace('-', ' '));
+      });
+      console.log('[LANDING_PAGE] After city filter:', {
+        before: beforeCityFilter,
+        after: filtered.length,
+        location,
+        filteredEventCities: filtered.map(e => e.city),
       });
     }
     
     // Apply search filter
     if (searchQuery.trim()) {
+      const beforeSearch = filtered.length;
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(event => 
         event.title.toLowerCase().includes(query) ||
@@ -73,7 +104,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         event.hostName.toLowerCase().includes(query) ||
         event.tags.some(tag => tag.toLowerCase().includes(query))
       );
+      console.log('[LANDING_PAGE] After search filter:', {
+        before: beforeSearch,
+        after: filtered.length,
+        query: searchQuery,
+      });
     }
+    
+    console.log('[LANDING_PAGE] Final filtered events:', {
+      count: filtered.length,
+      titles: filtered.map(e => e.title),
+    });
     
     return filtered;
   }, [events, activeCategory, location, searchQuery]);
@@ -130,12 +171,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   Happening Now
                </span>
             </div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-[#15383c] mb-2 sm:mb-3 md:mb-4">Upcoming Pop-ups</h2>
-            <p className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-500 font-light leading-relaxed">See where the crowd is going. Discover the moments bringing people together this week.</p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-[#15383c] mb-2 sm:mb-3 md:mb-4 px-4 sm:px-0">Upcoming Pop-ups</h2>
+            <p className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-500 font-light leading-relaxed px-4 sm:px-0">See where the crowd is going. Discover the moments bringing people together this week.</p>
           </div>
 
           {/* SEARCH BAR & FILTERS */}
-          <div className="mt-4 space-y-6">
+          <div className="mt-4 space-y-6 px-4 sm:px-0">
              {/* Search Inputs Row */}
              <div className="flex flex-col md:flex-row gap-3 w-full md:max-w-3xl relative z-30">
                 
@@ -182,10 +223,65 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
         </div>
         
-        {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
-        <div className="flex md:grid md:grid-cols-12 overflow-x-auto md:overflow-x-visible gap-6 xl:gap-8 pb-6 sm:pb-8 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory md:snap-none scroll-smooth hide-scrollbar relative z-0 w-full touch-pan-x overscroll-x-contain scroll-pl-4">
-           {filteredEvents.slice(0, 8).map(event => (
-             <div key={event.id} className="w-[85vw] sm:min-w-[60vw] md:col-span-6 lg:col-span-4 snap-center h-full md:h-auto flex-shrink-0 md:flex-shrink lg:flex-shrink mr-4 md:mr-0">
+        {/* Single row with one event at a time, horizontally scrollable on all devices */}
+        <div className="relative group">
+          {/* Left Arrow - Desktop only */}
+          <button
+            onClick={() => {
+              const container = document.getElementById('upcoming-popups-scroll');
+              if (container) {
+                container.scrollBy({ left: -400, behavior: 'smooth' });
+              }
+            }}
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100 hidden lg:flex"
+            aria-label="Scroll left"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          
+          {/* Scrollable Row - One event at a time */}
+          <div 
+            id="upcoming-popups-scroll"
+            className="flex overflow-x-auto gap-4 lg:gap-6 pb-2 snap-x snap-mandatory scroll-smooth hide-scrollbar w-full touch-pan-x overscroll-x-contain cursor-grab active:cursor-grabbing"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-x pan-y', WebkitOverflowScrolling: 'touch' }}
+            onWheel={(e) => {
+              // Allow horizontal scrolling with mouse wheel when hovering over the container
+              const container = e.currentTarget;
+              if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
+                // Use requestAnimationFrame to avoid passive listener warning
+                requestAnimationFrame(() => {
+                  container.scrollLeft += e.deltaY;
+                });
+              }
+            }}
+            onMouseDown={(e) => {
+              // Enable drag scrolling - only on non-touch devices
+              if ('ontouchstart' in window) return;
+              
+              const container = e.currentTarget;
+              const startX = e.pageX - container.offsetLeft;
+              const scrollLeft = container.scrollLeft;
+              let isDown = true;
+
+              const handleMouseMove = (e: MouseEvent) => {
+                if (!isDown) return;
+                const x = e.pageX - container.offsetLeft;
+                const walk = (x - startX) * 2;
+                container.scrollLeft = scrollLeft - walk;
+              };
+
+              const handleMouseUp = () => {
+                isDown = false;
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+              };
+
+              document.addEventListener('mousemove', handleMouseMove, { passive: true });
+              document.addEventListener('mouseup', handleMouseUp, { passive: true });
+            }}
+          >
+            {filteredEvents.map(event => (
+              <div key={event.id} className="snap-start shrink-0 w-[85vw] sm:w-[70vw] md:w-[60vw] lg:w-[50vw] xl:w-[40vw] max-w-[500px] flex-shrink-0" style={{ touchAction: 'pan-x pan-y' }}>
                 <EventCard 
                   event={event} 
                   onClick={onEventClick} 
@@ -195,11 +291,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   isFavorite={favorites.includes(event.id)}
                   onToggleFavorite={onToggleFavorite}
                 />
-             </div>
-           ))}
+              </div>
+            ))}
+          </div>
+          
+          {/* Right Arrow - Desktop only */}
+          <button
+            onClick={() => {
+              const container = document.getElementById('upcoming-popups-scroll');
+              if (container) {
+                container.scrollBy({ left: 400, behavior: 'smooth' });
+              }
+            }}
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100 hidden lg:flex"
+            aria-label="Scroll right"
+          >
+            <ChevronRight size={20} />
+          </button>
         </div>
 
-        <div className="mt-6 sm:mt-8 text-center">
+        <div className="mt-fluid text-center">
            <button 
              onClick={() => setViewState(ViewState.FEED)}
              className="w-auto mx-auto sm:w-auto px-8 sm:px-10 py-4 sm:py-4 min-h-[48px] sm:min-h-0 border-2 border-gray-300 rounded-full text-[#15383c] font-bold text-base sm:text-base hover:border-[#15383c] hover:bg-[#15383c] hover:text-white transition-all touch-manipulation active:scale-[0.97] active:bg-[#15383c] active:text-white"
@@ -210,30 +321,30 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* 3. Pop-ups and Crowd Activation section */}
-      <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] relative overflow-hidden w-full">
+      <section className="py-12 sm:py-16 md:py-20 lg:py-24 xl:py-28 bg-[#FAFAFA] relative overflow-hidden w-full">
          <div className="max-w-5xl md:max-w-6xl lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-            <div className="mb-6 sm:mb-8 md:mb-10 animate-fade-in-up">
-              <span className="inline-block py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-white/5 border border-white/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase backdrop-blur-sm">
+            <div className="mb-6 sm:mb-8 md:mb-10">
+              <span className="inline-flex items-center gap-2 py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">
+                <Sparkles size={10} className="sm:w-3 sm:h-3 -mt-0.5" />
                 {t('landing.badge')}
               </span>
             </div>
 
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-white mb-4 sm:mb-6 md:mb-8 tracking-tight leading-none px-2 sm:px-4">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-heading font-bold text-[#15383c] mb-5 sm:mb-6 md:mb-8 tracking-tight leading-[1.1] px-2 sm:px-4">
               {t('landing.title')} <br />
-              <span className="text-[#e35e25] relative">
+              <span className="text-[#e35e25]">
                 {t('landing.titleHighlight')}
-                <svg className="absolute w-full h-2 sm:h-3 -bottom-1 left-0 text-[#e35e25]/20" viewBox="0 0 100 10" preserveAspectRatio="none">
-                   <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="2" fill="none" />
-                </svg>
               </span>
             </h2>
             
-            <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl text-gray-200 font-light leading-relaxed mb-6 sm:mb-8 md:mb-10 max-w-4xl mx-auto px-4 sm:px-6">
-              {t('landing.description')} <span className="text-white font-normal border-b border-white/20 pb-0.5">{t('landing.descriptionHighlight')}</span>{t('landing.descriptionEnd')}
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-600 font-light leading-relaxed mb-8 sm:mb-10 md:mb-12 max-w-4xl mx-auto px-4 sm:px-6">
+              {t('landing.description')} <span className="text-[#15383c] font-medium border-b-2 border-[#15383c]/20 pb-1">{t('landing.descriptionHighlight')}</span>{t('landing.descriptionEnd')}
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 md:gap-6 px-4">
-              <button className="w-auto mx-auto sm:w-auto px-8 sm:px-10 md:px-12 py-4 sm:py-4 md:py-5 min-h-[48px] sm:min-h-0 rounded-full bg-[#e35e25] text-white font-bold text-base sm:text-base md:text-lg lg:text-xl hover:bg-[#cf4d1d] transition-all shadow-2xl shadow-orange-900/30 hover:-translate-y-1 hover:shadow-orange-900/40 ring-4 ring-[#e35e25]/20 touch-manipulation active:scale-[0.97] active:bg-[#cf4d1d]">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-5 md:gap-6 px-4">
+              <button 
+                onClick={() => setViewState(ViewState.AUTH)}
+                className="w-auto mx-auto sm:w-auto px-10 sm:px-12 md:px-14 py-4 sm:py-5 md:py-6 min-h-[52px] sm:min-h-0 rounded-full bg-[#e35e25] text-white font-bold text-base sm:text-lg md:text-xl lg:text-2xl hover:bg-[#cf4d1d] transition-all shadow-lg shadow-orange-900/20 hover:-translate-y-1 hover:shadow-xl hover:shadow-orange-900/30 touch-manipulation active:scale-[0.97] active:bg-[#cf4d1d]">
                 {t('landing.signUp')}
               </button>
             </div>
@@ -335,7 +446,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* Stay Updated */}
       <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] text-white relative overflow-hidden border-t border-white/5">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-[#e35e25] mb-4 sm:mb-6 tracking-tight uppercase leading-none">
+          <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-4xl font-heading font-bold text-[#e35e25] mb-4 sm:mb-6 tracking-tight uppercase leading-none">
             Stay Updated
           </h2>
           
@@ -344,19 +455,123 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             Join the waitlist before launch on the 15th of May 2026.
           </p>
 
-          <form className="max-w-2xl mx-auto relative flex items-center mb-4 sm:mb-6" onSubmit={(e) => e.preventDefault()}>
+          <form 
+            className="max-w-2xl mx-auto relative flex items-center mb-4 sm:mb-6" 
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!newsletterEmail.trim() || newsletterSubmitting) return;
+
+              // Check for missing config before starting
+              const db = getDbSafe();
+              const resendKey = import.meta.env.VITE_RESEND_API_KEY;
+              
+              if (!db && !resendKey) {
+                alert('⚠️ Configuration error: Firebase and Resend are not configured.');
+                return;
+              }
+
+              setNewsletterSubmitting(true);
+              setNewsletterSuccess(false);
+              
+              // Timeout fallback - never stay stuck on "Sending..."
+              const timeoutId = setTimeout(() => {
+                setNewsletterSubmitting(false);
+                if (!newsletterSuccess) {
+                  alert('⚠️ Request timed out. Your subscription may have been processed. Please try again.');
+                }
+              }, 10000); // 10 second timeout
+              
+              try {
+                const email = newsletterEmail.trim();
+                const timestamp = new Date().toLocaleString('en-US', { 
+                  dateStyle: 'long', 
+                  timeStyle: 'short' 
+                });
+
+                // Store to Firestore (non-blocking)
+                if (db) {
+                  addDoc(collection(db, 'newsletter_subscribers'), {
+                    email,
+                    subscribedAt: serverTimestamp(),
+                    createdAt: Date.now(),
+                  }).catch((error: any) => {
+                    // Silently handle permission errors for newsletter subscription
+                    if (error?.code === 'permission-denied') {
+                      console.warn('[NEWSLETTER] Permission denied - newsletter subscription not saved to Firestore');
+                    } else {
+                      console.error('[NEWSLETTER] Error saving to Firestore:', error);
+                    }
+                  });
+                }
+
+                // Send notification email to support
+                if (resendKey) {
+                  const emailHtml = `
+                    <h2 style="margin: 0 0 24px 0; color: #15383c; font-size: 24px; font-weight: bold;">New Newsletter Subscription</h2>
+                    <div style="background-color: #f8fafb; padding: 24px; border-radius: 12px;">
+                      <p style="margin: 0 0 12px 0; color: #374151; font-size: 16px; line-height: 1.6;">
+                        <strong style="color: #15383c;">Email:</strong> <a href="mailto:${email}" style="color: #e35e25; text-decoration: none;">${email}</a>
+                      </p>
+                      <p style="margin: 0; color: #374151; font-size: 16px; line-height: 1.6;">
+                        <strong style="color: #15383c;">Subscribed:</strong> ${timestamp}
+                      </p>
+                    </div>
+                  `;
+
+                  const emailResult = await sendEmail({
+                    to: 'support@gopopera.ca',
+                    subject: `Newsletter Subscription - ${email}`,
+                    html: emailHtml,
+                    templateName: 'newsletter-subscription',
+                  });
+
+                  if (!emailResult.success && emailResult.error) {
+                    console.warn('Email send result:', emailResult);
+                  }
+                } else {
+                  console.warn('Resend API key not configured, skipping email send');
+                }
+
+                // Show success
+                clearTimeout(timeoutId);
+                setNewsletterSuccess(true);
+                setNewsletterEmail('');
+                setTimeout(() => setNewsletterSuccess(false), 3000);
+              } catch (error: any) {
+                clearTimeout(timeoutId);
+                console.error('Error subscribing to newsletter:', error);
+                alert(`⚠️ Error: ${error.message || 'Failed to subscribe. Please try again.'}`);
+              } finally {
+                setNewsletterSubmitting(false);
+              }
+            }}
+          >
               <input 
                   type="email" 
+                  value={newsletterEmail}
+                  onChange={(e) => setNewsletterEmail(e.target.value)}
                   placeholder="email" 
-                  className="w-full bg-transparent border border-gray-500/50 rounded-full py-3 sm:py-4 md:py-5 pl-6 sm:pl-8 pr-32 sm:pr-40 text-white placeholder-gray-500 focus:outline-none focus:border-[#e35e25] focus:ring-1 focus:ring-[#e35e25] transition-all text-sm sm:text-base md:text-lg"
+                  required
+                  disabled={newsletterSubmitting}
+                  className="w-full bg-transparent border border-gray-500/50 rounded-full py-3 sm:py-4 md:py-5 pl-6 sm:pl-8 pr-32 sm:pr-40 text-white placeholder-gray-500 focus:outline-none focus:border-[#e35e25] focus:ring-1 focus:ring-[#e35e25] transition-all text-sm sm:text-base md:text-lg disabled:opacity-50"
               />
               <button 
                   type="submit" 
-                  className="absolute right-1.5 sm:right-2 top-1.5 sm:top-2 bottom-1.5 sm:bottom-2 bg-white text-[#15383c] px-6 sm:px-8 rounded-full font-bold hover:bg-gray-100 transition-colors shadow-lg text-xs sm:text-sm md:text-base touch-manipulation active:scale-95"
+                  disabled={newsletterSubmitting || !newsletterEmail.trim()}
+                  className="absolute right-1.5 sm:right-2 top-1.5 sm:top-2 bottom-1.5 sm:bottom-2 bg-white text-[#15383c] px-6 sm:px-8 rounded-full font-bold hover:bg-gray-100 transition-colors shadow-lg text-xs sm:text-sm md:text-base touch-manipulation active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                  Submit
+                  {newsletterSubmitting ? '...' : 'Submit'}
               </button>
           </form>
+          
+          {newsletterSuccess && (
+            <div className="max-w-2xl mx-auto mb-4">
+              <div className="bg-green-500/20 border border-green-500/50 rounded-full px-4 py-2 flex items-center justify-center gap-2">
+                <CheckCircle2 size={18} className="text-green-400" />
+                <p className="text-green-400 text-sm font-medium">Subscribed! Check your email.</p>
+              </div>
+            </div>
+          )}
           
           <p className="text-xs sm:text-sm text-gray-500 opacity-60">
               By clicking submit, you agree to our <button 

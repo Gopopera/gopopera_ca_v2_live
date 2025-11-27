@@ -4,17 +4,21 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --port 5175 --strictPort false",
+    "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },
   "dependencies": {
+    "@react-google-maps/api": "^2.20.7",
     "firebase": "^12.6.0",
+    "heic2any": "^0.0.4",
     "lucide-react": "^0.554.0",
+    "qrcode.react": "^4.2.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "resend": "^6.5.2",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
@@ -26,6 +30,7 @@
     "@storybook/addon-vitest": "^10.0.8",
     "@storybook/react-vite": "^10.0.8",
     "@types/node": "^22.14.0",
+    "@vercel/node": "^2.3.0",
     "@vitejs/plugin-react": "^5.0.0",
     "@vitest/browser-playwright": "^4.0.12",
     "@vitest/coverage-v8": "^4.0.12",

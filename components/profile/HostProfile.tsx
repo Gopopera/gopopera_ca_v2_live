@@ -31,23 +31,29 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
   // Safe fallback if hostName is missing
   const displayName = hostName || 'Unknown Host';
   
-  // Get real data from profile store
-  const isFollowing = hostId ? useProfileStore((state) => state.isFollowing(currentUser?.id || '', hostId)) : false;
-  const followersCount = hostId ? useProfileStore((state) => state.getFollowersCount(hostId)) : 0;
-  const reviews = hostId ? useProfileStore((state) => state.getReviews(hostId)) : [];
-  const averageRating = hostId ? useProfileStore((state) => state.getAverageRating(hostId)) : 0;
-  const reviewCount = hostId ? useProfileStore((state) => state.getReviewCount(hostId)) : 0;
-  
+  // FIX: Always call hooks unconditionally (React rules)
   const followHost = useProfileStore((state) => state.followHost);
   const unfollowHost = useProfileStore((state) => state.unfollowHost);
+  const profileStore = useProfileStore();
   
-  // Filter events: For Popera profile, only show official launch events (not demo events)
+  // Get real data from profile store - call hooks unconditionally, then use conditionally
+  const isFollowing = hostId ? profileStore.isFollowing(currentUser?.id || '', hostId) : false;
+  const followersCount = hostId ? profileStore.getFollowersCount(hostId) : 0;
+  const reviews = hostId ? profileStore.getReviews(hostId) : [];
+  const averageRating = hostId ? profileStore.getAverageRating(hostId) : 0;
+  const reviewCount = hostId ? profileStore.getReviewCount(hostId) : 0;
+  
+  // Filter events: For Popera profile, show launch events (city-launch demoType) and official launch events
   // For other hosts, show all their events
   const hostEvents = useMemo(() => {
     const filtered = allEvents.filter(e => e.hostName === hostName);
     if (isPoperaProfile) {
-      // Popera profile: only show official launch events, exclude demo events
-      return filtered.filter(e => e.isOfficialLaunch === true && !e.isDemo);
+      // Popera profile: show city-launch events (demoType: "city-launch") and official launch events
+      // Check if event has demoType field (from Firestore) - these are the launch events we want to show
+      return filtered.filter(e => {
+      // Show if it's an official launch event OR if it's a city-launch event
+      return e.isOfficialLaunch === true || e.demoType === "city-launch";
+      });
     }
     return filtered;
   }, [allEvents, hostName, isPoperaProfile]);
@@ -68,12 +74,58 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
     ? "Popera is where pop-up culture comes alive. We help creators, organizers, and communities host micro-moments that bring people together. From spontaneous markets to meaningful gatherings, Popera makes it easy to activate your local crowd and create real-world connections. Join our early-user community and help shape the future of spontaneous, authentic experiences."
     : "Community organizer and event enthusiast.";
   
-  const handleFollowToggle = () => {
-    if (!currentUser || !hostId) return;
-    if (isFollowing) {
-      unfollowHost(currentUser.id, hostId);
-    } else {
-      followHost(currentUser.id, hostId);
+  const [isFollowingState, setIsFollowingState] = useState(false);
+  const [isUpdatingFollow, setIsUpdatingFollow] = useState(false);
+
+  // Sync follow state from Firestore on mount
+  React.useEffect(() => {
+    if (!currentUser?.id || !hostId) return;
+    
+    const checkFollowStatus = async () => {
+      try {
+        const { isFollowing: checkIsFollowing } = await import('../../firebase/follow');
+        const following = await checkIsFollowing(currentUser.id, hostId);
+        setIsFollowingState(following);
+      } catch (error) {
+        console.error('Error checking follow status:', error);
+        // Fallback to local state
+        setIsFollowingState(isFollowing);
+      }
+    };
+    
+    checkFollowStatus();
+  }, [currentUser?.id, hostId, isFollowing]);
+
+  const handleFollowToggle = async () => {
+    if (!currentUser || !hostId || isUpdatingFollow) return;
+    
+    setIsUpdatingFollow(true);
+    try {
+      const { followHost: firestoreFollowHost, unfollowHost: firestoreUnfollowHost } = await import('../../firebase/follow');
+      
+      if (isFollowingState) {
+        // Unfollow
+        await firestoreUnfollowHost(currentUser.id, hostId);
+        unfollowHost(currentUser.id, hostId); // Update local store
+        setIsFollowingState(false);
+      } else {
+        // Follow
+        await firestoreFollowHost(currentUser.id, hostId);
+        followHost(currentUser.id, hostId); // Update local store
+        setIsFollowingState(true);
+      }
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+      // Still update local state for immediate feedback
+      if (isFollowingState) {
+        unfollowHost(currentUser.id, hostId);
+        setIsFollowingState(false);
+      } else {
+        followHost(currentUser.id, hostId);
+        setIsFollowingState(true);
+      }
+    } finally {
+      setIsUpdatingFollow(false);
     }
   };
 
@@ -145,13 +197,14 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
                        <MapPin size={14} className="mr-1 text-popera-orange" /> {primaryCity}
                      </p>
                    </div>
-                   {isLoggedIn && (
+                   {isLoggedIn && currentUser?.id !== hostId && (
                      <div className="flex items-center gap-3">
                        <button 
-                         onClick={handleFollowToggle} 
-                         className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all shadow-sm ${isFollowing ? 'bg-gray-100 text-popera-teal border border-gray-200' : 'bg-popera-orange text-white hover:bg-[#cf4d1d] shadow-orange-900/20'}`}
+                         onClick={handleFollowToggle}
+                         disabled={isUpdatingFollow}
+                         className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed ${isFollowingState ? 'bg-gray-100 text-popera-teal border border-gray-200' : 'bg-popera-orange text-white hover:bg-[#cf4d1d] shadow-orange-900/20'}`}
                        >
-                         {isFollowing ? 'Following' : 'Follow'}
+                         {isUpdatingFollow ? '...' : (isFollowingState ? 'Following' : 'Follow')}
                        </button>
                        <button className="p-2.5 rounded-full border border-gray-200 text-gray-400 hover:text-popera-teal hover:border-popera-teal transition-all">
                          <MessageCircle size={20} />
@@ -188,9 +241,9 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
            </button>
         </div>
         {activeTab === 'events' ? (
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 lg:gap-6 xl:gap-8">
+           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8 justify-items-center max-w-6xl mx-auto px-4 md:px-6 lg:px-8">
              {hostEvents.map(event => (
-               <div key={event.id} className="h-auto">
+               <div key={event.id} className="w-full h-auto">
                  <EventCard 
                    event={event} 
                    onClick={onEventClick} 
