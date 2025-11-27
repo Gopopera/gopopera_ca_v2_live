@@ -132,9 +132,15 @@ export const useEventStore = create<EventStore>((set, get) => ({
             set({ isLoading: false, error: 'Error processing events' });
           }
         },
-        (error) => {
+        (error: any) => {
           console.error('[EVENT_STORE] Snapshot error:', error);
-          set({ isLoading: false, error: error.message || 'Error loading events' });
+          // Handle permission errors gracefully
+          if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+            console.warn('[EVENT_STORE] Permission denied - user may not have access to events collection');
+            set({ isLoading: false, error: 'Permission denied. Please check your Firestore security rules.' });
+          } else {
+            set({ isLoading: false, error: error.message || 'Error loading events' });
+          }
         }
       );
       
