@@ -46,59 +46,38 @@ export const EventCard: React.FC<EventCardProps> = ({
         return;
       }
       
-      // If hostName is missing, empty, or 'Unknown', fetch from Firestore
-      const needsHostNameFetch = !event.hostName || 
-                                 event.hostName.trim() === '' || 
-                                 event.hostName === 'Unknown' || 
-                                 event.hostName === 'Unknown Host' ||
-                                 event.hostName === 'You';
-      
-      // If this is the current user's event AND user is logged in, use their profile picture (always sync with latest)
-      if (event.hostId === user?.uid && user) {
-        // Priority: userProfile (Firestore - most up-to-date) > user (Auth) > fallback
-        const profilePic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl;
-        setHostProfilePicture(profilePic || null);
-        
-        // Update host name from user profile if needed
-        if (needsHostNameFetch) {
-          const name = userProfile?.name || userProfile?.displayName || user?.displayName || user?.name || user?.email?.split('@')[0] || 'Unknown Host';
-          setDisplayHostName(name);
-        } else {
-          setDisplayHostName(event.hostName);
-        }
-        return;
-      }
-      
-      // For all hosts (including current user when not logged in), fetch from Firestore
-      // This ensures profile pictures and names are always accurate and work when not logged in
+      // ALWAYS fetch from Firestore to ensure we have the latest host information
+      // This prevents stale/cached data from showing wrong names or pictures
       try {
         const hostProfile = await getUserProfile(event.hostId);
         if (hostProfile) {
-          // Priority: photoURL > imageUrl (both from Firestore)
+          // Priority: photoURL > imageUrl (both from Firestore - always latest)
           const profilePic = hostProfile.photoURL || hostProfile.imageUrl || null;
           setHostProfilePicture(profilePic);
           
-          // Update host name from Firestore if needed
-          if (needsHostNameFetch) {
-            const name = hostProfile.name || hostProfile.displayName || event.hostName || 'Unknown Host';
-            setDisplayHostName(name);
+          // Always use Firestore name as source of truth (most up-to-date)
+          const firestoreName = hostProfile.name || hostProfile.displayName;
+          if (firestoreName && firestoreName.trim() !== '') {
+            setDisplayHostName(firestoreName);
           } else {
-            setDisplayHostName(event.hostName);
+            // Fallback to event.hostName only if Firestore doesn't have a name
+            setDisplayHostName(event.hostName || 'Unknown Host');
           }
         } else {
-          setHostProfilePicture(null);
-          // If we can't fetch profile, use event.hostName or fallback
+          // If profile doesn't exist in Firestore, use event data as fallback
+          setHostProfilePicture(event.hostPhotoURL || null);
           setDisplayHostName(event.hostName || 'Unknown Host');
         }
       } catch (error) {
-        // Silently fail - will use placeholder with initial
-        setHostProfilePicture(null);
+        // On error, use event data as fallback
+        console.warn('[EVENT_CARD] Failed to fetch host profile:', error);
+        setHostProfilePicture(event.hostPhotoURL || null);
         setDisplayHostName(event.hostName || 'Unknown Host');
       }
     };
     
     fetchHostProfile();
-  }, [event.hostId, event.hostName, user?.uid, user?.photoURL, user?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl]);
+  }, [event.hostId, event.hostName, event.hostPhotoURL, user?.uid, user?.photoURL, user?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl]);
   
   const handleFavoriteClick = (e: React.MouseEvent) => {
     // CRITICAL: Prevent any navigation or card click

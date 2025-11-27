@@ -283,14 +283,14 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
       {/* Mobile Menu Overlay - Fixed z-index and overflow */}
       {mobileMenuOpen && (
         <div 
-          className="fixed inset-0 bg-white z-[70] flex flex-col pt-20 sm:pt-24 md:pt-28 px-4 sm:px-6 md:px-8 lg:hidden animate-fade-in safe-area-inset-top overflow-y-auto" 
+          className="fixed inset-0 bg-white z-[100] flex flex-col pt-20 sm:pt-24 md:pt-28 px-4 sm:px-6 md:px-8 lg:hidden overflow-y-auto" 
           style={{ 
             position: 'fixed', 
             top: 0, 
             left: 0, 
             right: 0, 
             bottom: 0,
-            willChange: 'transform',
+            zIndex: 100,
             WebkitOverflowScrolling: 'touch',
             overscrollBehavior: 'contain'
           }}
