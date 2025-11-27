@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageCircle, BarChart2, Megaphone, Send, Sparkles } from 'lucide-react';
+import { MessageCircle, BarChart2, Megaphone, Send, Sparkles, Users } from 'lucide-react';
 
 export const ChatMockupSection: React.FC = () => {
   return (
@@ -16,8 +16,11 @@ export const ChatMockupSection: React.FC = () => {
           
           {/* Left Content */}
           <div className="text-center lg:text-left order-2 lg:order-1">
-             <div className="inline-block py-2 sm:py-2.5 px-5 sm:px-6 rounded-full bg-gradient-to-r from-[#e35e25]/10 to-[#e35e25]/5 border border-[#e35e25]/20 text-[#e35e25] text-[10px] sm:text-[11px] md:text-xs font-bold tracking-[0.2em] uppercase mb-5 sm:mb-6 md:mb-8 shadow-sm backdrop-blur-sm">
+             <div className="mb-6 sm:mb-8 md:mb-10">
+              <span className="inline-flex items-center gap-2 py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">
+                <Users size={10} className="sm:w-3 sm:h-3 -mt-0.5" />
                 Engagement
+              </span>
              </div>
              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-6xl font-heading font-bold text-[#15383c] mb-5 sm:mb-6 md:mb-8 leading-[1.1] px-2">
                Every great pop-up starts with <span className="text-[#e35e25] relative inline-block">
