@@ -534,7 +534,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         date,
         time,
         tags,
-        host,
+        host: hostName, // Always use actual name, never 'You'
         hostId: user?.uid || '',
         imageUrl: finalImageUrl, // Main image (backward compatibility)
         imageUrls: finalImageUrls.length > 0 ? finalImageUrls : undefined, // Array of all images
