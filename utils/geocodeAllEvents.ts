@@ -103,10 +103,18 @@ export async function geocodeAllEvents(): Promise<{
         failed++;
       }
     } catch (error: any) {
-      const errorMsg = `Error geocoding ${event.title || event.id}: ${error.message || error}`;
-      console.error(`[GEOCODE_ALL_EVENTS] ❌ ${errorMsg}`);
-      errors.push(errorMsg);
-      failed++;
+      // Handle permission errors gracefully
+      if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+        const errorMsg = `Permission denied geocoding ${event.title || event.id}`;
+        console.warn(`[GEOCODE_ALL_EVENTS] ⚠️ ${errorMsg}`);
+        errors.push(errorMsg);
+        failed++;
+      } else {
+        const errorMsg = `Error geocoding ${event.title || event.id}: ${error.message || error}`;
+        console.error(`[GEOCODE_ALL_EVENTS] ❌ ${errorMsg}`);
+        errors.push(errorMsg);
+        failed++;
+      }
     }
   }
 

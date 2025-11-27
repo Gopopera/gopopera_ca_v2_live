@@ -49,8 +49,13 @@ async function getUserIdByEmail(email: string): Promise<string | null> {
     }
     
     return snapshot.docs[0].id;
-  } catch (error) {
-    console.error('[SEED_REVIEWS] Error finding user:', error);
+  } catch (error: any) {
+    // Handle permission errors gracefully
+    if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+      console.warn('[SEED_REVIEWS] Permission denied when finding user (user may not be logged in)');
+    } else {
+      console.error('[SEED_REVIEWS] Error finding user:', error);
+    }
     return null;
   }
 }

@@ -465,8 +465,13 @@ const AppContent: React.FC = () => {
         // Run in background, don't block UI
         geocodeAllEvents().then((summary) => {
           console.log('[APP] ✅ Geocoding complete:', summary);
-        }).catch((error) => {
-          console.error('[APP] Error geocoding events:', error);
+        }).catch((error: any) => {
+          // Handle permission errors gracefully
+          if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+            console.warn('[APP] Permission denied when geocoding events (expected if not logged in)');
+          } else {
+            console.error('[APP] Error geocoding events:', error);
+          }
         });
       } catch (error) {
         console.error('[APP] Failed to load geocoding utility:', error);

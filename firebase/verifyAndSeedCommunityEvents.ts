@@ -71,8 +71,13 @@ async function getOrCreateHostAccount(): Promise<string | null> {
     console.warn('[VERIFY_EVENTS] ⚠️ User account not found. User must be logged in as', POPERA_EMAIL);
     console.warn('[VERIFY_EVENTS] Please log in as', POPERA_EMAIL, 'and try again');
     return null;
-  } catch (error) {
-    console.error('[VERIFY_EVENTS] Error getting/creating host account:', error);
+  } catch (error: any) {
+    // Handle permission errors gracefully - don't spam console with errors
+    if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+      console.warn('[VERIFY_EVENTS] Permission denied when getting/creating host account (user may not be logged in)');
+    } else {
+      console.error('[VERIFY_EVENTS] Error getting/creating host account:', error);
+    }
     return null;
   }
 }
@@ -159,8 +164,9 @@ export async function verifyAndSeedCommunityEvents(): Promise<void> {
   // Step 1: Get or create host account
   const hostId = await getOrCreateHostAccount();
   if (!hostId) {
-    console.error('[VERIFY_EVENTS] ❌ Cannot proceed without host account');
-    console.error('[VERIFY_EVENTS] Please ensure you are logged in as', POPERA_EMAIL);
+    // Use warn instead of error - this is expected when user is not logged in
+    console.warn('[VERIFY_EVENTS] ⚠️ Cannot proceed without host account');
+    console.warn('[VERIFY_EVENTS] Please ensure you are logged in as', POPERA_EMAIL);
     return;
   }
 
