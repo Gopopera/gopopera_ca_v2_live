@@ -580,9 +580,16 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       setAttendeesCount(0);
       setPrice('Free');
 
-      // Redirect to feed
+      // Redirect to feed - ensure proper navigation without 404 errors
       console.log('[CREATE_EVENT] Redirecting to feed...');
+      // Clear any selected event to prevent navigation issues
+      // Navigate directly without setTimeout to avoid race conditions
       setViewState(ViewState.FEED);
+      // Ensure URL is updated correctly (but don't force it if already correct)
+      if (typeof window !== 'undefined' && window.location.pathname !== '/explore') {
+        // Use replaceState instead of pushState to avoid creating history entry
+        window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
+      }
     } catch (error: any) {
       console.error('[CREATE_EVENT] ❌ Error creating event:', {
         error,

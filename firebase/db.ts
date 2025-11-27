@@ -140,9 +140,10 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
       subtitle: (eventData as any).subtitle,
       startDate: (eventData as any).startDate,
       endDate: (eventData as any).endDate,
-      // Default to public and joinable if not specified (unless draft)
-      isDraft: (eventData as any).isDraft === true,
-      isPublic: (eventData as any).isPublic !== undefined ? (eventData as any).isPublic : !(eventData as any).isDraft,
+      // CRITICAL: Default to public and joinable if not specified (unless draft)
+      // Events are PUBLIC by default - only explicitly marked drafts are hidden
+      isDraft: (eventData as any).isDraft === true ? true : undefined, // Only set if explicitly true
+      isPublic: (eventData as any).isPublic !== undefined ? (eventData as any).isPublic : undefined, // Don't set if not specified (defaults to public in filter)
       allowChat: (eventData as any).allowChat !== undefined ? (eventData as any).allowChat : !(eventData as any).isDraft,
       allowRsvp: (eventData as any).allowRsvp !== undefined ? (eventData as any).allowRsvp : !(eventData as any).isDraft,
       isOfficialLaunch: eventData.isOfficialLaunch || false,
