@@ -150,6 +150,7 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
       aboutEvent: eventData.aboutEvent,
       whatToExpect: eventData.whatToExpect,
       capacity: eventData.capacity,
+      hostPhoneNumber: (eventData as any).hostPhoneNumber, // Host phone number from user profile
     };
 
     // Validate and remove undefined values

@@ -45,6 +45,7 @@ export interface FirestoreEvent {
   allowChat?: boolean; // Whether chat is enabled
   allowRsvp?: boolean; // Whether RSVP is enabled
   isDraft?: boolean; // True for draft events (not published)
+  hostPhoneNumber?: string; // Host's phone number for event contact
 }
 
 export interface FirestoreUser {

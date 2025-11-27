@@ -393,11 +393,28 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
           }
         });
         
-        // If all uploads failed or timed out, use placeholder and continue
+        // If all uploads failed or timed out, show error and ask user
         if (successfulUploads.length === 0 && imageFiles.length > 0) {
           const errorMessages = failedUploads.map(f => `${f.fileName}: ${f.error}`).join('; ');
-          console.warn(`[CREATE_EVENT] ⚠️ All image uploads failed or timed out: ${errorMessages}. Creating event with placeholder images.`);
-          // Don't throw - continue with placeholder images
+          console.error(`[CREATE_EVENT] ❌ All image uploads failed or timed out: ${errorMessages}`);
+          
+          // Ask user if they want to continue without images or retry
+          const userChoice = confirm(
+            `Failed to upload images: ${errorMessages}\n\n` +
+            `Would you like to:\n` +
+            `- Click OK to create event WITHOUT images (you can add them later via edit)\n` +
+            `- Click Cancel to go back and try uploading again`
+          );
+          
+          if (!userChoice) {
+            // User cancelled - stop event creation
+            setIsSubmitting(false);
+            setUploadingImage(false);
+            return;
+          }
+          
+          // User chose to continue - use placeholder but log clearly
+          console.warn('[CREATE_EVENT] ⚠️ User chose to continue without images. Event will be created with placeholder.');
           finalImageUrl = `https://picsum.photos/seed/${title || 'event'}/800/600`;
           finalImageUrls = [finalImageUrl];
           // Note: Images that timed out will need to be uploaded later via edit functionality
@@ -489,12 +506,18 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         }
       }
       
+      // Get host phone number from user profile
+      const hostPhoneNumber = userProfile?.phone_number || userProfile?.hostPhoneNumber || user?.phone_number || null;
+      
       // Create event with all required fields
       console.log('[CREATE_EVENT] Calling addEvent with:', {
         title,
         city,
         hostId: user.uid,
         host: user.displayName || user.email || 'You',
+        hostPhoneNumber: hostPhoneNumber ? '***' : 'not set',
+        imageUrl: finalImageUrl.substring(0, 50) + '...',
+        imageUrlsCount: finalImageUrls.length,
         lat,
         lng
       });
@@ -528,6 +551,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         isDraft: saveAsDraft,
         lat, // Add geocoded coordinates
         lng, // Add geocoded coordinates
+        hostPhoneNumber: hostPhoneNumber || undefined, // Add host phone number to event
       } as any); // Type assertion needed for optional fields
       
       const timeoutPromise = new Promise<never>((_, reject) => {
