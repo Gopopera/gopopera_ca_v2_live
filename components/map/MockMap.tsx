@@ -143,6 +143,9 @@ export const MockMap: React.FC<MockMapProps> = ({
         console.error('[MOCK_MAP] Error loading Google Maps components:', error);
         setIsLoading(false);
       });
+    } else {
+      // No API key, don't try to load Google Maps
+      setIsLoading(false);
     }
   }, [apiKey]);
 
@@ -156,16 +159,32 @@ export const MockMap: React.FC<MockMapProps> = ({
   }
 
   // Custom marker icon (Popera orange pin)
-  // Only create marker icon if google.maps is available
-  const markerIcon = typeof window !== 'undefined' && (window as any).google?.maps ? {
-    url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDBDMTIuMjY4IDAgNiA2LjI2OCA2IDE0QzYgMjEuNzMyIDEyLjI2OCAyOCAyMCAyOEMyNy43MzIgMjggMzQgMjEuNzMyIDM0IDE0QzM0IDYuMjY4IDI3LjczMiAwIDIwIDBaIiBmaWxsPSIjRTM1RTI1Ii8+CjxwYXRoIGQ9Ik0yMCAyMEMxOC4zNDMgMjAgMTcgMTguNjU3IDE3IDE3QzE3IDE1LjM0MyAxOC4zNDMgMTQgMjAgMTRDMjEuNjU3IDE0IDIzIDE1LjM0MyAyMyAxN0MyMyAxOC42NTcgMjEuNjU3IDIwIDIwIDIwWiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+',
-    scaledSize: new (window as any).google.maps.Size(40, 40),
-    anchor: new (window as any).google.maps.Point(20, 40)
-  } : undefined;
+  // Create marker icon only after google.maps is loaded by LoadScript
+  const [markerIcon, setMarkerIcon] = React.useState<any>(undefined);
+
+  // Callback to create marker icon after LoadScript loads google.maps
+  const onLoadScript = React.useCallback(() => {
+    if (typeof window !== 'undefined' && (window as any).google?.maps) {
+      try {
+        const google = (window as any).google;
+        setMarkerIcon({
+          url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDBDMTIuMjY4IDAgNiA2LjI2OCA2IDE0QzYgMjEuNzMyIDEyLjI2OCAyOCAyMCAyOEMyNy43MzIgMjggMzQgMjEuNzMyIDM0IDE0QzM0IDYuMjY4IDI3LjczMiAwIDIwIDBaIiBmaWxsPSIjRTM1RTI1Ii8+CjxwYXRoIGQ9Ik0yMCAyMEMxOC4zNDMgMjAgMTcgMTguNjU3IDE3IDE3QzE3IDE1LjM0MyAxOC4zNDMgMTQgMjAgMTRDMjEuNjU3IDE0IDIzIDE1LjM0MyAyMyAxN0MyMyAxOC42NTcgMjEuNjU3IDIwIDIwIDIwWiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+',
+          scaledSize: new google.maps.Size(40, 40),
+          anchor: new google.maps.Point(20, 40)
+        });
+      } catch (error) {
+        console.warn('[MOCK_MAP] Error creating marker icon:', error);
+        setMarkerIcon(undefined);
+      }
+    }
+  }, []);
 
   return (
     <div className={`relative ${className}`}>
-      <LoadScriptComponent googleMapsApiKey={apiKey}>
+      <LoadScriptComponent 
+        googleMapsApiKey={apiKey}
+        onLoad={onLoadScript}
+      >
         <GoogleMapComponent
           mapContainerStyle={mapContainerStyle}
           center={center}
