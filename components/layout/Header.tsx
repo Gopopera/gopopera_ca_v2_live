@@ -290,27 +290,33 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
         </div>
       </div>
 
-      {/* Menu Overlay - Rendered via Portal to avoid z-index issues - Works on Mobile and Desktop */}
+      {/* Menu Overlay - Rendered via Portal, slides in from right - Works on Mobile and Desktop */}
       {mobileMenuOpen && typeof document !== 'undefined' && createPortal(
-        <div 
-          className="fixed inset-0 bg-white z-[9999] flex flex-col pt-20 sm:pt-24 md:pt-28 px-4 sm:px-6 md:px-8 overflow-y-auto" 
-          style={{ 
-            position: 'fixed', 
-            top: 0, 
-            left: 0, 
-            right: 0, 
-            bottom: 0,
-            zIndex: 9999,
-            WebkitOverflowScrolling: 'touch',
-            overscrollBehavior: 'contain'
-          }}
-          onClick={(e) => {
-            // Close menu when clicking on overlay (not on menu content)
-            if (e.target === e.currentTarget) {
-              setMobileMenuOpen(false);
-            }
-          }}
-        >
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9998] transition-opacity duration-300"
+            onClick={() => setMobileMenuOpen(false)}
+            style={{ zIndex: 9998 }}
+          />
+          {/* Menu Panel - Slides in from right */}
+          <div 
+            className="fixed top-0 right-0 bottom-0 bg-white z-[9999] flex flex-col pt-20 sm:pt-24 md:pt-28 px-4 sm:px-6 md:px-8 overflow-y-auto shadow-2xl w-full max-w-sm sm:max-w-md md:max-w-lg" 
+            style={{ 
+              position: 'fixed', 
+              top: 0, 
+              right: 0, 
+              bottom: 0,
+              zIndex: 9999,
+              WebkitOverflowScrolling: 'touch',
+              overscrollBehavior: 'contain',
+              animation: 'slideInRight 0.3s ease-out'
+            }}
+            onClick={(e) => {
+              // Prevent closing when clicking inside menu
+              e.stopPropagation();
+            }}
+          >
           {/* Back Button - Always visible at top of menu */}
           <button
             onClick={() => setMobileMenuOpen(false)}
@@ -374,7 +380,8 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
                </>
             )}
           </nav>
-        </div>,
+        </div>
+        </>,
         document.body
       )}
     </header>

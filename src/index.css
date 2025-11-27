@@ -56,3 +56,13 @@ body {
   box-shadow: var(--card-shadow-hover);
 }
 
+/* Slide in from right animation for menu */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
