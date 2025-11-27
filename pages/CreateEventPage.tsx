@@ -325,28 +325,59 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
           return uploadedUrl;
         };
         
-        // Upload all images in PARALLEL - each promise MUST settle (resolve or reject)
+        // Upload all images in PARALLEL with AGGRESSIVE TIMEOUT - create event even if uploads hang
         const timestamp = Date.now();
+        const UPLOAD_TIMEOUT_MS = 15000; // 15 seconds timeout (reduced for faster fallback)
+        
+        // Helper to add timeout to a promise
+        const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> => {
+          return Promise.race([
+            promise,
+            new Promise<T>((_, reject) => 
+              setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs)
+            )
+          ]);
+        };
+        
         const uploadPromises = imageFiles.map((file, i) => {
           const imagePath = `events/${user.uid}/${timestamp}_${i}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
           console.log(`[CREATE_EVENT] Processing image ${i + 1}/${imageFiles.length}: "${file.name}" (${(file.size / 1024 / 1024).toFixed(2)}MB, ${file.type})...`);
           
           // Each promise MUST settle - either resolve with URL or reject with error
-          return compressAndUploadImage(file, imagePath)
-            .then((url) => {
-              console.log(`[CREATE_EVENT] ✅ Image ${i + 1}/${imageFiles.length} uploaded successfully`);
-              return url;
-            })
-            .catch((error: any) => {
-              console.error(`[CREATE_EVENT] ❌ Failed to upload image ${i + 1}/${imageFiles.length}:`, error);
-              // Re-throw to ensure Promise.allSettled sees it as rejected
-              throw error;
-            });
+          return withTimeout(
+            compressAndUploadImage(file, imagePath)
+              .then((url) => {
+                console.log(`[CREATE_EVENT] ✅ Image ${i + 1}/${imageFiles.length} uploaded successfully`);
+                return url;
+              })
+              .catch((error: any) => {
+                console.error(`[CREATE_EVENT] ❌ Failed to upload image ${i + 1}/${imageFiles.length}:`, error);
+                // Re-throw to ensure Promise.allSettled sees it as rejected
+                throw error;
+              }),
+            UPLOAD_TIMEOUT_MS,
+            `Upload timeout after ${UPLOAD_TIMEOUT_MS / 1000}s`
+          );
         });
         
-        // Wait for all uploads to complete - allSettled ALWAYS resolves
-        console.log(`[CREATE_EVENT] Waiting for Promise.allSettled with ${uploadPromises.length} promises...`);
-        const uploadResults = await Promise.allSettled(uploadPromises);
+        // Wait for all uploads to complete with timeout - allSettled ALWAYS resolves
+        // Add an additional overall timeout to force completion even if Promise.allSettled hangs
+        console.log(`[CREATE_EVENT] Waiting for Promise.allSettled with ${uploadPromises.length} promises (${UPLOAD_TIMEOUT_MS / 1000}s timeout per image, 20s overall timeout)...`);
+        
+        // Add overall timeout to prevent hanging - if Promise.allSettled takes too long, force completion
+        type UploadResult = PromiseSettledResult<string>;
+        const overallTimeoutPromise = new Promise<UploadResult[]>((resolve) => {
+          setTimeout(() => {
+            console.warn('[CREATE_EVENT] ⚠️ Overall upload timeout reached (20s) - forcing completion with placeholder images');
+            // Return rejected results to force placeholder usage
+            resolve(uploadPromises.map(() => ({ status: 'rejected' as const, reason: new Error('Overall timeout after 20s') })));
+          }, 20000); // 20 seconds overall timeout
+        });
+        
+        const uploadResults = await Promise.race([
+          Promise.allSettled(uploadPromises),
+          overallTimeoutPromise
+        ]);
         console.log(`[CREATE_EVENT] Promise.allSettled completed. Processing ${uploadResults.length} results...`);
         
         // Process results - allSettled guarantees all promises have settled
@@ -365,31 +396,40 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
           }
         });
         
-        // If all uploads failed, throw error
+        // If all uploads failed or timed out, use placeholder and continue
         if (successfulUploads.length === 0 && imageFiles.length > 0) {
           const errorMessages = failedUploads.map(f => `${f.fileName}: ${f.error}`).join('; ');
-          throw new Error(`All image uploads failed: ${errorMessages}. Please try again or use different images.`);
-        }
-        
-        // If some uploads failed, warn but continue with successful ones
-        if (failedUploads.length > 0) {
-          console.warn(`[CREATE_EVENT] ⚠️ Some images failed to upload:`, failedUploads);
-          const failedNames = failedUploads.map(f => f.fileName).join(', ');
-          alert(`Warning: Some images failed to upload (${failedNames}). The event will be created with the successfully uploaded images.`);
-        }
-        
-        // Use successfully uploaded images
-        finalImageUrls = successfulUploads;
-        
-        // Set main image (first in array)
-        if (finalImageUrls.length > 0) {
-          finalImageUrl = finalImageUrls[0];
-          console.log('[CREATE_EVENT] ✅ All images uploaded successfully. Main image:', finalImageUrl);
-        } else {
-          // Fallback to placeholder if no images uploaded (shouldn't happen due to check above, but safety)
+          console.warn(`[CREATE_EVENT] ⚠️ All image uploads failed or timed out: ${errorMessages}. Creating event with placeholder images.`);
+          // Don't throw - continue with placeholder images
           finalImageUrl = `https://picsum.photos/seed/${title || 'event'}/800/600`;
           finalImageUrls = [finalImageUrl];
-          console.log('[CREATE_EVENT] ⚠️ No images uploaded, using placeholder');
+          // Note: Images that timed out will need to be uploaded later via edit functionality
+          console.log('[CREATE_EVENT] Event will be created with placeholder. Images can be added later via edit.');
+        } else if (failedUploads.length > 0) {
+          // If some uploads failed, warn but continue with successful ones
+          console.warn(`[CREATE_EVENT] ⚠️ Some images failed to upload:`, failedUploads);
+          const failedNames = failedUploads.map(f => f.fileName).join(', ');
+          // Don't show alert - just log and continue
+          console.log(`[CREATE_EVENT] Continuing with ${successfulUploads.length} successful upload(s). Failed: ${failedNames}`);
+          finalImageUrls = successfulUploads;
+          if (finalImageUrls.length > 0) {
+            finalImageUrl = finalImageUrls[0];
+          } else {
+            finalImageUrl = `https://picsum.photos/seed/${title || 'event'}/800/600`;
+            finalImageUrls = [finalImageUrl];
+          }
+        } else {
+          // All uploads succeeded
+          finalImageUrls = successfulUploads;
+          if (finalImageUrls.length > 0) {
+            finalImageUrl = finalImageUrls[0];
+            console.log('[CREATE_EVENT] ✅ All images uploaded successfully. Main image:', finalImageUrl);
+          } else {
+            // Fallback to placeholder if no images uploaded (shouldn't happen, but safety)
+            finalImageUrl = `https://picsum.photos/seed/${title || 'event'}/800/600`;
+            finalImageUrls = [finalImageUrl];
+            console.log('[CREATE_EVENT] ⚠️ No images uploaded, using placeholder');
+          }
         }
       } catch (uploadError: any) {
         console.error('[CREATE_EVENT] ❌ Image upload failed:', uploadError);

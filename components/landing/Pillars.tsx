@@ -65,8 +65,8 @@ export const Pillars: React.FC = () => {
               
               {/* Content */}
               <div className="absolute inset-0 p-5 sm:p-6 md:p-7 lg:p-8 flex flex-col justify-end z-20">
-                {/* Category Badge - Popera orange background with transparency */}
-                <span className="inline-block py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#e35e25]/15 border border-[#e35e25]/20 text-[#15383c] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase mb-2 sm:mb-2.5 md:mb-3 w-fit shadow-sm">
+                {/* Category Badge - Popera orange background with 90% opacity for good visibility */}
+                <span className="inline-block py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#e35e25]/90 border-2 border-[#e35e25] text-white text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase mb-2 sm:mb-2.5 md:mb-3 w-fit shadow-lg">
                   {pillar.category}
                 </span>
                 

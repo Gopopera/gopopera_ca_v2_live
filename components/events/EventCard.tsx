@@ -68,10 +68,9 @@ export const EventCard: React.FC<EventCardProps> = ({
   
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!isLoggedIn && onToggleFavorite) {
-      // Trigger login - the parent should handle this
-      onToggleFavorite(e, event.id);
-    } else if (onToggleFavorite) {
+    e.preventDefault();
+    if (onToggleFavorite) {
+      // Always call handler - it will handle login redirect if needed
       onToggleFavorite(e, event.id);
     }
   };
@@ -190,13 +189,14 @@ export const EventCard: React.FC<EventCardProps> = ({
         )}
 
         {/* ACTION BUTTONS - Only Favorite and Chat in feed (no share) */}
-        <div className="absolute top-3 sm:top-4 right-3 sm:right-4 flex items-center gap-2 sm:gap-2 z-20">
+        <div className="absolute top-3 sm:top-4 right-3 sm:right-4 flex items-center gap-2 sm:gap-2 z-30 pointer-events-auto">
            {/* FEATURE: Favorite Heart (Always visible, triggers login if not logged in) */}
            {onToggleFavorite && (
              <button
                onClick={handleFavoriteClick}
-               className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center transition-colors shadow-lg hover:bg-white active:scale-[0.92] touch-manipulation border border-white/50 shrink-0"
+               className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center transition-colors shadow-lg hover:bg-white active:scale-[0.92] touch-manipulation border border-white/50 shrink-0 pointer-events-auto z-30"
                aria-label="Toggle Favorite"
+               type="button"
              >
                <Heart 
                  size={20} 
@@ -209,8 +209,9 @@ export const EventCard: React.FC<EventCardProps> = ({
            {/* FEATURE: Conversation Icon */}
            <button
              onClick={(e) => onChatClick(e, event)}
-             className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center text-popera-teal hover:bg-popera-orange hover:text-white transition-colors shadow-lg active:scale-[0.92] touch-manipulation border border-white/50 shrink-0"
+             className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center text-popera-teal hover:bg-popera-orange hover:text-white transition-colors shadow-lg active:scale-[0.92] touch-manipulation border border-white/50 shrink-0 pointer-events-auto z-30"
              aria-label="Join Event Chat"
+             type="button"
            >
              <MessageCircle size={20} className="sm:w-5 sm:h-5" strokeWidth={2} />
            </button>
