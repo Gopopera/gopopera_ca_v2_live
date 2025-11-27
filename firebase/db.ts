@@ -596,8 +596,11 @@ export async function getReservationCountForEvent(eventId: string): Promise<numb
       const data = doc.data() as FirestoreReservation;
       return total + (data.attendeeCount || 1);
     }, 0);
-  } catch (error) {
-    console.error("Error fetching reservation count:", error);
+  } catch (error: any) {
+    // Don't log permission errors - they're expected and handled elsewhere
+    if (error?.code !== 'permission-denied' && !error?.message?.includes('permission')) {
+      console.error("Error fetching reservation count:", error);
+    }
     return 0;
   }
 }
