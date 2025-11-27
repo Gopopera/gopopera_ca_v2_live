@@ -510,6 +510,10 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       // Get host phone number from user profile
       const hostPhoneNumber = userProfile?.phone_number || userProfile?.hostPhoneNumber || user?.phone_number || null;
       
+      // Get host name from user profile (Firestore - most accurate) or Auth, NEVER use 'You'
+      // Priority: userProfile (Firestore) > user (Auth) > email fallback
+      const hostName = userProfile?.name || userProfile?.displayName || user?.displayName || user?.name || user?.email?.split('@')[0] || 'Unknown Host';
+      
       // Create event with all required fields
       console.log('[CREATE_EVENT] Calling addEvent with:', {
         title,
