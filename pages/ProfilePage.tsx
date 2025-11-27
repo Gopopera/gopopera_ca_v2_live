@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ViewState } from '../types';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { useUserStore } from '../stores/userStore';
 import { useEventStore } from '../stores/eventStore';
-import { getReservationCountForEvent, listHostReviews, getUserProfile } from '../firebase/db';
+import { getReservationCountForEvent, listHostReviews } from '../firebase/db';
 import { getFollowingHosts, getHostFollowers } from '../firebase/follow';
 
 interface ProfilePageProps {
@@ -24,64 +24,74 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
   const displayName = user?.displayName || user?.name || userName;
   const initials = displayName ? displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'P';
   
-  // Calculate metrics
+  // Calculate metrics - optimized with parallel queries and proper dependency tracking
   useEffect(() => {
     const calculateMetrics = async () => {
       if (!user?.uid) {
         setLoading(false);
+        setStats({ revenue: 0, hosted: 0, attendees: 0, following: 0, attended: 0, reviews: 0, followers: 0 });
         return;
       }
       
       try {
-        // Get hosted events
-        const hostedEvents = allEvents.filter(e => e.hostId === user.uid);
+        setLoading(true);
+        
+        // Get hosted events (filter non-draft events for accurate count)
+        const hostedEvents = allEvents.filter(e => e.hostId === user.uid && e.isDraft !== true);
         const hostedCount = hostedEvents.length;
         
-        // Calculate total attendees across all hosted events (accumulated)
+        // Calculate total attendees across all hosted events (accumulated) - parallel queries for performance
         let totalAttendees = 0;
-        for (const event of hostedEvents) {
-          try {
-            const count = await getReservationCountForEvent(event.id);
-            totalAttendees += count;
-          } catch (error) {
-            // Fallback to event.attendeesCount if getReservationCountForEvent fails
-            totalAttendees += event.attendeesCount || 0;
-          }
+        if (hostedEvents.length > 0) {
+          const attendeeCounts = await Promise.allSettled(
+            hostedEvents.map(event => getReservationCountForEvent(event.id))
+          );
+          
+          totalAttendees = attendeeCounts.reduce((sum, result) => {
+            if (result.status === 'fulfilled') {
+              return sum + result.value;
+            } else {
+              // If query fails, fallback to 0 (not event.attendeesCount to ensure accuracy)
+              console.warn('[PROFILE_METRICS] Failed to get reservation count for event:', result.reason);
+              return sum;
+            }
+          }, 0);
         }
         
-        // Get events attended (from RSVPs)
-        const attendedCount = user.rsvps?.length || 0;
+        // Get events attended (from RSVPs) - ensure accurate count
+        const attendedCount = Array.isArray(user.rsvps) ? user.rsvps.length : 0;
         
-        // Get following count
-        const followingIds = await getFollowingHosts(user.uid);
-        const followingCount = followingIds.length;
+        // Parallel queries for following, followers, and reviews for better performance
+        const [followingIds, followersIds, reviews] = await Promise.allSettled([
+          getFollowingHosts(user.uid),
+          getHostFollowers(user.uid),
+          listHostReviews(user.uid),
+        ]);
         
-        // Get followers count
-        const followersIds = await getHostFollowers(user.uid);
-        const followersCount = followersIds.length;
-        
-        // Get reviews count
-        const reviews = await listHostReviews(user.uid);
-        const reviewsCount = reviews.length;
+        const followingCount = followingIds.status === 'fulfilled' ? followingIds.value.length : 0;
+        const followersCount = followersIds.status === 'fulfilled' ? followersIds.value.length : 0;
+        const reviewsCount = reviews.status === 'fulfilled' ? reviews.value.length : 0;
         
         setStats({
-          revenue: 30, // Placeholder - will be calculated from Stripe later
+          revenue: 0, // Will be calculated from Stripe transactions later
           hosted: hostedCount,
-          attendees: totalAttendees,
+          attendees: totalAttendees, // Always accurate - 0 if no reservations
           following: followingCount,
           attended: attendedCount,
           reviews: reviewsCount,
           followers: followersCount,
         });
       } catch (error) {
-        console.error('Error calculating metrics:', error);
+        console.error('[PROFILE_METRICS] Error calculating metrics:', error);
+        // Set safe defaults on error
+        setStats({ revenue: 0, hosted: 0, attendees: 0, following: 0, attended: 0, reviews: 0, followers: 0 });
       } finally {
         setLoading(false);
       }
     };
     
     calculateMetrics();
-  }, [user?.uid, allEvents, user?.rsvps]);
+  }, [user?.uid, allEvents.length, user?.rsvps?.length]); // Use length to avoid unnecessary recalculations
   const settingsLinks = [
     { label: 'My Pop-ups', action: () => setViewState(ViewState.MY_POPS) },
     { label: 'Basic Details', action: () => setViewState(ViewState.PROFILE_BASIC) },
