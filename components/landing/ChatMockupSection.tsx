@@ -62,7 +62,8 @@ export const ChatMockupSection: React.FC = () => {
                    </div>
                    <div className="min-w-0 flex-1">
                       <h3 className="font-bold text-base sm:text-lg text-[#15383c] mb-1">Build local trust</h3>
-                      <p className="text-sm sm:text-base text-gray-600 leading-relaxed">Transparent ratings and community-led moderation.</p>
+                      <p className="text-sm sm:text-base text-gray-600 leading-relaxed mb-2">Transparent ratings and community-led moderation.</p>
+                      <p className="font-bold text-base sm:text-lg text-[#15383c]">The simplest way to gather your crowd and keep them connected.</p>
                    </div>
                 </div>
              </div>
