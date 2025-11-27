@@ -77,16 +77,32 @@ if [ $? -ne 0 ]; then
 fi
 
 # Try to find the bucket
+# IMPORTANT: Firebase Storage uses .appspot.com bucket name, not .firebasestorage.app
+# The .firebasestorage.app is just the HTTP endpoint, but gsutil needs the actual bucket name
 BUCKET=""
 if echo "$BUCKETS" | grep -q "gs://gopopera2026.appspot.com"; then
     BUCKET="gs://gopopera2026.appspot.com"
+    echo "✅ Found Firebase Storage bucket: $BUCKET"
 elif echo "$BUCKETS" | grep -q "gs://gopopera2026.firebasestorage.app"; then
-    BUCKET="gs://gopopera2026.firebasestorage.app"
+    echo "⚠️  WARNING: Found .firebasestorage.app bucket, but CORS should be set on .appspot.com"
+    echo "   The .firebasestorage.app is just an HTTP endpoint, not the actual bucket name."
+    echo "   Trying to find the correct .appspot.com bucket..."
+    # Don't use .firebasestorage.app - it's not the real bucket
+    BUCKET=""
 else
     echo "Available buckets:"
     echo "$BUCKETS"
     echo ""
-    read -p "Enter your bucket name (e.g., gs://gopopera2026.appspot.com): " BUCKET
+    read -p "Enter your bucket name (should be gs://gopopera2026.appspot.com): " BUCKET
+fi
+
+# If still no bucket, default to appspot.com (standard Firebase Storage bucket name)
+if [ -z "$BUCKET" ]; then
+    echo "⚠️  No bucket found automatically. Using default Firebase Storage bucket name:"
+    BUCKET="gs://gopopera2026.appspot.com"
+    echo "   $BUCKET"
+    echo ""
+    read -p "Press Enter to continue with this bucket, or Ctrl+C to cancel..."
 fi
 
 if [ -z "$BUCKET" ]; then
