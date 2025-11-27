@@ -37,7 +37,6 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   const addMessage = useChatStore((state) => state.addMessage);
   const subscribeToEventChat = useChatStore((state) => state.subscribeToEventChat);
   const unsubscribeFromEventChat = useChatStore((state) => state.unsubscribeFromEventChat);
-  const initializeEventChat = useChatStore((state) => state.initializeEventChat);
   const getPollForEvent = useChatStore((state) => state.getPollForEvent);
   const addPoll = useChatStore((state) => state.addPoll);
   
@@ -86,12 +85,9 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
     }
   }, [event.id, canAccessChat, isDemo, isBanned, subscribeToEventChat, unsubscribeFromEventChat]);
   
-  // Initialize chat for Popera events (including official launch events) - fallback for mock data
-  useEffect(() => {
-    if (isPoperaOwned && messages.length === 0 && !isDemo) {
-      initializeEventChat(event.id, event.hostName);
-    }
-  }, [event.id, event.hostName, isPoperaOwned, messages.length, initializeEventChat, isDemo]);
+  // NO AUTOMATIC MESSAGES - Chat is ready when user has access
+  // Messages are synced in real-time via Firestore subscriptions
+  // Only host and attendees can send messages (enforced by canSendMessages check)
   
   const handleSendMessage = async () => {
     if (!message.trim() || !canSendMessages || !currentUser || chatLocked) return;
@@ -139,14 +135,24 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && file.type.startsWith('image/')) {
+      // CRITICAL: Only host and attendees can send images
+      if (!currentUser || !canSendMessages) {
+        console.warn('[GROUP_CHAT] Unauthorized image upload attempt blocked');
+        return;
+      }
+      
+      // Additional validation: Ensure user is either host or has reserved
+      if (!isHost && !hasReserved) {
+        console.warn('[GROUP_CHAT] Unauthorized image upload attempt blocked');
+        return;
+      }
+      
       const reader = new FileReader();
       reader.onloadend = () => {
         const imageUrl = reader.result as string;
         // Send image as message with data URL (format: [Image:dataUrl:filename])
-        if (currentUser && canSendMessages) {
-          // In real app, upload image to storage first, then send URL
-          addMessage(event.id, currentUser.id, currentUser.name, `[Image:${imageUrl}:${file.name}]`, 'message', isHost);
-        }
+        // Message will be saved to Firestore and synced in real-time
+        addMessage(event.id, currentUser.id, currentUser.name || currentUser.displayName || 'User', `[Image:${imageUrl}:${file.name}]`, 'message', isHost);
       };
       reader.readAsDataURL(file);
     }
