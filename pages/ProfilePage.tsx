@@ -19,8 +19,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
   const [stats, setStats] = useState({ revenue: 30, hosted: 0, attendees: 0, following: 0, attended: 0, reviews: 0, followers: 0 });
   const [loading, setLoading] = useState(true);
   
-  // Get profile picture from multiple sources
-  const profilePicture = user?.photoURL || user?.profileImageUrl || userProfile?.photoURL || userProfile?.imageUrl;
+  // Get profile picture from multiple sources - always sync with latest
+  // Priority: userProfile (Firestore - most up-to-date) > user (Auth) > fallback
+  const profilePicture = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl;
   const displayName = user?.displayName || user?.name || userName;
   const initials = displayName ? displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'P';
   

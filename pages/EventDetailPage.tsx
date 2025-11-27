@@ -76,9 +76,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         return;
       }
       
-      // If this is the current user's event, use their profile picture
+      // If this is the current user's event, use their profile picture (always sync with latest)
       if (event.hostId === user?.uid) {
-        const profilePic = user?.photoURL || user?.profileImageUrl || userProfile?.photoURL || userProfile?.imageUrl;
+        // Priority: userProfile (Firestore - most up-to-date) > user (Auth) > fallback
+        const profilePic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl;
         setHostProfilePicture(profilePic || null);
         return;
       }

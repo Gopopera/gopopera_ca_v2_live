@@ -42,17 +42,19 @@ export const EventCard: React.FC<EventCardProps> = ({
         return;
       }
       
-      // If this is the current user's event, use their profile picture
+      // If this is the current user's event, use their profile picture (always sync with latest)
       if (event.hostId === user?.uid) {
-        const profilePic = user?.photoURL || user?.profileImageUrl || userProfile?.photoURL || userProfile?.imageUrl;
+        // Priority: userProfile (Firestore - most up-to-date) > user (Auth) > fallback
+        const profilePic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl;
         setHostProfilePicture(profilePic || null);
         return;
       }
       
-      // For other hosts, fetch from Firestore
+      // For other hosts, fetch from Firestore (with refresh to get latest)
       try {
         const hostProfile = await getUserProfile(event.hostId);
         if (hostProfile) {
+          // Priority: photoURL > imageUrl (both from Firestore)
           setHostProfilePicture(hostProfile.photoURL || hostProfile.imageUrl || null);
         } else {
           setHostProfilePicture(null);

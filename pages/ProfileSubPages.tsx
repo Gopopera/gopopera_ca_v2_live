@@ -16,7 +16,19 @@ interface SubPageProps {
 // --- Basic Details Page ---
 export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
   const user = useUserStore((state) => state.user);
-  const [profileImage, setProfileImage] = useState<string | null>(user?.photoURL || user?.profileImageUrl || null);
+  const userProfile = useUserStore((state) => state.userProfile);
+  // Priority: userProfile (Firestore - most up-to-date) > user (Auth) > fallback
+  const [profileImage, setProfileImage] = useState<string | null>(
+    userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null
+  );
+  
+  // Sync profile image when userProfile or user changes
+  React.useEffect(() => {
+    const latestPic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null;
+    if (latestPic !== profileImage) {
+      setProfileImage(latestPic);
+    }
+  }, [userProfile?.photoURL, userProfile?.imageUrl, user?.photoURL, user?.profileImageUrl]);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 

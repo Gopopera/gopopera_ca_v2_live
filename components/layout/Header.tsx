@@ -22,7 +22,8 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
   const userProfile = useUserStore((state) => state.userProfile);
   // Get profile picture from multiple sources (user store, userProfile, Firebase auth)
   // This is reactive - will update when user or userProfile changes in the store
-  const userPhoto = user?.photoURL || user?.profileImageUrl || userProfile?.photoURL || userProfile?.imageUrl;
+  // Priority: userProfile (Firestore - most up-to-date) > user (Auth) > fallback
+  const userPhoto = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl;
   // Get user initials for fallback
   const userInitials = user?.displayName?.[0] || user?.name?.[0] || userProfile?.displayName?.[0] || userProfile?.name?.[0] || 'P';
   const [unreadCount, setUnreadCount] = useState(0);
