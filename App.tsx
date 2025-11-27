@@ -771,6 +771,35 @@ const AppContent: React.FC = () => {
   };
 
 
+  // Browser history management - enable back button functionality
+  useEffect(() => {
+    // Push state to history when navigating to FEED (Explore Pop-ups)
+    if (viewState === ViewState.FEED) {
+      const currentUrl = window.location.pathname;
+      if (currentUrl !== '/explore') {
+        window.history.pushState({ viewState: ViewState.FEED }, '', '/explore');
+      }
+    } else if (viewState === ViewState.LANDING) {
+      const currentUrl = window.location.pathname;
+      if (currentUrl !== '/') {
+        window.history.pushState({ viewState: ViewState.LANDING }, '', '/');
+      }
+    }
+
+    // Handle browser back/forward buttons
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && event.state.viewState) {
+        setViewState(event.state.viewState);
+      } else {
+        // Default to landing page if no state
+        setViewState(ViewState.LANDING);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [viewState, setViewState]);
+
   // Scroll restore for list pages
   useEffect(() => {
     const listPages = [ViewState.LANDING, ViewState.FEED];

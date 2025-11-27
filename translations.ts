@@ -4,6 +4,7 @@ export const translations = {
   en: {
     // Header
     header: {
+      home: 'Home',
       exploreEvents: 'Explore Events',
       community: 'Community',
       about: 'About',
@@ -134,6 +135,7 @@ export const translations = {
   fr: {
     // Header
     header: {
+      home: 'Accueil',
       exploreEvents: 'Explorer les événements',
       community: 'Communauté',
       about: 'À propos',
