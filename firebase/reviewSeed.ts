@@ -86,6 +86,8 @@ const REVIEW_COMMENTS = [
 
 /**
  * Create fake review accounts in Firestore
+ * NOTE: This may fail due to Firestore security rules, but that's OK
+ * Reviews can still be created with just userId/userName without the user profile existing
  */
 export async function seedFakeReviewAccounts(): Promise<void> {
   const db = getDbSafe();
@@ -94,7 +96,10 @@ export async function seedFakeReviewAccounts(): Promise<void> {
     return;
   }
 
-  console.log('[REVIEW_SEED] Seeding fake review accounts...');
+  console.log('[REVIEW_SEED] Attempting to seed fake review accounts (may fail due to security rules - that\'s OK)...');
+
+  let successCount = 0;
+  let failCount = 0;
 
   for (const account of FAKE_REVIEW_ACCOUNTS) {
     try {
@@ -110,13 +115,21 @@ export async function seedFakeReviewAccounts(): Promise<void> {
         createdAt: Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000, // Random date in past year
         updatedAt: Date.now(),
       });
-      console.log(`[REVIEW_SEED] Created/updated account: ${account.name}`);
-    } catch (error) {
-      console.error(`[REVIEW_SEED] Error creating account ${account.name}:`, error);
+      console.log(`[REVIEW_SEED] ✅ Created/updated account: ${account.name}`);
+      successCount++;
+    } catch (error: any) {
+      // Silently fail - reviews don't require user profiles to exist
+      // Firestore security rules may block this, which is expected
+      if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+        console.log(`[REVIEW_SEED] ⚠️ Skipped account ${account.name} (permission denied - reviews will still work)`);
+      } else {
+        console.warn(`[REVIEW_SEED] ⚠️ Error creating account ${account.name}:`, error?.message || error);
+      }
+      failCount++;
     }
   }
 
-  console.log('[REVIEW_SEED] Fake review accounts seeded');
+  console.log(`[REVIEW_SEED] Fake review accounts: ${successCount} created, ${failCount} skipped (reviews will still work without accounts)`);
 }
 
 /**
