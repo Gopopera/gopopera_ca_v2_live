@@ -428,6 +428,7 @@ export const MyReviewsPage: React.FC<SubPageProps & { onHostClick?: (hostName: s
       // Update review status to accepted in Firestore
       const { getDbSafe } = await import('../src/lib/firebase');
       const { doc, updateDoc } = await import('firebase/firestore');
+      const { recalculateEventRating } = await import('@/firebase/db');
       const db = getDbSafe();
       if (!db) return;
       
@@ -437,6 +438,10 @@ export const MyReviewsPage: React.FC<SubPageProps & { onHostClick?: (hostName: s
       
       const reviewRef = doc(db, 'events', review.eventId, 'reviews', reviewId);
       await updateDoc(reviewRef, { status: 'accepted' });
+      
+      // Recalculate event rating to include this accepted review
+      // This ensures the event's rating and review count are synced everywhere
+      await recalculateEventRating(review.eventId);
       
       // Update local state
       setReviews(prev => prev.map(r => r.id === reviewId ? { ...r, status: 'accepted' as const } : r));

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ViewState } from '../types';
+import { ViewState, Event } from '../types';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { useUserStore } from '../stores/userStore';
 import { useEventStore } from '../stores/eventStore';
@@ -200,6 +200,69 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
           </div>
         </div>
         <div className="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-gray-100 overflow-hidden">{settingsLinks.map((item, idx) => (<button key={idx} onClick={item.action} className={`w-full flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors text-left touch-manipulation active:scale-95 ${item.isLogout ? 'text-gray-500 hover:text-red-500' : 'text-[#15383c]'}`}><span className={`text-sm sm:text-base md:text-lg ${item.isLogout ? '' : 'font-light'}`}>{item.label}</span><div className="flex items-center gap-3 shrink-0"><ChevronRight size={16} className="sm:w-[18px] sm:h-[18px] md:w-5 md:h-5 text-gray-400" /></div></button>))}</div>
+
+        {/* User's Events Section - Always synced with ongoing events */}
+        {user?.uid && (() => {
+          const userHostedEvents = allEvents.filter(e => 
+            e.hostId === user.uid && 
+            e.isDraft !== true &&
+            // Only show upcoming/ongoing events (not past)
+            (() => {
+              if (!e.date) return true; // Events without dates are considered upcoming
+              const eventDate = new Date(e.date);
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              eventDate.setHours(0, 0, 0, 0);
+              return eventDate >= today;
+            })()
+          );
+          
+          if (userHostedEvents.length === 0) return null;
+          
+          return (
+            <div className="mt-8 sm:mt-10 md:mt-12">
+              <h2 className="font-heading font-bold text-xl sm:text-2xl md:text-3xl text-[#15383c] mb-4 sm:mb-6">
+                My Events
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
+                {userHostedEvents.map((event) => (
+                  <div
+                    key={event.id}
+                    onClick={() => {
+                      // Navigate to event detail - trigger selection via custom event
+                      // App.tsx will listen for this and set selectedEvent
+                      window.dispatchEvent(new CustomEvent('selectEvent', { detail: { eventId: event.id } }));
+                      setViewState(ViewState.DETAIL);
+                    }}
+                    className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer hover:shadow-md transition-shadow touch-manipulation active:scale-[0.98]"
+                  >
+                    {event.imageUrl && (
+                      <div className="aspect-video w-full overflow-hidden bg-gray-100">
+                        <img 
+                          src={event.imageUrl} 
+                          alt={event.title}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <div className="p-4 sm:p-5">
+                      <h3 className="font-heading font-bold text-base sm:text-lg text-[#15383c] mb-2 line-clamp-2">
+                        {event.title}
+                      </h3>
+                      <p className="text-gray-500 text-xs sm:text-sm mb-3 line-clamp-2">
+                        {event.description}
+                      </p>
+                      <div className="flex items-center justify-between text-xs sm:text-sm text-gray-400">
+                        <span>{event.date || 'TBD'}</span>
+                        <span>{event.city}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

@@ -265,7 +265,10 @@ export const useEventStore = create<EventStore>((set, get) => ({
         event.description,
         event.city,
         event.address,
-        ...event.tags,
+        event.hostName,
+        event.aboutEvent || '',
+        event.whatToExpect || '',
+        ...(event.tags || []),
       ].join(' ').toLowerCase();
 
       return searchableText.includes(lowerQuery);

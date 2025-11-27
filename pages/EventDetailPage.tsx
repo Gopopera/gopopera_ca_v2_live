@@ -537,6 +537,24 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               <MapPin size={16} className="sm:w-[18px] sm:h-[18px] mr-1.5 sm:mr-2 md:mr-3 text-popera-orange shrink-0" /> 
               <span className="truncate">{event.location}</span>
             </p>
+
+            {/* Cancellation / Expulsion Policy Section - Moved here after location */}
+            <div className="mt-6 sm:mt-8 md:mt-10 pt-6 sm:pt-8 md:pt-10 border-t border-gray-100">
+              <h3 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">
+                Cancellation / Expulsion Policy
+              </h3>
+              <div className="space-y-4 text-gray-700 text-sm sm:text-base leading-relaxed">
+                <p>
+                  <strong className="text-[#15383c]">Cancellation Policy:</strong> Attendees may cancel their reservation up to 48 hours before the event for a full refund. Cancellations made 24-48 hours before the event are eligible for a partial refund (typically 50%). No refunds are provided for cancellations made less than 24 hours before the event or for no-shows.
+                </p>
+                <p>
+                  <strong className="text-[#15383c]">Expulsion Policy:</strong> Hosts reserve the right to expel attendees who violate event rules, engage in abusive behavior, spam, impersonate others, ignore moderator warnings, or break event chat rules. Expelled attendees will not receive refunds and may be banned from future events.
+                </p>
+                <p className="text-gray-500 text-xs sm:text-sm italic">
+                  For complete policy details, please review our <button onClick={() => setViewState(ViewState.CANCELLATION)} className="text-[#e35e25] hover:underline font-medium">Cancellation Policy</button> page.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -688,25 +706,6 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         </section>
       )}
 
-      {/* Cancellation / Expulsion Policy Section */}
-      <section className="py-8 sm:py-10 md:py-12 bg-white border-t border-gray-100">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6">
-          <h3 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">
-            Cancellation / Expulsion Policy
-          </h3>
-          <div className="space-y-4 text-gray-700 text-sm sm:text-base leading-relaxed">
-            <p>
-              <strong className="text-[#15383c]">Cancellation Policy:</strong> Attendees may cancel their reservation up to 48 hours before the event for a full refund. Cancellations made 24-48 hours before the event are eligible for a partial refund (typically 50%). No refunds are provided for cancellations made less than 24 hours before the event or for no-shows.
-            </p>
-            <p>
-              <strong className="text-[#15383c]">Expulsion Policy:</strong> Hosts reserve the right to expel attendees who violate event rules, engage in abusive behavior, spam, impersonate others, ignore moderator warnings, or break event chat rules. Expelled attendees will not receive refunds and may be banned from future events.
-            </p>
-            <p className="text-gray-500 text-xs sm:text-sm italic">
-              For complete policy details, please review our <button onClick={() => setViewState(ViewState.CANCELLATION)} className="text-[#e35e25] hover:underline font-medium">Cancellation Policy</button> page.
-            </p>
-          </div>
-        </div>
-      </section>
 
       <section className="bg-gradient-to-br from-[#15383c] to-[#1f4d52] py-10 sm:py-12 md:py-16 lg:py-20 relative overflow-hidden">
          <div className="absolute top-0 left-0 w-64 h-64 bg-[#e35e25] rounded-full blur-[120px] opacity-20 -translate-x-1/3 -translate-y-1/3 pointer-events-none"></div>
@@ -722,8 +721,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
            <div className="flex items-center gap-3 sm:gap-3 flex-1 justify-end min-w-0">
              <button 
                onClick={handleShare}
-               className="w-12 h-12 sm:w-12 sm:h-12 shrink-0 rounded-full border-2 border-[#15383c]/20 bg-[#15383c] text-white flex items-center justify-center active:scale-[0.92] transition-transform touch-manipulation shadow-sm hover:bg-[#1f4d52]"
+               className="w-12 h-12 sm:w-12 sm:h-12 shrink-0 rounded-full border-2 border-[#15383c]/20 bg-[#15383c] text-white flex items-center justify-center active:scale-[0.92] transition-transform touch-manipulation shadow-sm hover:bg-[#1f4d52] opacity-100"
                aria-label="Share"
+               style={{ opacity: 1 }}
              >
                <Share2 size={20} className="sm:w-5 sm:h-5" />
              </button>

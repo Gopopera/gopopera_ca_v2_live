@@ -24,7 +24,8 @@ export const ReviewsModal: React.FC<ReviewsModalProps> = ({ event, onClose, onRe
     const loadReviews = async () => {
       try {
         setLoading(true);
-        const firestoreReviews = await listReviews(event.id);
+        // Only show accepted reviews in the public modal (exclude pending/contested)
+        const firestoreReviews = await listReviews(event.id, false);
         
         // Fetch user profiles for reviewers to get their photos
         const reviewsWithUsers = await Promise.all(

@@ -68,10 +68,29 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
     };
   }, [mobileMenuOpen]);
 
-  const handleNav = (view: ViewState) => {
-    setViewState(view);
-    window.scrollTo({ top: 0, behavior: 'instant' });
-    setMobileMenuOpen(false);
+  const handleNav = (view: ViewState, event?: any, hostId?: string) => {
+    // Safe navigation - ensure we don't navigate to views that require state
+    // If navigating from DETAIL view, ensure we have proper state for the target view
+    try {
+      setViewState(view);
+      // Update browser history safely
+      if (view === ViewState.FEED) {
+        window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
+      } else if (view === ViewState.LANDING) {
+        window.history.replaceState({ viewState: ViewState.LANDING }, '', '/');
+      } else if (view === ViewState.PROFILE || view === ViewState.MY_POPS || view === ViewState.FAVORITES) {
+        // These views don't require additional state, safe to navigate
+        window.history.replaceState({ viewState: view }, '', `/${view.toLowerCase()}`);
+      }
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      setMobileMenuOpen(false);
+    } catch (error) {
+      console.error('[HEADER] Navigation error:', error);
+      // Fallback to safe view
+      setViewState(ViewState.FEED);
+      window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
+      setMobileMenuOpen(false);
+    }
   };
 
   const handleLogoutClick = () => {

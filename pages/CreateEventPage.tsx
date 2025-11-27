@@ -302,59 +302,47 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         }, OVERALL_UPLOAD_TIMEOUT);
         
         // Helper function to compress and upload a single image with timeout and retry
-        const compressAndUploadImage = async (file: File, path: string, retries = 1): Promise<string> => {
-          const IMAGE_UPLOAD_TIMEOUT = 60000; // 60 seconds per image (reduced for faster feedback)
+        const compressAndUploadImage = async (file: File, path: string): Promise<string> => {
+          const IMAGE_UPLOAD_TIMEOUT = 60000; // 60 seconds per image
           const COMPRESSION_TIMEOUT = 30000; // 30 seconds for compression
           
-          for (let attempt = 0; attempt <= retries; attempt++) {
+          let fileToUpload = file;
+          
+          // Compress image if it's large (over 1MB) - lower threshold for faster uploads
+          if (shouldCompressImage(file, 1)) {
+            console.log(`[CREATE_EVENT] Compressing image "${file.name}" (${(file.size / 1024 / 1024).toFixed(2)}MB)...`);
             try {
-              let fileToUpload = file;
+              // Add timeout to compression
+              const compressionPromise = compressImage(file, {
+                maxWidth: 1600,
+                maxHeight: 1600,
+                quality: 0.80,
+                maxSizeMB: 2
+              });
               
-              // Compress image if it's large (over 1MB) - lower threshold for faster uploads
-              if (shouldCompressImage(file, 1)) {
-                console.log(`[CREATE_EVENT] Compressing image "${file.name}" (${(file.size / 1024 / 1024).toFixed(2)}MB)...`);
-                try {
-                  // Add timeout to compression
-                  const compressionPromise = compressImage(file, {
-                    maxWidth: 1600,
-                    maxHeight: 1600,
-                    quality: 0.80,
-                    maxSizeMB: 2
-                  });
-                  
-                  const compressionTimeoutPromise = new Promise<never>((_, reject) => {
-                    setTimeout(() => {
-                      reject(new Error('Compression timed out after 30 seconds'));
-                    }, COMPRESSION_TIMEOUT);
-                  });
-                  
-                  fileToUpload = await Promise.race([compressionPromise, compressionTimeoutPromise]);
-                  console.log(`[CREATE_EVENT] ✅ Compressed to ${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB (${((1 - fileToUpload.size / file.size) * 100).toFixed(1)}% reduction)`);
-                } catch (compressError: any) {
-                  console.warn(`[CREATE_EVENT] Compression failed (${compressError?.message}), uploading original:`, compressError);
-                  // Continue with original file if compression fails - don't block upload
-                  fileToUpload = file;
-                }
-              }
+              const compressionTimeoutPromise = new Promise<never>((_, reject) => {
+                setTimeout(() => {
+                  reject(new Error('Compression timed out after 30 seconds'));
+                }, COMPRESSION_TIMEOUT);
+              });
               
-              console.log(`[CREATE_EVENT] Uploading image "${file.name}" (${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB)...`);
-              const uploadedUrl = await uploadImage(path, fileToUpload, { timeout: IMAGE_UPLOAD_TIMEOUT });
-              console.log(`[CREATE_EVENT] ✅ Uploaded successfully: ${uploadedUrl.substring(0, 50)}...`);
-              return uploadedUrl;
-            } catch (error: any) {
-              const isLastAttempt = attempt === retries;
-              console.error(`[CREATE_EVENT] Upload attempt ${attempt + 1} failed:`, error?.message || error);
-              
-              if (isLastAttempt) {
-                throw error;
-              }
-              // Wait before retry (exponential backoff)
-              const waitTime = 2000 * (attempt + 1);
-              console.log(`[CREATE_EVENT] Retrying image upload (attempt ${attempt + 2}/${retries + 1}) after ${waitTime}ms...`);
-              await new Promise(resolve => setTimeout(resolve, waitTime));
+              fileToUpload = await Promise.race([compressionPromise, compressionTimeoutPromise]);
+              console.log(`[CREATE_EVENT] ✅ Compressed to ${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB (${((1 - fileToUpload.size / file.size) * 100).toFixed(1)}% reduction)`);
+            } catch (compressError: any) {
+              console.warn(`[CREATE_EVENT] Compression failed (${compressError?.message}), uploading original:`, compressError);
+              // Continue with original file if compression fails - don't block upload
+              fileToUpload = file;
             }
           }
-          throw new Error('Image upload failed after all retries');
+          
+          console.log(`[CREATE_EVENT] Uploading image "${file.name}" (${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB)...`);
+          // uploadImage now handles retries internally (2 retries = 3 total attempts)
+          const uploadedUrl = await uploadImage(path, fileToUpload, { 
+            timeout: IMAGE_UPLOAD_TIMEOUT,
+            retries: 2 // 3 total attempts
+          });
+          console.log(`[CREATE_EVENT] ✅ Uploaded successfully: ${uploadedUrl.substring(0, 50)}...`);
+          return uploadedUrl;
         };
         
         // Upload all images in PARALLEL for maximum speed

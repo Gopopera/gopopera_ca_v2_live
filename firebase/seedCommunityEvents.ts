@@ -32,7 +32,7 @@ const EVENT_CONFIGS: CityEventConfig[] = [
       {
         title: 'Montreal Art Walk & Community Gathering',
         category: 'Community',
-        description: 'Join us for an inspiring evening walk through Montreal\'s vibrant art scene, followed by a community gathering where we\'ll exchange ideas, share experiences, and connect with fellow early adopters. This is a chance to meet like-minded individuals, brainstorm together, and spark meaningful connections through our group chat platform. Let\'s build something amazing together before our official launch.',
+        description: 'Join us as an early user for an inspiring evening walk through Montreal\'s vibrant art scene, followed by a community gathering where we\'ll exchange ideas, share experiences, and connect with fellow early adopters. This is your opportunity to be part of our community before launch, discuss with other members, ask questions directly to the Popera team, and test our platform features. Use our group chat to brainstorm, share feedback, and help shape the future of local community engagement. Let\'s build something amazing together!',
         whatToExpect: 'Connect with early users and community members, ask questions directly to our team, and test our platform features before launch. Share your ideas, provide feedback, and help shape the future of local community engagement.',
         address: 'Place des Arts, 175 Sainte-Catherine St W, Montreal, QC H2X 1Z9',
         date: 'Sat, May 10',
@@ -42,7 +42,7 @@ const EVENT_CONFIGS: CityEventConfig[] = [
       {
         title: 'Montreal Food Market Discovery & Tasting',
         category: 'Food & Drink',
-        description: 'Explore Montreal\'s incredible food markets and join us for a tasting experience where we\'ll discover local flavors together. This gathering is designed to bring our community closer, exchange culinary ideas, and connect through meaningful conversations. Use our group chat to coordinate, share recommendations, and build connections that extend beyond this event.',
+        description: 'Explore Montreal\'s incredible food markets as an early user and join us for a tasting experience where we\'ll discover local flavors together. This gathering is designed to bring our community closer before launch, exchange culinary ideas, and connect through meaningful conversations. Discuss with other members, ask questions to the Popera team, and test our platform features. Use our group chat to coordinate, share recommendations, and build connections that extend beyond this event. Perfect for food lovers who want to be part of our early community!',
         whatToExpect: 'Connect with early users and community members, ask questions directly to our team, and test our platform features before launch. Share your ideas, provide feedback, and help shape the future of local community engagement.',
         address: 'Jean-Talon Market, 7070 Avenue Henri Julien, Montreal, QC H2S 3S3',
         date: 'Sun, May 11',
@@ -57,7 +57,7 @@ const EVENT_CONFIGS: CityEventConfig[] = [
       {
         title: 'Toronto Music Scene Exploration & Meetup',
         category: 'Music',
-        description: 'Discover Toronto\'s thriving music scene with fellow community members. We\'ll explore local venues, share our favorite spots, and connect through music. This gathering is all about bringing people together, exchanging ideas about the local music culture, and building connections that matter. Join our group chat to coordinate, share playlists, and continue the conversation.',
+        description: 'Discover Toronto\'s thriving music scene as an early user with fellow community members. We\'ll explore local venues, share our favorite spots, and connect through music. This gathering is all about bringing people together before launch, exchanging ideas about the local music culture, and building connections that matter. Discuss with other members, ask questions to the Popera team, and test our platform features. Join our group chat to coordinate, share playlists, and continue the conversation. Perfect for music enthusiasts who want to shape our platform!',
         whatToExpect: 'Connect with early users and community members, ask questions directly to our team, and test our platform features before launch. Share your ideas, provide feedback, and help shape the future of local community engagement.',
         address: 'Harbourfront Centre, 235 Queens Quay W, Toronto, ON M5J 2G8',
         date: 'Sat, May 10',
@@ -67,7 +67,7 @@ const EVENT_CONFIGS: CityEventConfig[] = [
       {
         title: 'Toronto Wellness Workshop & Community Connection',
         category: 'Wellness',
-        description: 'Join us for a wellness workshop focused on mindfulness and community connection. We\'ll practice together, share techniques, and build meaningful relationships. This event is designed to bring our community closer, exchange wellness ideas, and create lasting connections through our group chat platform. Let\'s grow together before our official launch.',
+        description: 'Join us as an early user for a wellness workshop focused on mindfulness and community connection. We\'ll practice together, share techniques, and build meaningful relationships. This event is designed to bring our community closer before launch, exchange wellness ideas, and create lasting connections through our group chat platform. Discuss with other members, ask questions to the Popera team, and test our platform features. Let\'s grow together and help shape the future of wellness community engagement!',
         whatToExpect: 'Connect with early users and community members, ask questions directly to our team, and test our platform features before launch. Share your ideas, provide feedback, and help shape the future of local community engagement.',
         address: 'Trinity Bellwoods Park, 790 Queen St W, Toronto, ON M6J 1G3',
         date: 'Sun, May 11',
@@ -82,7 +82,7 @@ const EVENT_CONFIGS: CityEventConfig[] = [
       {
         title: 'Vancouver Outdoor Adventure & Community Meetup',
         category: 'Sports',
-        description: 'Experience Vancouver\'s beautiful outdoors with a community adventure. We\'ll explore scenic trails, share outdoor tips, and connect with nature enthusiasts. This gathering brings our community together to exchange ideas, share experiences, and build connections through our group chat. Join us to brainstorm, connect, and prepare for an amazing launch.',
+        description: 'Experience Vancouver\'s beautiful outdoors as an early user with a community adventure. We\'ll explore scenic trails, share outdoor tips, and connect with nature enthusiasts. This gathering brings our community together before launch to exchange ideas, share experiences, and build connections through our group chat. Discuss with other members, ask questions to the Popera team, and test our platform features. Join us to brainstorm, connect, and help shape the future of outdoor community engagement!',
         whatToExpect: 'Connect with early users and community members, ask questions directly to our team, and test our platform features before launch. Share your ideas, provide feedback, and help shape the future of local community engagement.',
         address: 'Stanley Park, Vancouver, BC V6G 3E2',
         date: 'Sat, May 10',
@@ -92,7 +92,7 @@ const EVENT_CONFIGS: CityEventConfig[] = [
       {
         title: 'Vancouver Creative Workshop & Networking',
         category: 'Workshop',
-        description: 'Join us for a creative workshop where we\'ll explore local art techniques and connect with fellow creators. This event is designed to bring our community together, exchange creative ideas, and spark meaningful connections. Use our group chat to share your work, get feedback, and continue building relationships beyond this gathering.',
+        description: 'Join us as an early user for a creative workshop where we\'ll explore local art techniques and connect with fellow creators. This event is designed to bring our community together before launch, exchange creative ideas, and spark meaningful connections. Discuss with other members, ask questions to the Popera team, and test our platform features. Use our group chat to share your work, get feedback, and continue building relationships beyond this gathering. Perfect for creators who want to be part of our early community!',
         whatToExpect: 'Connect with early users and community members, ask questions directly to our team, and test our platform features before launch. Share your ideas, provide feedback, and help shape the future of local community engagement.',
         address: 'Granville Island, Vancouver, BC V6H 3T2',
         date: 'Sun, May 11',
@@ -107,7 +107,7 @@ const EVENT_CONFIGS: CityEventConfig[] = [
       {
         title: 'Ottawa History Walk & Community Gathering',
         category: 'Community',
-        description: 'Explore Ottawa\'s rich history with a guided walk through the capital, followed by a community gathering. We\'ll learn together, exchange ideas about local history, and connect with fellow community members. This event brings people together to brainstorm, share knowledge, and build meaningful connections through our group chat platform.',
+        description: 'Explore Ottawa\'s rich history as an early user with a guided walk through the capital, followed by a community gathering. We\'ll learn together, exchange ideas about local history, and connect with fellow community members. This event brings people together before launch to brainstorm, share knowledge, and build meaningful connections through our group chat platform. Discuss with other members, ask questions to the Popera team, and test our platform features. Perfect for history enthusiasts who want to shape our platform!',
         whatToExpect: 'Connect with early users and community members, ask questions directly to our team, and test our platform features before launch. Share your ideas, provide feedback, and help shape the future of local community engagement.',
         address: 'Parliament Hill, Wellington St, Ottawa, ON K1A 0A6',
         date: 'Sat, May 10',
@@ -117,7 +117,7 @@ const EVENT_CONFIGS: CityEventConfig[] = [
       {
         title: 'Ottawa Market Day & Local Discovery',
         category: 'Markets',
-        description: 'Join us for a day exploring Ottawa\'s local markets and discovering amazing local products. We\'ll shop together, share finds, and connect with vendors and community members. This gathering is all about bringing people together, exchanging ideas about local commerce, and building connections that extend beyond this event through our group chat.',
+        description: 'Join us as an early user for a day exploring Ottawa\'s local markets and discovering amazing local products. We\'ll shop together, share finds, and connect with vendors and community members. This gathering is all about bringing people together before launch, exchanging ideas about local commerce, and building connections that extend beyond this event through our group chat. Discuss with other members, ask questions to the Popera team, and test our platform features. Perfect for market lovers who want to be part of our early community!',
         whatToExpect: 'Connect with early users and community members, ask questions directly to our team, and test our platform features before launch. Share your ideas, provide feedback, and help shape the future of local community engagement.',
         address: 'ByWard Market, 55 ByWard Market Square, Ottawa, ON K1N 9C3',
         date: 'Sun, May 11',
@@ -132,7 +132,7 @@ const EVENT_CONFIGS: CityEventConfig[] = [
       {
         title: 'Quebec City Cultural Tour & Community Meetup',
         category: 'Shows',
-        description: 'Experience Quebec City\'s vibrant culture with a tour of local venues and cultural sites, followed by a community meetup. We\'ll explore together, share cultural insights, and connect with fellow enthusiasts. This event brings our community closer to exchange ideas, spark conversations, and build lasting connections through our group chat platform.',
+        description: 'Experience Quebec City\'s vibrant culture as an early user with a tour of local venues and cultural sites, followed by a community meetup. We\'ll explore together, share cultural insights, and connect with fellow enthusiasts. This event brings our community closer before launch to exchange ideas, spark conversations, and build lasting connections through our group chat platform. Discuss with other members, ask questions to the Popera team, and test our platform features. Perfect for culture enthusiasts who want to shape our platform!',
         whatToExpect: 'Connect with early users and community members, ask questions directly to our team, and test our platform features before launch. Share your ideas, provide feedback, and help shape the future of local community engagement.',
         address: 'Place Royale, Quebec City, QC G1K 4G1',
         date: 'Sat, May 10',
@@ -142,7 +142,7 @@ const EVENT_CONFIGS: CityEventConfig[] = [
       {
         title: 'Quebec City Food & Culture Experience',
         category: 'Food & Drink',
-        description: 'Discover Quebec City\'s culinary heritage with a food and culture experience. We\'ll taste local specialties, learn about traditions, and connect with fellow food lovers. This gathering is designed to bring our community together, exchange culinary ideas, and create meaningful connections through our group chat. Join us to share, learn, and connect.',
+        description: 'Discover Quebec City\'s culinary heritage as an early user with a food and culture experience. We\'ll taste local specialties, learn about traditions, and connect with fellow food lovers. This gathering is designed to bring our community together before launch, exchange culinary ideas, and create meaningful connections through our group chat. Discuss with other members, ask questions to the Popera team, and test our platform features. Join us to share, learn, and help shape the future of food community engagement!',
         whatToExpect: 'Connect with early users and community members, ask questions directly to our team, and test our platform features before launch. Share your ideas, provide feedback, and help shape the future of local community engagement.',
         address: 'Rue du Petit-Champlain, Quebec City, QC G1K 4H4',
         date: 'Sun, May 11',
@@ -157,7 +157,7 @@ const EVENT_CONFIGS: CityEventConfig[] = [
       {
         title: 'Gatineau Nature Walk & Community Connection',
         category: 'Wellness',
-        description: 'Join us for a peaceful nature walk in Gatineau\'s beautiful parks, followed by a community connection session. We\'ll explore nature together, share wellness tips, and connect with fellow outdoor enthusiasts. This event brings our community closer to exchange ideas, practice mindfulness, and build meaningful connections through our group chat.',
+        description: 'Join us as an early user for a peaceful nature walk in Gatineau\'s beautiful parks, followed by a community connection session. We\'ll explore nature together, share wellness tips, and connect with fellow outdoor enthusiasts. This event brings our community closer before launch to exchange ideas, practice mindfulness, and build meaningful connections through our group chat. Discuss with other members, ask questions to the Popera team, and test our platform features. Perfect for wellness enthusiasts who want to be part of our early community!',
         whatToExpect: 'Connect with early users and community members, ask questions directly to our team, and test our platform features before launch. Share your ideas, provide feedback, and help shape the future of local community engagement.',
         address: 'Gatineau Park, Chelsea, QC J9B 1T5',
         date: 'Sat, May 10',
@@ -167,7 +167,7 @@ const EVENT_CONFIGS: CityEventConfig[] = [
       {
         title: 'Gatineau Local Art & Craft Discovery',
         category: 'Community',
-        description: 'Explore Gatineau\'s local art scene with a discovery tour of galleries and craft studios. We\'ll meet local artists, share our appreciation for art, and connect with creative community members. This gathering is all about bringing people together, exchanging artistic ideas, and building connections that extend beyond this event through our group chat.',
+        description: 'Explore Gatineau\'s local art scene as an early user with a discovery tour of galleries and craft studios. We\'ll meet local artists, share our appreciation for art, and connect with creative community members. This gathering is all about bringing people together before launch, exchanging artistic ideas, and building connections that extend beyond this event through our group chat. Discuss with other members, ask questions to the Popera team, and test our platform features. Perfect for art lovers who want to shape our platform!',
         whatToExpect: 'Connect with early users and community members, ask questions directly to our team, and test our platform features before launch. Share your ideas, provide feedback, and help shape the future of local community engagement.',
         address: 'Old Hull, Gatineau, QC J8X 3X7',
         date: 'Sun, May 11',

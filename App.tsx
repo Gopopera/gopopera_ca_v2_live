@@ -387,7 +387,49 @@ const AppContent: React.FC = () => {
   if (typeof window !== "undefined") {
     (window as any).__POPERA_CITY__ = city;
   }
-  const [viewState, setViewState] = useState<ViewState>(ViewState.LANDING);
+  // Parse initial route from URL to handle direct navigation and page refreshes
+  const getInitialViewState = (): ViewState => {
+    if (typeof window === 'undefined') return ViewState.LANDING;
+    const pathname = window.location.pathname;
+    
+    // Match routes from URL (without needing events loaded yet)
+    if (pathname === '/' || pathname === '') {
+      return ViewState.LANDING;
+    } else if (pathname === '/explore') {
+      return ViewState.FEED;
+    } else if (pathname.startsWith('/event/')) {
+      // Check if it's a chat route
+      if (pathname.includes('/chat')) {
+        return ViewState.CHAT;
+      }
+      return ViewState.DETAIL;
+    } else if (pathname === '/profile') {
+      return ViewState.PROFILE;
+    } else if (pathname === '/my-pops') {
+      return ViewState.MY_POPS;
+    } else if (pathname === '/favorites') {
+      return ViewState.FAVORITES;
+    } else if (pathname === '/create-event') {
+      return ViewState.CREATE_EVENT;
+    } else if (pathname === '/about') {
+      return ViewState.ABOUT;
+    } else if (pathname === '/contact') {
+      return ViewState.CONTACT;
+    } else if (pathname === '/guidelines') {
+      return ViewState.GUIDELINES;
+    } else if (pathname === '/terms') {
+      return ViewState.TERMS;
+    } else if (pathname === '/privacy') {
+      return ViewState.PRIVACY;
+    } else if (pathname === '/cancellation') {
+      return ViewState.CANCELLATION;
+    }
+    
+    // Default to landing page for unknown routes
+    return ViewState.LANDING;
+  };
+  
+  const [viewState, setViewState] = useState<ViewState>(getInitialViewState());
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [reviewEvent, setReviewEvent] = useState<Event | null>(null); 
   const [selectedHost, setSelectedHost] = useState<string | null>(null); 
@@ -693,12 +735,15 @@ const AppContent: React.FC = () => {
 
   // Filter events based on search, location, category, and tags
   // Apply all filters in sequence for proper combined filtering
-  // Filters work together: Category + City + Tags all apply simultaneously
+  // Filters work together: Category + City + Search all apply simultaneously
   let filteredEvents = allEvents;
   
-  // Apply search filter first (text search)
-  if (searchQuery.trim()) {
-    filteredEvents = searchEvents(searchQuery);
+  // Apply category filter first (e.g., "Sports", "Community")
+  // Uses category mapper to handle plural/singular variations (e.g., "Markets" -> "Market")
+  if (activeCategory !== 'All') {
+    filteredEvents = filteredEvents.filter(event => 
+      categoryMatches(event.category, activeCategory)
+    );
   }
   
   // Apply city filter - match by city slug or city name
@@ -707,17 +752,28 @@ const AppContent: React.FC = () => {
     const citySlug = location.toLowerCase();
     filteredEvents = filteredEvents.filter(event => {
       const eventCityLower = event.city.toLowerCase();
+      // Normalize city name (remove ", CA" for comparison)
+      const normalizedEventCity = eventCityLower.replace(/,\s*ca$/, '').trim();
+      const normalizedLocation = citySlug.replace(/,\s*ca$/, '').trim();
       // Match by slug (e.g., "montreal" matches "Montreal, CA")
-      return eventCityLower.includes(citySlug) || 
+      return normalizedEventCity.includes(normalizedLocation) || 
+             normalizedLocation.includes(normalizedEventCity) ||
+             eventCityLower.includes(citySlug) || 
              eventCityLower.includes(citySlug.replace('-', ' '));
     });
   }
   
-  // Apply category filter (e.g., "Sports", "Community") - works with city and tags
-  // Uses category mapper to handle plural/singular variations (e.g., "Markets" -> "Market")
-  if (activeCategory !== 'All') {
+  // Apply search filter last (text search in titles, descriptions, tags, hostName, aboutEvent, whatToExpect)
+  // This ensures search works with category and city filters
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase().trim();
     filteredEvents = filteredEvents.filter(event => 
-      categoryMatches(event.category, activeCategory)
+      event.title.toLowerCase().includes(query) ||
+      event.description.toLowerCase().includes(query) ||
+      event.hostName.toLowerCase().includes(query) ||
+      (event.tags && event.tags.some(tag => tag.toLowerCase().includes(query))) ||
+      (event.aboutEvent && event.aboutEvent.toLowerCase().includes(query)) ||
+      (event.whatToExpect && event.whatToExpect.toLowerCase().includes(query))
     );
   }
   
@@ -743,9 +799,23 @@ const AppContent: React.FC = () => {
 
   const handleEventClick = (event: Event) => {
     setSelectedEvent(event);
+    // Use replaceState to avoid creating problematic history entries
+    window.history.replaceState({ viewState: ViewState.DETAIL, eventId: event.id }, '', `/event/${event.id}`);
     setViewState(ViewState.DETAIL);
     window.scrollTo(0, 0);
   };
+
+  // Listen for custom event to select event from ProfilePage
+  useEffect(() => {
+    const handleSelectEvent = (e: CustomEvent<{ eventId: string }>) => {
+      const event = allEvents.find(ev => ev.id === e.detail.eventId);
+      if (event) {
+        handleEventClick(event);
+      }
+    };
+    window.addEventListener('selectEvent', handleSelectEvent as EventListener);
+    return () => window.removeEventListener('selectEvent', handleSelectEvent as EventListener);
+  }, [allEvents]);
 
   const handleChatClick = (e: React.MouseEvent, event: Event) => {
     e.stopPropagation();
@@ -910,33 +980,90 @@ const AppContent: React.FC = () => {
 
 
   // Browser history management - enable back button functionality
+  // Use replaceState to avoid creating problematic history entries that cause 404s
   useEffect(() => {
-    // Push state to history when navigating to FEED (Explore Pop-ups)
+    // Update history safely for all view states - use replaceState to prevent 404s
+    const currentUrl = window.location.pathname;
+    
     if (viewState === ViewState.FEED) {
-      const currentUrl = window.location.pathname;
       if (currentUrl !== '/explore') {
-        window.history.pushState({ viewState: ViewState.FEED }, '', '/explore');
+        window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
       }
     } else if (viewState === ViewState.LANDING) {
-      const currentUrl = window.location.pathname;
       if (currentUrl !== '/') {
-        window.history.pushState({ viewState: ViewState.LANDING }, '', '/');
+        window.history.replaceState({ viewState: ViewState.LANDING }, '', '/');
+      }
+    } else if (viewState === ViewState.DETAIL && selectedEvent) {
+      // DETAIL view should have event ID in URL
+      const expectedUrl = `/event/${selectedEvent.id}`;
+      if (currentUrl !== expectedUrl) {
+        window.history.replaceState({ viewState: ViewState.DETAIL, eventId: selectedEvent.id }, '', expectedUrl);
+      }
+    } else if (viewState === ViewState.PROFILE) {
+      if (currentUrl !== '/profile') {
+        window.history.replaceState({ viewState: ViewState.PROFILE }, '', '/profile');
+      }
+    } else if (viewState === ViewState.MY_POPS) {
+      if (currentUrl !== '/my-pops') {
+        window.history.replaceState({ viewState: ViewState.MY_POPS }, '', '/my-pops');
+      }
+    } else if (viewState === ViewState.FAVORITES) {
+      if (currentUrl !== '/favorites') {
+        window.history.replaceState({ viewState: ViewState.FAVORITES }, '', '/favorites');
+      }
+    } else if (viewState === ViewState.CREATE_EVENT) {
+      if (currentUrl !== '/create-event') {
+        window.history.replaceState({ viewState: ViewState.CREATE_EVENT }, '', '/create-event');
+      }
+    } else if (viewState === ViewState.CHAT && selectedEvent) {
+      const expectedUrl = `/event/${selectedEvent.id}/chat`;
+      if (currentUrl !== expectedUrl) {
+        window.history.replaceState({ viewState: ViewState.CHAT, eventId: selectedEvent.id }, '', expectedUrl);
       }
     }
 
     // Handle browser back/forward buttons
     const handlePopState = (event: PopStateEvent) => {
       if (event.state && event.state.viewState) {
-        setViewState(event.state.viewState);
+        const targetView = event.state.viewState;
+        
+        // If navigating to DETAIL, ensure we have the event
+        if (targetView === ViewState.DETAIL && event.state.eventId) {
+          const event = allEvents.find(e => e.id === event.state.eventId);
+          if (event) {
+            setSelectedEvent(event);
+            setViewState(ViewState.DETAIL);
+          } else {
+            // Event not found, fallback to FEED
+            console.warn('[APP] Event not found for DETAIL view, falling back to FEED');
+            setViewState(ViewState.FEED);
+            window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
+          }
+        } else if (targetView === ViewState.CHAT && event.state.eventId) {
+          const event = allEvents.find(e => e.id === event.state.eventId);
+          if (event) {
+            setSelectedEvent(event);
+            setViewState(ViewState.CHAT);
+          } else {
+            // Event not found, fallback to FEED
+            console.warn('[APP] Event not found for CHAT view, falling back to FEED');
+            setViewState(ViewState.FEED);
+            window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
+          }
+        } else {
+          // Safe navigation to other views
+          setViewState(targetView);
+        }
       } else {
         // Default to landing page if no state
         setViewState(ViewState.LANDING);
+        window.history.replaceState({ viewState: ViewState.LANDING }, '', '/');
       }
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [viewState, setViewState]);
+  }, [viewState, setViewState, selectedEvent, allEvents]);
 
   // Scroll restore for list pages
   useEffect(() => {

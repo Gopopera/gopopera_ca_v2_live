@@ -139,7 +139,7 @@ async function addFakeReview(
  */
 export async function seedReviewsForEatezca(): Promise<void> {
   const EMAIL = 'eatezca@gmail.com';
-  const REVIEWS_PER_EVENT = 3;
+  const REVIEWS_PER_EVENT = 5;
 
   console.log(`[SEED_REVIEWS] Starting review seeding for ${EMAIL}...`);
 

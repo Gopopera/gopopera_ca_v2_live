@@ -1024,8 +1024,18 @@ export async function recalculateEventRating(eventId: string): Promise<void> {
   }
   
   try {
-    const reviews = await listReviews(eventId);
-    if (reviews.length === 0) {
+    // Get all reviews (including pending) to filter for accepted ones
+    const reviews = await listReviews(eventId, true);
+    
+    // Filter to only include accepted reviews (or reviews without status for backward compatibility)
+    // This ensures only accepted reviews count toward the rating
+    const acceptedReviews = reviews.filter(review => {
+      const status = (review as any).status;
+      // Include reviews without status (backward compatibility) or explicitly accepted reviews
+      return !status || status === 'accepted';
+    });
+    
+    if (acceptedReviews.length === 0) {
       const eventRef = doc(db, "events", eventId);
       await updateDoc(eventRef, {
         rating: 0,
@@ -1034,9 +1044,9 @@ export async function recalculateEventRating(eventId: string): Promise<void> {
       return;
     }
     
-    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
-    const averageRating = totalRating / reviews.length;
-    const reviewCount = reviews.length;
+    const totalRating = acceptedReviews.reduce((sum, review) => sum + review.rating, 0);
+    const averageRating = totalRating / acceptedReviews.length;
+    const reviewCount = acceptedReviews.length;
     const roundedRating = Math.round(averageRating * 10) / 10;
     
     const eventRef = doc(db, "events", eventId);
@@ -1044,6 +1054,9 @@ export async function recalculateEventRating(eventId: string): Promise<void> {
       rating: roundedRating,
       reviewCount,
     });
+    
+    // This update will trigger the eventStore's onSnapshot listener, 
+    // which will automatically sync the rating everywhere the event is displayed
   } catch (error: any) {
     console.error('Firestore write failed:', { path: `events/${eventId}`, error: error.message || 'Unknown error', operation: 'recalculateRating' });
     throw error;
