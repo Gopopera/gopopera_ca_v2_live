@@ -14,6 +14,7 @@ import { getDbSafe } from '../../src/lib/firebase';
 import { doc, updateDoc, arrayUnion, arrayRemove, getDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { processRefundForRemovedUser } from '../../utils/refundHelper';
 import { expelUserFromEvent } from '../../firebase/db';
+import { followHost, unfollowHost, isFollowing } from '../../firebase/follow';
 
 interface GroupChatProps {
   event: Event;
@@ -32,6 +33,8 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   const [showExpelModal, setShowExpelModal] = useState(false);
   const [userToExpel, setUserToExpel] = useState<{ userId: string; userName: string } | null>(null);
   const [showCreatePollModal, setShowCreatePollModal] = useState(false);
+  const [isFollowingHost, setIsFollowingHost] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
   const currentUser = useUserStore((state) => state.getCurrentUser());
   const getMessagesForEvent = useChatStore((state) => state.getMessagesForEvent);
   const addMessage = useChatStore((state) => state.addMessage);
@@ -84,6 +87,39 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
       };
     }
   }, [event.id, canAccessChat, isDemo, isBanned, subscribeToEventChat, unsubscribeFromEventChat]);
+
+  // Check follow status
+  useEffect(() => {
+    if (currentUser?.id && event.hostId && !isHost) {
+      const checkFollowStatus = async () => {
+        const following = await isFollowing(currentUser.id, event.hostId);
+        setIsFollowingHost(following);
+      };
+      checkFollowStatus();
+    } else {
+      setIsFollowingHost(false);
+    }
+  }, [currentUser?.id, event.hostId, isHost]);
+
+  // Handle follow toggle
+  const handleFollowToggle = async () => {
+    if (!currentUser?.id || !event.hostId || isHost || followLoading) return;
+
+    setFollowLoading(true);
+    try {
+      if (isFollowingHost) {
+        await unfollowHost(currentUser.id, event.hostId);
+        setIsFollowingHost(false);
+      } else {
+        await followHost(currentUser.id, event.hostId);
+        setIsFollowingHost(true);
+      }
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+    } finally {
+      setFollowLoading(false);
+    }
+  };
   
   // NO AUTOMATIC MESSAGES - Chat is ready when user has access
   // Messages are synced in real-time via Firestore subscriptions
@@ -347,46 +383,69 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
     URL.revokeObjectURL(url);
   };
 
-  // AI Insights - Soft implementation
+  // AI Insights - Only for attendees (not host), positive and encouraging
   const aiInsights = useMemo(() => {
     if (messages.length === 0) {
       return {
-        summary: 'No activity yet. Start the conversation!',
-        concerns: [],
+        summary: 'The conversation is just getting started! Be the first to say hello and connect with others.',
+        highlights: [],
         topAnnouncement: null,
-        vibe: 'quiet',
+        vibe: 'starting',
       };
     }
 
     const recentMessages = messages.slice(-20);
     const announcements = recentMessages.filter(m => m.type === 'announcement');
-    const hostMessages = recentMessages.filter(m => m.isHost);
+    const participantMessages = recentMessages.filter(m => !m.isHost);
     
-    const summary = recentMessages.length > 0
-      ? `Your crowd is actively engaging with ${recentMessages.length} recent messages.`
-      : 'Conversation is starting.';
+    // Positive, encouraging summary
+    let summary = '';
+    if (recentMessages.length >= 15) {
+      summary = `Great energy! The community is buzzing with ${recentMessages.length} recent messages. Keep the momentum going!`;
+    } else if (recentMessages.length >= 8) {
+      summary = `The conversation is picking up! ${recentMessages.length} people have shared their thoughts. Join in!`;
+    } else if (participantMessages.length > 0) {
+      summary = `People are connecting! ${participantMessages.length} attendees have joined the conversation.`;
+    } else {
+      summary = 'The conversation is starting. Share your thoughts and connect with others!';
+    }
 
-    const concerns: string[] = [];
-    const questionWords = ['?', 'how', 'what', 'when', 'where', 'why'];
+    // Positive highlights (questions, excitement, engagement)
+    const highlights: string[] = [];
+    const positiveWords = ['excited', 'love', 'great', 'amazing', 'awesome', 'can\'t wait', 'looking forward', 'thank', 'appreciate'];
+    const questionWords = ['?', 'how', 'what', 'when', 'where'];
+    
     recentMessages.forEach(msg => {
-      if (questionWords.some(word => msg.message.toLowerCase().includes(word))) {
-        concerns.push(msg.message.slice(0, 50) + '...');
+      const lowerMsg = msg.message.toLowerCase();
+      // Find positive engagement
+      if (positiveWords.some(word => lowerMsg.includes(word))) {
+        const highlight = msg.message.slice(0, 60);
+        if (highlight && !highlights.includes(highlight)) {
+          highlights.push(highlight + (msg.message.length > 60 ? '...' : ''));
+        }
+      }
+      // Find questions (showing interest)
+      if (questionWords.some(word => lowerMsg.includes(word)) && msg.message.includes('?')) {
+        const highlight = msg.message.slice(0, 60);
+        if (highlight && !highlights.includes(highlight) && highlights.length < 3) {
+          highlights.push(highlight + (msg.message.length > 60 ? '...' : ''));
+        }
       }
     });
 
     const topAnnouncement = announcements.length > 0
-      ? announcements[announcements.length - 1]
+      ? announcements[announcements.length - 1].message.slice(0, 120)
       : null;
 
     let vibe = 'active';
-    if (recentMessages.length < 5) vibe = 'quiet';
-    else if (hostMessages.length > recentMessages.length / 2) vibe = 'host-led';
-    else if (recentMessages.length > 15) vibe = 'very-active';
+    if (recentMessages.length < 5) vibe = 'growing';
+    else if (participantMessages.length > recentMessages.length / 2) vibe = 'community-driven';
+    else if (recentMessages.length > 15) vibe = 'vibrant';
 
     return {
       summary,
-      concerns: concerns.slice(0, 3),
-      topAnnouncement: topAnnouncement ? topAnnouncement.message.slice(0, 100) : null,
+      highlights: highlights.slice(0, 3),
+      topAnnouncement,
       vibe,
     };
   }, [messages]);
@@ -498,12 +557,30 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
 
         {/* New Header - Desktop */}
         <div className="hidden md:block">
-          <GroupChatHeader event={event} onClose={onClose} onViewDetails={onViewDetails} isMobile={false} />
+          <GroupChatHeader 
+            event={event} 
+            onClose={onClose} 
+            onViewDetails={onViewDetails} 
+            isMobile={false}
+            isHost={isHost}
+            isFollowing={isFollowingHost}
+            onFollowToggle={handleFollowToggle}
+            followLoading={followLoading}
+          />
         </div>
         
         {/* New Header - Mobile */}
         <div className="md:hidden">
-          <GroupChatHeader event={event} onClose={onClose} onViewDetails={onViewDetails} isMobile={true} />
+          <GroupChatHeader 
+            event={event} 
+            onClose={onClose} 
+            onViewDetails={onViewDetails} 
+            isMobile={true}
+            isHost={isHost}
+            isFollowing={isFollowingHost}
+            onFollowToggle={handleFollowToggle}
+            followLoading={followLoading}
+          />
         </div>
 
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-8 space-y-4 sm:space-y-6">
@@ -668,44 +745,44 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
             </div>
           )}
 
-          {canAccessChat && !isDemo && (
+          {/* AI Insights - Only visible to attendees (not host) */}
+          {canAccessChat && !isDemo && !isHost && (
             <>
-              <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-gray-100 shadow-sm max-w-3xl mx-auto w-full">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-3 min-w-0 flex-1">
-                     <div className="w-10 h-10 bg-popera-teal/5 rounded-full flex items-center justify-center text-[#15383c] shrink-0">
-                       <Sparkles size={20} className="text-[#15383c]" />
-                     </div>
-                     <div className="min-w-0 flex-1">
-                       <h4 className="text-sm font-bold text-[#15383c]">AI Insights</h4>
-                       <p className="text-xs text-gray-500 truncate">Here's what your crowd is talking about</p>
-                     </div>
+              <div className="bg-gradient-to-br from-white to-[#f8fafb] rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-gray-100 shadow-sm max-w-3xl mx-auto w-full">
+                <div className="flex items-center space-x-3 mb-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-[#e35e25]/10 to-[#e35e25]/5 rounded-full flex items-center justify-center text-[#e35e25] shrink-0">
+                    <Sparkles size={20} className="text-[#e35e25]" />
                   </div>
-                  <span className="px-3 py-1 rounded-full border border-orange-500/30 bg-orange-50 text-[10px] font-bold text-orange-600 flex items-center shrink-0">
-                    <span className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-2"></span> Beta
-                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-sm font-heading font-bold text-[#15383c]">AI Insights</h4>
+                    <p className="text-xs text-gray-600">What's happening in the conversation</p>
+                  </div>
                 </div>
-                <div className="space-y-2 text-sm text-gray-700">
-                  <p className="font-medium">{aiInsights.summary}</p>
-                  {aiInsights.concerns.length > 0 && (
-                    <div>
-                      <p className="font-semibold text-xs text-gray-500 mb-1">Key concerns:</p>
-                      <ul className="list-disc list-inside space-y-1 text-xs">
-                        {aiInsights.concerns.map((concern, idx) => (
-                          <li key={idx}>{concern}</li>
+                <div className="space-y-3 text-sm">
+                  <p className="font-medium text-[#15383c] leading-relaxed">{aiInsights.summary}</p>
+                  {aiInsights.highlights.length > 0 && (
+                    <div className="bg-white/60 rounded-lg p-3 border border-gray-100">
+                      <p className="font-semibold text-xs text-gray-600 mb-2 uppercase tracking-wide">Recent highlights</p>
+                      <ul className="space-y-1.5">
+                        {aiInsights.highlights.map((highlight, idx) => (
+                          <li key={idx} className="text-xs text-gray-700 flex items-start gap-2">
+                            <span className="text-[#e35e25] mt-1">•</span>
+                            <span>{highlight}</span>
+                          </li>
                         ))}
                       </ul>
                     </div>
                   )}
                   {aiInsights.topAnnouncement && (
-                    <div>
-                      <p className="font-semibold text-xs text-gray-500 mb-1">Most recent announcement:</p>
-                      <p className="text-xs italic">{aiInsights.topAnnouncement}</p>
+                    <div className="bg-[#15383c]/5 rounded-lg p-3 border border-[#15383c]/10">
+                      <p className="font-semibold text-xs text-[#15383c] mb-1.5 uppercase tracking-wide">Latest announcement</p>
+                      <p className="text-xs text-gray-700 leading-relaxed italic">"{aiInsights.topAnnouncement}"</p>
                     </div>
                   )}
-                  <p className="text-xs text-gray-500">
-                    Attendance vibe: <span className="font-semibold capitalize">{aiInsights.vibe}</span>
-                  </p>
+                  <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                    <span className="text-xs text-gray-500">Community vibe:</span>
+                    <span className="text-xs font-semibold text-[#e35e25] capitalize">{aiInsights.vibe}</span>
+                  </div>
                 </div>
               </div>
 

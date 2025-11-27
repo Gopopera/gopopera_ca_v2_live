@@ -8,18 +8,28 @@ import { getDbSafe } from '../src/lib/firebase';
 
 /**
  * Follow a host
+ * Uses atomic arrayUnion operations to prevent duplicates
  */
 export async function followHost(followerId: string, hostId: string): Promise<void> {
   const db = getDbSafe();
   if (!db) throw new Error('Database not available');
 
-  // Add host to follower's following list
+  // Check if already following to avoid unnecessary writes
   const followerRef = doc(db, 'users', followerId);
+  const followerDoc = await getDoc(followerRef);
+  const following = followerDoc.data()?.following || [];
+  
+  // If already following, return early (arrayUnion is idempotent, but this saves a write)
+  if (following.includes(hostId)) {
+    return;
+  }
+
+  // Add host to follower's following list (atomic - arrayUnion prevents duplicates)
   await updateDoc(followerRef, {
     following: arrayUnion(hostId),
   });
 
-  // Add follower to host's followers list
+  // Add follower to host's followers list (atomic - arrayUnion prevents duplicates)
   const hostRef = doc(db, 'users', hostId);
   await updateDoc(hostRef, {
     followers: arrayUnion(followerId),
@@ -28,18 +38,28 @@ export async function followHost(followerId: string, hostId: string): Promise<vo
 
 /**
  * Unfollow a host
+ * Uses atomic arrayRemove operations
  */
 export async function unfollowHost(followerId: string, hostId: string): Promise<void> {
   const db = getDbSafe();
   if (!db) throw new Error('Database not available');
 
-  // Remove host from follower's following list
+  // Check if not following to avoid unnecessary writes
   const followerRef = doc(db, 'users', followerId);
+  const followerDoc = await getDoc(followerRef);
+  const following = followerDoc.data()?.following || [];
+  
+  // If not following, return early (arrayRemove is idempotent, but this saves a write)
+  if (!following.includes(hostId)) {
+    return;
+  }
+
+  // Remove host from follower's following list (atomic - arrayRemove is safe even if not present)
   await updateDoc(followerRef, {
     following: arrayRemove(hostId),
   });
 
-  // Remove follower from host's followers list
+  // Remove follower from host's followers list (atomic - arrayRemove is safe even if not present)
   const hostRef = doc(db, 'users', hostId);
   await updateDoc(hostRef, {
     followers: arrayRemove(followerId),

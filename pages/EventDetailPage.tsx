@@ -784,42 +784,73 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
 
       <div className="fixed bottom-0 left-0 right-0 bg-white/98 backdrop-blur-lg border-t border-gray-200 px-4 sm:px-6 py-4 sm:py-4 lg:hidden z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] safe-area-inset-bottom">
         <div className="flex items-center justify-between gap-3 sm:gap-4 max-w-xl mx-auto">
-           <div className="flex flex-col shrink-0 min-w-0"><span className="text-xl sm:text-xl md:text-2xl font-heading font-bold text-[#15383c] truncate">{event.price}</span><span className="text-xs sm:text-xs text-gray-600 sm:text-gray-500 font-bold uppercase tracking-wide">per person</span></div>
-           <div className="flex items-center gap-3 sm:gap-3 flex-1 justify-end min-w-0">
-             <button 
-               onClick={handleShare}
-               className="w-12 h-12 sm:w-12 sm:h-12 shrink-0 rounded-full border-2 border-[#15383c]/20 bg-[#15383c] text-white flex items-center justify-center active:scale-[0.92] transition-transform touch-manipulation shadow-sm hover:bg-[#1f4d52] opacity-100"
-               aria-label="Share"
-               style={{ opacity: 1 }}
-             >
-               <Share2 size={20} className="sm:w-5 sm:h-5" />
-             </button>
-             <button 
-               onClick={handleConversationClick}
-               disabled={isDemo}
-               className={`w-12 h-12 sm:w-12 sm:h-12 shrink-0 rounded-full border-2 flex items-center justify-center active:scale-[0.92] transition-transform touch-manipulation shadow-sm ${
-                 isDemo
-                   ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                   : 'bg-[#15383c]/5 text-[#15383c] border-[#15383c]/20 hover:bg-[#15383c]/10'
-               }`}
-               aria-label="Chat"
-             >
-               <MessageCircle size={20} className="sm:w-5 sm:h-5" />
-             </button>
-             <button 
-               onClick={handleRSVP}
-               disabled={isDemo}
-               className={`flex-1 min-w-0 max-w-[200px] sm:max-w-[200px] h-12 sm:h-12 font-bold text-base sm:text-base rounded-full shadow-lg active:scale-[0.97] transition-transform whitespace-nowrap flex items-center justify-center touch-manipulation px-5 ${
-                 isDemo
-                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                   : hasRSVPed
-                   ? 'bg-[#15383c] text-white hover:bg-[#1f4d52]'
-                   : 'bg-[#e35e25] text-white shadow-orange-900/20 hover:bg-[#cf4d1d]'
-               }`}
-             >
-               {isDemo ? 'Locked' : hasRSVPed ? 'Reserved ✓' : 'Reserve'}
-             </button>
-           </div>
+           {/* Show price only if not reserved */}
+           {!hasRSVPed && (
+             <div className="flex flex-col shrink-0 min-w-0">
+               <span className="text-xl sm:text-xl md:text-2xl font-heading font-bold text-[#15383c] truncate">{event.price}</span>
+               <span className="text-xs sm:text-xs text-gray-600 sm:text-gray-500 font-bold uppercase tracking-wide">per person</span>
+             </div>
+           )}
+           {/* After reservation: Show Conversation + Reserved */}
+           {hasRSVPed && (
+             <div className="flex items-center gap-3 sm:gap-3 flex-1 min-w-0">
+               <button 
+                 onClick={handleConversationClick}
+                 disabled={isDemo}
+                 className={`w-12 h-12 sm:w-12 sm:h-12 shrink-0 rounded-full border-2 flex items-center justify-center active:scale-[0.92] transition-transform touch-manipulation shadow-sm ${
+                   isDemo
+                     ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                     : 'bg-[#15383c] text-white border-[#15383c] hover:bg-[#1f4d52]'
+                 }`}
+                 aria-label="Conversation"
+               >
+                 <MessageCircle size={20} className="sm:w-5 sm:h-5" />
+               </button>
+               <button 
+                 disabled
+                 className="flex-1 min-w-0 h-12 sm:h-12 font-bold text-base sm:text-base rounded-full bg-[#15383c] text-white shadow-lg flex items-center justify-center touch-manipulation px-5 gap-2"
+               >
+                 <CheckCircle2 size={18} className="sm:w-5 sm:h-5" />
+                 Reserved
+               </button>
+             </div>
+           )}
+           {/* Before reservation: Show Share + Conversation + Reserve */}
+           {!hasRSVPed && (
+             <div className="flex items-center gap-3 sm:gap-3 flex-1 justify-end min-w-0">
+               <button 
+                 onClick={handleShare}
+                 className="w-12 h-12 sm:w-12 sm:h-12 shrink-0 rounded-full border-2 border-[#15383c]/20 bg-[#15383c] text-white flex items-center justify-center active:scale-[0.92] transition-transform touch-manipulation shadow-sm hover:bg-[#1f4d52] opacity-100"
+                 aria-label="Share"
+                 style={{ opacity: 1 }}
+               >
+                 <Share2 size={20} className="sm:w-5 sm:h-5" />
+               </button>
+               <button 
+                 onClick={handleConversationClick}
+                 disabled={isDemo}
+                 className={`w-12 h-12 sm:w-12 sm:h-12 shrink-0 rounded-full border-2 flex items-center justify-center active:scale-[0.92] transition-transform touch-manipulation shadow-sm ${
+                   isDemo
+                     ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                     : 'bg-[#15383c]/5 text-[#15383c] border-[#15383c]/20 hover:bg-[#15383c]/10'
+                 }`}
+                 aria-label="Chat"
+               >
+                 <MessageCircle size={20} className="sm:w-5 sm:h-5" />
+               </button>
+               <button 
+                 onClick={handleRSVP}
+                 disabled={isDemo}
+                 className={`flex-1 min-w-0 max-w-[200px] sm:max-w-[200px] h-12 sm:h-12 font-bold text-base sm:text-base rounded-full shadow-lg active:scale-[0.97] transition-transform whitespace-nowrap flex items-center justify-center touch-manipulation px-5 ${
+                   isDemo
+                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                     : 'bg-[#e35e25] text-white shadow-orange-900/20 hover:bg-[#cf4d1d]'
+                 }`}
+               >
+                 {isDemo ? 'Locked' : 'Reserve'}
+               </button>
+             </div>
+           )}
         </div>
       </div>
 
