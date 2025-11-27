@@ -30,6 +30,7 @@ const FavoritesPage = React.lazy(() => import('./pages/FavoritesPage').then(m =>
 const MyCalendarPage = React.lazy(() => import('./pages/MyCalendarPage').then(m => ({ default: m.MyCalendarPage })));
 const DeleteAccountPage = React.lazy(() => import('./pages/DeleteAccountPage').then(m => ({ default: m.DeleteAccountPage })));
 const CreateEventPage = React.lazy(() => import('./pages/CreateEventPage').then(m => ({ default: m.CreateEventPage })));
+const EditEventPage = React.lazy(() => import('./pages/EditEventPage').then(m => ({ default: m.EditEventPage })));
 const DebugEnvPage = React.lazy(() => import('./pages/DebugEnvPage').then(m => ({ default: m.DebugEnvPage })));
 const DebugSeedDemoEventsPage = React.lazy(() => import('./pages/DebugSeedDemoEventsPage').then(m => ({ default: m.DebugSeedDemoEventsPage })));
 
@@ -937,7 +938,11 @@ const AppContent: React.FC = () => {
         )}
 
         {viewState === ViewState.CREATE_EVENT && <CreateEventPage setViewState={setViewState} />}
-        {viewState === ViewState.EDIT_EVENT && <CreateEventPage setViewState={setViewState} />}
+        {viewState === ViewState.EDIT_EVENT && selectedEvent && (
+          <React.Suspense fallback={<PageSkeleton />}>
+            <EditEventPage setViewState={setViewState} event={selectedEvent} eventId={selectedEvent.id} />
+          </React.Suspense>
+        )}
 
         {viewState === ViewState.NOTIFICATIONS && <NotificationsPage setViewState={setViewState} />}
         {viewState === ViewState.MY_POPS && (

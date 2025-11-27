@@ -276,16 +276,34 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
     
     // Upload images to Firebase Storage if image files were selected
     let finalImageUrls: string[] = [];
-    let finalImageUrl = `https://picsum.photos/seed/${title}/800/600`; // Default placeholder
+    let finalImageUrl = `https://picsum.photos/seed/${title || 'event'}/800/600`; // Default placeholder
+    
+    console.log('[CREATE_EVENT] Image upload check:', {
+      imageFilesCount: imageFiles.length,
+      imageUrlsCount: imageUrls?.length || 0,
+      hasImageUrl: !!imageUrl,
+      userId: user?.uid
+    });
     
     if (imageFiles.length > 0 && user?.uid) {
+      let overallTimeout: NodeJS.Timeout | null = null;
       try {
         console.log('[CREATE_EVENT] Uploading', imageFiles.length, 'image(s) to Firebase Storage...');
         setUploadingImage(true);
         
+        // Safety timeout: if upload takes more than 2 minutes total, abort
+        const OVERALL_UPLOAD_TIMEOUT = 120000; // 2 minutes
+        overallTimeout = setTimeout(() => {
+          console.error('[CREATE_EVENT] ⚠️ Overall upload timeout reached');
+          setUploadingImage(false);
+          alert('Image upload is taking too long. Please try again with smaller images or check your internet connection.');
+          setIsSubmitting(false);
+        }, OVERALL_UPLOAD_TIMEOUT);
+        
         // Helper function to compress and upload a single image with timeout and retry
         const compressAndUploadImage = async (file: File, path: string, retries = 1): Promise<string> => {
-          const IMAGE_UPLOAD_TIMEOUT = 90000; // 90 seconds per image (reduced for faster feedback)
+          const IMAGE_UPLOAD_TIMEOUT = 60000; // 60 seconds per image (reduced for faster feedback)
+          const COMPRESSION_TIMEOUT = 30000; // 30 seconds for compression
           
           for (let attempt = 0; attempt <= retries; attempt++) {
             try {
@@ -295,23 +313,37 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
               if (shouldCompressImage(file, 1)) {
                 console.log(`[CREATE_EVENT] Compressing image "${file.name}" (${(file.size / 1024 / 1024).toFixed(2)}MB)...`);
                 try {
-                  fileToUpload = await compressImage(file, {
+                  // Add timeout to compression
+                  const compressionPromise = compressImage(file, {
                     maxWidth: 1600,
                     maxHeight: 1600,
                     quality: 0.80,
                     maxSizeMB: 2
                   });
+                  
+                  const compressionTimeoutPromise = new Promise<never>((_, reject) => {
+                    setTimeout(() => {
+                      reject(new Error('Compression timed out after 30 seconds'));
+                    }, COMPRESSION_TIMEOUT);
+                  });
+                  
+                  fileToUpload = await Promise.race([compressionPromise, compressionTimeoutPromise]);
                   console.log(`[CREATE_EVENT] ✅ Compressed to ${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB (${((1 - fileToUpload.size / file.size) * 100).toFixed(1)}% reduction)`);
-                } catch (compressError) {
-                  console.warn(`[CREATE_EVENT] Compression failed, uploading original:`, compressError);
-                  // Continue with original file if compression fails
+                } catch (compressError: any) {
+                  console.warn(`[CREATE_EVENT] Compression failed (${compressError?.message}), uploading original:`, compressError);
+                  // Continue with original file if compression fails - don't block upload
+                  fileToUpload = file;
                 }
               }
               
+              console.log(`[CREATE_EVENT] Uploading image "${file.name}" (${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB)...`);
               const uploadedUrl = await uploadImage(path, fileToUpload, { timeout: IMAGE_UPLOAD_TIMEOUT });
+              console.log(`[CREATE_EVENT] ✅ Uploaded successfully: ${uploadedUrl.substring(0, 50)}...`);
               return uploadedUrl;
             } catch (error: any) {
               const isLastAttempt = attempt === retries;
+              console.error(`[CREATE_EVENT] Upload attempt ${attempt + 1} failed:`, error?.message || error);
+              
               if (isLastAttempt) {
                 throw error;
               }
@@ -325,6 +357,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         };
         
         // Upload all images in PARALLEL for maximum speed
+        // Use Promise.allSettled to handle partial failures gracefully
         const timestamp = Date.now();
         const uploadPromises = imageFiles.map(async (file, i) => {
           const imagePath = `events/${user.uid}/${timestamp}_${i}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
@@ -332,31 +365,105 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
           try {
             const uploadedUrl = await compressAndUploadImage(file, imagePath);
             console.log(`[CREATE_EVENT] ✅ Image ${i + 1}/${imageFiles.length} uploaded successfully`);
-            return { index: i, url: uploadedUrl };
+            return { index: i, url: uploadedUrl, success: true };
           } catch (uploadError: any) {
             console.error(`[CREATE_EVENT] ❌ Failed to upload image ${i + 1}/${imageFiles.length}:`, uploadError);
             const errorMessage = uploadError?.message || 'Unknown error';
-            throw new Error(`Failed to upload image "${file.name}": ${errorMessage}. Please try again or use a different image.`);
+            // Return error instead of throwing - we'll handle it below
+            return { index: i, url: null, success: false, error: errorMessage, fileName: file.name };
           }
         });
         
-        // Wait for all uploads to complete and maintain order
-        const uploadResults = await Promise.all(uploadPromises);
+        // Wait for all uploads to complete (some may fail)
+        const uploadResults = await Promise.allSettled(uploadPromises);
+        
+        // Process results
+        const successfulUploads: Array<{ index: number; url: string }> = [];
+        const failedUploads: Array<{ fileName: string; error: string }> = [];
+        
+        uploadResults.forEach((result, i) => {
+          if (result.status === 'fulfilled') {
+            const uploadResult = result.value;
+            if (uploadResult.success && uploadResult.url) {
+              successfulUploads.push({ index: uploadResult.index, url: uploadResult.url });
+            } else if (!uploadResult.success) {
+              failedUploads.push({ fileName: uploadResult.fileName || `Image ${i + 1}`, error: uploadResult.error || 'Unknown error' });
+            }
+          } else {
+            failedUploads.push({ fileName: `Image ${i + 1}`, error: result.reason?.message || 'Upload failed' });
+          }
+        });
+        
+        // If all uploads failed, throw error
+        if (successfulUploads.length === 0 && imageFiles.length > 0) {
+          const errorMessages = failedUploads.map(f => `${f.fileName}: ${f.error}`).join('; ');
+          throw new Error(`All image uploads failed: ${errorMessages}. Please try again or use different images.`);
+        }
+        
+        // If some uploads failed, warn but continue
+        if (failedUploads.length > 0) {
+          console.warn(`[CREATE_EVENT] ⚠️ Some images failed to upload:`, failedUploads);
+          const failedNames = failedUploads.map(f => f.fileName).join(', ');
+          alert(`Warning: Some images failed to upload (${failedNames}). The event will be created with the successfully uploaded images.`);
+        }
+        
         // Sort by index to maintain original order
-        uploadResults.sort((a, b) => a.index - b.index);
-        finalImageUrls = uploadResults.map(result => result.url);
+        successfulUploads.sort((a, b) => a.index - b.index);
+        finalImageUrls = successfulUploads.map(result => result.url);
+        
+        // Clear overall timeout
+        if (overallTimeout) {
+          clearTimeout(overallTimeout);
+          overallTimeout = null;
+        }
         
         // Set main image (first in array)
-        finalImageUrl = finalImageUrls[0] || finalImageUrl;
-        console.log('[CREATE_EVENT] ✅ All images uploaded successfully. Main image:', finalImageUrl);
+        if (finalImageUrls.length > 0) {
+          finalImageUrl = finalImageUrls[0];
+          console.log('[CREATE_EVENT] ✅ All images uploaded successfully. Main image:', finalImageUrl);
+        } else {
+          // Fallback to placeholder if no images uploaded
+          finalImageUrl = `https://picsum.photos/seed/${title || 'event'}/800/600`;
+          finalImageUrls = [finalImageUrl];
+          console.log('[CREATE_EVENT] ⚠️ No images uploaded, using placeholder');
+        }
       } catch (uploadError: any) {
         console.error('[CREATE_EVENT] ❌ Image upload failed:', uploadError);
-        alert(`Failed to upload images: ${uploadError?.message || 'Unknown error'}. Please try again or use different images.`);
-        setIsSubmitting(false);
-        setUploadingImage(false);
-        return;
+        const errorMessage = uploadError?.message || 'Unknown error';
+        
+        // Clear overall timeout if still active
+        if (overallTimeout) {
+          clearTimeout(overallTimeout);
+          overallTimeout = null;
+        }
+        
+        // If it's a timeout or critical error, show alert and stop
+        if (errorMessage.includes('timed out') || errorMessage.includes('all uploads failed') || errorMessage.includes('Overall upload timeout')) {
+          alert(`Failed to upload images: ${errorMessage}. Please try again with smaller images or check your internet connection.`);
+          setIsSubmitting(false);
+          setUploadingImage(false);
+          return;
+        }
+        
+        // For other errors, allow continuing without images
+        const shouldContinue = confirm(`Image upload failed: ${errorMessage}. Would you like to create the event without images?`);
+        if (!shouldContinue) {
+          setIsSubmitting(false);
+          setUploadingImage(false);
+          return;
+        }
+        
+        // Continue with default placeholder image
+        finalImageUrl = `https://picsum.photos/seed/${title || 'event'}/800/600`;
+        finalImageUrls = [finalImageUrl];
+        console.log('[CREATE_EVENT] Continuing with placeholder image after upload failure');
       } finally {
+        // Always clear timeout and reset state
+        if (overallTimeout) {
+          clearTimeout(overallTimeout);
+        }
         setUploadingImage(false);
+        console.log('[CREATE_EVENT] Image upload process completed, uploadingImage set to false');
       }
     } else if (imageUrls.length > 0) {
       // Images were already uploaded in a previous attempt

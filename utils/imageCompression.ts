@@ -25,13 +25,21 @@ export async function compressImage(
     maxSizeMB = 2 // Reduced from 5MB for faster uploads
   } = options;
 
+  // Add timeout to compression (30 seconds max)
+  const COMPRESSION_TIMEOUT = 30000;
+  
   return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error('Image compression timed out. The image may be too large or corrupted.'));
+    }, COMPRESSION_TIMEOUT);
+    
     const reader = new FileReader();
     
     reader.onload = (e) => {
       const img = new Image();
       
       img.onload = () => {
+        clearTimeout(timeoutId);
         // Calculate new dimensions
         let width = img.width;
         let height = img.height;
@@ -106,6 +114,7 @@ export async function compressImage(
       };
       
       img.onerror = () => {
+        clearTimeout(timeoutId);
         reject(new Error('Failed to load image'));
       };
       
@@ -113,10 +122,16 @@ export async function compressImage(
     };
     
     reader.onerror = () => {
+      clearTimeout(timeoutId);
       reject(new Error('Failed to read file'));
     };
     
-    reader.readAsDataURL(file);
+    try {
+      reader.readAsDataURL(file);
+    } catch (error) {
+      clearTimeout(timeoutId);
+      reject(new Error('Failed to read file: ' + (error instanceof Error ? error.message : 'Unknown error')));
+    }
   });
 }
 

@@ -36,27 +36,40 @@ export async function uploadImage(path: string, file: File, options?: { timeout?
     const storageRef = ref(storage, path);
     console.log(`[UPLOAD_IMAGE] Starting upload: ${path} (${(file.size / 1024 / 1024).toFixed(2)}MB, type: ${file.type})`);
     
-    // Add timeout to upload operation
-    const uploadPromise = uploadBytes(storageRef, file);
+    // Add timeout to upload operation with proper cleanup
+    let timeoutId: NodeJS.Timeout | null = null;
+    const uploadPromise = uploadBytes(storageRef, file).catch((error) => {
+      if (timeoutId) clearTimeout(timeoutId);
+      throw error;
+    });
+    
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
+      timeoutId = setTimeout(() => {
         reject(new Error(`Image upload timed out after ${uploadTimeout / 1000} seconds. The file may be too large or your connection is slow.`));
       }, uploadTimeout);
     });
     
     const uploadResult = await Promise.race([uploadPromise, timeoutPromise]);
+    if (timeoutId) clearTimeout(timeoutId);
     
     console.log(`[UPLOAD_IMAGE] Upload complete, getting download URL...`);
     
     // Get download URL with timeout as well
-    const urlPromise = getDownloadURL(uploadResult.ref);
+    let urlTimeoutId: NodeJS.Timeout | null = null;
+    const urlPromise = getDownloadURL(uploadResult.ref).catch((error) => {
+      if (urlTimeoutId) clearTimeout(urlTimeoutId);
+      throw error;
+    });
+    
     const urlTimeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
+      urlTimeoutId = setTimeout(() => {
         reject(new Error('Failed to get download URL. The upload may have succeeded but retrieving the URL timed out.'));
       }, 10000); // 10 second timeout for URL retrieval
     });
     
     const downloadUrl = await Promise.race([urlPromise, urlTimeoutPromise]);
+    if (urlTimeoutId) clearTimeout(urlTimeoutId);
+    
     console.log(`[UPLOAD_IMAGE] ✅ Successfully uploaded: ${path}`);
     return downloadUrl;
   } catch (error: any) {

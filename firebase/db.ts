@@ -257,6 +257,106 @@ export async function listUpcomingEvents(): Promise<Event[]> {
   }
 }
 
+// Update an existing event in Firestore
+export async function updateEvent(eventId: string, eventData: Partial<Omit<Event, 'id' | 'createdAt' | 'location' | 'hostName' | 'attendees'>>): Promise<Event> {
+  const db = getDbSafe();
+  if (!db) {
+    throw new Error('Firestore not initialized');
+  }
+  
+  // Ensure Firestore is ready before calling collection()
+  if (typeof db === 'undefined' || db === null) {
+    throw new Error('Firestore not initialized');
+  }
+  
+  // Check if device is online
+  if (typeof navigator !== 'undefined' && 'onLine' in navigator && !navigator.onLine) {
+    throw new Error('Device is offline. Please check your internet connection.');
+  }
+  
+  try {
+    const eventRef = doc(db, "events", eventId);
+    
+    // First, get the existing event to merge with updates
+    const existingEventSnap = await getDoc(eventRef);
+    if (!existingEventSnap.exists()) {
+      throw new Error('Event not found');
+    }
+    
+    const existingEvent = existingEventSnap.data() as FirestoreEvent;
+    const now = Date.now();
+    
+    // Build update data - only include fields that are being updated
+    const updateData: Partial<FirestoreEvent> = {
+      updatedAt: now,
+    };
+    
+    // Map frontend Event fields to FirestoreEvent fields
+    if (eventData.title !== undefined) updateData.title = eventData.title;
+    if (eventData.description !== undefined) updateData.description = eventData.description;
+    if (eventData.city !== undefined) {
+      updateData.city = eventData.city;
+      // Update location if city or address changed
+      updateData.location = eventData.address ? `${eventData.address}, ${eventData.city}` : eventData.city;
+    }
+    if (eventData.address !== undefined) {
+      updateData.address = eventData.address;
+      // Update location if address changed
+      updateData.location = eventData.address ? `${eventData.address}, ${existingEvent.city || eventData.city || ''}` : (existingEvent.city || eventData.city || '');
+    }
+    if (eventData.time !== undefined) updateData.time = eventData.time;
+    if (eventData.category !== undefined) updateData.category = eventData.category;
+    if (eventData.price !== undefined) updateData.price = eventData.price;
+    if (eventData.tags !== undefined) updateData.tags = Array.isArray(eventData.tags) ? eventData.tags : [];
+    if (eventData.host !== undefined) {
+      updateData.host = eventData.host;
+      updateData.hostName = eventData.host; // Keep hostName in sync
+    }
+    if (eventData.imageUrl !== undefined) updateData.imageUrl = eventData.imageUrl;
+    if (eventData.imageUrls !== undefined) updateData.imageUrls = eventData.imageUrls;
+    if (eventData.whatToExpect !== undefined) updateData.whatToExpect = eventData.whatToExpect;
+    if (eventData.aboutEvent !== undefined) updateData.aboutEvent = eventData.aboutEvent;
+    if (eventData.capacity !== undefined) updateData.capacity = eventData.capacity;
+    if (eventData.attendeesCount !== undefined) updateData.attendeesCount = eventData.attendeesCount;
+    
+    // Validate and sanitize update data
+    const sanitizedUpdate = sanitizeFirestoreData(updateData);
+    
+    // Update the document
+    const FIRESTORE_UPDATE_TIMEOUT = 30000; // 30 seconds
+    const updatePromise = updateDoc(eventRef, sanitizedUpdate);
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('Firestore update operation timed out. Please try again.'));
+      }, FIRESTORE_UPDATE_TIMEOUT);
+    });
+    
+    await Promise.race([updatePromise, timeoutPromise]);
+    
+    console.log('[UPDATE_EVENT_DB] ✅ Firestore update successful:', { eventId });
+    
+    // Fetch and return the updated event
+    const updatedEventSnap = await getDoc(eventRef);
+    if (!updatedEventSnap.exists()) {
+      throw new Error('Failed to fetch updated event');
+    }
+    
+    const updatedFirestoreEvent: FirestoreEvent = {
+      id: updatedEventSnap.id,
+      ...(updatedEventSnap.data() as Omit<FirestoreEvent, 'id'>),
+    };
+    
+    return mapFirestoreEventToEvent(updatedFirestoreEvent);
+  } catch (error: any) {
+    console.error('[UPDATE_EVENT_DB] ❌ Error updating event:', {
+      eventId,
+      error: error?.message,
+      code: error?.code
+    });
+    throw error;
+  }
+}
+
 export async function getEventById(id: string): Promise<Event | null> {
   const db = getDbSafe();
   if (!db) {

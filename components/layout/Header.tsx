@@ -285,7 +285,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
                  </button>
                  
                  <button onClick={onNotificationsClick} className="text-left hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all flex items-center gap-3 sm:gap-3 touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
-                   {t('header.notifications')} <span className="w-2 h-2 sm:w-2 sm:h-2 bg-[#e35e25] rounded-full"></span>
+                   {t('header.notifications')} {unreadCount > 0 && <span className="w-2 h-2 sm:w-2 sm:h-2 bg-[#e35e25] rounded-full"></span>}
                  </button>
                  
                  <button onClick={() => handleNav(ViewState.PROFILE)} className="text-left hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">

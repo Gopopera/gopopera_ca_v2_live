@@ -13,7 +13,7 @@ interface EventStore {
   _unsubscribe: Unsubscribe | null; // Internal unsubscribe function for onSnapshot
   init: () => void; // Initialize real-time subscription
   addEvent: (event: Omit<Event, 'id' | 'createdAt' | 'location' | 'hostName' | 'attendees'>) => Promise<Event>;
-  updateEvent: (eventId: string, updates: Partial<Omit<Event, 'id' | 'createdAt'>>) => void;
+  updateEvent: (eventId: string, updates: Partial<Omit<Event, 'id' | 'createdAt'>>) => Promise<void>;
   deleteEvent: (eventId: string) => void;
   getEvent: (eventId: string) => Event | undefined;
   getEvents: () => Event[];
@@ -158,28 +158,60 @@ export const useEventStore = create<EventStore>((set, get) => ({
     }
   },
 
-  updateEvent: (eventId, updates) => {
-    set((state) => ({
-      events: state.events.map(event => {
-        if (event.id === eventId) {
-          const updated = { ...event, ...updates };
-          // Recalculate location if city or address changed
-          if (updates.city || updates.address) {
-            updated.location = formatLocation(updated.city, updated.address);
+  updateEvent: async (eventId, updates) => {
+    // Update in Firestore first
+    try {
+      const { updateEvent: updateEventInFirestore } = await import('../firebase/db');
+      const updatedEvent = await updateEventInFirestore(eventId, updates);
+      
+      // Then update local store
+      set((state) => ({
+        events: state.events.map(event => {
+          if (event.id === eventId) {
+            const updated = { ...event, ...updatedEvent };
+            // Recalculate location if city or address changed
+            if (updates.city || updates.address) {
+              updated.location = formatLocation(updated.city || event.city, updated.address || event.address);
+            }
+            // Update hostName if host changed
+            if (updates.host) {
+              updated.hostName = updates.host;
+            }
+            // Update attendees alias if attendeesCount changed
+            if (updates.attendeesCount !== undefined) {
+              updated.attendees = updates.attendeesCount;
+            }
+            return updated;
           }
-          // Update hostName if host changed
-          if (updates.host) {
-            updated.hostName = updates.host;
+          return event;
+        })
+      }));
+    } catch (error) {
+      console.error('[EVENT_STORE] Error updating event in Firestore:', error);
+      // Still update local store optimistically
+      set((state) => ({
+        events: state.events.map(event => {
+          if (event.id === eventId) {
+            const updated = { ...event, ...updates };
+            // Recalculate location if city or address changed
+            if (updates.city || updates.address) {
+              updated.location = formatLocation(updated.city || event.city, updated.address || event.address);
+            }
+            // Update hostName if host changed
+            if (updates.host) {
+              updated.hostName = updates.host;
+            }
+            // Update attendees alias if attendeesCount changed
+            if (updates.attendeesCount !== undefined) {
+              updated.attendees = updates.attendeesCount;
+            }
+            return updated;
           }
-          // Update attendees alias if attendeesCount changed
-          if (updates.attendeesCount !== undefined) {
-            updated.attendees = updates.attendeesCount;
-          }
-          return updated;
-        }
-        return event;
-      }),
-    }));
+          return event;
+        })
+      }));
+      throw error;
+    }
   },
 
   deleteEvent: (eventId) => {

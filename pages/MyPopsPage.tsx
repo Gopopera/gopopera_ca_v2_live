@@ -61,7 +61,7 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
             >
               <ChevronLeft size={20} />
             </button>
-            <h1 className="font-heading font-bold text-3xl text-[#15383c]">My Pops</h1>
+            <h1 className="font-heading font-bold text-3xl text-[#15383c]">My Pop-Ups</h1>
           </div>
           <button
             onClick={() => setViewState(ViewState.MY_CALENDAR)}
@@ -126,9 +126,9 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
                   showEditButton={activeTab === 'hosting' && event.hostId === user?.uid}
                   onEditClick={(e, event) => {
                     e.stopPropagation();
-                    setViewState(ViewState.EDIT_EVENT);
-                    // Store event for editing - CreateEventPage will handle it
+                    // Store event for editing and navigate to edit page
                     onEventClick(event);
+                    setViewState(ViewState.EDIT_EVENT);
                   }}
                 />
               </div>
