@@ -296,10 +296,8 @@ export async function seedCommunityEvents(): Promise<void> {
           allowRsvp: true,
         };
 
-        // Sanitize and validate event data before adding to Firestore
-        const sanitizedEventData = sanitizeFirestoreData(eventData, [
-          'title', 'description', 'date', 'time', 'city', 'host', 'hostId', 'createdAt'
-        ], 'seedCommunityEvents');
+        // Sanitize event data - remove undefined values (Firestore doesn't accept undefined)
+        const sanitizedEventData = sanitizeFirestoreData(eventData);
 
         // Add to Firestore with sanitized data
         await addDoc(eventsCol, sanitizedEventData);
