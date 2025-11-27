@@ -11,6 +11,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
+    "@react-google-maps/api": "^2.20.7",
     "firebase": "^12.6.0",
     "lucide-react": "^0.554.0",
     "qrcode.react": "^4.2.0",

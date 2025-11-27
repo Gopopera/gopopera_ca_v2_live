@@ -6,6 +6,7 @@ import { useUserStore } from '../stores/userStore';
 import { HostPhoneVerificationModal } from '../components/auth/HostPhoneVerificationModal';
 import { uploadImage } from '../firebase/storage';
 import { compressImage, shouldCompressImage } from '../utils/imageCompression';
+import { geocodeAddress } from '../utils/geocoding';
 
 interface CreateEventPageProps {
   setViewState: (view: ViewState) => void;
@@ -476,12 +477,35 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
     }
     
     try {
+      // Geocode address to get coordinates (if API key is available)
+      let lat: number | undefined;
+      let lng: number | undefined;
+      
+      if (address && city) {
+        try {
+          console.log('[CREATE_EVENT] Geocoding address:', address, city);
+          const geocodeResult = await geocodeAddress(address, city);
+          if (geocodeResult) {
+            lat = geocodeResult.lat;
+            lng = geocodeResult.lng;
+            console.log('[CREATE_EVENT] Geocoding successful:', { lat, lng });
+          } else {
+            console.warn('[CREATE_EVENT] Geocoding failed or API key not available. Event will be created without coordinates.');
+          }
+        } catch (error) {
+          console.error('[CREATE_EVENT] Error geocoding address:', error);
+          // Continue without coordinates - not a critical error
+        }
+      }
+      
       // Create event with all required fields
       console.log('[CREATE_EVENT] Calling addEvent with:', {
         title,
         city,
         hostId: user.uid,
-        host: user.displayName || user.email || 'You'
+        host: user.displayName || user.email || 'You',
+        lat,
+        lng
       });
       
       // Add timeout to detect if addEvent is hanging
@@ -511,6 +535,8 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         allowRsvp: !saveAsDraft,
         allowChat: !saveAsDraft,
         isDraft: saveAsDraft,
+        lat, // Add geocoded coordinates
+        lng, // Add geocoded coordinates
       } as any); // Type assertion needed for optional fields
       
       const timeoutPromise = new Promise<never>((_, reject) => {
