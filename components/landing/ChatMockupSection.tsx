@@ -35,11 +35,6 @@ export const ChatMockupSection: React.FC = () => {
                Keep your community engaged before, during, and after the event. No more scattered DMs or lost emails.
              </p>
              
-             {/* Mobile-only: extra spacing and subtitle */}
-             <p className="text-sm sm:text-base text-gray-600 font-light mb-8 md:hidden leading-relaxed px-4">
-               The simplest way to gather your crowd and keep them connected.
-             </p>
-
              <p className="text-sm sm:text-base text-gray-600 font-light mb-6 sm:mb-8 leading-relaxed text-center lg:text-left">
                The simplest way to gather your crowd and keep them connected.
              </p>
