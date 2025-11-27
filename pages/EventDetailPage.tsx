@@ -68,24 +68,67 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   );
   const hasRSVPed = useMemo(() => rsvps.includes(event?.id || ''), [rsvps, event?.id]);
   
-  // Fetch host profile picture - always fetch from Firestore for accuracy (works when not logged in)
+  // State for host name (may need to be fetched if missing)
+  const [displayHostName, setDisplayHostName] = useState<string>(event.hostName || '');
+  
+  // State for rating - ensure it's always from the event document (updated by recalculateEventRating)
+  // The event.rating should already be calculated from accepted reviews via recalculateEventRating
+  // This state is just for display - the actual rating comes from event.rating
+  const [currentRating, setCurrentRating] = useState<{ rating: number; reviewCount: number }>({
+    rating: event.rating || 0,
+    reviewCount: event.reviewCount || 0
+  });
+  
+  // Update rating when event changes (from Firestore real-time updates)
+  useEffect(() => {
+    setCurrentRating({
+      rating: event.rating || 0,
+      reviewCount: event.reviewCount || 0
+    });
+  }, [event.rating, event.reviewCount]);
+  
+  // Fetch host profile picture and name - always fetch from Firestore for accuracy (works when not logged in)
   useEffect(() => {
     const fetchHostProfile = async () => {
       if (!event.hostId) {
         setHostProfilePicture(null);
+        setDisplayHostName('Unknown Host');
         return;
       }
+      
+      // If hostName is missing, empty, or 'Unknown', fetch from Firestore
+      const needsHostNameFetch = !event.hostName || 
+                                 event.hostName.trim() === '' || 
+                                 event.hostName === 'Unknown' || 
+                                 event.hostName === 'Unknown Host' ||
+                                 event.hostName === 'You';
       
       // If this is the current user's event AND user is logged in, use their profile picture (always sync with latest)
       if (event.hostId === user?.uid && user) {
         // Priority: userProfile (Firestore - most up-to-date) > user (Auth) > fallback
         const profilePic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl;
         setHostProfilePicture(profilePic || null);
+        
+        // Update host name from user profile if needed
+        if (needsHostNameFetch) {
+          const name = userProfile?.name || userProfile?.displayName || user?.displayName || user?.name || user?.email?.split('@')[0] || 'Unknown Host';
+          setDisplayHostName(name);
+        } else {
+          setDisplayHostName(event.hostName);
+        }
+        
         // Still fetch from Firestore as backup to ensure we have the latest
         try {
           const hostProfile = await getUserProfile(event.hostId);
-          if (hostProfile && (hostProfile.photoURL || hostProfile.imageUrl)) {
-            setHostProfilePicture(hostProfile.photoURL || hostProfile.imageUrl || null);
+          if (hostProfile) {
+            if (hostProfile.photoURL || hostProfile.imageUrl) {
+              setHostProfilePicture(hostProfile.photoURL || hostProfile.imageUrl || null);
+            }
+            // Update name if we fetched it
+            if (needsHostNameFetch) {
+              const name = hostProfile.name || hostProfile.displayName || displayHostName || 'Unknown Host';
+              setDisplayHostName(name);
+            }
           }
         } catch (error) {
           // Silently fail - already have profile pic from user store
@@ -94,13 +137,23 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       }
       
       // For all hosts (including current user when not logged in), fetch from Firestore
-      // This ensures profile pictures are always accurate and work when not logged in
+      // This ensures profile pictures and names are always accurate and work when not logged in
       try {
         const hostProfile = await getUserProfile(event.hostId);
         if (hostProfile) {
           setHostProfilePicture(hostProfile.photoURL || hostProfile.imageUrl || null);
+          
+          // Update host name from Firestore if needed
+          if (needsHostNameFetch) {
+            const name = hostProfile.name || hostProfile.displayName || event.hostName || 'Unknown Host';
+            setDisplayHostName(name);
+          } else {
+            setDisplayHostName(event.hostName);
+          }
         } else {
           setHostProfilePicture(null);
+          // If we can't fetch profile, use event.hostName or fallback
+          setDisplayHostName(event.hostName || 'Unknown Host');
         }
       } catch (error: any) {
         // Handle permission errors gracefully - don't spam console
@@ -110,11 +163,12 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           console.error('Error fetching host profile:', error);
         }
         setHostProfilePicture(null);
+        setDisplayHostName(event.hostName || 'Unknown Host');
       }
     };
     
     fetchHostProfile();
-  }, [event.hostId, user?.uid, user?.photoURL, user?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl]);
+  }, [event.hostId, event.hostName, user?.uid, user?.photoURL, user?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl]);
   
   // Fetch real reservation count from Firestore
   useEffect(() => {
@@ -450,22 +504,22 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         <div className="lg:col-span-2 space-y-6 sm:space-y-8 md:space-y-10">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-5 p-5 sm:p-6 md:p-7 lg:p-8 bg-gray-50 rounded-2xl sm:rounded-3xl border border-gray-100 hover:border-gray-200 transition-colors">
             <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto min-w-0">
-               <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-gray-200 overflow-hidden ring-2 sm:ring-4 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick(event.hostName)}>
+               <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-gray-200 overflow-hidden ring-2 sm:ring-4 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick(displayHostName)}>
                  {hostProfilePicture ? (
-                   <img src={hostProfilePicture} alt={event.hostName} className="w-full h-full object-cover" onError={(e) => {
+                   <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
                      const target = e.target as HTMLImageElement;
-                     target.src = `https://picsum.photos/seed/${event.hostName}/100/100`;
+                     target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
                    }} />
                  ) : (
                    <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-lg sm:text-xl md:text-2xl">
-                     {event.hostName?.[0]?.toUpperCase() || 'H'}
+                     {displayHostName?.[0]?.toUpperCase() || 'H'}
                    </div>
                  )}
                </div>
                <div className="min-w-0 flex-1">
                  <p className="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">Hosted by</p>
-                 <h3 className="text-base sm:text-lg md:text-xl font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(event.hostName)}>{event.hostName}</h3>
-                 <button onClick={(e) => onReviewsClick(e, event)} className="flex items-center space-x-1 mt-1.5 bg-white hover:bg-orange-50 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-colors border border-gray-200 hover:border-orange-100 group/rating shrink-0 w-fit touch-manipulation active:scale-95"><Star size={11} className="sm:w-3 sm:h-3 text-gray-300 group-hover/rating:text-popera-orange group-hover/rating:fill-popera-orange transition-colors" fill="currentColor" /><span className="text-[10px] sm:text-xs font-bold text-popera-teal">{formatRating(event.rating)}</span><span className="text-[9px] sm:text-[10px] text-gray-400 group-hover/rating:text-orange-400">({event.reviewCount})</span></button>
+                 <h3 className="text-base sm:text-lg md:text-xl font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
+                 <button onClick={(e) => onReviewsClick(e, event)} className="flex items-center space-x-1 mt-1.5 bg-white hover:bg-orange-50 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-colors border border-gray-200 hover:border-orange-100 group/rating shrink-0 w-fit touch-manipulation active:scale-95"><Star size={11} className="sm:w-3 sm:h-3 text-gray-300 group-hover/rating:text-popera-orange group-hover/rating:fill-popera-orange transition-colors" fill="currentColor" /><span className="text-[10px] sm:text-xs font-bold text-popera-teal">{formatRating(currentRating.rating)}</span><span className="text-[9px] sm:text-[10px] text-gray-400 group-hover/rating:text-orange-400">({currentRating.reviewCount})</span></button>
                </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">

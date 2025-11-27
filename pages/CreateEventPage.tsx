@@ -512,7 +512,20 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       
       // Get host name from user profile (Firestore - most accurate) or Auth, NEVER use 'You'
       // Priority: userProfile (Firestore) > user (Auth) > email fallback
-      const hostName = userProfile?.name || userProfile?.displayName || user?.displayName || user?.name || user?.email?.split('@')[0] || 'Unknown Host';
+      // CRITICAL: hostName must never be empty, 'You', or 'Unknown'
+      const hostName = (userProfile?.name || userProfile?.displayName || user?.displayName || user?.name || user?.email?.split('@')[0] || 'Unknown Host').trim();
+      
+      // Get host profile picture URL (for better performance and consistency)
+      const hostPhotoURL = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || undefined;
+      
+      // Validate hostName - should never be empty or 'You'
+      if (!hostName || hostName === 'You' || hostName.trim() === '') {
+        console.error('[CREATE_EVENT] ❌ Invalid hostName:', hostName);
+        alert('Error: Could not determine host name. Please update your profile and try again.');
+        setIsSubmitting(false);
+        setUploadingImage(false);
+        return;
+      }
       
       // Create event with all required fields
       console.log('[CREATE_EVENT] Calling addEvent with:', {
@@ -520,6 +533,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         city,
         hostId: user.uid,
         host: hostName,
+        hostPhotoURL: hostPhotoURL ? '***' : 'not set',
         hostPhoneNumber: hostPhoneNumber ? '***' : 'not set',
         imageUrl: finalImageUrl.substring(0, 50) + '...',
         imageUrlsCount: finalImageUrls.length,
@@ -540,6 +554,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         tags,
         host: hostName, // Always use actual name, never 'You'
         hostId: user?.uid || '',
+        hostPhotoURL: hostPhotoURL, // Store host photo URL for consistency
         imageUrl: finalImageUrl, // Main image (backward compatibility)
         imageUrls: finalImageUrls.length > 0 ? finalImageUrls : undefined, // Array of all images
         whatToExpect: whatToExpect || undefined,

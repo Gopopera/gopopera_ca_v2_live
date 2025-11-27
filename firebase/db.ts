@@ -17,6 +17,20 @@ import { POPERA_EMAIL } from "../stores/userStore";
 // Exported for use in eventStore
 export const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event => {
   // Standardize all fields to ensure consistent format
+  // CRITICAL: hostName should never be empty or 'Unknown' - always prefer hostName over host
+  let hostName = firestoreEvent.hostName || firestoreEvent.host || '';
+  
+  // Clean up hostName - remove 'You' and ensure it's not empty
+  if (hostName === 'You' || hostName === '') {
+    hostName = firestoreEvent.host || '';
+  }
+  
+  // If still empty, we'll need to fetch from Firestore (handled in components)
+  // But for now, use a placeholder that components can detect and replace
+  if (!hostName || hostName === 'You') {
+    hostName = ''; // Empty string - components will fetch from Firestore using hostId
+  }
+  
   const standardizedEvent: Event = {
     id: firestoreEvent.id || '',
     title: firestoreEvent.title || '',
@@ -26,14 +40,10 @@ export const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event 
     date: firestoreEvent.date || '',
     time: firestoreEvent.time || '',
     tags: Array.isArray(firestoreEvent.tags) ? firestoreEvent.tags : [],
-    host: firestoreEvent.host || '',
-    // Ensure hostName is never empty or 'You' - use host as fallback, but prefer hostName
-    hostName: (firestoreEvent.hostName && firestoreEvent.hostName !== 'You') 
-      ? firestoreEvent.hostName 
-      : (firestoreEvent.host && firestoreEvent.host !== 'You') 
-        ? firestoreEvent.host 
-        : 'Unknown Host',
+    host: firestoreEvent.host || hostName || '',
+    hostName: hostName, // Will be enriched by components if empty
     hostId: firestoreEvent.hostId || '',
+    hostPhotoURL: firestoreEvent.hostPhotoURL || undefined,
     imageUrl: firestoreEvent.imageUrl || (firestoreEvent.imageUrls && firestoreEvent.imageUrls.length > 0 ? firestoreEvent.imageUrls[0] : ''),
     imageUrls: firestoreEvent.imageUrls || (firestoreEvent.imageUrl ? [firestoreEvent.imageUrl] : undefined),
     attendeesCount: typeof firestoreEvent.attendeesCount === 'number' ? firestoreEvent.attendeesCount : 0,
@@ -126,9 +136,16 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
       address: eventData.address || '',
       location: eventData.address ? `${eventData.address}, ${eventData.city}` : eventData.city,
       tags: Array.isArray(eventData.tags) ? eventData.tags : [],
-      host: eventData.host || 'Unknown',
-      hostName: eventData.host || 'Unknown',
+      // Ensure host name is never 'You' or empty - use actual name or fetch from profile
+      host: (eventData.host && eventData.host !== 'You' && eventData.host.trim() !== '') 
+        ? eventData.host.trim() 
+        : 'Unknown Host',
+      hostName: (eventData.host && eventData.host !== 'You' && eventData.host.trim() !== '') 
+        ? eventData.host.trim() 
+        : 'Unknown Host',
       hostId: eventData.hostId || '',
+      // Store host photo URL if available (for better performance)
+      hostPhotoURL: eventData.hostPhotoURL || undefined,
       imageUrl: eventData.imageUrl || (eventData.imageUrls && eventData.imageUrls.length > 0 ? eventData.imageUrls[0] : ''),
       imageUrls: eventData.imageUrls || (eventData.imageUrl ? [eventData.imageUrl] : undefined),
       rating: eventData.rating || 0,

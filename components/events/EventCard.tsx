@@ -35,40 +35,70 @@ export const EventCard: React.FC<EventCardProps> = ({
   // Get host profile picture - sync with user's profile if it's their event, or fetch from Firestore
   const [hostProfilePicture, setHostProfilePicture] = React.useState<string | null>(null);
   
+  // State for host name (may need to be fetched if missing)
+  const [displayHostName, setDisplayHostName] = React.useState<string>(event.hostName || '');
+  
   React.useEffect(() => {
     const fetchHostProfile = async () => {
       if (!event.hostId) {
         setHostProfilePicture(null);
+        setDisplayHostName('Unknown Host');
         return;
       }
+      
+      // If hostName is missing, empty, or 'Unknown', fetch from Firestore
+      const needsHostNameFetch = !event.hostName || 
+                                 event.hostName.trim() === '' || 
+                                 event.hostName === 'Unknown' || 
+                                 event.hostName === 'Unknown Host' ||
+                                 event.hostName === 'You';
       
       // If this is the current user's event AND user is logged in, use their profile picture (always sync with latest)
       if (event.hostId === user?.uid && user) {
         // Priority: userProfile (Firestore - most up-to-date) > user (Auth) > fallback
         const profilePic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl;
         setHostProfilePicture(profilePic || null);
+        
+        // Update host name from user profile if needed
+        if (needsHostNameFetch) {
+          const name = userProfile?.name || userProfile?.displayName || user?.displayName || user?.name || user?.email?.split('@')[0] || 'Unknown Host';
+          setDisplayHostName(name);
+        } else {
+          setDisplayHostName(event.hostName);
+        }
         return;
       }
       
       // For all hosts (including current user when not logged in), fetch from Firestore
-      // This ensures profile pictures are always accurate and work when not logged in
+      // This ensures profile pictures and names are always accurate and work when not logged in
       try {
         const hostProfile = await getUserProfile(event.hostId);
         if (hostProfile) {
           // Priority: photoURL > imageUrl (both from Firestore)
           const profilePic = hostProfile.photoURL || hostProfile.imageUrl || null;
           setHostProfilePicture(profilePic);
+          
+          // Update host name from Firestore if needed
+          if (needsHostNameFetch) {
+            const name = hostProfile.name || hostProfile.displayName || event.hostName || 'Unknown Host';
+            setDisplayHostName(name);
+          } else {
+            setDisplayHostName(event.hostName);
+          }
         } else {
           setHostProfilePicture(null);
+          // If we can't fetch profile, use event.hostName or fallback
+          setDisplayHostName(event.hostName || 'Unknown Host');
         }
       } catch (error) {
         // Silently fail - will use placeholder with initial
         setHostProfilePicture(null);
+        setDisplayHostName(event.hostName || 'Unknown Host');
       }
     };
     
     fetchHostProfile();
-  }, [event.hostId, user?.uid, user?.photoURL, user?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl]);
+  }, [event.hostId, event.hostName, user?.uid, user?.photoURL, user?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl]);
   
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -232,21 +262,21 @@ export const EventCard: React.FC<EventCardProps> = ({
                {hostProfilePicture ? (
                  <img 
                    src={hostProfilePicture} 
-                   alt={event.hostName} 
+                   alt={displayHostName} 
                    className="w-full h-full object-cover"
                    onError={(e) => {
                      const target = e.target as HTMLImageElement;
-                     target.src = `https://picsum.photos/seed/${event.hostName}/50/50`;
+                     target.src = `https://picsum.photos/seed/${displayHostName}/50/50`;
                    }}
                  />
                ) : (
                  <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-xs">
-                   {event.hostName?.[0]?.toUpperCase() || 'H'}
+                   {displayHostName?.[0]?.toUpperCase() || 'H'}
                  </div>
                )}
              </span>
              <p className="text-xs font-medium text-gray-600 sm:text-gray-500 uppercase tracking-wide truncate">
-               Hosted by {event.hostName.split(' ')[0]}
+               Hosted by {displayHostName ? displayHostName.split(' ')[0] : 'Unknown'}
              </p>
            </div>
 

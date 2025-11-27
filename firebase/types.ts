@@ -15,6 +15,7 @@ export interface FirestoreEvent {
   host: string;
   hostName: string;    // For backward compatibility
   hostId: string;
+  hostPhotoURL?: string; // Host profile picture URL for better performance
   imageUrl?: string;
   imageUrls?: string[]; // Array of image URLs (first one is the main photo)
   rating?: number;
