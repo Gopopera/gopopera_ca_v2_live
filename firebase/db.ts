@@ -140,10 +140,11 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
       subtitle: (eventData as any).subtitle,
       startDate: (eventData as any).startDate,
       endDate: (eventData as any).endDate,
-      // Default to public and joinable if not specified
-      isPublic: (eventData as any).isPublic !== undefined ? (eventData as any).isPublic : true,
-      allowChat: (eventData as any).allowChat !== undefined ? (eventData as any).allowChat : true,
-      allowRsvp: (eventData as any).allowRsvp !== undefined ? (eventData as any).allowRsvp : true,
+      // Default to public and joinable if not specified (unless draft)
+      isDraft: (eventData as any).isDraft === true,
+      isPublic: (eventData as any).isPublic !== undefined ? (eventData as any).isPublic : !(eventData as any).isDraft,
+      allowChat: (eventData as any).allowChat !== undefined ? (eventData as any).allowChat : !(eventData as any).isDraft,
+      allowRsvp: (eventData as any).allowRsvp !== undefined ? (eventData as any).allowRsvp : !(eventData as any).isDraft,
       isOfficialLaunch: eventData.isOfficialLaunch || false,
       aboutEvent: eventData.aboutEvent,
       whatToExpect: eventData.whatToExpect,

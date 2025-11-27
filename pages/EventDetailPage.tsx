@@ -318,24 +318,6 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         <button onClick={() => setViewState(ViewState.FEED)} className="flex items-center text-gray-500 hover:text-popera-teal transition-colors font-medium"><ChevronLeft size={20} className="mr-1" /> Back to Events</button>
       </div>
 
-      {/* Demo Event Banner */}
-      {isDemo && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
-          <div className="bg-amber-50 border-l-4 border-amber-400 p-4 sm:p-5 rounded-lg">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <Info className="h-5 w-5 text-amber-400" />
-              </div>
-              <div className="ml-3 flex-1">
-                <h3 className="text-sm font-bold text-amber-800 mb-1">Demo Popera Event</h3>
-                <p className="text-sm text-amber-700 leading-relaxed">
-                  {"This is an example use case scenario created by Popera. It's meant to help you explore the app and imagine your own pop-ups. It is not an actual event and you should not attend it in real life."}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Image Gallery - Scrollable if multiple images */}
       <div className="relative h-[40vh] sm:h-[45vh] md:h-[50vh] lg:h-[55vh] xl:h-[60vh] w-full overflow-hidden group">
@@ -406,11 +388,6 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                <div className="min-w-0 flex-1">
                  <p className="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">Hosted by</p>
                  <h3 className="text-base sm:text-lg md:text-xl font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(event.hostName)}>{event.hostName}</h3>
-                 {(event.hostName === 'Popera' || user?.email === 'eatezca@gmail.com') && (
-                   <p className="text-xs text-gray-500 mt-1.5 italic">
-                     This Popera profile is used to showcase example scenarios and demo events. These events are not real — they exist to help you understand what you can host yourself.
-                   </p>
-                 )}
                  <button onClick={(e) => onReviewsClick(e, event)} className="flex items-center space-x-1 mt-1.5 bg-white hover:bg-orange-50 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-colors border border-gray-200 hover:border-orange-100 group/rating shrink-0 w-fit touch-manipulation active:scale-95"><Star size={11} className="sm:w-3 sm:h-3 text-gray-300 group-hover/rating:text-popera-orange group-hover/rating:fill-popera-orange transition-colors" fill="currentColor" /><span className="text-[10px] sm:text-xs font-bold text-popera-teal">{formatRating(event.rating)}</span><span className="text-[9px] sm:text-[10px] text-gray-400 group-hover/rating:text-orange-400">({event.reviewCount})</span></button>
                </div>
             </div>

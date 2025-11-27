@@ -94,10 +94,11 @@ export const useEventStore = create<EventStore>((set, get) => ({
             const events: Event[] = snapshot.docs
               .map((doc) => {
                 const data = doc.data();
-                // Filter: Only include public events (isPublic !== false)
+                // Filter: Only include public, non-draft events in main feed
                 // Events without isPublic field default to public (true) - show them
-                if (data.isPublic === false) {
-                  return null; // Skip private events
+                // Draft events should only appear in user's My Pop-Ups page
+                if (data.isPublic === false || data.isDraft === true) {
+                  return null; // Skip private events and drafts
                 }
                 
                 const firestoreEvent: FirestoreEvent = {

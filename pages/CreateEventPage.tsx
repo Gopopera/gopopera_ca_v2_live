@@ -169,7 +169,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, saveAsDraft: boolean = false) => {
     e.preventDefault();
     
     // Prevent double submission
@@ -506,10 +506,11 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         rating: 0,
         reviewCount: 0,
         capacity: attendeesCount || undefined,
-        // Ensure events are public and joinable by default
-        isPublic: true,
-        allowRsvp: true,
-        allowChat: true,
+        // Ensure events are public and joinable by default (unless draft)
+        isPublic: !saveAsDraft,
+        allowRsvp: !saveAsDraft,
+        allowChat: !saveAsDraft,
+        isDraft: saveAsDraft,
       } as any); // Type assertion needed for optional fields
       
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -524,8 +525,16 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       console.log('[CREATE_EVENT] ✅ Event created successfully:', {
         eventId: createdEvent.id,
         title: createdEvent.title,
-        hostId: createdEvent.hostId
+        hostId: createdEvent.hostId,
+        isDraft: saveAsDraft
       });
+
+      // Show success message
+      if (saveAsDraft) {
+        alert('Event saved as draft! You can find it in the Drafts tab in My Pop-Ups.');
+      } else {
+        alert('Event created successfully!');
+      }
 
       // Reset form
       setTitle('');
@@ -933,6 +942,17 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
               className="w-full py-3.5 sm:py-4 md:py-4.5 bg-[#15383c] text-white font-bold rounded-full hover:bg-[#1f4d52] transition-colors shadow-lg touch-manipulation active:scale-95 text-sm sm:text-base md:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {uploadingImage ? 'Uploading Images...' : isSubmitting ? 'Creating Event...' : 'Host Event'}
+            </button>
+            <button 
+              type="button"
+              onClick={async (e) => {
+                e.preventDefault();
+                await handleSubmit(e as any, true); // Pass true for draft
+              }}
+              disabled={isSubmitting || uploadingImage}
+              className="w-full py-3.5 sm:py-4 md:py-4.5 bg-white border-2 border-[#15383c] text-[#15383c] font-bold rounded-full hover:bg-gray-50 transition-colors touch-manipulation active:scale-95 text-sm sm:text-base md:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? 'Saving...' : 'Save as Draft'}
             </button>
             <button 
               type="button"
