@@ -78,8 +78,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         } else {
           setHostProfilePicture(null);
         }
-      } catch (error) {
-        console.error('Error fetching host profile:', error);
+      } catch (error: any) {
+        // Handle permission errors gracefully - don't spam console
+        if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+          console.warn('[EVENT_DETAIL] Permission denied for host profile, using fallback');
+        } else {
+          console.error('Error fetching host profile:', error);
+        }
         setHostProfilePicture(null);
       }
     };
@@ -93,8 +98,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       try {
         const count = await getReservationCountForEvent(event.id);
         setReservationCount(count);
-      } catch (error) {
-        console.error('Error fetching reservation count:', error);
+      } catch (error: any) {
+        // Handle permission errors gracefully - don't spam console
+        if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+          console.warn('[EVENT_DETAIL] Permission denied for reservation count, using fallback');
+        } else {
+          console.error('Error fetching reservation count:', error);
+        }
         // Fallback to event.attendeesCount if available
         setReservationCount(event.attendeesCount || 0);
       }

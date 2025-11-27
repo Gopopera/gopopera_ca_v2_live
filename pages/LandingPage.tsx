@@ -227,12 +227,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               // Allow horizontal scrolling with mouse wheel when hovering over the container
               const container = e.currentTarget;
               if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
-                e.preventDefault();
-                container.scrollLeft += e.deltaY;
+                // Use requestAnimationFrame to avoid passive listener warning
+                requestAnimationFrame(() => {
+                  container.scrollLeft += e.deltaY;
+                });
               }
             }}
             onMouseDown={(e) => {
-              // Enable drag scrolling
+              // Enable drag scrolling - only on non-touch devices
+              if ('ontouchstart' in window) return;
+              
               const container = e.currentTarget;
               const startX = e.pageX - container.offsetLeft;
               const scrollLeft = container.scrollLeft;
@@ -240,7 +244,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
               const handleMouseMove = (e: MouseEvent) => {
                 if (!isDown) return;
-                e.preventDefault();
                 const x = e.pageX - container.offsetLeft;
                 const walk = (x - startX) * 2;
                 container.scrollLeft = scrollLeft - walk;
@@ -252,8 +255,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 document.removeEventListener('mouseup', handleMouseUp);
               };
 
-              document.addEventListener('mousemove', handleMouseMove);
-              document.addEventListener('mouseup', handleMouseUp);
+              document.addEventListener('mousemove', handleMouseMove, { passive: true });
+              document.addEventListener('mouseup', handleMouseUp, { passive: true });
             }}
           >
             {filteredEvents.map(event => (
