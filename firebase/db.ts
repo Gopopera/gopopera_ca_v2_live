@@ -91,6 +91,17 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
     const eventsCol = collection(db, "events");
     const now = Date.now();
     
+    // Check if this is the user's first event (before creating)
+    let isFirstEvent = false;
+    try {
+      const userProfile = await getUserProfile(eventData.hostId);
+      const hostedEvents = Array.isArray(userProfile?.hostedEvents) ? userProfile.hostedEvents : [];
+      isFirstEvent = hostedEvents.length === 0;
+    } catch (error) {
+      // If we can't check, assume it's not the first event to avoid duplicate notifications
+      console.warn('[CREATE_EVENT] Could not check if first event:', error);
+    }
+    
     // Get Firebase app to verify project
     const app = (await import('../src/lib/firebase')).getAppSafe();
     const projectId = app?.options?.projectId;

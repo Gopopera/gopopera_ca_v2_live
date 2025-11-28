@@ -12,6 +12,7 @@ import { PollEmailTemplate } from '../src/emails/templates/PollEmail';
 import { FollowNotificationTemplate } from '../src/emails/templates/FollowNotification';
 import { RSVPHostNotificationTemplate } from '../src/emails/templates/RSVPHostNotification';
 import { ReservationConfirmationEmailTemplate } from '../src/emails/templates/ReservationConfirmationEmail';
+import { FirstEventWelcomeEmailTemplate } from '../src/emails/templates/FirstEventWelcomeEmail';
 
 // Base URL for event links (fallback to window.location.origin if not set)
 const BASE_URL = import.meta.env.VITE_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://gopopera.ca');
@@ -632,6 +633,97 @@ export async function notifyHostOfRSVP(
       console.error('Error notifying host of RSVP:', error);
     }
     // Don't throw - RSVP should succeed even if notification fails
+  }
+}
+
+/**
+ * Notify user when they create their first event
+ */
+export async function notifyUserOfFirstEvent(
+  userId: string,
+  eventId: string,
+  eventTitle: string
+): Promise<void> {
+  try {
+    const userInfo = await getUserContactInfo(userId);
+    const preferences = await getUserNotificationPreferences(userId);
+    const eventUrl = `${BASE_URL}/event/${eventId}`;
+
+    // In-app notification
+    if (preferences.notification_opt_in !== false) {
+      try {
+        await createNotification(userId, {
+          userId,
+          type: 'new-event',
+          title: 'Welcome to Popera! 🎉',
+          body: `Your first event "${eventTitle}" has been created successfully`,
+          eventId,
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('Error creating first event notification:', error);
+        }
+      }
+    }
+
+    // Email notification
+    if (preferences.email_opt_in && userInfo.email) {
+      try {
+        const emailHtml = FirstEventWelcomeEmailTemplate({
+          userName: userInfo.name || 'there',
+          eventTitle,
+          eventUrl,
+        });
+
+        await sendEmail({
+          to: userInfo.email,
+          subject: 'Welcome to Popera! Your First Event is Live 🎉',
+          html: emailHtml,
+          templateName: 'first-event-welcome',
+          eventId,
+          notificationType: 'first_event_welcome',
+          skippedByPreference: false,
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('Error sending first event welcome email:', error);
+        }
+      }
+    } else if (userInfo.email) {
+      // Log skipped email due to preference
+      try {
+        await sendEmail({
+          to: userInfo.email,
+          subject: 'Welcome to Popera! Your First Event is Live 🎉',
+          html: '',
+          templateName: 'first-event-welcome',
+          eventId,
+          notificationType: 'first_event_welcome',
+          skippedByPreference: true,
+        });
+      } catch (error) {
+        // Silent fail for skipped emails
+      }
+    }
+
+    // SMS notification (optional, but nice for first-time creators)
+    if (preferences.sms_opt_in && userInfo.phone) {
+      try {
+        await sendSMSNotification({
+          to: userInfo.phone,
+          message: `🎉 Welcome to Popera! Your first event "${eventTitle}" is now live. Thank you for joining our community of creators. Questions? Contact us at support@gopopera.ca`,
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('Error sending first event welcome SMS:', error);
+        }
+      }
+    }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error notifying user of first event:', error);
+    }
+    // Don't throw - event creation should succeed even if notification fails
   }
 }
 
