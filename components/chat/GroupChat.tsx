@@ -910,6 +910,64 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
           }
         }}
       />
+
+      {/* Create Announcement Modal */}
+      <CreateAnnouncementModal
+        isOpen={showCreateAnnouncementModal}
+        onClose={() => setShowCreateAnnouncementModal(false)}
+        onCreateAnnouncement={async (title, message) => {
+          try {
+            // Create announcement message in Firestore
+            await addMessage(
+              event.id,
+              currentUser?.id || '',
+              currentUser?.name || 'Host',
+              `Announcement: ${title} - ${message}`,
+              'announcement',
+              true
+            );
+            
+            // Notify attendees of new announcement (non-blocking)
+            import('../../utils/notificationHelpers').then(async ({ notifyAttendeesOfAnnouncement }) => {
+              try {
+                const db = getDbSafe();
+                if (db) {
+                  const reservationsRef = collection(db, 'reservations');
+                  const q = query(
+                    reservationsRef,
+                    where('eventId', '==', event.id),
+                    where('status', '==', 'reserved')
+                  );
+                  const snapshot = await getDocs(q);
+                  const attendeeIds = snapshot.docs.map(doc => doc.data().userId).filter(Boolean);
+                  
+                  // Include host in notifications
+                  if (event.hostId && !attendeeIds.includes(event.hostId)) {
+                    attendeeIds.push(event.hostId);
+                  }
+                  
+                  if (attendeeIds.length > 0) {
+                    await notifyAttendeesOfAnnouncement(
+                      event.id,
+                      title,
+                      message,
+                      event.title || 'Event',
+                      attendeeIds
+                    );
+                  }
+                }
+              } catch (error) {
+                console.error('Error notifying attendees of announcement:', error);
+              }
+            }).catch((error) => {
+              console.error('Error loading notification helpers for announcement:', error);
+            });
+          } catch (error) {
+            console.error('Error creating announcement:', error);
+            alert('Failed to create announcement. Please try again.');
+          }
+        }}
+      />
     </div>
   );
 };

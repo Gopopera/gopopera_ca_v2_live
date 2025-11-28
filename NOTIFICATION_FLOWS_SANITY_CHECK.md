@@ -80,17 +80,17 @@ This document provides a comprehensive overview of all notification flows curren
 
 ### 5. **Announcement (Attendees)**
 **Trigger:** Host creates an announcement in group chat  
-**Location:** `components/chat/GroupChat.tsx` → `notifyAttendeesOfAnnouncement()`
+**Location:** `components/chat/GroupChat.tsx` → `CreateAnnouncementModal` → `notifyAttendeesOfAnnouncement()`
 
 **Notifications Sent:**
 - ✅ **In-App:** Announcement notification with title and message
 - ✅ **Email:** Announcement email with event details and announcement content
 - ✅ **SMS:** Text notification about announcement
 
-**Recipients:** All event attendees (including host if they're in attendee list)  
+**Recipients:** All event attendees (host explicitly included in `attendeeIds` array)  
 **Preferences Checked:** `email_opt_in`, `sms_opt_in`, `notification_opt_in`  
 **Status:** ✅ Fully implemented and working  
-**Note:** Host is included in `attendeeIds` array to receive notifications
+**Note:** Host is explicitly added to `attendeeIds` array if not already present
 
 ---
 
