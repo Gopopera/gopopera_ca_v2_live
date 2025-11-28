@@ -9,6 +9,8 @@ import { GroupChatHeader } from './GroupChatHeader';
 import { AttendeeList } from './AttendeeList';
 import { ExpelUserModal } from './ExpelUserModal';
 import { CreatePollModal } from './CreatePollModal';
+import { CreateAnnouncementModal } from './CreateAnnouncementModal';
+import { CreateSurveyModal } from './CreateSurveyModal';
 import { POPERA_HOST_ID } from '@/stores/userStore';
 import { getDbSafe } from '../../src/lib/firebase';
 import { doc, updateDoc, arrayUnion, arrayRemove, getDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
@@ -33,6 +35,8 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   const [showExpelModal, setShowExpelModal] = useState(false);
   const [userToExpel, setUserToExpel] = useState<{ userId: string; userName: string } | null>(null);
   const [showCreatePollModal, setShowCreatePollModal] = useState(false);
+  const [showCreateAnnouncementModal, setShowCreateAnnouncementModal] = useState(false);
+  const [showCreateSurveyModal, setShowCreateSurveyModal] = useState(false);
   const [isFollowingHost, setIsFollowingHost] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const currentUser = useUserStore((state) => state.getCurrentUser());
@@ -132,7 +136,8 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
     await addMessage(event.id, currentUser.id, currentUser.name, messageText, 'message', isHost);
     setMessage('');
 
-    // Notify attendees of new message (non-blocking, fire-and-forget)
+    // Notify attendees and host of new message (non-blocking, fire-and-forget)
+    // IMPORTANT: Host should ALWAYS be notified when attendees send messages
     import('../../utils/notificationHelpers').then(async ({ notifyAttendeesOfNewMessage }) => {
       const { getDocs, collection, query, where } = await import('firebase/firestore');
       const { getDbSafe } = await import('../../src/lib/firebase');
@@ -146,7 +151,8 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
           const rsvpsSnapshot = await getDocs(rsvpsQuery);
           const attendeeIds = rsvpsSnapshot.docs.map(doc => doc.data().userId).filter(Boolean);
           
-          // Also include host
+          // ALWAYS include host when attendees send messages (host should be notified)
+          // If host sent the message, they'll be filtered out in notifyAttendeesOfNewMessage
           if (event.hostId && !attendeeIds.includes(event.hostId)) {
             attendeeIds.push(event.hostId);
           }
@@ -600,106 +606,14 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                   <span className="text-xs font-medium text-gray-700">Create Poll</span>
                 </button>
                 <button
-                  onClick={async () => {
-                    const title = prompt('Announcement title:');
-                    if (!title) return;
-                    const message = prompt('Announcement message:');
-                    if (!message || !currentUser) return;
-
-                    try {
-                      // Create announcement in Firestore
-                      const { createAnnouncement } = await import('../../firebase/notifications');
-                      await createAnnouncement(event.id, {
-                        type: 'announcement',
-                        title,
-                        message,
-                        createdBy: event.hostId,
-                      });
-
-                      // Also add to chat
-                      await addMessage(event.id, currentUser.id, currentUser.name, `${title}: ${message}`, 'announcement', true);
-
-                      // Notify attendees (non-blocking)
-                      import('../../utils/notificationHelpers').then(async ({ notifyAttendeesOfAnnouncement }) => {
-                        const { getDocs, collection, query, where } = await import('firebase/firestore');
-                        const { getDbSafe } = await import('../../src/lib/firebase');
-                        const db = getDbSafe();
-                        
-                        if (db) {
-                          try {
-                            const rsvpsRef = collection(db, 'reservations');
-                            const rsvpsQuery = query(rsvpsRef, where('eventId', '==', event.id));
-                            const rsvpsSnapshot = await getDocs(rsvpsQuery);
-                            const attendeeIds = rsvpsSnapshot.docs.map(doc => doc.data().userId).filter(Boolean);
-                            if (event.hostId && !attendeeIds.includes(event.hostId)) {
-                              attendeeIds.push(event.hostId);
-                            }
-
-                            await notifyAttendeesOfAnnouncement(
-                              event.id,
-                              title,
-                              message,
-                              event.title,
-                              attendeeIds
-                            );
-                          } catch (error) {
-                            console.error('Error notifying attendees of announcement:', error);
-                          }
-                        }
-                      }).catch((error) => {
-                        console.error('Error loading notification helpers for announcement:', error);
-                      });
-                    } catch (error) {
-                      console.error('Error creating announcement:', error);
-                      alert('Failed to create announcement. Please try again.');
-                    }
-                  }}
+                  onClick={() => setShowCreateAnnouncementModal(true)}
                   className="flex flex-col items-center gap-2 p-3 rounded-lg border border-gray-200 hover:border-[#e35e25] hover:bg-[#e35e25]/5 transition-colors touch-manipulation active:scale-95"
                 >
                   <Megaphone size={20} className="text-[#15383c]" />
                   <span className="text-xs font-medium text-gray-700">Announcement</span>
                 </button>
                 <button
-                  onClick={async () => {
-                    const numQuestions = prompt('How many questions? (1-3)', '1');
-                    if (!numQuestions || isNaN(parseInt(numQuestions)) || parseInt(numQuestions) < 1 || parseInt(numQuestions) > 3) return;
-                    
-                    const questions: Array<{ question: string; type: 'short' | 'multiple'; options?: string[] }> = [];
-                    
-                    for (let i = 0; i < parseInt(numQuestions); i++) {
-                      const question = prompt(`Question ${i + 1}:`);
-                      if (!question) return;
-                      
-                      const type = prompt('Type: "short" for short answer, "multiple" for multiple choice', 'short');
-                      if (type !== 'short' && type !== 'multiple') return;
-                      
-                      let options: string[] = [];
-                      if (type === 'multiple') {
-                        const option1 = prompt('Option 1:');
-                        const option2 = prompt('Option 2:');
-                        if (!option1 || !option2) return;
-                        options = [option1, option2];
-                      }
-                      
-                      questions.push({ question, type: type as 'short' | 'multiple', options });
-                    }
-
-                    try {
-                      const db = getDbSafe();
-                      if (db) {
-                        await addDoc(collection(db, 'events', event.id, 'surveys'), {
-                          questions,
-                          createdBy: event.hostId,
-                          createdAt: Date.now(),
-                          status: 'active',
-                        });
-                        alert('Survey created! Attendees can answer after the event.');
-                      }
-                    } catch (error) {
-                      console.error('Error creating survey:', error);
-                      alert('Failed to create survey. Please try again.');
-                    }
-                  }}
+                  onClick={() => setShowCreateSurveyModal(true)}
                   className="flex flex-col items-center gap-2 p-3 rounded-lg border border-gray-200 hover:border-[#e35e25] hover:bg-[#e35e25]/5 transition-colors touch-manipulation active:scale-95"
                 >
                   <FileText size={20} className="text-[#15383c]" />

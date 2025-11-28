@@ -63,10 +63,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
         const attendedCount = Array.isArray(user.rsvps) ? user.rsvps.length : 0;
         
         // Parallel queries for following, followers, and reviews for better performance
+        // IMPORTANT: Only count accepted reviews (includePending=false) to match what's displayed
         const [followingIds, followersIds, reviews] = await Promise.allSettled([
           getFollowingHosts(user.uid),
           getHostFollowers(user.uid),
-          listHostReviews(user.uid),
+          listHostReviews(user.uid, false), // Only accepted reviews for accurate count
         ]);
         
         const followingCount = followingIds.status === 'fulfilled' ? followingIds.value.length : 0;

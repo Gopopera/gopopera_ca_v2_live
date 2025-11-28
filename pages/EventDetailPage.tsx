@@ -3,6 +3,7 @@ import { Event, ViewState } from '../types';
 import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info, Star, Sparkles, X, UserPlus, UserCheck, ChevronRight, CheckCircle2, Edit } from 'lucide-react';
 import { followHost, unfollowHost, isFollowing } from '../firebase/follow';
 import { useUserStore } from '../stores/userStore';
+import { useLanguage } from '../contexts/LanguageContext';
 import { EventCard } from '../components/events/EventCard';
 import { MockMap } from '../components/map/MockMap';
 import { FakeEventReservationModal } from '../components/events/FakeEventReservationModal';
@@ -54,6 +55,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   // Store hooks - always called
   const user = useUserStore((state) => state.user);
   const userProfile = useUserStore((state) => state.userProfile);
+  const { t } = useLanguage();
   
   // Memoized values - always called (safe even if event is undefined)
   const isFakeEvent = useMemo(() => event?.isFakeEvent === true, [event?.isFakeEvent]);
@@ -91,12 +93,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       }
       
       try {
-        const allReviews = await listHostReviews(event.hostId);
-        // Filter only accepted reviews
-        const acceptedReviews = allReviews.filter(review => {
-          const status = (review as any).status;
-          return !status || status === 'accepted' || status === undefined;
-        });
+        // Only get accepted reviews (includePending=false) to ensure count matches displayed reviews
+        const acceptedReviews = await listHostReviews(event.hostId, false);
         
         if (acceptedReviews.length === 0) {
           setHostOverallRating(null);
@@ -559,13 +557,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                  )}
                </div>
                <div className="min-w-0 flex-1">
-                 <p className="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">Hosted by</p>
+                 <p className="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">{t('event.hostedBy')}</p>
                  <h3 className="text-base sm:text-lg md:text-xl font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
                  <button onClick={(e) => onReviewsClick(e, event)} className="flex items-center space-x-1 mt-1.5 bg-white hover:bg-orange-50 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-colors border border-gray-200 hover:border-orange-100 group/rating shrink-0 w-fit touch-manipulation active:scale-95"><Star size={11} className="sm:w-3 sm:h-3 text-gray-300 group-hover/rating:text-popera-orange group-hover/rating:fill-popera-orange transition-colors" fill="currentColor" /><span className="text-[10px] sm:text-xs font-bold text-popera-teal">{formatRating(currentRating.rating)}</span><span className="text-[9px] sm:text-[10px] text-gray-400 group-hover/rating:text-orange-400">({currentRating.reviewCount})</span></button>
                </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
-              <button onClick={() => onHostClick(event.hostName)} className="w-full sm:w-auto px-5 sm:px-6 md:px-8 py-2.5 sm:py-3 bg-white border border-gray-200 rounded-full text-sm md:text-base font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange transition-colors shadow-sm whitespace-nowrap touch-manipulation active:scale-95">View Profile</button>
+              <button onClick={() => onHostClick(event.hostName)} className="w-full sm:w-auto px-5 sm:px-6 md:px-8 py-2.5 sm:py-3 bg-white border border-gray-200 rounded-full text-sm md:text-base font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange transition-colors shadow-sm whitespace-nowrap touch-manipulation active:scale-95">{t('profile.myProfile')}</button>
               {isLoggedIn && (
                 <button
                   onClick={handleFollowToggle}
@@ -578,11 +576,11 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 >
                   {isFollowingHost ? (
                     <>
-                      <UserCheck size={18} /> Following
+                      <UserCheck size={18} /> {t('event.following')}
                     </>
                   ) : (
                     <>
-                      <UserPlus size={18} /> Follow Host
+                      <UserPlus size={18} /> {t('event.follow')}
                     </>
                   )}
                 </button>
@@ -601,7 +599,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                <h4 className="text-3xl sm:text-4xl md:text-5xl font-heading font-bold text-popera-teal">
                  {event.capacity || 'Unlimited'}
                </h4>
-               <p className="text-xs sm:text-sm uppercase tracking-wide text-gray-500 font-bold mt-1.5">Capacity</p>
+               <p className="text-xs sm:text-sm uppercase tracking-wide text-gray-500 font-bold mt-1.5">{t('event.capacity')}</p>
              </div>
           </div>
           
@@ -609,19 +607,19 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           {reservationSuccess && (
             <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3 animate-fade-in">
               <CheckCircle2 size={20} className="text-green-600 shrink-0" />
-              <p className="text-green-800 font-medium text-sm">Successfully reserved your spot!</p>
+              <p className="text-green-800 font-medium text-sm">{t('event.reservationSuccess')}</p>
             </div>
           )}
 
           <div>
-            <h2 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-popera-teal mb-3 sm:mb-4 md:mb-6 flex items-center gap-2 sm:gap-3">About this event</h2>
+            <h2 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-popera-teal mb-3 sm:mb-4 md:mb-6 flex items-center gap-2 sm:gap-3">{t('event.aboutEvent')}</h2>
             <div className="prose prose-lg text-gray-600 leading-relaxed font-light text-sm sm:text-base md:text-base"><p>{event.description || "Join us for an incredible experience..."}</p></div>
           </div>
 
           {event.whatToExpect && (
             <div>
               <h2 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-popera-teal mb-3 sm:mb-4 md:mb-6 flex items-center gap-2 sm:gap-3">
-                <Sparkles size={18} className="sm:w-5 sm:h-5 text-popera-orange" /> What to Expect
+                <Sparkles size={18} className="sm:w-5 sm:h-5 text-popera-orange" /> {t('event.whatToExpect')}
               </h2>
               <div className="bg-popera-softTeal p-4 sm:p-6 md:p-8 rounded-xl sm:rounded-[1.5rem] md:rounded-[2rem] border border-popera-teal/5 text-gray-600 font-light leading-relaxed text-sm sm:text-base">
                 <p className="mb-3 sm:mb-4 whitespace-pre-line">{event.whatToExpect}</p>
@@ -630,7 +628,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           )}
 
           <div className="border-t border-gray-100 pt-6 sm:pt-8 md:pt-10">
-            <h2 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-popera-teal mb-4 sm:mb-6">Location</h2>
+            <h2 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-popera-teal mb-4 sm:mb-6">{t('event.location')}</h2>
             <div className="rounded-xl sm:rounded-[1.5rem] md:rounded-[2rem] overflow-hidden h-40 sm:h-48 md:h-64 relative group cursor-pointer shadow-inner border border-gray-200">
               <MockMap 
                 lat={event.lat}

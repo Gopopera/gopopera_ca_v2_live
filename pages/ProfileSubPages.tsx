@@ -386,7 +386,9 @@ export const MyReviewsPage: React.FC<SubPageProps & { onHostClick?: (hostName: s
       try {
         setLoading(true);
         const { listHostReviews, getEventById, getUserProfile } = await import('@/firebase/db');
-        const firestoreReviews = await listHostReviews(user.uid);
+        // For host's own reviews page, show all reviews (including pending) for management
+        // But the count shown should match accepted reviews only
+        const firestoreReviews = await listHostReviews(user.uid, true); // Include pending for host management
         
         // Fetch event and user details for each review
         const reviewsWithDetails = await Promise.all(

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft, MapPin, Star, Users, Instagram, Twitter, Globe, MessageCircle, Check } from 'lucide-react';
 import { Event } from '@/types';
 import { EventCard } from '../events/EventCard';
@@ -7,6 +7,8 @@ import { useUserStore, POPERA_HOST_ID, POPERA_HOST_NAME } from '@/stores/userSto
 import { PoperaProfilePicture } from './PoperaProfilePicture';
 import { formatDate } from '@/utils/dateFormatter';
 import { formatRating } from '@/utils/formatRating';
+import { listHostReviews } from '@/firebase/db';
+import { FirestoreReview } from '@/firebase/types';
 
 interface HostProfileProps {
   hostName: string;
@@ -36,12 +38,44 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
   const unfollowHost = useProfileStore((state) => state.unfollowHost);
   const profileStore = useProfileStore();
   
+  // State for reviews fetched from Firestore (source of truth)
+  const [firestoreReviews, setFirestoreReviews] = useState<FirestoreReview[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  
   // Get real data from profile store - call hooks unconditionally, then use conditionally
   const isFollowing = hostId ? profileStore.isFollowing(currentUser?.id || '', hostId) : false;
   const followersCount = hostId ? profileStore.getFollowersCount(hostId) : 0;
-  const reviews = hostId ? profileStore.getReviews(hostId) : [];
-  const averageRating = hostId ? profileStore.getAverageRating(hostId) : 0;
-  const reviewCount = hostId ? profileStore.getReviewCount(hostId) : 0;
+  
+  // Fetch reviews from Firestore (only accepted reviews for accurate count)
+  useEffect(() => {
+    const loadReviews = async () => {
+      if (!hostId) {
+        setFirestoreReviews([]);
+        return;
+      }
+      
+      try {
+        setReviewsLoading(true);
+        // Only get accepted reviews (includePending=false) to ensure count matches displayed reviews
+        const acceptedReviews = await listHostReviews(hostId, false);
+        setFirestoreReviews(acceptedReviews);
+      } catch (error) {
+        console.error('[HOST_PROFILE] Error loading reviews:', error);
+        setFirestoreReviews([]);
+      } finally {
+        setReviewsLoading(false);
+      }
+    };
+    
+    loadReviews();
+  }, [hostId]);
+  
+  // Calculate rating and count from Firestore reviews (source of truth)
+  const reviews = firestoreReviews;
+  const reviewCount = reviews.length;
+  const averageRating = reviews.length > 0
+    ? Math.round((reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length) * 10) / 10
+    : 0;
   
   // Filter events: For Popera profile, show launch events (city-launch demoType) and official launch events
   // For other hosts, show all their events
@@ -263,33 +297,44 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
            </div>
         ) : (
            <div className="max-w-2xl space-y-6">
-              {reviews.length > 0 ? (
-                reviews.map((review) => (
-                  <div key={review.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                     <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gray-100 rounded-full overflow-hidden">
-                            <img src={`https://picsum.photos/seed/${review.userName}/50/50`} alt={review.userName} />
+              {reviewsLoading ? (
+                <div className="text-center py-20 text-gray-400">
+                  <p>Loading reviews...</p>
+                </div>
+              ) : reviews.length > 0 ? (
+                reviews.map((review) => {
+                  const createdAt = typeof review.createdAt === 'number' 
+                    ? review.createdAt 
+                    : (review.createdAt as any)?.toMillis?.() || Date.now();
+                  return (
+                    <div key={review.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                       <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gray-100 rounded-full overflow-hidden">
+                              <img src={`https://picsum.photos/seed/${review.userName}/50/50`} alt={review.userName} />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-bold text-[#15383c]">{review.userName}</h4>
+                              <span className="text-xs text-gray-400">{formatDate(createdAt)}</span>
+                            </div>
                           </div>
-                          <div>
-                            <h4 className="text-sm font-bold text-[#15383c]">{review.userName}</h4>
-                            <span className="text-xs text-gray-400">{formatDate(review.createdAt)}</span>
+                          <div className="flex text-[#e35e25]">
+                            {[...Array(5)].map((_, starI) => (
+                              <Star 
+                                key={starI} 
+                                size={14} 
+                                fill={starI < review.rating ? "currentColor" : "none"} 
+                                className={starI < review.rating ? "" : "text-gray-300"}
+                              />
+                            ))}
                           </div>
-                        </div>
-                        <div className="flex text-[#e35e25]">
-                          {[...Array(5)].map((_, starI) => (
-                            <Star 
-                              key={starI} 
-                              size={14} 
-                              fill={starI < review.rating ? "currentColor" : "none"} 
-                              className={starI < review.rating ? "" : "text-gray-300"}
-                            />
-                          ))}
-                        </div>
-                     </div>
-                     <p className="text-gray-600 text-sm leading-relaxed">"{review.comment}"</p>
-                  </div>
-                ))
+                       </div>
+                       {review.comment && (
+                         <p className="text-gray-600 text-sm leading-relaxed">"{review.comment}"</p>
+                       )}
+                    </div>
+                  );
+                })
               ) : (
                 <div className="text-center py-20 text-gray-400">
                   <p>No reviews yet.</p>

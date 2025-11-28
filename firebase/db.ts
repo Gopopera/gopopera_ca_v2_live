@@ -899,7 +899,13 @@ export async function addReview(
   }
 }
 
-export async function listReviews(eventId: string): Promise<FirestoreReview[]> {
+/**
+ * Get reviews for an event
+ * @param eventId - Event ID
+ * @param includePending - If true, includes pending/contested reviews. If false, only accepted reviews (default: false)
+ * @returns Array of reviews
+ */
+export async function listReviews(eventId: string, includePending: boolean = false): Promise<FirestoreReview[]> {
   const db = getDbSafe();
   if (!db) {
     return [];
@@ -914,10 +920,21 @@ export async function listReviews(eventId: string): Promise<FirestoreReview[]> {
     const reviewsCol = collection(db, "events", eventId, "reviews");
     const q = query(reviewsCol, orderBy("createdAt", "desc"));
     const snap = await getDocs(q);
-    return snap.docs.map(d => ({
+    const allReviews = snap.docs.map(d => ({
       id: d.id,
       ...(d.data() as Omit<FirestoreReview, 'id'>),
     }));
+    
+    // Filter by status if only accepted reviews are requested
+    if (!includePending) {
+      return allReviews.filter(review => {
+        const status = (review as any).status;
+        // Include reviews without status (backward compatibility) or explicitly accepted reviews
+        return !status || status === 'accepted' || status === undefined;
+      });
+    }
+    
+    return allReviews;
   } catch (error) {
     console.error("Error fetching reviews:", error);
     return [];
@@ -926,8 +943,11 @@ export async function listReviews(eventId: string): Promise<FirestoreReview[]> {
 
 /**
  * Get all reviews for a host (from all their events)
+ * @param hostId - Host user ID
+ * @param includePending - If true, includes pending/contested reviews. If false, only accepted reviews (default: false)
+ * @returns Array of reviews sorted by creation date (newest first)
  */
-export async function listHostReviews(hostId: string): Promise<FirestoreReview[]> {
+export async function listHostReviews(hostId: string, includePending: boolean = false): Promise<FirestoreReview[]> {
   const db = getDbSafe();
   if (!db) {
     return [];
@@ -946,10 +966,12 @@ export async function listHostReviews(hostId: string): Promise<FirestoreReview[]
     
     const eventIds = eventsSnapshot.docs.map(doc => doc.id);
     
-    // Then, get all reviews from all their events (include pending for host's review management)
+    // Then, get all reviews from all their events
+    // For public display (includePending=false), only show accepted reviews
+    // For host management (includePending=true), show all reviews including pending/contested
     const allReviews: FirestoreReview[] = [];
     for (const eventId of eventIds) {
-      const reviews = await listReviews(eventId, true); // Include pending reviews for host management
+      const reviews = await listReviews(eventId, includePending);
       allReviews.push(...reviews);
     }
     
@@ -1055,7 +1077,7 @@ export async function recalculateEventRating(eventId: string): Promise<void> {
   
   try {
     // Get all reviews (including pending) to filter for accepted ones
-    const reviews = await listReviews(eventId, true);
+    const reviews = await listReviews(eventId, true); // Get all reviews to filter
     
     // Filter to only include accepted reviews (or reviews without status for backward compatibility)
     // This ensures only accepted reviews count toward the rating

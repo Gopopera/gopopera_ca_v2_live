@@ -104,12 +104,8 @@ export const EventCard: React.FC<EventCardProps> = ({
       }
       
       try {
-        const allReviews = await listHostReviews(event.hostId);
-        // Filter only accepted reviews
-        const acceptedReviews = allReviews.filter(review => {
-          // Check if review has status field and it's 'accepted', or if no status field (legacy reviews are considered accepted)
-          return !('status' in review) || (review as any).status === 'accepted' || (review as any).status === undefined;
-        });
+        // Only get accepted reviews (includePending=false) to ensure count matches displayed reviews
+        const acceptedReviews = await listHostReviews(event.hostId, false);
         
         if (acceptedReviews.length === 0) {
           setHostOverallRating(null);
@@ -134,15 +130,19 @@ export const EventCard: React.FC<EventCardProps> = ({
     fetchHostOverallRating();
   }, [event.hostId]);
   
-  const handleFavoriteClick = (e: React.MouseEvent) => {
+  const handleFavoriteClick = (e: React.MouseEvent | React.TouchEvent) => {
     // CRITICAL: Prevent any navigation or card click
     e.stopPropagation();
     e.preventDefault();
-    e.nativeEvent.stopImmediatePropagation();
+    if ('nativeEvent' in e) {
+      e.nativeEvent.stopImmediatePropagation();
+    }
     
     if (onToggleFavorite) {
+      // Convert TouchEvent to MouseEvent for compatibility
+      const mouseEvent = e as React.MouseEvent;
       // Always call handler - it will handle login redirect if needed
-      onToggleFavorite(e, event.id);
+      onToggleFavorite(mouseEvent, event.id);
     }
   };
   const touchStartRef = React.useRef<{ x: number; y: number; time: number } | null>(null);
@@ -265,12 +265,16 @@ export const EventCard: React.FC<EventCardProps> = ({
            {onToggleFavorite && (
              <button
                onClick={handleFavoriteClick}
+               onTouchEnd={handleFavoriteClick}
                onMouseDown={(e) => e.stopPropagation()}
-               onTouchStart={(e) => e.stopPropagation()}
+               onTouchStart={(e) => {
+                 e.stopPropagation();
+                 e.preventDefault();
+               }}
                className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center transition-colors shadow-lg hover:bg-white active:scale-[0.92] touch-manipulation border border-white/50 shrink-0 pointer-events-auto z-30"
                aria-label="Toggle Favorite"
                type="button"
-               style={{ pointerEvents: 'auto' }}
+               style={{ pointerEvents: 'auto', WebkitTapHighlightColor: 'transparent' }}
              >
                <Heart 
                  size={20} 
@@ -280,12 +284,25 @@ export const EventCard: React.FC<EventCardProps> = ({
              </button>
            )}
 
-           {/* FEATURE: Conversation Icon */}
+           {/* FEATURE: Conversation Icon - Goes directly to chat */}
            <button
-             onClick={(e) => onChatClick(e, event)}
+             onClick={(e) => {
+               e.stopPropagation();
+               e.preventDefault();
+               onChatClick(e, event);
+             }}
+             onTouchEnd={(e) => {
+               e.stopPropagation();
+               e.preventDefault();
+               onChatClick(e as any, event);
+             }}
+             onTouchStart={(e) => {
+               e.stopPropagation();
+             }}
              className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center text-popera-teal hover:bg-popera-orange hover:text-white transition-colors shadow-lg active:scale-[0.92] touch-manipulation border border-white/50 shrink-0 pointer-events-auto z-30"
              aria-label="Join Event Chat"
              type="button"
+             style={{ pointerEvents: 'auto', WebkitTapHighlightColor: 'transparent' }}
            >
              <MessageCircle size={20} className="sm:w-5 sm:h-5" strokeWidth={2} />
            </button>

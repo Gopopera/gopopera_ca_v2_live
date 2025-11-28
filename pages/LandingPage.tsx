@@ -8,7 +8,7 @@ import { CityInput } from '../components/layout/CityInput';
 import { Event, ViewState } from '../types';
 import { ArrowRight, Sparkles, Check, ChevronDown, Search, MapPin, PlusCircle, CheckCircle2, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { categoryMatches } from '../utils/categoryMapper';
+import { categoryMatches, translateCategory } from '../utils/categoryMapper';
 import { useSelectedCity, useSetCity, type City } from '../src/stores/cityStore';
 import { getDbSafe } from '../src/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -36,7 +36,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   favorites = [],
   onToggleFavorite
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -46,6 +46,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const city = useSelectedCity();
   const setCity = useSetCity();
   const location = city;
+  
+  // Category keys (English) for internal logic
+  const categoryKeys = [
+    'All', 'Community', 'Music', 'Workshops', 'Markets', 'Sports', 'Social', 'Shows', 'Food & Drink', 'Wellness'
+  ];
+  // Translated categories for display
+  const categories = categoryKeys.map(cat => translateCategory(cat, language));
+  
+  // Get English category key from translated display name
+  const getCategoryKey = (displayName: string): string => {
+    const index = categories.indexOf(displayName);
+    return index >= 0 ? categoryKeys[index] : displayName;
+  };
   
   // Filter events based on category and location
   const filteredEvents = useMemo(() => {
@@ -61,11 +74,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       eventCities: events.map(e => e.city),
     });
     
-    // Apply category filter
-    // Uses category mapper to handle plural/singular variations (e.g., "Markets" -> "Market")
-    if (activeCategory !== 'All') {
+    // Apply category filter - use English key for matching
+    const categoryKey = getCategoryKey(activeCategory);
+    if (categoryKey !== 'All') {
       filtered = filtered.filter(event => 
-        categoryMatches(event.category, activeCategory)
+        categoryMatches(event.category, categoryKey)
       );
       console.log('[LANDING_PAGE] After category filter:', filtered.length);
     }
@@ -123,9 +136,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     setOpenFaqIndex(openFaqIndex === index ? null : index);
   };
 
-  const categories = [
-    'All', 'Community', 'Music', 'Workshops', 'Markets', 'Sports', 'Social', 'Shows', 'Food & Drink', 'Wellness'
-  ];
 
 
   const faqs = [

@@ -16,6 +16,19 @@ export const normalizeCategory = (displayCategory: string): string => {
     'Shows': 'Shows',
     'Food & Drink': 'Food & Drink',
     'Wellness': 'Wellness',
+    // French translations
+    'Tous': 'All',
+    'Communauté': 'Community',
+    'Musique': 'Music',
+    'Marchés': 'Markets',
+    'Marché': 'Markets',
+    'Ateliers': 'Workshop',
+    'Atelier': 'Workshop',
+    'Sports': 'Sports',
+    'Social': 'Social',
+    'Spectacles': 'Shows',
+    'Nourriture et boissons': 'Food & Drink',
+    'Bien-être': 'Wellness',
   };
 
   // Return mapped value or original if not found (case-insensitive)
@@ -30,6 +43,34 @@ export const normalizeCategory = (displayCategory: string): string => {
   }
   
   return normalized;
+};
+
+/**
+ * Translates category name based on current language
+ */
+export const translateCategory = (category: string, language: 'en' | 'fr' = 'en'): string => {
+  const categoryTranslations: Record<string, { en: string; fr: string }> = {
+    'All': { en: 'All', fr: 'Tous' },
+    'Community': { en: 'Community', fr: 'Communauté' },
+    'Music': { en: 'Music', fr: 'Musique' },
+    'Markets': { en: 'Markets', fr: 'Marchés' },
+    'Market': { en: 'Market', fr: 'Marché' },
+    'Workshop': { en: 'Workshop', fr: 'Atelier' },
+    'Workshops': { en: 'Workshops', fr: 'Ateliers' },
+    'Sports': { en: 'Sports', fr: 'Sports' },
+    'Social': { en: 'Social', fr: 'Social' },
+    'Shows': { en: 'Shows', fr: 'Spectacles' },
+    'Food & Drink': { en: 'Food & Drink', fr: 'Nourriture et boissons' },
+    'Wellness': { en: 'Wellness', fr: 'Bien-être' },
+  };
+
+  const translation = categoryTranslations[category];
+  if (translation) {
+    return translation[language];
+  }
+  
+  // Fallback to original if no translation found
+  return category;
 };
 
 /**

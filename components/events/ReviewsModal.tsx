@@ -94,7 +94,7 @@ export const ReviewsModal: React.FC<ReviewsModalProps> = ({ event, onClose, onRe
                  <div className="flex text-popera-orange">
                     {[...Array(5)].map((_, i) => (<Star key={i} size={16} fill={i < Math.floor(event.rating) ? "currentColor" : "none"} className={i < Math.floor(event.rating) ? "" : "text-gray-300"} />))}
                  </div>
-                 <span className="text-xs text-gray-500 font-medium">{event.reviewCount} reviews</span>
+                 <span className="text-xs text-gray-500 font-medium">{reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}</span>
               </div>
            </div>
         </div>
