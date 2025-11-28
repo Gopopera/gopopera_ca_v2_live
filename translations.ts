@@ -389,7 +389,7 @@ export const translations = {
       description: 'Le moyen le plus simple de rassembler les gens, d\'organiser des moments réels et de mobiliser votre communauté.',
       getStarted: 'Commencer',
       startBrowsing: 'Commencer à naviguer',
-      exploreEvents: 'Explorer les événements',
+      exploreEvents: 'Explorer',
     },
     // Pillars
     pillars: {

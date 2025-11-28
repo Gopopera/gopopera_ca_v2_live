@@ -5,6 +5,7 @@ import { formatDate } from '@/utils/dateFormatter';
 import { formatRating } from '@/utils/formatRating';
 import { useUserStore } from '@/stores/userStore';
 import { getUserProfile, listHostReviews } from '../../firebase/db';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface EventCardProps {
   event: Event;
@@ -29,6 +30,7 @@ export const EventCard: React.FC<EventCardProps> = ({
   onEditClick,
   showEditButton = false
 }) => {
+  const { t } = useLanguage();
   const user = useUserStore((state) => state.user);
   const userProfile = useUserStore((state) => state.userProfile);
   
