@@ -58,6 +58,11 @@ export async function ensurePoperaProfileAndSeed(user: User) {
 
   console.log('[POPERA_SEED] Profile ensured for Popera user', user.uid);
 
+  // DISABLED: Automatic event creation on login
+  // This was creating new events every time you logged in
+  // Your existing events are preserved - they won't be deleted
+  // If you need to create events, do so manually through the "Create Event" page
+  /*
   try {
     // Ensure exactly 1 event per city (manageable events)
     await ensureOneEventPerCity(user.uid);
@@ -65,6 +70,7 @@ export async function ensurePoperaProfileAndSeed(user: User) {
   } catch (error) {
     console.error('[POPERA_SEED] City events seeding failed for Popera user', user.uid, error);
   }
+  */
 
   // Seed reviews for Popera events (only once, idempotent)
   try {
