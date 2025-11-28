@@ -7,6 +7,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { EventCard } from '../components/events/EventCard';
 import { MockMap } from '../components/map/MockMap';
 import { FakeEventReservationModal } from '../components/events/FakeEventReservationModal';
+import { ImageViewerModal } from '../components/events/ImageViewerModal';
 import { formatDate } from '../utils/dateFormatter';
 import { formatRating } from '../utils/formatRating';
 import { getUserProfile, getReservationCountForEvent, listHostReviews } from '../firebase/db';
@@ -48,6 +49,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const [isFollowingHost, setIsFollowingHost] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [reservationCount, setReservationCount] = useState<number | null>(null);
+  const [showImageViewer, setShowImageViewer] = useState(false);
+  const [imageViewerIndex, setImageViewerIndex] = useState(0);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [reserving, setReserving] = useState(false);
   const [reservationSuccess, setReservationSuccess] = useState(false);
   const [hostProfilePicture, setHostProfilePicture] = useState<string | null>(null);
@@ -494,7 +498,23 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       <div className="relative h-[40vh] sm:h-[45vh] md:h-[50vh] lg:h-[55vh] xl:h-[60vh] w-full overflow-hidden group">
         {event.imageUrls && event.imageUrls.length > 1 ? (
           // Multiple images - horizontal scrollable gallery
-          <div className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth h-full hide-scrollbar">
+          <div 
+            className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth h-full hide-scrollbar cursor-pointer"
+            onScroll={(e) => {
+              const container = e.currentTarget;
+              const scrollLeft = container.scrollLeft;
+              const imageWidth = container.scrollWidth / event.imageUrls.length;
+              const newIndex = Math.round(scrollLeft / imageWidth);
+              setCurrentImageIndex(Math.min(newIndex, event.imageUrls.length - 1));
+            }}
+            onClick={() => {
+              const images = event.imageUrls || [];
+              if (images.length > 0) {
+                setImageViewerIndex(currentImageIndex);
+                setShowImageViewer(true);
+              }
+            }}
+          >
             {event.imageUrls.map((url, index) => (
               <div key={index} className="relative min-w-full h-full snap-center flex-shrink-0">
                 <img 
@@ -507,24 +527,37 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           </div>
         ) : (
           // Single image - prefer imageUrls[0] over imageUrl for backward compatibility
-          <img 
-            src={(event.imageUrls && event.imageUrls.length > 0) ? event.imageUrls[0] : (event.imageUrl || `https://picsum.photos/seed/${event.id}/800/600`)} 
-            alt={event.title} 
-            className="w-full h-full object-cover object-center transition-transform duration-1000 group-hover:scale-105" 
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              if (!target.src.includes('picsum.photos')) {
-                target.src = `https://picsum.photos/seed/${event.id}/800/600`;
+          <div
+            className="w-full h-full cursor-pointer"
+            onClick={() => {
+              const images = event.imageUrls && event.imageUrls.length > 0 
+                ? event.imageUrls 
+                : (event.imageUrl ? [event.imageUrl] : []);
+              if (images.length > 0) {
+                setImageViewerIndex(0);
+                setShowImageViewer(true);
               }
             }}
-          />
+          >
+            <img 
+              src={(event.imageUrls && event.imageUrls.length > 0) ? event.imageUrls[0] : (event.imageUrl || `https://picsum.photos/seed/${event.id}/800/600`)} 
+              alt={event.title} 
+              className="w-full h-full object-cover object-center transition-transform duration-1000 group-hover:scale-105" 
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                if (!target.src.includes('picsum.photos')) {
+                  target.src = `https://picsum.photos/seed/${event.id}/800/600`;
+                }
+              }}
+            />
+          </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#15383c] via-[#15383c]/40 to-transparent opacity-90" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#15383c] via-[#15383c]/40 to-transparent opacity-90 pointer-events-none" />
         
-        {/* Image counter for multiple images */}
+        {/* Image counter for multiple images - bottom right, reduced size by 3x */}
         {event.imageUrls && event.imageUrls.length > 1 && (
-          <div className="absolute top-4 right-4 bg-black/50 text-white text-xs font-medium px-2 py-1 rounded backdrop-blur-sm z-10">
-            1 / {event.imageUrls.length}
+          <div className="absolute bottom-4 right-4 bg-black/50 text-white text-[10px] font-medium px-1.5 py-0.5 rounded backdrop-blur-sm z-10 pointer-events-none">
+            {currentImageIndex + 1} / {event.imageUrls.length}
           </div>
         )}
          <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 md:p-8 lg:p-12 max-w-7xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6">
