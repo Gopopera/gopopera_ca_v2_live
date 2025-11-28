@@ -1002,6 +1002,22 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         onClose={() => setShowImageViewer(false)}
         eventTitle={event.title}
       />
+
+      {/* Host Reviews Modal */}
+      {event.hostId && (
+        <HostReviewsModal
+          hostId={event.hostId}
+          hostName={displayHostName || event.hostName || 'Unknown Host'}
+          hostRating={hostOverallRating}
+          hostReviewCount={hostOverallReviewCount}
+          isOpen={showHostReviewsModal}
+          onClose={() => setShowHostReviewsModal(false)}
+          onReviewerClick={(userId, userName) => {
+            setShowHostReviewsModal(false);
+            onHostClick(userName);
+          }}
+        />
+      )}
     </div>
   );
 };
