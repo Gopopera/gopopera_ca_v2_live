@@ -115,8 +115,33 @@ export async function generateStoryImage(options: StoryImageOptions): Promise<Bl
     img.src = eventImageUrl;
   });
   
-  // Draw event image as background (cover the entire canvas)
-  ctx.drawImage(eventImage, 0, 0, width, height);
+  // Calculate proper aspect ratio to fill canvas without deformation
+  // Story format is 9:16 (1080x1920)
+  const storyAspectRatio = width / height; // 0.5625
+  const imageAspectRatio = eventImage.width / eventImage.height;
+  
+  let sourceX = 0;
+  let sourceY = 0;
+  let sourceWidth = eventImage.width;
+  let sourceHeight = eventImage.height;
+  
+  // If image is wider than story format, crop sides
+  if (imageAspectRatio > storyAspectRatio) {
+    sourceWidth = eventImage.height * storyAspectRatio;
+    sourceX = (eventImage.width - sourceWidth) / 2;
+  } 
+  // If image is taller than story format, crop top/bottom
+  else if (imageAspectRatio < storyAspectRatio) {
+    sourceHeight = eventImage.width / storyAspectRatio;
+    sourceY = (eventImage.height - sourceHeight) / 2;
+  }
+  
+  // Draw event image as background (properly cropped and scaled to fill canvas)
+  ctx.drawImage(
+    eventImage,
+    sourceX, sourceY, sourceWidth, sourceHeight, // Source (cropped)
+    0, 0, width, height // Destination (full canvas)
+  );
   
   // Analyze top-left area (where logo will be) to determine logo color
   // Analyze a 200x200px area in the top-left corner
@@ -139,23 +164,23 @@ export async function generateStoryImage(options: StoryImageOptions): Promise<Bl
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
   
-  // Add Popera logo in top-left corner (24px, conditional color)
+  // Add Popera logo in top-left corner (72px - 3x bigger, conditional color)
   ctx.fillStyle = logoColor;
-  ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
+  ctx.font = 'bold 72px system-ui, -apple-system, sans-serif';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   const logoPadding = 40;
   ctx.fillText('Popera', logoPadding, logoPadding);
   
-  // Add category badge (top-left, below logo)
-  const categoryY = logoPadding + 40;
+  // Add category badge (top-left, below logo) - 3x bigger
+  const categoryY = logoPadding + 100; // More spacing (was 40, now 100)
   ctx.fillStyle = '#e35e25';
-  ctx.font = 'bold 18px system-ui, -apple-system, sans-serif';
-  const categoryPadding = 12;
+  ctx.font = 'bold 54px system-ui, -apple-system, sans-serif'; // 3x bigger (was 18px)
+  const categoryPadding = 24; // 3x bigger padding
   const categoryText = eventCategory.toUpperCase();
   const categoryMetrics = ctx.measureText(categoryText);
   const categoryWidth = categoryMetrics.width + categoryPadding * 2;
-  const categoryHeight = 32;
+  const categoryHeight = 96; // 3x bigger (was 32)
   
   // Draw category badge background
   ctx.fillStyle = 'rgba(227, 94, 37, 0.9)';
@@ -163,7 +188,7 @@ export async function generateStoryImage(options: StoryImageOptions): Promise<Bl
   
   // Draw category text
   ctx.fillStyle = '#FFFFFF';
-  ctx.fillText(categoryText, logoPadding + categoryPadding, categoryY + 8);
+  ctx.fillText(categoryText, logoPadding + categoryPadding, categoryY + 24); // Adjusted padding
   
   // Add event title (large, bold, white)
   const titleY = height - 400; // Position from bottom
@@ -192,20 +217,20 @@ export async function generateStoryImage(options: StoryImageOptions): Promise<Bl
   }
   ctx.fillText(line, logoPadding, currentY);
   
-  // Add event details (date, time, location)
-  const detailsY = currentY - 100;
+  // Add event details (date, time, location) - 2x bigger with more spacing
+  const detailsY = currentY - 120; // More space from title
   ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-  ctx.font = '24px system-ui, -apple-system, sans-serif';
+  ctx.font = '48px system-ui, -apple-system, sans-serif'; // 2x bigger (was 24px)
   
   // Date and time
   ctx.fillText(`${eventDate} • ${eventTime}`, logoPadding, detailsY);
   
-  // Location
-  ctx.fillText(eventLocation, logoPadding, detailsY + 40);
+  // Location (more spacing - was 40, now 80)
+  ctx.fillText(eventLocation, logoPadding, detailsY + 80);
   
-  // Price (if not free)
+  // Price (if not free) - more spacing (was 80, now 160)
   if (eventPrice && eventPrice.toLowerCase() !== 'free' && eventPrice !== '$0' && eventPrice !== '0') {
-    ctx.fillText(eventPrice, logoPadding, detailsY + 80);
+    ctx.fillText(eventPrice, logoPadding, detailsY + 160);
   }
   
   // Convert canvas to blob
