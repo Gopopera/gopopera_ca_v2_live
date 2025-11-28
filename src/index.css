@@ -17,10 +17,27 @@ html, body, #root {
   height: 100%;
 }
 
+/* Prevent pinch-to-zoom on mobile devices */
+html {
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Allow text selection for better UX (users can still select text when needed) */
 body {
   background: #f9fafb;
   font-size: 16px;
   line-height: 1.5;
+  -webkit-user-select: text;
+  user-select: text;
+  touch-action: manipulation;
+}
+
+/* Prevent double-tap zoom on interactive elements */
+button, a, input, textarea, select {
+  touch-action: manipulation;
 }
 
 /* Section spacing utilities */
