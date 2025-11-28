@@ -301,7 +301,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
           />
           {/* Menu Panel - Slides in from right */}
           <div 
-            className="fixed top-0 right-0 bottom-0 bg-white z-[9999] flex flex-col pt-20 sm:pt-24 md:pt-28 px-4 sm:px-6 md:px-8 overflow-y-auto shadow-2xl w-full max-w-sm sm:max-w-md md:max-w-lg" 
+            className="fixed top-0 right-0 bottom-0 bg-white z-[9999] flex flex-col pt-20 sm:pt-24 md:pt-28 px-4 sm:px-6 md:px-8 overflow-y-auto shadow-2xl w-full max-w-[280px] sm:max-w-[320px] md:max-w-[360px]" 
             style={{ 
               position: 'fixed', 
               top: 0, 
@@ -320,7 +320,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
           {/* Back Button - Always visible at top of menu */}
           <button
             onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center gap-2 text-popera-teal hover:text-popera-orange active:text-popera-orange transition-all touch-manipulation py-3 sm:py-2 mb-2 sm:mb-3 active:scale-[0.98] font-medium text-base sm:text-lg"
+            className="flex items-center justify-end gap-2 text-popera-teal hover:text-popera-orange active:text-popera-orange transition-all touch-manipulation py-3 sm:py-2 mb-2 sm:mb-3 active:scale-[0.98] font-medium text-base sm:text-lg"
             aria-label="Close menu"
           >
             <ArrowLeft size={20} className="sm:w-6 sm:h-6" />
@@ -331,51 +331,51 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
             
             {isLoggedIn ? (
                <>
-                 <button onClick={() => handleNav(ViewState.CREATE_EVENT)} className="text-left hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all flex items-center gap-3 sm:gap-3 text-[#e35e25] touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
-                   <PlusCircle size={22} className="sm:w-6 sm:h-6" /> {t('header.hostEvent')}
+                 <button onClick={() => handleNav(ViewState.CREATE_EVENT)} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all flex items-center justify-end gap-3 sm:gap-3 text-[#e35e25] touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
+                   {t('header.hostEvent')} <PlusCircle size={22} className="sm:w-6 sm:h-6" />
                  </button>
 
-                 <button onClick={() => handleNav(ViewState.FEED)} className="text-left hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
+                 <button onClick={() => handleNav(ViewState.FEED)} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
                    {t('header.exploreEvents')}
                  </button>
                  
-                 <button onClick={onNotificationsClick} className="text-left hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all flex items-center gap-3 sm:gap-3 touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
+                 <button onClick={onNotificationsClick} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all flex items-center justify-end gap-3 sm:gap-3 touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
                    {t('header.notifications')} {unreadCount > 0 && <span className="w-2 h-2 sm:w-2 sm:h-2 bg-[#e35e25] rounded-full"></span>}
                  </button>
                  
-                 <button onClick={() => handleNav(ViewState.PROFILE)} className="text-left hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
+                 <button onClick={() => handleNav(ViewState.PROFILE)} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
                    {t('header.myProfile')}
                  </button>
                  
-                 <button onClick={() => handleNav(ViewState.MY_POPS)} className="text-left hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
+                 <button onClick={() => handleNav(ViewState.MY_POPS)} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
                    {t('header.myPops')}
                  </button>
                  
-                 <button onClick={() => handleNav(ViewState.FAVORITES)} className="text-left hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
+                 <button onClick={() => handleNav(ViewState.FAVORITES)} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
                    {t('header.myFavorites')}
                  </button>
                  
                  <div className="pt-4 sm:pt-6 md:pt-8 border-t border-gray-200 flex flex-col space-y-1 sm:space-y-2 md:space-y-3 mt-auto">
-                     <button onClick={handleLogoutClick} className="text-left hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
+                     <button onClick={handleLogoutClick} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
                        {t('header.signOut')}
                      </button>
-                     <button onClick={() => handleNav(ViewState.DELETE_ACCOUNT)} className="text-left text-gray-500 sm:text-gray-400 hover:text-red-500 active:text-red-600 active:bg-red-50 transition-all text-base sm:text-lg touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
+                     <button onClick={() => handleNav(ViewState.DELETE_ACCOUNT)} className="text-right text-gray-500 sm:text-gray-400 hover:text-red-500 active:text-red-600 active:bg-red-50 transition-all text-base sm:text-lg touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
                        {t('header.deleteAccount')}
                      </button>
                  </div>
                </>
             ) : (
                <>
-                 <button onClick={() => handleNav(ViewState.LANDING)} className="text-left hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">{t('header.home')}</button>
-                 <button onClick={() => handleNav(ViewState.FEED)} className="text-left hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">{t('header.exploreEvents')}</button>
-                 <button onClick={() => handleNav(ViewState.GUIDELINES)} className="text-left hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">{t('header.community')}</button>
-                 <button onClick={() => handleNav(ViewState.ABOUT)} className="text-left hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">{t('header.about')}</button>
+                 <button onClick={() => handleNav(ViewState.LANDING)} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">{t('header.home')}</button>
+                 <button onClick={() => handleNav(ViewState.FEED)} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">{t('header.exploreEvents')}</button>
+                 <button onClick={() => handleNav(ViewState.GUIDELINES)} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">{t('header.community')}</button>
+                 <button onClick={() => handleNav(ViewState.ABOUT)} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">{t('header.about')}</button>
                  <hr className="border-gray-200 my-3 sm:my-2" />
                  <button 
                    onClick={() => handleNav(ViewState.AUTH)}
-                   className="text-left flex items-center text-base sm:text-lg font-medium text-gray-700 sm:text-gray-600 hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]"
+                   className="text-right flex items-center justify-end text-base sm:text-lg font-medium text-gray-700 sm:text-gray-600 hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]"
                  >
-                   <User size={22} className="sm:w-6 sm:h-6 mr-3 sm:mr-3" /> {t('header.signIn')}
+                   {t('header.signIn')} <User size={22} className="sm:w-6 sm:h-6 ml-3 sm:ml-3" />
                  </button>
                </>
             )}
