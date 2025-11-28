@@ -1282,15 +1282,13 @@ const AppContent: React.FC = () => {
                 const subtotal = pricePerAttendee * attendeeCount;
                 const totalAmount = subtotal + supportContribution;
                 
-                const reservationId = await createReservation(selectedEvent.id, user.uid, {
+                // Create reservation with options (this will also send notifications)
+                const reservationId = await addRSVP(user.uid, selectedEvent.id, {
                   attendeeCount,
                   supportContribution: supportContribution > 0 ? supportContribution : undefined,
                   paymentMethod: !selectedEvent.price || selectedEvent.price.toLowerCase() === 'free' ? undefined : paymentMethod,
                   totalAmount: totalAmount > 0 ? totalAmount : undefined,
                 });
-                
-                // Update user's RSVPs array
-                await addRSVP(user.uid, selectedEvent.id);
 
                 // Update attendee count
                 const { getReservationCountForEvent } = await import('./firebase/db');
