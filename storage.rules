@@ -1,0 +1,60 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user owns the path
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Event images: Allow authenticated users to upload to their own event folders
+    // Path format: events/{userId}/{imageName}
+    match /events/{userId}/{imageName} {
+      // Allow public read access to event images
+      allow read: if true;
+      
+      // Allow authenticated users to upload images to their own event folder
+      allow write: if isAuthenticated() && isOwner(userId);
+      
+      // Allow users to delete their own images
+      allow delete: if isAuthenticated() && isOwner(userId);
+    }
+    
+    // User profile pictures: Allow users to upload/delete their own profile pictures
+    // Path format: users/{userId}/avatar.jpg or users/{userId}/{imageName}
+    match /users/{userId}/{imageName} {
+      // Allow public read access to profile pictures
+      allow read: if true;
+      
+      // Allow users to upload/update their own profile pictures
+      allow write: if isAuthenticated() && isOwner(userId);
+      
+      // Allow users to delete their own profile pictures
+      allow delete: if isAuthenticated() && isOwner(userId);
+    }
+    
+    // Chat images: Allow authenticated users to upload images to chat
+    // Path format: chat/{eventId}/{userId}/{imageName}
+    match /chat/{eventId}/{userId}/{imageName} {
+      // Allow authenticated users to read chat images
+      allow read: if isAuthenticated();
+      
+      // Allow users to upload images to chat (must be authenticated)
+      allow write: if isAuthenticated() && isOwner(userId);
+      
+      // Allow users to delete their own chat images
+      allow delete: if isAuthenticated() && isOwner(userId);
+    }
+    
+    // Default: Deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

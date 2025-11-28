@@ -99,6 +99,26 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
     }
 
     const eventIdToUpdate = eventId || initialEvent?.id || '';
+    
+    // Verify user is the host of this event
+    let eventToEdit = initialEvent;
+    if (!eventToEdit && eventIdToUpdate) {
+      try {
+        eventToEdit = await getEventById(eventIdToUpdate);
+      } catch (error) {
+        console.error('[EDIT_EVENT] Error loading event for verification:', error);
+      }
+    }
+    
+    if (!eventToEdit) {
+      alert('Event not found.');
+      return;
+    }
+    
+    if (eventToEdit.hostId && eventToEdit.hostId !== user.uid) {
+      alert('You can only edit events that you are hosting.');
+      return;
+    }
 
     // Validate required fields
     if (!title || !description || !city || !time || !category) {
