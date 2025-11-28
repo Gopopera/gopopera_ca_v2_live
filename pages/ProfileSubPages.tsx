@@ -8,6 +8,7 @@ import { createOrUpdateUserProfile } from '../firebase/db';
 import { getDbSafe, getAuthSafe } from '../src/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface SubPageProps {
   setViewState: (view: ViewState) => void;
@@ -15,12 +16,23 @@ interface SubPageProps {
 
 // --- Basic Details Page ---
 export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
+  const { t } = useLanguage();
   const user = useUserStore((state) => state.user);
   const userProfile = useUserStore((state) => state.userProfile);
   // Priority: userProfile (Firestore - most up-to-date) > user (Auth) > fallback
   const [profileImage, setProfileImage] = useState<string | null>(
     userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null
   );
+  
+  // User name (publicly shown) - editable
+  const [userName, setUserName] = useState<string>(
+    userProfile?.displayName || userProfile?.name || user?.displayName || user?.name || ''
+  );
+  
+  // Full name, phone, bio - not auto-filled, user must fill
+  const [fullName, setFullName] = useState<string>(userProfile?.fullName || '');
+  const [phoneNumber, setPhoneNumber] = useState<string>(userProfile?.phone_number || '');
+  const [bio, setBio] = useState<string>(userProfile?.bio || '');
   
   // Sync profile image when userProfile or user changes
   React.useEffect(() => {
@@ -29,7 +41,17 @@ export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
       setProfileImage(latestPic);
     }
   }, [userProfile?.photoURL, userProfile?.imageUrl, user?.photoURL, user?.profileImageUrl]);
+  
+  // Sync userName when userProfile or user changes
+  React.useEffect(() => {
+    const latestUserName = userProfile?.displayName || userProfile?.name || user?.displayName || user?.name || '';
+    if (latestUserName !== userName) {
+      setUserName(latestUserName);
+    }
+  }, [userProfile?.displayName, userProfile?.name, user?.displayName, user?.name]);
+  
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,11 +118,71 @@ export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
     }
   };
 
+  const handleSave = async () => {
+    if (!user?.uid) {
+      alert('You must be logged in to update your profile.');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      
+      // Update user profile in Firestore
+      const updates: any = {
+        displayName: userName.trim() || user?.displayName || user?.name || 'User',
+        name: userName.trim() || user?.displayName || user?.name || 'User',
+      };
+      
+      // Only update fields that have values (don't overwrite with empty strings)
+      if (fullName.trim()) {
+        updates.fullName = fullName.trim();
+      }
+      if (phoneNumber.trim()) {
+        updates.phone_number = phoneNumber.trim();
+      }
+      if (bio.trim()) {
+        updates.bio = bio.trim();
+      }
+      
+      await createOrUpdateUserProfile(user.uid, updates);
+      
+      // Update Firebase Auth displayName if userName changed
+      if (userName.trim() && userName.trim() !== user?.displayName) {
+        const auth = getAuthSafe();
+        if (auth?.currentUser) {
+          try {
+            await updateProfile(auth.currentUser, { displayName: userName.trim() });
+            console.log('[PROFILE] Updated Firebase Auth displayName');
+          } catch (authError) {
+            console.warn('[PROFILE] Failed to update Firebase Auth displayName (non-critical):', authError);
+          }
+        }
+      }
+      
+      // Update local state
+      useUserStore.getState().updateUser(user.uid, {
+        displayName: userName.trim() || user?.displayName || user?.name || 'User',
+        name: userName.trim() || user?.displayName || user?.name || 'User',
+      });
+      
+      // Refresh user profile to sync across all components
+      await useUserStore.getState().refreshUserProfile();
+      
+      alert('Profile updated successfully!');
+      console.log('[PROFILE] Profile updated successfully');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Failed to update profile. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white pt-20 sm:pt-24 pb-8 sm:pb-12 font-sans">
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between mb-6 sm:mb-8 border-b border-gray-100 pb-4 sm:pb-6">
-           <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c]">Basic Details</h1>
+           <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c]">{t('profile.basicDetails')}</h1>
            <button 
              onClick={() => setViewState(ViewState.PROFILE)}
              className="w-9 h-9 sm:w-10 sm:h-10 bg-[#15383c] rounded-lg flex items-center justify-center text-white hover:opacity-90 transition-opacity touch-manipulation active:scale-95 shrink-0"
@@ -111,7 +193,7 @@ export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
         <div className="space-y-5 sm:space-y-6">
            {/* Profile Picture Upload */}
            <div className="space-y-2">
-              <label className="block text-xs sm:text-sm font-light text-gray-600 pl-1">Profile Picture</label>
+              <label className="block text-xs sm:text-sm font-light text-gray-600 pl-1">{t('profile.profilePicture')}</label>
               <div className="flex items-center gap-4">
                 <div className="relative">
                   <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gray-200 overflow-hidden ring-2 ring-gray-200">
@@ -119,7 +201,7 @@ export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
                       <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 text-2xl font-bold">
-                        {user?.displayName?.[0] || user?.name?.[0] || 'U'}
+                        {userName?.[0] || user?.displayName?.[0] || user?.name?.[0] || 'U'}
                       </div>
                     )}
                   </div>
@@ -143,28 +225,63 @@ export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
                     className="inline-flex items-center gap-2 px-4 py-2 bg-[#15383c] text-white rounded-full text-sm font-medium hover:bg-[#1f4d52] transition-colors cursor-pointer touch-manipulation active:scale-95"
                   >
                     <Camera size={16} />
-                    {uploading ? 'Uploading...' : 'Change Photo'}
+                    {uploading ? t('profile.uploading') : t('profile.changePhoto')}
                   </label>
                 </div>
               </div>
            </div>
+           {/* User Name (Publicly shown) - Editable */}
            <div className="space-y-2">
-              <div className="w-full bg-gray-100 rounded-xl sm:rounded-2xl py-3 sm:py-4 px-4 sm:px-6 text-sm sm:text-base text-[#15383c]">{user?.displayName || user?.name || 'User'}</div>
+              <label className="block text-xs sm:text-sm font-light text-gray-600 pl-1">{t('profile.userName')} <span className="text-gray-400 font-normal text-[10px]">({t('profile.userNameDescription')})</span></label>
+              <input 
+                type="text" 
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+                placeholder={t('profile.userName')}
+                className="w-full bg-white border border-gray-200 rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all" 
+              />
            </div>
+           {/* Full Name - Not auto-filled */}
            <div className="space-y-2">
-              <label className="block text-xs sm:text-sm font-light text-gray-600 pl-1">Full Name</label>
-              <input type="text" defaultValue="Jason" className="w-full bg-white border border-gray-200 rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all" />
+              <label className="block text-xs sm:text-sm font-light text-gray-600 pl-1">{t('profile.fullName')}</label>
+              <input 
+                type="text" 
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder={t('profile.fullName')}
+                className="w-full bg-white border border-gray-200 rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all" 
+              />
            </div>
+           {/* Phone Number - Not auto-filled */}
            <div className="space-y-2">
-              <label className="block text-xs sm:text-sm font-light text-gray-600 pl-1">Phone Number <span className="text-gray-400 font-normal">(not shared with anyone)</span></label>
-              <input type="tel" defaultValue="(+1) 999-888-000" className="w-full bg-white border border-gray-200 rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all" />
+              <label className="block text-xs sm:text-sm font-light text-gray-600 pl-1">{t('profile.phoneNumber')} <span className="text-gray-400 font-normal">({t('profile.phoneNumberDescription')})</span></label>
+              <input 
+                type="tel" 
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder={t('profile.phoneNumber')}
+                className="w-full bg-white border border-gray-200 rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all" 
+              />
            </div>
+           {/* Bio - Not auto-filled */}
            <div className="space-y-2">
-              <label className="block text-xs sm:text-sm font-light text-gray-600 pl-1">Bio</label>
-              <textarea rows={4} defaultValue="Discover & host pop-up events in your city. We're commited to empowering pop-culture by creating a safe hub around connections and opportunities to be safely accessible." className="w-full bg-white border border-gray-200 rounded-2xl sm:rounded-3xl py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all resize-none" />
+              <label className="block text-xs sm:text-sm font-light text-gray-600 pl-1">{t('profile.bio')}</label>
+              <textarea 
+                rows={4} 
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder={t('profile.bio')}
+                className="w-full bg-white border border-gray-200 rounded-2xl sm:rounded-3xl py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all resize-none" 
+              />
            </div>
            <div className="pt-6 sm:pt-8">
-             <button className="w-full py-3.5 sm:py-4 bg-[#15383c] text-white font-bold rounded-xl sm:rounded-2xl hover:bg-[#1f4d52] transition-colors shadow-lg touch-manipulation active:scale-95 text-sm sm:text-base">Update</button>
+             <button 
+               onClick={handleSave}
+               disabled={saving}
+               className="w-full py-3.5 sm:py-4 bg-[#15383c] text-white font-bold rounded-xl sm:rounded-2xl hover:bg-[#1f4d52] transition-colors shadow-lg touch-manipulation active:scale-95 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+             >
+               {saving ? t('profile.uploading') : t('profile.saveChanges')}
+             </button>
            </div>
         </div>
       </div>

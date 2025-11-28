@@ -178,11 +178,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="mb-3 sm:mb-4">
                <span className="inline-flex items-center gap-2 py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">
                   <Sparkles size={10} className="sm:w-3 sm:h-3 -mt-0.5" />
-                  Happening Now
+                  {t('feed.happeningNow')}
                </span>
             </div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-[#15383c] mb-2 sm:mb-3 md:mb-4 px-4 sm:px-0">Upcoming Pop-ups</h2>
-            <p className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-500 font-light leading-relaxed px-4 sm:px-0">See where the crowd is going. Discover the moments bringing people together this week.</p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-[#15383c] mb-2 sm:mb-3 md:mb-4 px-4 sm:px-0">{t('feed.upcomingPopups')}</h2>
+            <p className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-500 font-light leading-relaxed px-4 sm:px-0">{t('feed.seeWhereCrowd')}</p>
           </div>
 
           {/* SEARCH BAR & FILTERS */}
@@ -202,7 +202,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     </div>
                     <input
                       type="text"
-                      placeholder="Search events, hosts, or venues..."
+                      placeholder={t('feed.searchPlaceholder')}
                       className="w-full pl-12 pr-4 py-3.5 md:py-4 min-h-[48px] sm:min-h-0 bg-white border border-gray-200 rounded-full text-base sm:text-sm focus:outline-none focus:border-[#15383c] focus:ring-2 focus:ring-[#15383c]/10 shadow-sm hover:shadow-md transition-all"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}

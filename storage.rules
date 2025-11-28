@@ -14,11 +14,25 @@ service firebase.storage {
     
     // Event images: Allow authenticated users to upload to their own event folders
     // Path format: events/{userId}/{imageName}
+    // This allows users to upload images when creating or editing their events
     match /events/{userId}/{imageName} {
       // Allow public read access to event images
       allow read: if true;
       
-      // Allow authenticated users to upload images to their own event folder
+      // Allow authenticated users to upload/update images to their own event folder
+      // This covers both creating new events and editing existing events
+      allow write: if isAuthenticated() && isOwner(userId);
+      
+      // Allow users to delete their own images
+      allow delete: if isAuthenticated() && isOwner(userId);
+    }
+    
+    // Also allow nested paths for event images (e.g., events/{userId}/subfolder/{imageName})
+    match /events/{userId}/{allPaths=**} {
+      // Allow public read access
+      allow read: if true;
+      
+      // Allow authenticated users to write to their own event folders (any nested path)
       allow write: if isAuthenticated() && isOwner(userId);
       
       // Allow users to delete their own images

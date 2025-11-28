@@ -59,6 +59,7 @@ export interface FirestoreUser {
   photoURL?: string;
   city?: string;
   bio?: string;
+  fullName?: string; // Full name (separate from displayName/userName)
   preferences?: 'attend' | 'host' | 'both';
   favorites?: string[]; // Event IDs
   hostedEvents?: string[]; // Event IDs user has created

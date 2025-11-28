@@ -138,6 +138,11 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
           console.log('[EDIT_EVENT] Uploading', imageFiles.length, 'new image(s)...');
           setUploadingImage(true);
           
+          // Verify user is authenticated before attempting upload
+          if (!user?.uid) {
+            throw new Error('You must be logged in to upload images.');
+          }
+          
           const processAndUploadImage = async (file: File, path: string): Promise<string> => {
             // Process image (HEIC conversion + compression)
             const processedFile = await processImageForUpload(file, {
@@ -147,21 +152,38 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
               maxSizeMB: 2
             });
             
+            // Verify path format matches storage rules: events/{userId}/{imageName}
+            if (!path.startsWith(`events/${user.uid}/`)) {
+              throw new Error(`Invalid image path format. Expected: events/${user.uid}/..., got: ${path}`);
+            }
+            
+            console.log('[EDIT_EVENT] Uploading image to path:', path);
             return await uploadImage(path, processedFile, { maxUploadTime: 90000 });
           };
           
           const timestamp = Date.now();
           const uploadPromises = imageFiles.map(async (file, i) => {
-            const imagePath = `events/${user.uid}/${timestamp}_${i}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+            // Ensure path matches storage rules: events/{userId}/{imageName}
+            const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+            const imagePath = `events/${user.uid}/${timestamp}_${i}_${sanitizedFileName}`;
+            console.log('[EDIT_EVENT] Image upload path:', imagePath, 'for user:', user.uid);
             return await processAndUploadImage(file, imagePath);
           });
           
           const newImageUrls = await Promise.all(uploadPromises);
           finalImageUrls = [...imageUrls, ...newImageUrls];
           finalImageUrl = finalImageUrls[0] || finalImageUrl;
+          console.log('[EDIT_EVENT] ✅ Successfully uploaded', newImageUrls.length, 'image(s)');
         } catch (uploadError: any) {
           console.error('[EDIT_EVENT] Image upload failed:', uploadError);
-          alert(`Failed to upload images: ${uploadError?.message || 'Unknown error'}. The event will be updated without new images.`);
+          const errorMessage = uploadError?.message || 'Unknown error';
+          
+          // Provide more helpful error message for permission errors
+          if (errorMessage.includes('permission') || errorMessage.includes('unauthorized')) {
+            alert(`Permission denied: ${errorMessage}\n\nPlease ensure:\n1. You are logged in\n2. Firebase Storage rules are deployed\n3. You are the host of this event\n\nThe event will be updated without new images.`);
+          } else {
+            alert(`Failed to upload images: ${errorMessage}\n\nThe event will be updated without new images.`);
+          }
         } finally {
           setUploadingImage(false);
         }

@@ -255,7 +255,7 @@ export const EventCard: React.FC<EventCardProps> = ({
             aria-label="Edit Event"
           >
             <Edit size={14} />
-            Edit
+            {t('event.editEvent')}
           </button>
         )}
 
@@ -334,7 +334,7 @@ export const EventCard: React.FC<EventCardProps> = ({
                )}
              </span>
              <p className="text-xs font-medium text-gray-600 sm:text-gray-500 uppercase tracking-wide truncate">
-               Hosted by {displayHostName ? displayHostName.split(' ')[0] : 'Unknown'}
+               {t('event.hostedBy')} {displayHostName ? displayHostName.split(' ')[0] : 'Unknown'}
              </p>
            </div>
 
