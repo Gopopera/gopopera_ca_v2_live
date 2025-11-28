@@ -977,6 +977,17 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           </div>
         </div>
       )}
+
+      {/* Image Viewer Modal */}
+      <ImageViewerModal
+        images={event.imageUrls && event.imageUrls.length > 0 
+          ? event.imageUrls 
+          : (event.imageUrl ? [event.imageUrl] : [])}
+        initialIndex={imageViewerIndex}
+        isOpen={showImageViewer}
+        onClose={() => setShowImageViewer(false)}
+        eventTitle={event.title}
+      />
     </div>
   );
 };
