@@ -3,6 +3,8 @@
  * Creates a 1080x1920px image matching the event info page design
  */
 
+import QRCode from 'qrcode';
+
 export interface StoryImageOptions {
   eventImageUrl: string;
   eventTitle: string;
@@ -231,6 +233,92 @@ export async function generateStoryImage(options: StoryImageOptions): Promise<Bl
   // Price (if not free) - more spacing (was 80, now 160)
   if (eventPrice && eventPrice.toLowerCase() !== 'free' && eventPrice !== '$0' && eventPrice !== '0') {
     ctx.fillText(eventPrice, logoPadding, detailsY + 160);
+  }
+  
+  // Add QR code and URL at bottom for deep linking
+  if (options.eventUrl) {
+    try {
+      // Generate QR code as data URL
+      const QRCode = (await import('qrcode')).default;
+      const qrDataUrl = await QRCode.toDataURL(options.eventUrl, {
+        width: 200,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF',
+        },
+      });
+      
+      // Load QR code image
+      const qrImage = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('Failed to load QR code'));
+        img.src = qrDataUrl;
+      });
+      
+      // Draw QR code in bottom-right corner
+      const qrSize = 200;
+      const qrPadding = 30;
+      const qrX = width - qrSize - qrPadding;
+      const qrY = height - qrSize - qrPadding;
+      
+      // Draw white background for QR code
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(qrX - 15, qrY - 15, qrSize + 30, qrSize + 30);
+      
+      // Draw QR code
+      ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+      
+      // Add "Scan to view event" text above QR code
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      
+      // Add background for text readability
+      const scanText = 'Scan QR to view event';
+      const textMetrics = ctx.measureText(scanText);
+      const textBgWidth = textMetrics.width + 30;
+      const textBgHeight = 40;
+      
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.fillRect(
+        qrX + qrSize / 2 - textBgWidth / 2,
+        qrY - textBgHeight - 10,
+        textBgWidth,
+        textBgHeight
+      );
+      
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillText(scanText, qrX + qrSize / 2, qrY - 15);
+      
+      // Add URL text below QR code (smaller, for reference)
+      const urlY = height - 15;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.font = '24px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      
+      const urlText = options.eventUrl.replace(/^https?:\/\//, ''); // Remove https://
+      const urlMetrics = ctx.measureText(urlText);
+      const urlBgWidth = urlMetrics.width + 20;
+      const urlBgHeight = 35;
+      
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillRect(
+        width / 2 - urlBgWidth / 2,
+        urlY - urlBgHeight - 5,
+        urlBgWidth,
+        urlBgHeight
+      );
+      
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillText(urlText, width / 2, urlY - 10);
+    } catch (error) {
+      console.warn('[STORY_IMAGE] Failed to generate QR code:', error);
+      // Continue without QR code if generation fails
+    }
   }
   
   // Convert canvas to blob
