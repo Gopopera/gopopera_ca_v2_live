@@ -30,49 +30,172 @@ export const ReservationConfirmationPage: React.FC<ReservationConfirmationPagePr
     });
   }, [reservationId, event.id]);
 
-  const handleDownloadPass = () => {
-    // Create a canvas to generate downloadable image
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+  const handleDownloadPass = async () => {
+    try {
+      // Create a canvas to generate downloadable pass
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-    // Set canvas size
-    canvas.width = 800;
-    canvas.height = 1200;
+      // Set canvas size (optimized for mobile wallets and printing)
+      canvas.width = 1200;
+      canvas.height = 1800;
 
-    // Background gradient
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    gradient.addColorStop(0, '#1f4d52');
-    gradient.addColorStop(1, '#15383c');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Background gradient (Popera brand colors)
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, '#1f4d52');
+      gradient.addColorStop(0.5, '#15383c');
+      gradient.addColorStop(1, '#0f2a2d');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Add text
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 32px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('Reservation Confirmed!', canvas.width / 2, 100);
+      // Add decorative elements
+      ctx.fillStyle = 'rgba(227, 94, 37, 0.1)';
+      ctx.beginPath();
+      ctx.arc(canvas.width / 2, -200, 400, 0, Math.PI * 2);
+      ctx.fill();
 
-    // Add event title
-    ctx.font = 'bold 24px Arial';
-    ctx.fillText(event.title, canvas.width / 2, 200);
+      // Popera logo text
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 48px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('POPERA', canvas.width / 2, 120);
 
-    // Add order ID
-    ctx.font = '18px Arial';
-    ctx.fillText(`Order ID: ${orderId}`, canvas.width / 2, 250);
+      // Success icon (checkmark circle)
+      ctx.strokeStyle = '#e35e25';
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.arc(canvas.width / 2, 250, 60, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(canvas.width / 2 - 30, 250);
+      ctx.lineTo(canvas.width / 2 - 10, 270);
+      ctx.lineTo(canvas.width / 2 + 30, 240);
+      ctx.stroke();
 
-    // Convert to image and download
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `popera-pass-${orderId}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    });
+      // Confirmation text
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 36px system-ui, -apple-system, sans-serif';
+      ctx.fillText('Reservation Confirmed!', canvas.width / 2, 380);
+
+      // Event title (with word wrap)
+      ctx.font = 'bold 32px system-ui, -apple-system, sans-serif';
+      const maxTitleWidth = canvas.width - 120;
+      const titleWords = event.title.split(' ');
+      let titleY = 480;
+      let currentLine = '';
+      
+      for (const word of titleWords) {
+        const testLine = currentLine + word + ' ';
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxTitleWidth && currentLine !== '') {
+          ctx.fillText(currentLine, canvas.width / 2, titleY);
+          currentLine = word + ' ';
+          titleY += 45;
+        } else {
+          currentLine = testLine;
+        }
+      }
+      if (currentLine) {
+        ctx.fillText(currentLine, canvas.width / 2, titleY);
+      }
+
+      // Order ID section
+      const orderY = titleY + 80;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.fillRect(canvas.width / 2 - 200, orderY - 30, 400, 60);
+      
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '16px system-ui, -apple-system, sans-serif';
+      ctx.fillText('Reservation ID', canvas.width / 2, orderY);
+      ctx.font = 'bold 28px monospace';
+      ctx.fillText(orderId, canvas.width / 2, orderY + 35);
+
+      // Event details section
+      const detailsY = orderY + 120;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.fillRect(60, detailsY, canvas.width - 120, 400);
+
+      // Date
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '18px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('Date', 100, detailsY + 40);
+      ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
+      ctx.fillText(formattedDate, 100, detailsY + 70);
+
+      // Time
+      ctx.font = '18px system-ui, -apple-system, sans-serif';
+      ctx.fillText('Time', 100, detailsY + 130);
+      ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
+      ctx.fillText(event.time || 'TBD', 100, detailsY + 160);
+
+      // Location
+      ctx.font = '18px system-ui, -apple-system, sans-serif';
+      ctx.fillText('Location', 100, detailsY + 220);
+      ctx.font = 'bold 20px system-ui, -apple-system, sans-serif';
+      const locationText = event.location || `${event.address || ''}, ${event.city || ''}`.trim();
+      const maxLocationWidth = canvas.width - 200;
+      const locationMetrics = ctx.measureText(locationText);
+      if (locationMetrics.width > maxLocationWidth) {
+        // Wrap location if too long
+        const words = locationText.split(' ');
+        let locY = detailsY + 250;
+        let locLine = '';
+        for (const word of words) {
+          const testLine = locLine + word + ' ';
+          const metrics = ctx.measureText(testLine);
+          if (metrics.width > maxLocationWidth && locLine !== '') {
+            ctx.fillText(locLine, 100, locY);
+            locLine = word + ' ';
+            locY += 30;
+          } else {
+            locLine = testLine;
+          }
+        }
+        if (locLine) {
+          ctx.fillText(locLine, 100, locY);
+        }
+      } else {
+        ctx.fillText(locationText, 100, detailsY + 250);
+      }
+
+      // QR Code placeholder area (white background)
+      const qrY = detailsY + 480;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(canvas.width / 2 - 200, qrY, 400, 400);
+
+      // QR Code text
+      ctx.fillStyle = '#15383c';
+      ctx.font = 'bold 20px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Scan for Check-in', canvas.width / 2, qrY + 430);
+
+      // Footer
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.font = '14px system-ui, -apple-system, sans-serif';
+      ctx.fillText('Show this pass at the event entrance', canvas.width / 2, canvas.height - 40);
+      ctx.fillText('gopopera.ca', canvas.width / 2, canvas.height - 20);
+
+      // Convert to image and download
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `popera-pass-${orderId.replace('#', '')}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 'image/png', 0.95);
+    } catch (error) {
+      console.error('Error generating pass:', error);
+      alert('Failed to generate pass. Please try again.');
+    }
   };
 
   const handleShare = async () => {
@@ -132,7 +255,7 @@ export const ReservationConfirmationPage: React.FC<ReservationConfirmationPagePr
         </button>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 pb-12 pt-6 sm:pt-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 pt-6 sm:pt-8">
         {/* Success Header */}
         <div className="text-center mb-8 sm:mb-10">
           <div className="inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-[#e35e25] to-[#d14e1a] rounded-full mb-4 sm:mb-6 shadow-lg relative">

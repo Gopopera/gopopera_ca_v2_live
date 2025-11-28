@@ -11,6 +11,7 @@ import { AnnouncementEmailTemplate } from '../src/emails/templates/AnnouncementE
 import { PollEmailTemplate } from '../src/emails/templates/PollEmail';
 import { FollowNotificationTemplate } from '../src/emails/templates/FollowNotification';
 import { RSVPHostNotificationTemplate } from '../src/emails/templates/RSVPHostNotification';
+import { ReservationConfirmationEmailTemplate } from '../src/emails/templates/ReservationConfirmationEmail';
 
 // Base URL for event links (fallback to window.location.origin if not set)
 const BASE_URL = import.meta.env.VITE_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://gopopera.ca');
@@ -434,6 +435,111 @@ export async function notifyAttendeesOfNewMessage(
   });
 
   await Promise.all(notifications);
+}
+
+/**
+ * Notify user of their reservation confirmation
+ */
+export async function notifyUserOfReservationConfirmation(
+  userId: string,
+  eventId: string,
+  reservationId: string,
+  eventTitle: string,
+  eventDate: string,
+  eventTime: string,
+  eventLocation: string,
+  attendeeCount?: number,
+  totalAmount?: number
+): Promise<void> {
+  try {
+    const userInfo = await getUserContactInfo(userId);
+    const preferences = await getUserNotificationPreferences(userId);
+    const orderId = `#${reservationId.substring(0, 10).toUpperCase()}`;
+    const eventUrl = `${BASE_URL}/event/${eventId}`;
+
+    // In-app notification
+    if (preferences.notification_opt_in !== false) {
+      try {
+        await createNotification(userId, {
+          userId,
+          type: 'new-rsvp',
+          title: 'Reservation Confirmed! 🎉',
+          body: `Your reservation for ${eventTitle} has been confirmed`,
+          eventId,
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('Error creating reservation confirmation notification:', error);
+        }
+      }
+    }
+
+    // Email notification
+    if (preferences.email_opt_in && userInfo.email) {
+      try {
+        const emailHtml = ReservationConfirmationEmailTemplate({
+          userName: userInfo.name || 'there',
+          eventTitle,
+          eventDate,
+          eventTime,
+          eventLocation,
+          reservationId,
+          orderId,
+          eventUrl,
+          attendeeCount,
+          totalAmount,
+        });
+
+        await sendEmail({
+          to: userInfo.email,
+          subject: `Reservation Confirmed: ${eventTitle}`,
+          html: emailHtml,
+          templateName: 'reservation-confirmation',
+          eventId,
+          notificationType: 'reservation_confirmation',
+          skippedByPreference: false,
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('Error sending reservation confirmation email:', error);
+        }
+      }
+    } else if (userInfo.email) {
+      // Log skipped email due to preference
+      try {
+        await sendEmail({
+          to: userInfo.email,
+          subject: `Reservation Confirmed: ${eventTitle}`,
+          html: '',
+          templateName: 'reservation-confirmation',
+          eventId,
+          notificationType: 'reservation_confirmation',
+          skippedByPreference: true,
+        });
+      } catch (error) {
+        // Silent fail for skipped emails
+      }
+    }
+
+    // SMS notification
+    if (preferences.sms_opt_in && userInfo.phone) {
+      try {
+        await sendSMSNotification({
+          to: userInfo.phone,
+          message: `🎉 Reservation confirmed! ${eventTitle} on ${eventDate} at ${eventTime}. Order ID: ${orderId}. View details: ${eventUrl}`,
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('Error sending reservation confirmation SMS:', error);
+        }
+      }
+    }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error notifying user of reservation confirmation:', error);
+    }
+    // Don't throw - reservation should succeed even if notification fails
+  }
 }
 
 /**

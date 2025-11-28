@@ -709,13 +709,13 @@ export const useUserStore = create<UserStore>()(
         }
       },
 
-      addRSVP: async (userId: string, eventId: string) => {
+      addRSVP: async (userId: string, eventId: string, options?: { attendeeCount?: number; supportContribution?: number; paymentMethod?: string; totalAmount?: number }) => {
         try {
           const currentUser = get().user;
           const currentRSVPs = Array.isArray(currentUser?.rsvps) ? currentUser.rsvps : [];
           if (currentRSVPs.includes(eventId)) return;
           
-          const reservationId = await createReservation(eventId, userId);
+          const reservationId = await createReservation(eventId, userId, options);
           
           const reservationEvents = await listUserReservations(userId);
           const updatedRSVPs = Array.isArray(reservationEvents) ? reservationEvents.map(e => e?.id).filter(Boolean) : [];
@@ -724,23 +724,52 @@ export const useUserStore = create<UserStore>()(
             set({ user: { ...currentUser, rsvps: updatedRSVPs }, currentUser: { ...currentUser, rsvps: updatedRSVPs } });
           }
 
-          // Notify host of new RSVP (non-blocking)
+          // Get event details for notifications
+          let eventData: any = null;
           try {
             const db = getDbSafe();
             if (db) {
               const eventDoc = await getDoc(doc(db, 'events', eventId));
               if (eventDoc.exists()) {
-                const eventData = eventDoc.data();
-                const hostId = eventData.hostId;
-                if (hostId) {
-                  const { notifyHostOfRSVP } = await import('../utils/notificationHelpers');
-                  await notifyHostOfRSVP(hostId, userId, eventId, eventData.title || 'Event');
-                }
+                eventData = eventDoc.data();
               }
             }
           } catch (error) {
-            console.error('Error notifying host of RSVP:', error);
-            // Don't fail RSVP if notification fails
+            console.error('Error fetching event data:', error);
+          }
+
+          // Notify user of reservation confirmation (non-blocking)
+          if (eventData) {
+            try {
+              const { notifyUserOfReservationConfirmation } = await import('../utils/notificationHelpers');
+              const { formatDate } = await import('../utils/dateFormatter');
+              
+              await notifyUserOfReservationConfirmation(
+                userId,
+                eventId,
+                reservationId,
+                eventData.title || 'Event',
+                formatDate(eventData.date || ''),
+                eventData.time || '',
+                eventData.location || `${eventData.address || ''}, ${eventData.city || ''}`.trim(),
+                options?.attendeeCount || 1,
+                options?.totalAmount
+              );
+            } catch (error) {
+              console.error('Error notifying user of reservation confirmation:', error);
+              // Don't fail RSVP if notification fails
+            }
+          }
+
+          // Notify host of new RSVP (non-blocking)
+          if (eventData?.hostId) {
+            try {
+              const { notifyHostOfRSVP } = await import('../utils/notificationHelpers');
+              await notifyHostOfRSVP(eventData.hostId, userId, eventId, eventData.title || 'Event');
+            } catch (error) {
+              console.error('Error notifying host of RSVP:', error);
+              // Don't fail RSVP if notification fails
+            }
           }
           
           // Return reservation ID for confirmation page
