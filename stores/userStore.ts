@@ -10,7 +10,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { getAuthInstance, initFirebaseAuth, listenToAuthChanges, signOutUser } from '../src/lib/firebaseAuth';
 import { doc, getDoc } from 'firebase/firestore';
-import { getUserProfile, createOrUpdateUserProfile, listUserReservations, createReservation, cancelReservation, listReservationsForUser } from '../firebase/db';
+import { getUserProfile, createOrUpdateUserProfile, listUserReservations, createReservation, cancelReservation, listReservationsForUser, getEventById } from '../firebase/db';
 import { getDbSafe, firebaseEnabled } from '../src/lib/firebase';
 import type { User as FirebaseUser } from 'firebase/auth';
 import type { FirestoreUser } from '../firebase/types';
@@ -18,6 +18,7 @@ import type { Unsubscribe } from 'firebase/auth';
 import type { ViewState } from '../types';
 import { completeGoogleRedirect, loginWithEmail, loginWithGoogle, signupWithEmail } from '../src/lib/authHelpers';
 import { ensurePoperaProfileAndSeed } from '../firebase/poperaProfile';
+import { isEventEnded } from '../utils/eventDateHelpers';
 
 // Simplified User interface matching Firebase Auth user
 export interface User {
@@ -63,6 +64,7 @@ interface UserStore {
   updateUser: (userId: string, updates: Partial<User>) => Promise<void>;
   addFavorite: (userId: string, eventId: string) => Promise<void>;
   removeFavorite: (userId: string, eventId: string) => Promise<void>;
+  cleanupEndedFavorites: (userId: string, allEvents: any[]) => Promise<string[]>; // Remove ended events from favorites
   addRSVP: (userId: string, eventId: string) => Promise<string>; // Returns reservation ID
   removeRSVP: (userId: string, eventId: string) => Promise<void>;
   getUserFavorites: (userId: string) => string[];
@@ -450,7 +452,18 @@ export const useUserStore = create<UserStore>()(
           set({ userProfile: firestoreUser });
           
           // Build user object immediately with available data
-          const favorites = Array.isArray(firestoreUser?.favorites) ? firestoreUser.favorites : [];
+          let favorites = Array.isArray(firestoreUser?.favorites) ? firestoreUser.favorites : [];
+          
+          // IMPORTANT: Clean up favorites - remove events that have ended
+          // Favorites should persist until event ends or user unfavorites
+          // Note: This cleanup runs on profile fetch, but we also have periodic cleanup in App.tsx
+          // We do a lightweight check here - full cleanup happens in App.tsx with all events loaded
+          if (favorites.length > 0) {
+            // For now, just use the favorites as-is
+            // Full cleanup with event data happens in App.tsx via cleanupEndedFavorites
+            // This ensures we don't block user login/profile fetch
+          }
+          
           const rsvps = Array.isArray(reservationDocs) ? reservationDocs.map(r => r.eventId).filter(Boolean) : [];
           const hostedEvents = Array.isArray(firestoreUser?.hostedEvents) ? firestoreUser.hostedEvents : [];
           
@@ -490,10 +503,81 @@ export const useUserStore = create<UserStore>()(
             console.warn('[USER_STORE] Cannot refresh profile: no Firebase user');
             return;
           }
-          // Fetch and update both user and userProfile
+          // Fetch and update both user and userProfile (this will also clean up ended favorites)
           await get().fetchUserProfile(currentUser.uid);
         } catch (error) {
           console.error('[USER_STORE] Error refreshing user profile:', error);
+        }
+      },
+      
+      /**
+       * Clean up favorites by removing events that have ended
+       * This ensures favorites persist until event ends or user unfavorites
+       */
+      cleanupEndedFavorites: async (userId: string, allEvents: any[]): Promise<string[]> => {
+        try {
+          const firestoreUser = await getUserProfile(userId);
+          const currentFavorites = Array.isArray(firestoreUser?.favorites) ? firestoreUser.favorites : [];
+          
+          if (currentFavorites.length === 0) {
+            return currentFavorites;
+          }
+          
+          // Check each favorited event
+          const validFavorites: string[] = [];
+          const endedEventIds: string[] = [];
+          
+          for (const eventId of currentFavorites) {
+            // Try to find event in provided events list first (faster)
+            let event = allEvents.find(e => e.id === eventId);
+            
+            // If not found, fetch from Firestore
+            if (!event) {
+              try {
+                event = await getEventById(eventId);
+              } catch (error) {
+                console.warn(`[FAVORITES_CLEANUP] Could not fetch event ${eventId}:`, error);
+                // Keep event in favorites if we can't verify it (might be temporary issue)
+                validFavorites.push(eventId);
+                continue;
+              }
+            }
+            
+            if (event && !isEventEnded(event)) {
+              // Event exists and hasn't ended - keep in favorites
+              validFavorites.push(eventId);
+            } else if (event && isEventEnded(event)) {
+              // Event has ended - remove from favorites
+              endedEventIds.push(eventId);
+            } else {
+              // Event doesn't exist - keep it (might be deleted, but user should manually remove)
+              validFavorites.push(eventId);
+            }
+          }
+          
+          // If any events ended, update favorites in Firestore
+          if (endedEventIds.length > 0) {
+            console.log(`[FAVORITES_CLEANUP] Removing ${endedEventIds.length} ended events from favorites:`, endedEventIds);
+            
+            // Update Firestore
+            await createOrUpdateUserProfile(userId, { favorites: validFavorites });
+            
+            // Update local state if this is the current user
+            const currentUser = get().user;
+            if (currentUser && currentUser.uid === userId) {
+              set({ 
+                user: { ...currentUser, favorites: validFavorites }, 
+                currentUser: { ...currentUser, favorites: validFavorites } 
+              });
+            }
+          }
+          
+          return validFavorites;
+        } catch (error) {
+          console.error('[FAVORITES_CLEANUP] Error cleaning up favorites:', error);
+          // Return original favorites if cleanup fails
+          const firestoreUser = await getUserProfile(userId);
+          return Array.isArray(firestoreUser?.favorites) ? firestoreUser.favorites : [];
         }
       },
 

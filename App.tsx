@@ -452,6 +452,7 @@ const AppContent: React.FC = () => {
   const removeRSVP = useUserStore((state) => state.removeRSVP);
   const addFavorite = useUserStore((state) => state.addFavorite);
   const removeFavorite = useUserStore((state) => state.removeFavorite);
+  const cleanupEndedFavorites = useUserStore((state) => state.cleanupEndedFavorites);
   const updateEvent = useEventStore((state) => state.updateEvent);
   const currentUser = useUserStore((state) => state.getCurrentUser());
 
@@ -733,6 +734,37 @@ const AppContent: React.FC = () => {
       clearInterval(interval);
     };
   }, [allEvents.length, user?.uid, updateEvent]); // Only depend on length and user, not the full array
+
+  // Clean up favorites for ended events - runs periodically
+  // IMPORTANT: Favorites persist until event ends or user unfavorites
+  useEffect(() => {
+    if (!user?.uid || allEvents.length === 0) return;
+    
+    let isMounted = true;
+    
+    const cleanupFavorites = async () => {
+      if (!isMounted || !user?.uid) return;
+      
+      try {
+        await cleanupEndedFavorites(user.uid, allEvents);
+      } catch (error) {
+        console.error('[FAVORITES_CLEANUP] Error cleaning up favorites:', error);
+      }
+    };
+    
+    // Run cleanup immediately, then every 5 minutes
+    cleanupFavorites();
+    const interval = setInterval(() => {
+      if (isMounted && user?.uid) {
+        cleanupFavorites();
+      }
+    }, 5 * 60 * 1000); // Every 5 minutes
+    
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [user?.uid, allEvents.length, cleanupEndedFavorites]);
 
   // Filter events based on search, location, category, and tags
   // Apply all filters in sequence for proper combined filtering
