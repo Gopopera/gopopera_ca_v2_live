@@ -191,7 +191,8 @@ export async function generateStoryImage(options: StoryImageOptions): Promise<Bl
   ctx.fillText(categoryText, logoPadding + categoryPadding, categoryY + 24); // Adjusted padding
   
   // Add event title (large, bold, white)
-  const titleY = height - 400; // Position from bottom
+  // Position title higher to leave more room for details below
+  const titleY = height - 500; // Position from bottom (moved up from 400)
   ctx.fillStyle = '#FFFFFF';
   ctx.font = 'bold 64px system-ui, -apple-system, sans-serif';
   ctx.textAlign = 'left';
@@ -202,6 +203,7 @@ export async function generateStoryImage(options: StoryImageOptions): Promise<Bl
   const words = eventTitle.split(' ');
   let line = '';
   let currentY = titleY;
+  const lineHeight = 80; // Line height for title wrapping
   
   for (let i = 0; i < words.length; i++) {
     const testLine = line + words[i] + ' ';
@@ -210,27 +212,36 @@ export async function generateStoryImage(options: StoryImageOptions): Promise<Bl
     if (metrics.width > maxTitleWidth && i > 0) {
       ctx.fillText(line, logoPadding, currentY);
       line = words[i] + ' ';
-      currentY -= 80; // Line height
+      currentY -= lineHeight; // Move up for next line
     } else {
       line = testLine;
     }
   }
   ctx.fillText(line, logoPadding, currentY);
   
+  // Calculate how many lines the title took
+  const titleLines = Math.ceil((titleY - currentY) / lineHeight) || 1;
+  const titleHeight = titleLines * lineHeight;
+  
   // Add event details (date, time, location) - 2x bigger with more spacing
-  const detailsY = currentY - 120; // More space from title
+  // Ensure enough space between title and details (at least 100px gap)
+  const minGap = 100;
+  const detailsY = currentY - minGap; // More space from title bottom
+  
   ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
   ctx.font = '48px system-ui, -apple-system, sans-serif'; // 2x bigger (was 24px)
   
   // Date and time
   ctx.fillText(`${eventDate} • ${eventTime}`, logoPadding, detailsY);
   
-  // Location (more spacing - was 40, now 80)
-  ctx.fillText(eventLocation, logoPadding, detailsY + 80);
+  // Location (more spacing - was 80, now 100 for better readability)
+  const locationY = detailsY - 100; // Space between date/time and location
+  ctx.fillText(eventLocation, logoPadding, locationY);
   
-  // Price (if not free) - more spacing (was 80, now 160)
+  // Price (if not free) - more spacing (was 160, now 200)
   if (eventPrice && eventPrice.toLowerCase() !== 'free' && eventPrice !== '$0' && eventPrice !== '0') {
-    ctx.fillText(eventPrice, logoPadding, detailsY + 160);
+    const priceY = locationY - 100; // Space between location and price
+    ctx.fillText(eventPrice, logoPadding, priceY);
   }
   
   // Add clickable URL at bottom for deep linking (Instagram Stories support link stickers)
