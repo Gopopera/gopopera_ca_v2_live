@@ -890,11 +890,11 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                   
                   if (attendeeIds.length > 0) {
                     await notifyAttendeesOfPoll(
-                      event.hostId || '',
-                      attendeeIds,
                       event.id,
+                      question,
+                      `Poll: ${question}`,
                       event.title || 'Event',
-                      question
+                      attendeeIds
                     );
                   }
                 }
