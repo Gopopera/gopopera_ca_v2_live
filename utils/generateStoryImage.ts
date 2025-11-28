@@ -233,90 +233,75 @@ export async function generateStoryImage(options: StoryImageOptions): Promise<Bl
     ctx.fillText(eventPrice, logoPadding, detailsY + 160);
   }
   
-  // Add QR code and URL at bottom for deep linking
+  // Add clickable URL at bottom for deep linking (Instagram Stories support link stickers)
+  // Display a short, memorable URL that users can type or use with Instagram's link sticker
   if (options.eventUrl) {
-    try {
-      // Generate QR code as data URL
-      const QRCode = (await import('qrcode')).default;
-      const qrDataUrl = await QRCode.toDataURL(options.eventUrl, {
-        width: 200,
-        margin: 2,
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF',
-        },
-      });
-      
-      // Load QR code image
-      const qrImage = await new Promise<HTMLImageElement>((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error('Failed to load QR code'));
-        img.src = qrDataUrl;
-      });
-      
-      // Draw QR code in bottom-right corner
-      const qrSize = 200;
-      const qrPadding = 30;
-      const qrX = width - qrSize - qrPadding;
-      const qrY = height - qrSize - qrPadding;
-      
-      // Draw white background for QR code
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(qrX - 15, qrY - 15, qrSize + 30, qrSize + 30);
-      
-      // Draw QR code
-      ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
-      
-      // Add "Scan to view event" text above QR code
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-      
-      // Add background for text readability
-      const scanText = 'Scan QR to view event';
-      const textMetrics = ctx.measureText(scanText);
-      const textBgWidth = textMetrics.width + 30;
-      const textBgHeight = 40;
-      
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-      ctx.fillRect(
-        qrX + qrSize / 2 - textBgWidth / 2,
-        qrY - textBgHeight - 10,
-        textBgWidth,
-        textBgHeight
-      );
-      
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillText(scanText, qrX + qrSize / 2, qrY - 15);
-      
-      // Add URL text below QR code (smaller, for reference)
-      const urlY = height - 15;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-      ctx.font = '24px system-ui, -apple-system, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-      
-      const urlText = options.eventUrl.replace(/^https?:\/\//, ''); // Remove https://
-      const urlMetrics = ctx.measureText(urlText);
-      const urlBgWidth = urlMetrics.width + 20;
-      const urlBgHeight = 35;
-      
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-      ctx.fillRect(
-        width / 2 - urlBgWidth / 2,
-        urlY - urlBgHeight - 5,
-        urlBgWidth,
-        urlBgHeight
-      );
-      
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillText(urlText, width / 2, urlY - 10);
-    } catch (error) {
-      console.warn('[STORY_IMAGE] Failed to generate QR code:', error);
-      // Continue without QR code if generation fails
-    }
+    // Create a shorter, more memorable URL format
+    // Extract event ID from URL if possible, or use domain + short path
+    const urlObj = new URL(options.eventUrl);
+    const eventId = urlObj.pathname.split('/event/')[1] || '';
+    
+    // Create short URL format: domain + /e/ + short ID
+    // For now, use the full domain but make it more readable
+    const shortUrl = eventId 
+      ? `${urlObj.hostname}/e/${eventId.substring(0, 8)}` // First 8 chars of event ID
+      : urlObj.hostname + urlObj.pathname;
+    
+    // Add prominent "Tap link in story" text and URL at bottom
+    const urlY = height - 40;
+    
+    // Main call-to-action text
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 36px system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    
+    const ctaText = 'Tap link in story to view event';
+    const ctaMetrics = ctx.measureText(ctaText);
+    const ctaBgWidth = ctaMetrics.width + 40;
+    const ctaBgHeight = 50;
+    
+    // Background for CTA text
+    ctx.fillStyle = 'rgba(227, 94, 37, 0.9)'; // Popera orange
+    ctx.fillRect(
+      width / 2 - ctaBgWidth / 2,
+      urlY - ctaBgHeight - 60,
+      ctaBgWidth,
+      ctaBgHeight
+    );
+    
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(ctaText, width / 2, urlY - 35);
+    
+    // URL text below (larger, more readable)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.font = 'bold 32px system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    
+    const urlText = shortUrl;
+    const urlMetrics = ctx.measureText(urlText);
+    const urlBgWidth = urlMetrics.width + 40;
+    const urlBgHeight = 45;
+    
+    // Background for URL
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(
+      width / 2 - urlBgWidth / 2,
+      urlY - urlBgHeight - 5,
+      urlBgWidth,
+      urlBgHeight
+    );
+    
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(urlText, width / 2, urlY - 10);
+    
+    // Add small note about Instagram link sticker
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.font = '20px system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('Add link sticker when posting', width / 2, urlY + 15);
   }
   
   // Convert canvas to blob
