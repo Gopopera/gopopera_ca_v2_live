@@ -9,6 +9,7 @@ import { MockMap } from '../components/map/MockMap';
 import { FakeEventReservationModal } from '../components/events/FakeEventReservationModal';
 import { ImageViewerModal } from '../components/events/ImageViewerModal';
 import { HostReviewsModal } from '../components/events/HostReviewsModal';
+import { ShareModal } from '../components/share/ShareModal';
 import { formatDate } from '../utils/dateFormatter';
 import { formatRating } from '../utils/formatRating';
 import { getUserProfile, getReservationCountForEvent, listHostReviews } from '../firebase/db';
@@ -54,6 +55,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const [imageViewerIndex, setImageViewerIndex] = useState(0);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showHostReviewsModal, setShowHostReviewsModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [reserving, setReserving] = useState(false);
   const [reservationSuccess, setReservationSuccess] = useState(false);
   const [hostProfilePicture, setHostProfilePicture] = useState<string | null>(null);
@@ -365,32 +367,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     setViewState(ViewState.FEED);
   };
 
-  const handleShare = async () => {
-    const url = window.location.origin + `/event/${event.id}`;
-    
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: event.title,
-          text: event.description,
-          url: url,
-        });
-      } catch (err) {
-        // User cancelled or error occurred
-        if ((err as Error).name !== 'AbortError') {
-          console.error('Share failed:', err);
-        }
-      }
-    } else {
-      // Fallback: copy to clipboard
-      try {
-        await navigator.clipboard.writeText(url);
-        setShowShareToast(true);
-        setTimeout(() => setShowShareToast(false), 2000);
-      } catch (err) {
-        console.error('Failed to copy:', err);
-      }
-    }
+  const handleShare = () => {
+    // Open share modal instead of direct sharing
+    setShowShareModal(true);
   };
 
   const handleConversationClick = () => {
@@ -1018,6 +997,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           }}
         />
       )}
+
+      {/* Share Modal */}
+      <ShareModal
+        event={event}
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+      />
     </div>
   );
 };
