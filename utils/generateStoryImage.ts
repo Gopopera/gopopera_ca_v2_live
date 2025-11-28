@@ -3,8 +3,6 @@
  * Creates a 1080x1920px image matching the event info page design
  */
 
-import QRCode from 'qrcode';
-
 export interface StoryImageOptions {
   eventImageUrl: string;
   eventTitle: string;
