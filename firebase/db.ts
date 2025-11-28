@@ -249,6 +249,23 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
       });
     }
     
+    // Notify user if this is their first event (non-blocking, fire-and-forget)
+    if (isFirstEvent && eventData.hostId) {
+      try {
+        const { notifyUserOfFirstEvent } = await import('../utils/notificationHelpers');
+        notifyUserOfFirstEvent(eventData.hostId, docRef.id, eventData.title || 'New Event')
+          .catch((err) => {
+            if (import.meta.env.DEV) {
+              console.error('Error notifying user of first event (non-blocking):', err);
+            }
+          });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('Error importing first event notification helper (non-blocking):', error);
+        }
+      }
+    }
+    
     return mapFirestoreEventToEvent(createdEvent);
   } catch (error: any) {
     console.error('[CREATE_EVENT_DB] Firestore write failed:', { 
