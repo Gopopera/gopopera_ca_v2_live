@@ -17,6 +17,7 @@ import {
   signInWithPopup,
   signInWithRedirect,
   signOut,
+  sendPasswordResetEmail,
   PhoneAuthProvider,
   PhoneMultiFactorGenerator,
   type MultiFactorResolver,
@@ -173,6 +174,11 @@ export async function signUpWithEmail(email: string, password: string): Promise<
 export async function signOutUser(): Promise<void> {
   const auth = await initFirebaseAuth();
   await signOut(auth);
+}
+
+export async function sendPasswordReset(email: string): Promise<void> {
+  const auth = await initFirebaseAuth();
+  await sendPasswordResetEmail(auth, email);
 }
 
 function ensureRecaptchaContainer(containerId: string) {

@@ -304,13 +304,43 @@ export const useUserStore = create<UserStore>()(
 
       login: async (email: string, password: string) => {
         try {
+          // Check if account is blocked
+          const authRateLimit = await import('../utils/authRateLimit');
+          const blockStatus = authRateLimit.isAccountBlocked(email);
+          
+          if (blockStatus.blocked) {
+            const error = new Error(`Account temporarily blocked. Please try again in ${blockStatus.remainingTime} minute(s).`);
+            (error as any).code = 'auth/too-many-requests';
+            throw error;
+          }
+          
           set({ loading: true });
           const userCredential = await loginWithEmail(email, password);
+          
+          // Clear failed attempts on successful login
+          authRateLimit.clearFailedAttempts(email);
+          
           await get().handleAuthSuccess(userCredential.user);
           await ensurePoperaProfileAndSeed(userCredential.user);
         } catch (error: any) {
           console.error("Login error:", error);
           set({ loading: false });
+          
+          // Record failed attempt if it's a wrong password error
+          if (error?.code === 'auth/wrong-password' || error?.code === 'auth/invalid-credential' || error?.code === 'auth/user-not-found') {
+            const authRateLimit = await import('../utils/authRateLimit');
+            const attempts = authRateLimit.recordFailedAttempt(email);
+            const remaining = authRateLimit.getRemainingAttempts(email);
+            
+            // Update error message with remaining attempts
+            if (attempts.count >= 5) {
+              error.message = `Account temporarily blocked after 5 failed attempts. Please try again in 10 minutes.`;
+              error.code = 'auth/too-many-requests';
+            } else {
+              error.message = `Incorrect password. ${remaining} attempt(s) remaining before account is blocked.`;
+            }
+          }
+          
           throw error;
         }
       },

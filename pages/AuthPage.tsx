@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronLeft, Eye, EyeOff } from 'lucide-react';
+import { ChevronLeft, Eye, EyeOff, X } from 'lucide-react';
 import { ViewState } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useUserStore } from '../stores/userStore';
 import { loginWithGoogle } from '../src/lib/authHelpers';
+import { sendPasswordReset } from '../src/lib/firebaseAuth';
 
 interface AuthPageProps {
   setViewState: (view: ViewState) => void;
@@ -27,6 +28,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
   const [signupError, setSignupError] = useState<string | null>(null);
   const [googleError, setGoogleError] = useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
 
   // REMOVED: Duplicate getRedirectResult() call that was consuming redirect results
   // before userStore.init() could process them. userStore.init() handles redirect results
@@ -98,8 +103,36 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
       try {
         await onLogin(formData.email, formData.password);
       } catch (error: any) {
-        setEmailError(error?.message || 'We could not sign you in. Please try again.');
+        const errorMessage = error?.message || 'We could not sign you in. Please try again.';
+        setEmailError(errorMessage);
+        
+        // Show pop-up for password errors
+        if (error?.code === 'auth/wrong-password' || error?.code === 'auth/invalid-credential' || error?.code === 'auth/too-many-requests') {
+          // Error message is already set with remaining attempts info
+          // The error will be displayed in the UI
+        }
       }
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!formData.email) {
+      setResetError('Please enter your email address first.');
+      return;
+    }
+
+    setIsResetting(true);
+    setResetError(null);
+    
+    try {
+      await sendPasswordReset(formData.email);
+      setResetEmailSent(true);
+      setShowForgotPassword(false);
+    } catch (error: any) {
+      console.error('Password reset error:', error);
+      setResetError(error?.message || 'Failed to send password reset email. Please try again.');
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -414,9 +447,18 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
 
             {/* Password Field */}
             <div>
-              <label className="block text-xs sm:text-sm font-semibold text-[#15383c] mb-2">
-                {t('auth.password')}
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs sm:text-sm font-semibold text-[#15383c]">
+                  {t('auth.password')}
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(true)}
+                  className="text-xs sm:text-sm text-[#e35e25] hover:underline font-medium"
+                >
+                  Forgot password?
+                </button>
+              </div>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -444,6 +486,70 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
             >
               {t('auth.signIn')}
             </button>
+            
+            {/* Reset Email Sent Success Message */}
+            {resetEmailSent && (
+              <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
+                <p className="font-semibold mb-1">Password reset email sent!</p>
+                <p>Check your inbox for instructions to reset your password.</p>
+              </div>
+            )}
+            
+            {/* Forgot Password Modal */}
+            {showForgotPassword && (
+              <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowForgotPassword(false)}>
+                <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl sm:text-2xl font-heading font-bold text-[#15383c]">Reset Password</h2>
+                    <button
+                      onClick={() => setShowForgotPassword(false)}
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <X size={24} />
+                    </button>
+                  </div>
+                  
+                  <p className="text-sm text-gray-600 mb-4">
+                    Enter your email address and we'll send you a link to reset your password.
+                  </p>
+                  
+                  <div className="mb-4">
+                    <label className="block text-xs sm:text-sm font-semibold text-[#15383c] mb-2">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      placeholder="your@email.com"
+                      className="w-full px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:border-[#e35e25] focus:outline-none transition-colors"
+                    />
+                  </div>
+                  
+                  {resetError && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                      {resetError}
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowForgotPassword(false)}
+                      className="flex-1 py-3 px-4 border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleForgotPassword}
+                      disabled={!formData.email || isResetting}
+                      className="flex-1 py-3 px-4 bg-[#e35e25] text-white font-bold rounded-xl hover:bg-[#cf4d1d] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isResetting ? 'Sending...' : 'Send Reset Link'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Sign Up Link */}
             <p className="text-center text-gray-600 text-sm mt-6">
