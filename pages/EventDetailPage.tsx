@@ -8,6 +8,7 @@ import { EventCard } from '../components/events/EventCard';
 import { MockMap } from '../components/map/MockMap';
 import { FakeEventReservationModal } from '../components/events/FakeEventReservationModal';
 import { ImageViewerModal } from '../components/events/ImageViewerModal';
+import { HostReviewsModal } from '../components/events/HostReviewsModal';
 import { formatDate } from '../utils/dateFormatter';
 import { formatRating } from '../utils/formatRating';
 import { getUserProfile, getReservationCountForEvent, listHostReviews } from '../firebase/db';
@@ -52,6 +53,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [imageViewerIndex, setImageViewerIndex] = useState(0);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showHostReviewsModal, setShowHostReviewsModal] = useState(false);
   const [reserving, setReserving] = useState(false);
   const [reservationSuccess, setReservationSuccess] = useState(false);
   const [hostProfilePicture, setHostProfilePicture] = useState<string | null>(null);
@@ -592,7 +594,19 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                <div className="min-w-0 flex-1">
                  <p className="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">{t('event.hostedBy')}</p>
                  <h3 className="text-base sm:text-lg md:text-xl font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
-                 <button onClick={(e) => onReviewsClick(e, event)} className="flex items-center space-x-1 mt-1.5 bg-white hover:bg-orange-50 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-colors border border-gray-200 hover:border-orange-100 group/rating shrink-0 w-fit touch-manipulation active:scale-95"><Star size={11} className="sm:w-3 sm:h-3 text-gray-300 group-hover/rating:text-popera-orange group-hover/rating:fill-popera-orange transition-colors" fill="currentColor" /><span className="text-[10px] sm:text-xs font-bold text-popera-teal">{formatRating(currentRating.rating)}</span><span className="text-[9px] sm:text-[10px] text-gray-400 group-hover/rating:text-orange-400">({currentRating.reviewCount})</span></button>
+                 <button 
+                   onClick={(e) => {
+                     e.stopPropagation();
+                     if (event.hostId) {
+                       setShowHostReviewsModal(true);
+                     }
+                   }} 
+                   className="flex items-center space-x-1 mt-1.5 bg-white hover:bg-orange-50 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-colors border border-gray-200 hover:border-orange-100 group/rating shrink-0 w-fit touch-manipulation active:scale-95"
+                 >
+                   <Star size={11} className="sm:w-3 sm:h-3 text-gray-300 group-hover/rating:text-popera-orange group-hover/rating:fill-popera-orange transition-colors" fill="currentColor" />
+                   <span className="text-[10px] sm:text-xs font-bold text-popera-teal">{formatRating(currentRating.rating)}</span>
+                   <span className="text-[9px] sm:text-[10px] text-gray-400 group-hover/rating:text-orange-400">({currentRating.reviewCount})</span>
+                 </button>
                </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
