@@ -558,7 +558,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10 lg:py-12">
         {/* Mobile Layout: Clean and modern */}
-        <div className="flex lg:hidden gap-3 mb-6 items-start">
+        <div className="flex lg:hidden gap-2 mb-6 items-start">
           {/* Left: Host Info with Profile Button underneath */}
           <div className="flex-1 min-w-0">
             <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100">
@@ -580,19 +580,22 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
                 </div>
               </div>
-              {/* Profile Button - Under host name */}
-              <button 
-                onClick={() => onHostClick(displayHostName)} 
-                aria-label={`View ${displayHostName}'s profile`} 
-                className="w-full px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95"
-              >
-                Profile
-              </button>
+              {/* Profile Button - Narrow, from image left to text end */}
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 shrink-0"></div>
+                <button 
+                  onClick={() => onHostClick(displayHostName)} 
+                  aria-label={`View ${displayHostName}'s profile`} 
+                  className="flex-1 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95"
+                >
+                  Profile
+                </button>
+              </div>
             </div>
           </div>
           
           {/* Right: Metrics and Follow Button */}
-          <div className="flex items-start gap-2 shrink-0">
+          <div className="flex items-start gap-1.5 shrink-0">
             {/* Attending & Capacity Metrics */}
             <div className="flex flex-col gap-2">
               <div className="bg-gray-50 p-2 rounded-xl border border-gray-100 text-center" style={{ minWidth: '60px' }}>
