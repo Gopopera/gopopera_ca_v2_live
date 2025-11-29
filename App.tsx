@@ -1309,6 +1309,8 @@ const AppContent: React.FC = () => {
 
   // Handle direct navigation to event URLs (e.g., shared links)
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
     const pathname = window.location.pathname;
     
     // Check if URL is an event detail page
@@ -1356,7 +1358,7 @@ const AppContent: React.FC = () => {
         // If events are still loading, this effect will run again when they finish
       }
     }
-  }, [allEvents, isLoadingEvents, pathname, selectedEvent, viewState, setViewState]);
+  }, [allEvents, isLoadingEvents, selectedEvent, viewState, setViewState]);
 
   // Scroll restore for list pages
   useEffect(() => {
