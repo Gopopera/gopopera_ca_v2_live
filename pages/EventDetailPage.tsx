@@ -713,7 +713,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 <button 
                   onClick={handleRSVP}
                   disabled={isDemo || reserving}
-                  aria-label={isReserved ? "Cancel reservation" : "Reserve spot"}
+                  aria-label={hasRSVPed ? "Cancel reservation" : "Reserve spot"}
                   className={`w-full py-3.5 lg:py-4 font-bold text-base lg:text-lg rounded-full shadow-xl transition-all hover:-translate-y-0.5 touch-manipulation active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
                     isDemo 
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
