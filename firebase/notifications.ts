@@ -109,6 +109,13 @@ export async function getUnreadNotificationCount(userId: string): Promise<number
   const db = getDbSafe();
   if (!db) return 0;
 
+  // Check if user is authenticated
+  const { getAuthInstance } = await import('../src/lib/firebaseAuth');
+  const auth = getAuthInstance();
+  if (!auth?.currentUser) {
+    return 0;
+  }
+
   try {
     const notificationsRef = collection(db, 'notifications', userId, 'items');
     const q = query(
@@ -118,8 +125,13 @@ export async function getUnreadNotificationCount(userId: string): Promise<number
     );
     const snapshot = await getDocs(q);
     return snapshot.size;
-  } catch (error) {
-    console.error('Error counting unread notifications:', error);
+  } catch (error: any) {
+    // Silently handle permission errors - these are expected when user doesn't have access
+    if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+      return 0;
+    }
+    // Only log non-permission errors for debugging
+    console.warn('Error counting unread notifications:', error);
     return 0;
   }
 }

@@ -31,10 +31,15 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
 
   // Load unread notification count
   useEffect(() => {
-    if (user?.uid) {
+    if (user?.uid && isLoggedIn) {
       const loadUnreadCount = async () => {
-        const count = await getUnreadNotificationCount(user.uid);
-        setUnreadCount(count);
+        try {
+          const count = await getUnreadNotificationCount(user.uid);
+          setUnreadCount(count);
+        } catch (error) {
+          // Silently handle errors - permission errors are expected
+          setUnreadCount(0);
+        }
       };
       loadUnreadCount();
       // Refresh every 30 seconds
@@ -43,7 +48,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
     } else {
       setUnreadCount(0);
     }
-  }, [user?.uid]);
+  }, [user?.uid, isLoggedIn]);
 
   useEffect(() => {
     const handleScroll = () => {
