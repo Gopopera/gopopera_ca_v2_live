@@ -327,12 +327,12 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
             {isLoggedIn ? (
                <>
                  <button onClick={() => handleNav(ViewState.CREATE_EVENT)} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all flex items-center justify-end gap-3 sm:gap-3 text-[#e35e25] touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
-                   {t('header.hostEvent')} <PlusCircle size={22} className="sm:w-6 sm:h-6" />
+                   🎉 {t('header.hostEvent')} <PlusCircle size={22} className="sm:w-6 sm:h-6" />
                  </button>
 
                  <button onClick={() => handleNav(ViewState.FEED)} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all flex items-center justify-end gap-2 sm:gap-2 touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
                    <Compass size={20} className="sm:w-5 sm:h-5 shrink-0" />
-                   <span>{t('header.exploreEvents')}</span>
+                   <span>🔍 {t('header.exploreEvents')}</span>
                  </button>
                  
                  <button onClick={onNotificationsClick} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all flex items-center justify-end gap-2 sm:gap-2 touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
@@ -340,45 +340,45 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
                      <Bell size={20} className="sm:w-5 sm:h-5" />
                      {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 sm:w-2 sm:h-2 bg-[#e35e25] rounded-full"></span>}
                    </div>
-                   <span>{t('header.notifications')}</span>
+                   <span>🔔 {t('header.notifications')}</span>
                  </button>
                  
                  <button onClick={() => handleNav(ViewState.PROFILE)} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all flex items-center justify-end gap-2 sm:gap-2 touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
                    <UserCircle size={20} className="sm:w-5 sm:h-5 shrink-0" />
-                   <span>{t('header.myProfile')}</span>
+                   <span>👤 {t('header.myProfile')}</span>
                  </button>
                  
                  <button onClick={() => handleNav(ViewState.MY_POPS)} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all flex items-center justify-end gap-2 sm:gap-2 touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
                    <Calendar size={20} className="sm:w-5 sm:h-5 shrink-0" />
-                   <span>{t('header.myPops')}</span>
+                   <span>📅 {t('header.myPops')}</span>
                  </button>
                  
                  <button onClick={() => handleNav(ViewState.FAVORITES)} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all flex items-center justify-end gap-2 sm:gap-2 touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
                    <Heart size={20} className="sm:w-5 sm:h-5 shrink-0" />
-                   <span>{t('header.myFavorites')}</span>
+                   <span>❤️ {t('header.myFavorites')}</span>
                  </button>
                  
                  <div className="pt-4 sm:pt-6 md:pt-8 border-t border-gray-200 flex flex-col space-y-1 sm:space-y-2 md:space-y-3 mt-auto">
                      <button onClick={handleLogoutClick} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
-                       {t('header.signOut')}
+                       🚪 {t('header.signOut')}
                      </button>
                      <button onClick={() => handleNav(ViewState.DELETE_ACCOUNT)} className="text-right text-gray-500 sm:text-gray-400 hover:text-red-500 active:text-red-600 active:bg-red-50 transition-all text-base sm:text-lg touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
-                       {t('header.deleteAccount')}
+                       🗑️ {t('header.deleteAccount')}
                      </button>
                  </div>
                </>
             ) : (
                <>
-                 <button onClick={() => handleNav(ViewState.LANDING)} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">{t('header.home')}</button>
-                 <button onClick={() => handleNav(ViewState.FEED)} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">{t('header.exploreEvents')}</button>
-                 <button onClick={() => handleNav(ViewState.GUIDELINES)} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">{t('header.community')}</button>
-                 <button onClick={() => handleNav(ViewState.ABOUT)} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">{t('header.about')}</button>
+                 <button onClick={() => handleNav(ViewState.LANDING)} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">🏠 {t('header.home')}</button>
+                 <button onClick={() => handleNav(ViewState.FEED)} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">🔍 {t('header.exploreEvents')}</button>
+                 <button onClick={() => handleNav(ViewState.GUIDELINES)} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">👥 {t('header.community')}</button>
+                 <button onClick={() => handleNav(ViewState.ABOUT)} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">ℹ️ {t('header.about')}</button>
                  <hr className="border-gray-200 my-3 sm:my-2" />
                  <button 
                    onClick={() => handleNav(ViewState.AUTH)}
                    className="text-right flex items-center justify-end text-base sm:text-lg font-medium text-gray-700 sm:text-gray-600 hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]"
                  >
-                   {t('header.signIn')} <User size={22} className="sm:w-6 sm:h-6 ml-3 sm:ml-3" />
+                   🔑 {t('header.signIn')} <User size={22} className="sm:w-6 sm:h-6 ml-3 sm:ml-3" />
                  </button>
                </>
             )}
