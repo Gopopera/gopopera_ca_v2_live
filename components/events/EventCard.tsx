@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Calendar, MessageCircle, Star, Heart, Edit } from 'lucide-react';
+import { MapPin, Calendar, MessageCircle, Star, Heart, Edit, Users } from 'lucide-react';
 import { Event } from '@/types';
 import { formatDate } from '@/utils/dateFormatter';
 import { formatRating } from '@/utils/formatRating';
@@ -355,11 +355,18 @@ export const EventCard: React.FC<EventCardProps> = ({
            </button>
         </div>
 
-        <h3 className="text-lg lg:text-xl font-heading font-semibold text-popera-teal mb-3 lg:mb-1.5 group-hover:text-popera-orange transition-colors line-clamp-2 leading-snug">
+        <h3 className="text-lg lg:text-xl font-heading font-semibold text-popera-teal mb-2 lg:mb-0 group-hover:text-popera-orange transition-colors line-clamp-2 leading-snug">
           {event.title}
         </h3>
 
-        <div className="mt-auto space-y-2">
+        <div className="mt-auto space-y-2 lg:space-y-1.5">
+          {/* Attendees / Capacity - Always shown */}
+          <div className="flex items-center text-gray-600 text-sm lg:text-base">
+            <Users size={16} className="sm:w-4 sm:h-4 mr-2 text-popera-orange shrink-0" />
+            <span className="truncate leading-relaxed">
+              {event.attendeesCount ?? 0} / {event.capacity ?? 'Unlimited'}
+            </span>
+          </div>
           <div className="flex items-center text-gray-600 text-sm lg:text-base">
             <Calendar size={16} className="sm:w-4 sm:h-4 mr-2 text-popera-orange shrink-0" />
             <span className="truncate leading-relaxed">{formatDate(event.date)} • {event.time}</span>

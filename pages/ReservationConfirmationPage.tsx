@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { Event, ViewState } from '../types';
-import { ChevronLeft, Share2, Calendar, Clock, MapPin, Download, CheckCircle2, Sparkles } from 'lucide-react';
+import { ChevronLeft, Share2, Calendar, Clock, MapPin, Download, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { formatDate } from '../utils/dateFormatter';
 
@@ -17,7 +17,7 @@ export const ReservationConfirmationPage: React.FC<ReservationConfirmationPagePr
 }) => {
   // Generate Order ID from reservation ID (first 10 chars, uppercase)
   const orderId = useMemo(() => {
-    return `#${reservationId.substring(0, 10).toUpperCase()}`;
+    return reservationId.substring(0, 10).toUpperCase();
   }, [reservationId]);
 
   // QR Code data - contains reservation ID and event ID for scanning
@@ -29,6 +29,30 @@ export const ReservationConfirmationPage: React.FC<ReservationConfirmationPagePr
       timestamp: Date.now(),
     });
   }, [reservationId, event.id]);
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
+  // Handle escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose();
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, []);
+
+  const handleClose = () => {
+    // Return to event detail page or previous view
+    setViewState(ViewState.DETAIL);
+  };
 
   const handleDownloadPass = async () => {
     try {
@@ -186,7 +210,7 @@ export const ReservationConfirmationPage: React.FC<ReservationConfirmationPagePr
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `popera-pass-${orderId.replace('#', '')}.png`;
+        a.download = `popera-pass-${orderId}.png`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -228,162 +252,166 @@ export const ReservationConfirmationPage: React.FC<ReservationConfirmationPagePr
     if (!event.date) return 'TBD';
     try {
       const date = new Date(event.date);
-      return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      return date.toLocaleDateString('en-US', { 
+        weekday: 'short', 
+        month: 'short', 
+        day: 'numeric',
+        year: 'numeric'
+      });
     } catch {
       return event.date;
     }
   }, [event.date]);
 
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f8fafb] via-white to-[#f8fafb] font-sans">
-      {/* Header */}
-      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between shadow-sm">
-        <button
-          onClick={() => setViewState(ViewState.DETAIL)}
-          className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-[#15383c] hover:bg-gray-50 hover:border-[#15383c] transition-all active:scale-95 touch-manipulation shadow-sm"
-          aria-label="Back"
-        >
-          <ChevronLeft size={20} />
-        </button>
-        <h1 className="text-base sm:text-lg font-heading font-bold text-[#15383c]">Reservation</h1>
-        <button
-          onClick={handleShare}
-          className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-[#15383c] hover:bg-gray-50 hover:border-[#15383c] transition-all active:scale-95 touch-manipulation shadow-sm"
-          aria-label="Share"
-        >
-          <Share2 size={20} />
-        </button>
-      </div>
+  // Format date for header (shorter format)
+  const headerDate = useMemo(() => {
+    if (!event.date) return '';
+    try {
+      const date = new Date(event.date);
+      return date.toLocaleDateString('en-US', { 
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        weekday: 'long'
+      });
+    } catch {
+      return '';
+    }
+  }, [event.date]);
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 sm:pb-12 pt-6 sm:pt-8 lg:pt-12">
-        {/* Success Header - Enhanced */}
-        <div className="text-center mb-8 sm:mb-10 lg:mb-12">
-          <div className="inline-flex items-center justify-center w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 bg-gradient-to-br from-[#e35e25] via-[#e35e25] to-[#d14e1a] rounded-full mb-5 sm:mb-6 lg:mb-8 shadow-xl shadow-[#e35e25]/20 relative animate-fade-in">
-            <CheckCircle2 size={48} className="sm:w-14 sm:h-14 lg:w-16 lg:h-16 text-white" strokeWidth={2.5} />
-            <div className="absolute -top-2 -right-2 sm:-top-1 sm:-right-1">
-              <Sparkles size={28} className="sm:w-8 sm:h-8 text-[#e35e25] animate-pulse" />
-            </div>
-          </div>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-heading font-bold text-[#15383c] mb-3 sm:mb-4 leading-tight">
-            You're All Set! 🎉
-          </h2>
-          <p className="text-gray-600 text-base sm:text-lg lg:text-xl max-w-xl mx-auto leading-relaxed">
-            Your reservation has been confirmed and you're ready to join the experience
-          </p>
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={handleClose}>
+      <div 
+        className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 flex-shrink-0">
+          <button
+            onClick={handleClose}
+            className="w-10 h-10 rounded-full flex items-center justify-center text-[#15383c] hover:bg-gray-50 transition-colors active:scale-95 touch-manipulation"
+            aria-label="Back"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <h1 className="text-base sm:text-lg font-heading font-semibold text-[#15383c]">Reservation Details</h1>
+          <div className="w-10 h-10" /> {/* Spacer for centering */}
         </div>
 
-        {/* QR Code Section - Enhanced */}
-        <div className="mb-8 sm:mb-10 lg:mb-12">
-          <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#15383c] via-[#1a4a4f] to-[#1f4d52] p-6 sm:p-8 md:p-10 lg:p-12 shadow-2xl">
-            {/* Enhanced decorative elements */}
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/5 to-transparent"></div>
-            <div className="absolute top-0 right-0 w-72 h-72 sm:w-96 sm:h-96 bg-[#e35e25]/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-            <div className="absolute bottom-0 left-0 w-56 h-56 sm:w-72 sm:h-72 bg-white/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#e35e25]/5 rounded-full blur-3xl"></div>
-            
-            {/* QR Code */}
-            <div className="relative z-10 flex flex-col items-center">
-              <div className="bg-white p-5 sm:p-6 lg:p-7 rounded-3xl mb-6 sm:mb-8 shadow-2xl ring-4 ring-white/30 transform hover:scale-[1.02] transition-transform duration-300">
+        {/* Content - Compact, no scrolling needed */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 min-h-0">
+          {/* Event Title and Date Header */}
+          <div className="mb-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg sm:text-xl font-heading font-bold text-[#15383c] mb-1 leading-tight">
+                  {event.title}
+                </h2>
+                <p className="text-sm text-gray-600">
+                  {headerDate}
+                </p>
+              </div>
+              <button
+                onClick={handleShare}
+                className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-[#e35e25] hover:bg-[#e35e25]/10 transition-colors active:scale-95 touch-manipulation"
+                aria-label="Share reservation"
+              >
+                <Share2 size={20} />
+              </button>
+            </div>
+          </div>
+
+          {/* Key Information Grid - Two Columns (matching image layout) */}
+          <div className="mb-4 pb-4 border-b border-gray-100">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+              {/* Left Column */}
+              <div>
+                <p className="text-xs text-gray-500 mb-1 font-medium">Date</p>
+                <p className="text-sm font-semibold text-[#15383c]">{formattedDate}</p>
+              </div>
+
+              {/* Right Column */}
+              <div>
+                <p className="text-xs text-gray-500 mb-1 font-medium">Time</p>
+                <p className="text-sm font-semibold text-[#15383c]">{event.time || 'TBD'}</p>
+              </div>
+
+              {/* Location - Full Width */}
+              <div className="col-span-2">
+                <p className="text-xs text-gray-500 mb-1 font-medium">Location</p>
+                <p className="text-sm font-semibold text-[#15383c] break-words">
+                  {event.location || `${event.address || ''}, ${event.city || ''}`.trim() || 'TBD'}
+                </p>
+              </div>
+
+              {/* Reservation ID */}
+              <div>
+                <p className="text-xs text-gray-500 mb-1 font-medium">Reservation ID</p>
+                <p className="text-sm font-semibold text-[#15383c] font-mono">{orderId}</p>
+              </div>
+
+              {/* Category or Price */}
+              {event.category ? (
+                <div>
+                  <p className="text-xs text-gray-500 mb-1 font-medium">Category</p>
+                  <p className="text-sm font-semibold text-[#15383c] capitalize">{event.category}</p>
+                </div>
+              ) : event.price && event.price !== 'Free' ? (
+                <div>
+                  <p className="text-xs text-gray-500 mb-1 font-medium">Price</p>
+                  <p className="text-sm font-semibold text-[#e35e25]">{event.price}</p>
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          {/* Total Cost / Price Section (if not shown above) */}
+          {event.price && event.price !== 'Free' && event.category && (
+            <div className="mb-4 pb-4 border-b border-gray-100">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-600 font-medium">Total:</p>
+                <p className="text-base font-bold text-[#e35e25]">{event.price}</p>
+              </div>
+            </div>
+          )}
+
+          {/* QR Code Section */}
+          <div className="mb-4">
+            <div className="flex flex-col items-center">
+              <div className="bg-white p-3 rounded-lg shadow-sm mb-3">
                 <QRCodeSVG
                   value={qrData}
-                  size={240}
+                  size={160}
                   level="H"
                   includeMargin={true}
                   fgColor="#15383c"
                   bgColor="#ffffff"
                 />
               </div>
-              
-              {/* Order ID - Enhanced */}
-              <div className="bg-white/20 backdrop-blur-lg rounded-2xl px-6 sm:px-8 lg:px-10 py-4 sm:py-5 border border-white/30 shadow-xl">
-                <div className="text-xs sm:text-sm text-white/90 uppercase tracking-wider mb-2 font-semibold">Reservation ID</div>
-                <div className="text-2xl sm:text-3xl lg:text-4xl font-heading font-bold text-white tracking-tight">{orderId}</div>
-              </div>
+              <p className="text-xs text-[#e35e25] text-center font-medium max-w-xs leading-relaxed">
+                Note: Just show your QR code while checking in at the event.
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Event Card - Enhanced */}
-        <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-6 sm:p-8 lg:p-10 mb-6 sm:mb-8 lg:mb-10 overflow-hidden relative">
-          {/* Subtle background pattern */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-[#e35e25]/5 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-          
-          <div className="relative z-10">
-            {/* Event Title */}
-            <h3 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-bold text-[#15383c] mb-6 sm:mb-8 lg:mb-10 text-center leading-tight">
-              {event.title}
-            </h3>
-
-            {/* Event Details - Enhanced */}
-            <div className="space-y-4 sm:space-y-5 lg:space-y-6 mb-6 sm:mb-8">
-              <div className="flex items-start gap-4 sm:gap-5 p-5 sm:p-6 bg-gradient-to-br from-[#f8fafb] via-white to-[#f8fafb] rounded-2xl border border-gray-100 hover:border-[#15383c]/20 transition-all shadow-sm hover:shadow-md">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-[#e35e25] to-[#d14e1a] rounded-xl flex items-center justify-center shrink-0 shadow-lg">
-                  <Calendar size={26} className="sm:w-7 sm:h-7 text-white" />
-                </div>
-                <div className="flex-1 min-w-0 pt-1">
-                  <div className="text-xs sm:text-sm text-gray-500 uppercase tracking-wider mb-2 font-semibold">Date</div>
-                  <div className="text-lg sm:text-xl lg:text-2xl font-heading font-bold text-[#15383c]">{formattedDate}</div>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-4 sm:gap-5 p-5 sm:p-6 bg-gradient-to-br from-[#f8fafb] via-white to-[#f8fafb] rounded-2xl border border-gray-100 hover:border-[#15383c]/20 transition-all shadow-sm hover:shadow-md">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-[#e35e25] to-[#d14e1a] rounded-xl flex items-center justify-center shrink-0 shadow-lg">
-                  <Clock size={26} className="sm:w-7 sm:h-7 text-white" />
-                </div>
-                <div className="flex-1 min-w-0 pt-1">
-                  <div className="text-xs sm:text-sm text-gray-500 uppercase tracking-wider mb-2 font-semibold">Time</div>
-                  <div className="text-lg sm:text-xl lg:text-2xl font-heading font-bold text-[#15383c]">{event.time || 'TBD'}</div>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-4 sm:gap-5 p-5 sm:p-6 bg-gradient-to-br from-[#f8fafb] via-white to-[#f8fafb] rounded-2xl border border-gray-100 hover:border-[#15383c]/20 transition-all shadow-sm hover:shadow-md">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-[#e35e25] to-[#d14e1a] rounded-xl flex items-center justify-center shrink-0 shadow-lg">
-                  <MapPin size={26} className="sm:w-7 sm:h-7 text-white" />
-                </div>
-                <div className="flex-1 min-w-0 pt-1">
-                  <div className="text-xs sm:text-sm text-gray-500 uppercase tracking-wider mb-2 font-semibold">Location</div>
-                  <div className="text-lg sm:text-xl lg:text-2xl font-heading font-bold text-[#15383c] break-words leading-snug">{event.location || `${event.address}, ${event.city}`}</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Event Description */}
-            {event.description && (
-              <div className="pt-6 sm:pt-8 border-t border-gray-100">
-                <p className="text-gray-600 text-sm sm:text-base lg:text-lg leading-relaxed">
-                  {event.description}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Action Buttons - Enhanced */}
-        <div className="space-y-3 sm:space-y-4">
+        {/* Action Buttons - Fixed at Bottom */}
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 flex gap-3 flex-shrink-0 bg-white">
+          <button
+            onClick={handleClose}
+            className="flex-1 px-4 py-3 bg-white border-2 border-gray-300 text-[#15383c] rounded-full font-semibold text-sm hover:bg-gray-50 hover:border-[#15383c] transition-all active:scale-95 touch-manipulation"
+          >
+            Close
+          </button>
           <button
             onClick={handleDownloadPass}
-            className="w-full bg-gradient-to-r from-[#e35e25] to-[#d14e1a] text-white rounded-full py-4 sm:py-5 lg:py-6 font-bold text-base sm:text-lg lg:text-xl hover:from-[#d14e1a] hover:to-[#c03e0a] transition-all flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl active:scale-[0.98] touch-manipulation transform hover:-translate-y-0.5"
+            className="flex-1 px-4 py-3 bg-[#15383c] text-white rounded-full font-semibold text-sm hover:bg-[#1f4d52] transition-all active:scale-95 touch-manipulation shadow-md flex items-center justify-center gap-2"
           >
-            <Download size={24} className="sm:w-6 sm:h-6" />
-            <span>Download Pass</span>
+            <Download size={18} />
+            <span>Download</span>
           </button>
-          
-          <button
-            onClick={() => setViewState(ViewState.MY_POPS)}
-            className="w-full bg-white text-[#15383c] rounded-full py-4 sm:py-5 lg:py-6 font-bold text-base sm:text-lg lg:text-xl hover:bg-[#f8fafb] transition-all border-2 border-[#15383c] active:scale-[0.98] touch-manipulation shadow-md hover:shadow-lg"
-          >
-            View My Pop-Ups
-          </button>
-        </div>
-
-        {/* Helpful Note - Enhanced */}
-        <div className="mt-8 sm:mt-10 lg:mt-12 p-5 sm:p-6 lg:p-7 bg-gradient-to-br from-[#f0f9fa] via-[#e8f4f5] to-[#f0f9fa] rounded-2xl border border-[#15383c]/10 shadow-sm">
-          <p className="text-sm sm:text-base lg:text-lg text-[#15383c] text-center leading-relaxed">
-            <strong className="font-semibold">💡 Tip:</strong> Show your QR code at the event entrance for quick check-in!
-          </p>
         </div>
       </div>
     </div>
   );
 };
-

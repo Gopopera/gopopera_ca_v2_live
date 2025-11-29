@@ -34,6 +34,19 @@ export async function followHost(followerId: string, hostId: string): Promise<vo
   await updateDoc(hostRef, {
     followers: arrayUnion(followerId),
   });
+
+  // Notify host of new follower (non-blocking, fire-and-forget)
+  import('../utils/notificationHelpers').then(({ notifyHostOfNewFollower }) => {
+    notifyHostOfNewFollower(hostId, followerId).catch((error) => {
+      if (import.meta.env.DEV) {
+        console.error('Error notifying host of new follower:', error);
+      }
+    });
+  }).catch((error) => {
+    if (import.meta.env.DEV) {
+      console.error('Error loading notification helpers for new follower:', error);
+    }
+  });
 }
 
 /**

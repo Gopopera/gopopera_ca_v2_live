@@ -136,32 +136,33 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
 
   return (
     <div className="min-h-screen bg-[#f8fafb] pt-24 pb-20 font-sans">
-      <div className="md:container md:mx-auto md:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6 sm:mb-8">
           <div className="flex items-center">
             <button 
               onClick={() => setViewState(ViewState.PROFILE)} 
-              className="mr-4 w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-[#15383c] hover:bg-gray-50 transition-colors"
+              className="mr-3 sm:mr-4 w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-[#15383c] hover:bg-gray-50 transition-colors active:scale-95 touch-manipulation"
             >
               <ChevronLeft size={20} />
             </button>
-            <h1 className="font-heading font-bold text-3xl text-[#15383c]">My Pop-Ups</h1>
+            <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c]">My Pop-Ups</h1>
           </div>
           <button
             onClick={() => setViewState(ViewState.MY_CALENDAR)}
-            className="px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-[#15383c] hover:bg-gray-50 transition-colors flex items-center gap-2"
+            className="px-3 sm:px-4 py-2 bg-white border border-gray-200 rounded-full text-xs sm:text-sm font-medium text-[#15383c] hover:bg-gray-50 transition-colors flex items-center gap-1.5 sm:gap-2 active:scale-95 touch-manipulation"
           >
-            <Calendar size={16} />
-            Calendar View
+            <Calendar size={14} className="sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Calendar View</span>
+            <span className="sm:hidden">Calendar</span>
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-4 mb-8 border-b border-gray-200 overflow-x-auto">
+        <div className="flex gap-3 sm:gap-4 mb-6 sm:mb-8 border-b border-gray-200 overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 hide-scrollbar">
           <button
             onClick={() => setActiveTab('hosting')}
-            className={`pb-4 px-1 font-medium text-sm transition-colors whitespace-nowrap ${
+            className={`pb-3 sm:pb-4 px-2 sm:px-1 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === 'hosting'
                 ? 'text-[#e35e25] border-b-2 border-[#e35e25]'
                 : 'text-gray-500 hover:text-[#15383c]'
@@ -171,7 +172,7 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('attending')}
-            className={`pb-4 px-1 font-medium text-sm transition-colors whitespace-nowrap ${
+            className={`pb-3 sm:pb-4 px-2 sm:px-1 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === 'attending'
                 ? 'text-[#e35e25] border-b-2 border-[#e35e25]'
                 : 'text-gray-500 hover:text-[#15383c]'
@@ -181,7 +182,7 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('draft')}
-            className={`pb-4 px-1 font-medium text-sm transition-colors whitespace-nowrap ${
+            className={`pb-3 sm:pb-4 px-2 sm:px-1 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === 'draft'
                 ? 'text-[#e35e25] border-b-2 border-[#e35e25]'
                 : 'text-gray-500 hover:text-[#15383c]'
@@ -191,7 +192,7 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('past')}
-            className={`pb-4 px-1 font-medium text-sm transition-colors whitespace-nowrap ${
+            className={`pb-3 sm:pb-4 px-2 sm:px-1 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === 'past'
                 ? 'text-[#e35e25] border-b-2 border-[#e35e25]'
                 : 'text-gray-500 hover:text-[#15383c]'
@@ -221,7 +222,7 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 sm:space-y-4">
             {currentEvents.map(event => {
               const profilePic = hostProfilePictures[event.id] || null;
               const eventImage = event.imageUrls?.[0] || event.imageUrl || `https://picsum.photos/seed/${event.id}/400/300`;
@@ -230,11 +231,11 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
                 <div
                   key={event.id}
                   onClick={() => handleEventClick(event)}
-                  className="bg-white rounded-xl border border-gray-200 hover:border-[#e35e25] transition-all cursor-pointer overflow-hidden group"
+                  className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 hover:border-[#e35e25] transition-all cursor-pointer overflow-hidden group shadow-sm hover:shadow-md active:scale-[0.98] touch-manipulation"
                 >
-                  <div className="flex gap-4 p-4">
-                    {/* Event Image */}
-                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
+                  <div className="flex gap-3 sm:gap-4 p-3 sm:p-4">
+                    {/* Event Image - Made taller to fill space better */}
+                    <div className="w-32 h-40 sm:w-36 sm:h-44 md:w-40 md:h-48 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
                       <img 
                         src={eventImage} 
                         alt={event.title}
@@ -247,87 +248,89 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
                     </div>
 
                     {/* Event Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-lg text-[#15383c] mb-1 truncate group-hover:text-[#e35e25] transition-colors">
-                            {event.title}
-                          </h3>
-                          <div className="flex items-center gap-2 mb-2">
-                            {/* Host Profile Picture */}
-                            {activeTab === 'hosting' && (
-                              <>
-                                <div className="w-6 h-6 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
-                                  {profilePic ? (
-                                    <img 
-                                      src={profilePic} 
-                                      alt="You" 
-                                      className="w-full h-full object-cover"
-                                      onError={(e) => {
-                                        const target = e.target as HTMLImageElement;
-                                        target.style.display = 'none';
-                                        const parent = target.parentElement;
-                                        if (parent) {
-                                          parent.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-[#15383c] text-white text-xs font-bold">${user?.displayName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'Y'}</div>`;
-                                        }
-                                      }}
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white text-xs font-bold">
-                                      {user?.displayName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'Y'}
-                                    </div>
-                                  )}
-                                </div>
-                                <span className="text-xs text-gray-500 font-medium">Hosted by you</span>
-                              </>
-                            )}
-                            {activeTab !== 'hosting' && (
-                              <span className="text-xs text-gray-500 font-medium">Hosted by {event.hostName}</span>
-                            )}
+                    <div className="flex-1 min-w-0 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-start justify-between gap-2 sm:gap-3 mb-1.5 sm:mb-2">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-base sm:text-lg text-[#15383c] mb-1 line-clamp-2 group-hover:text-[#e35e25] transition-colors">
+                              {event.title}
+                            </h3>
+                            <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                              {/* Host Profile Picture */}
+                              {activeTab === 'hosting' && (
+                                <>
+                                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
+                                    {profilePic ? (
+                                      <img 
+                                        src={profilePic} 
+                                        alt="You" 
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement;
+                                          target.style.display = 'none';
+                                          const parent = target.parentElement;
+                                          if (parent) {
+                                            parent.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-[#15383c] text-white text-[10px] sm:text-xs font-bold">${user?.displayName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'Y'}</div>`;
+                                          }
+                                        }}
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white text-[10px] sm:text-xs font-bold">
+                                        {user?.displayName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'Y'}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <span className="text-[10px] sm:text-xs text-gray-500 font-medium">Hosted by you</span>
+                                </>
+                              )}
+                              {activeTab !== 'hosting' && (
+                                <span className="text-[10px] sm:text-xs text-gray-500 font-medium truncate">Hosted by {event.hostName}</span>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Rating */}
+                          <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
+                            <Star size={12} className="sm:w-3.5 sm:h-3.5 text-[#e35e25] fill-[#e35e25]" />
+                            <span className="text-xs sm:text-sm font-bold text-[#15383c]">{formatRating(event.rating)}</span>
+                            <span className="text-[10px] sm:text-xs text-gray-400">({event.reviewCount})</span>
                           </div>
                         </div>
-                        
-                        {/* Rating */}
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <Star size={14} className="text-[#e35e25] fill-[#e35e25]" />
-                          <span className="text-sm font-bold text-[#15383c]">{formatRating(event.rating)}</span>
-                          <span className="text-xs text-gray-400">({event.reviewCount})</span>
-                        </div>
-                      </div>
 
-                      {/* Date, Location, Attendees */}
-                      <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600">
-                        <div className="flex items-center gap-1">
-                          <Calendar size={12} className="text-gray-400" />
-                          <span>{formatDate(event.date)}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Clock size={12} className="text-gray-400" />
-                          <span>{event.time}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <MapPin size={12} className="text-gray-400" />
-                          <span className="truncate">{event.location || event.city}</span>
-                        </div>
-                        {event.attendeesCount > 0 && (
+                        {/* Date, Location, Attendees */}
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-gray-600 mb-2 sm:mb-3">
                           <div className="flex items-center gap-1">
-                            <span className="text-gray-400">•</span>
-                            <span>{event.attendeesCount} attending</span>
+                            <Calendar size={10} className="sm:w-3 sm:h-3 text-gray-400" />
+                            <span className="whitespace-nowrap">{formatDate(event.date)}</span>
                           </div>
-                        )}
+                          <div className="flex items-center gap-1">
+                            <Clock size={10} className="sm:w-3 sm:h-3 text-gray-400" />
+                            <span className="whitespace-nowrap">{event.time}</span>
+                          </div>
+                          <div className="flex items-center gap-1 min-w-0">
+                            <MapPin size={10} className="sm:w-3 sm:h-3 text-gray-400 flex-shrink-0" />
+                            <span className="truncate">{event.location || event.city}</span>
+                          </div>
+                          {event.attendeesCount > 0 && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-gray-400">•</span>
+                              <span>{event.attendeesCount} attending</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       {/* Action buttons for hosting events */}
                       {activeTab === 'hosting' && (
-                        <div className="mt-3 flex items-center gap-2">
+                        <div className="mt-2 sm:mt-3 flex items-center gap-2">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               onEventClick(event);
                             }}
-                            className="flex-1 px-3 py-1.5 bg-[#e35e25] text-white text-xs font-bold rounded-full hover:bg-[#cf4d1d] transition-colors flex items-center justify-center gap-1.5"
+                            className="flex-1 px-3 py-1.5 sm:py-2 bg-[#e35e25] text-white text-[10px] sm:text-xs font-bold rounded-full hover:bg-[#cf4d1d] transition-colors flex items-center justify-center gap-1 sm:gap-1.5 active:scale-95 touch-manipulation"
                           >
-                            <MessageCircle size={12} />
+                            <MessageCircle size={11} className="sm:w-3 sm:h-3" />
                             Manage
                           </button>
                           <button
@@ -343,9 +346,9 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
                                 }, 100);
                               }
                             }}
-                            className="px-3 py-1.5 bg-gray-100 text-[#15383c] text-xs font-bold rounded-full hover:bg-gray-200 transition-colors flex items-center justify-center gap-1.5 border border-gray-200"
+                            className="px-3 py-1.5 sm:py-2 bg-gray-100 text-[#15383c] text-[10px] sm:text-xs font-bold rounded-full hover:bg-gray-200 transition-colors flex items-center justify-center gap-1 sm:gap-1.5 border border-gray-200 active:scale-95 touch-manipulation"
                           >
-                            <Edit size={12} />
+                            <Edit size={11} className="sm:w-3 sm:h-3" />
                             Edit
                           </button>
                         </div>

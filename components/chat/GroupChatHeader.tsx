@@ -9,6 +9,7 @@ interface GroupChatHeaderProps {
   event: Event;
   onClose: () => void;
   onViewDetails?: () => void;
+  onHostClick?: (hostName: string, hostId?: string) => void;
   isMobile?: boolean;
   isHost?: boolean;
   isFollowing?: boolean;
@@ -19,7 +20,8 @@ interface GroupChatHeaderProps {
 export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({ 
   event, 
   onClose, 
-  onViewDetails, 
+  onViewDetails,
+  onHostClick,
   isMobile = false,
   isHost = false,
   isFollowing = false,
@@ -76,48 +78,57 @@ export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({
               <ArrowLeft size={20} />
             </button>
           )}
-          <img
-            src={getHostImage()}
-            alt={displayHostName || event.hostName}
-            className="w-12 h-12 rounded-full object-cover border-2 border-[#15383c]/10 shrink-0 aspect-square"
-            style={{ aspectRatio: '1 / 1' }}
-          />
+          <button
+            onClick={() => onHostClick?.(displayHostName || event.hostName, event.hostId)}
+            className="shrink-0 touch-manipulation active:scale-95 transition-transform"
+            aria-label={`View ${displayHostName || event.hostName}'s profile`}
+          >
+            <img
+              src={getHostImage()}
+              alt={displayHostName || event.hostName}
+              className="w-12 h-12 rounded-full object-cover border-2 border-[#15383c]/10 aspect-square hover:border-[#e35e25]/50 transition-colors cursor-pointer"
+              style={{ aspectRatio: '1 / 1' }}
+            />
+          </button>
           <div className="min-w-0 flex-1">
             <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5 font-semibold">Group Conversation</p>
             <h2 className="font-heading font-bold text-base text-[#15383c] truncate mb-0.5">{event.title}</h2>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mb-1">
               <p className="text-xs text-gray-600 truncate">{displayHostName || event.hostName}</p>
               <span className="text-[10px] bg-[#e35e25]/10 text-[#e35e25] px-2 py-0.5 rounded-full font-bold uppercase">
                 Host
               </span>
             </div>
+            {/* Follow Button - Moved lower, only for attendees (not host) */}
+            {!isHost && onFollowToggle && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFollowToggle();
+                }}
+                disabled={followLoading}
+                className={`mt-1 px-3 py-1 rounded-full text-xs font-semibold transition-all active:scale-95 touch-manipulation flex items-center gap-1.5 w-fit ${
+                  isFollowing
+                    ? 'bg-[#15383c] text-white hover:bg-[#1f4d52]'
+                    : 'bg-[#e35e25] text-white hover:bg-[#d14e1a]'
+                } ${followLoading ? 'opacity-50 cursor-not-allowed' : ''} shadow-sm`}
+              >
+                {isFollowing ? (
+                  <>
+                    <UserCheck size={12} />
+                    Following
+                  </>
+                ) : (
+                  <>
+                    <UserPlus size={12} />
+                    Follow
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {/* Follow Button - Only for attendees (not host) */}
-          {!isHost && onFollowToggle && (
-            <button
-              onClick={onFollowToggle}
-              disabled={followLoading}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95 touch-manipulation flex items-center gap-1.5 ${
-                isFollowing
-                  ? 'bg-[#15383c] text-white hover:bg-[#1f4d52]'
-                  : 'bg-[#e35e25] text-white hover:bg-[#d14e1a]'
-              } ${followLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {isFollowing ? (
-                <>
-                  <UserCheck size={14} />
-                  Following
-                </>
-              ) : (
-                <>
-                  <UserPlus size={14} />
-                  Follow
-                </>
-              )}
-            </button>
-          )}
           <button
             onClick={onClose}
             className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100 shrink-0"
@@ -142,48 +153,57 @@ export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({
             <span>Back to Event</span>
           </button>
         )}
-        <img
-          src={getHostImage()}
-          alt={displayHostName || event.hostName}
-          className="w-14 h-14 lg:w-16 lg:h-16 rounded-full object-cover border-2 border-[#15383c]/10 shrink-0 aspect-square"
-          style={{ aspectRatio: '1 / 1' }}
-        />
+        <button
+          onClick={() => onHostClick?.(displayHostName || event.hostName, event.hostId)}
+          className="shrink-0 touch-manipulation active:scale-95 transition-transform"
+          aria-label={`View ${displayHostName || event.hostName}'s profile`}
+        >
+          <img
+            src={getHostImage()}
+            alt={displayHostName || event.hostName}
+            className="w-14 h-14 lg:w-16 lg:h-16 rounded-full object-cover border-2 border-[#15383c]/10 aspect-square hover:border-[#e35e25]/50 transition-colors cursor-pointer"
+            style={{ aspectRatio: '1 / 1' }}
+          />
+        </button>
         <div className="min-w-0 flex-1">
           <p className="text-xs lg:text-sm text-gray-500 uppercase tracking-wider mb-1 font-semibold">Group Conversation</p>
           <h2 className="font-heading font-bold text-lg lg:text-xl text-[#15383c] mb-1.5 truncate">{event.title}</h2>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 mb-2">
             <p className="text-sm lg:text-base text-gray-700 font-medium truncate">{displayHostName || event.hostName}</p>
             <span className="text-[10px] lg:text-xs bg-[#e35e25]/10 text-[#e35e25] px-2.5 py-1 rounded-full font-bold uppercase tracking-wide">
               Host
             </span>
           </div>
+          {/* Follow Button - Moved lower, only for attendees (not host) */}
+          {!isHost && onFollowToggle && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onFollowToggle();
+              }}
+              disabled={followLoading}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all active:scale-95 touch-manipulation flex items-center gap-1.5 w-fit ${
+                isFollowing
+                  ? 'bg-[#15383c] text-white hover:bg-[#1f4d52]'
+                  : 'bg-[#e35e25] text-white hover:bg-[#d14e1a]'
+              } ${followLoading ? 'opacity-50 cursor-not-allowed' : ''} shadow-sm`}
+            >
+              {isFollowing ? (
+                <>
+                  <UserCheck size={14} />
+                  Following
+                </>
+              ) : (
+                <>
+                  <UserPlus size={14} />
+                  Follow
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-3 shrink-0">
-        {/* Follow Button - Only for attendees (not host) */}
-        {!isHost && onFollowToggle && (
-          <button
-            onClick={onFollowToggle}
-            disabled={followLoading}
-            className={`px-4 py-2 rounded-full text-sm font-bold transition-all active:scale-95 touch-manipulation flex items-center gap-2 shadow-sm ${
-              isFollowing
-                ? 'bg-[#15383c] text-white hover:bg-[#1f4d52]'
-                : 'bg-[#e35e25] text-white hover:bg-[#d14e1a]'
-            } ${followLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            {isFollowing ? (
-              <>
-                <UserCheck size={16} />
-                Following
-              </>
-            ) : (
-              <>
-                <UserPlus size={16} />
-                Follow
-              </>
-            )}
-          </button>
-        )}
         <button
           onClick={onClose}
           className="p-2 hover:bg-red-50 rounded-full text-gray-400 hover:text-red-500 transition-colors shrink-0"

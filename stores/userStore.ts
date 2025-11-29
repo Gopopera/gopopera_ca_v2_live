@@ -771,6 +771,125 @@ export const useUserStore = create<UserStore>()(
               // Don't fail RSVP if notification fails
             }
           }
+
+          // Check for event getting full and trending (non-blocking)
+          if (eventData) {
+            // Fire-and-forget - don't block RSVP
+            import('../utils/notificationHelpers').then(async ({ notifyUsersEventGettingFull, notifyHostEventTrending }) => {
+              try {
+                const db = getDbSafe();
+                if (!db) return;
+
+                // Get updated event data to check capacity
+                const { getEventById } = await import('../firebase/db');
+                const updatedEvent = await getEventById(eventId);
+                if (!updatedEvent) return;
+
+                // Check if event is getting full
+                if (updatedEvent.capacity && updatedEvent.attendeesCount > 0) {
+                  const capacityPercentage = Math.round((updatedEvent.attendeesCount / updatedEvent.capacity) * 100);
+                  const thresholds = [80, 90, 95];
+                  
+                  // Check if we should notify (only at threshold points)
+                  const shouldNotify = thresholds.some(threshold => 
+                    capacityPercentage >= threshold && 
+                    capacityPercentage < threshold + 5 // Small buffer to avoid duplicate notifications
+                  );
+
+                  if (shouldNotify) {
+                    // Get users who favorited but haven't RSVP'd
+                    // Note: This is a simplified implementation
+                    // For production, consider using a Cloud Function with better querying
+                    // For now, we'll check a limited set of users who might have favorited
+                    const { collection, getDocs } = await import('firebase/firestore');
+                    const usersRef = collection(db, 'users');
+                    
+                    // Get reservations to find users who RSVP'd
+                    const reservationsRef = collection(db, 'reservations');
+                    const { query, where } = await import('firebase/firestore');
+                    const reservationsQuery = query(
+                      reservationsRef,
+                      where('eventId', '==', eventId),
+                      where('status', '==', 'reserved')
+                    );
+                    const reservationsSnapshot = await getDocs(reservationsQuery);
+                    const rsvpUserIds = new Set(reservationsSnapshot.docs.map(doc => doc.data().userId).filter(Boolean));
+                    
+                    // Get a sample of users (limited to avoid performance issues)
+                    // In production, this should be done with a Cloud Function
+                    const usersSnapshot = await getDocs(usersRef);
+                    const favoriteUserIds: string[] = [];
+                    
+                    // Limit to first 100 users to avoid performance issues
+                    let checked = 0;
+                    const maxCheck = 100;
+                    
+                    for (const userDoc of usersSnapshot.docs) {
+                      if (checked >= maxCheck) break;
+                      checked++;
+                      
+                      const userData = userDoc.data();
+                      const favorites = userData?.favorites || [];
+                      
+                      if (Array.isArray(favorites) && favorites.includes(eventId)) {
+                        // Check if user has RSVP'd
+                        if (!rsvpUserIds.has(userDoc.id)) {
+                          favoriteUserIds.push(userDoc.id);
+                        }
+                      }
+                    }
+                    
+                    if (favoriteUserIds.length > 0) {
+                      await notifyUsersEventGettingFull(
+                        eventId,
+                        updatedEvent.title,
+                        capacityPercentage,
+                        favoriteUserIds
+                      );
+                    }
+                  }
+                }
+
+                // Check for trending (RSVP rate in last hour)
+                if (eventData.hostId) {
+                  const { collection, query, where, getDocs } = await import('firebase/firestore');
+                  const reservationsRef = collection(db, 'reservations');
+                  const oneHourAgo = Date.now() - (60 * 60 * 1000);
+                  
+                  const recentReservationsQuery = query(
+                    reservationsRef,
+                    where('eventId', '==', eventId),
+                    where('status', '==', 'reserved')
+                  );
+                  
+                  const recentSnapshot = await getDocs(recentReservationsQuery);
+                  const recentReservations = recentSnapshot.docs.filter(doc => {
+                    const reservedAt = doc.data().reservedAt;
+                    return reservedAt && reservedAt > oneHourAgo;
+                  });
+
+                  // If 10+ RSVPs in last hour, it's trending
+                  if (recentReservations.length >= 10) {
+                    const trendingReason = `${recentReservations.length} people reserved in the last hour!`;
+                    await notifyHostEventTrending(
+                      eventData.hostId,
+                      eventId,
+                      updatedEvent.title,
+                      trendingReason
+                    );
+                  }
+                }
+              } catch (error) {
+                if (import.meta.env.DEV) {
+                  console.error('Error checking event capacity/trending:', error);
+                }
+              }
+            }).catch((error) => {
+              if (import.meta.env.DEV) {
+                console.error('Error loading notification helpers for capacity/trending:', error);
+              }
+            });
+          }
           
           // Return reservation ID for confirmation page
           return reservationId;

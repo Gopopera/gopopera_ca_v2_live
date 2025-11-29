@@ -22,11 +22,12 @@ interface GroupChatProps {
   event: Event;
   onClose: () => void;
   onViewDetails: () => void;
+  onHostClick?: (hostName: string, hostId?: string) => void;
   onReserve?: () => void; // Callback to trigger reservation flow
   isLoggedIn?: boolean;
 }
 
-export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDetails, onReserve, isLoggedIn = false }) => {
+export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDetails, onHostClick, onReserve, isLoggedIn = false }) => {
   const [message, setMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showAttendeeList, setShowAttendeeList] = useState(false);
@@ -114,9 +115,15 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
       if (isFollowingHost) {
         await unfollowHost(currentUser.id, event.hostId);
         setIsFollowingHost(false);
+        // Update profile store metrics
+        const profileStore = (await import('../../stores/profileStore')).useProfileStore;
+        profileStore.getState().unfollowHost(currentUser.id, event.hostId);
       } else {
         await followHost(currentUser.id, event.hostId);
         setIsFollowingHost(true);
+        // Update profile store metrics
+        const profileStore = (await import('../../stores/profileStore')).useProfileStore;
+        profileStore.getState().followHost(currentUser.id, event.hostId);
       }
     } catch (error) {
       console.error('Error toggling follow:', error);
@@ -461,12 +468,23 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
     ? (event.attendeesCount || 0) 
     : (isDemo ? 34 : (event.attendeesCount || 0));
 
-  const tabs = [
-    { name: 'Chat', active: true, icon: MessageCircle },
-    { name: 'Poll', active: false, icon: BarChart2 },
-    { name: 'Survey', active: false, icon: FileText },
-    { name: 'Announcement', active: false, icon: Megaphone },
-  ];
+  // Menu tabs - Poll, Survey, and Announcement are host-only
+  const tabs = useMemo(() => {
+    const baseTabs = [
+      { name: 'Chat', active: true, icon: MessageCircle },
+    ];
+    
+    // Host-only tabs
+    if (isHost) {
+      baseTabs.push(
+        { name: 'Poll', active: false, icon: BarChart2 },
+        { name: 'Survey', active: false, icon: FileText },
+        { name: 'Announcement', active: false, icon: Megaphone }
+      );
+    }
+    
+    return baseTabs;
+  }, [isHost]);
 
   return (
     <div className="fixed inset-0 bg-gray-50 flex flex-col md:flex-row overflow-hidden font-sans z-50">
@@ -566,7 +584,8 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
           <GroupChatHeader 
             event={event} 
             onClose={onClose} 
-            onViewDetails={onViewDetails} 
+            onViewDetails={onViewDetails}
+            onHostClick={onHostClick}
             isMobile={false}
             isHost={isHost}
             isFollowing={isFollowingHost}
@@ -580,7 +599,8 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
           <GroupChatHeader 
             event={event} 
             onClose={onClose} 
-            onViewDetails={onViewDetails} 
+            onViewDetails={onViewDetails}
+            onHostClick={onHostClick}
             isMobile={true}
             isHost={isHost}
             isFollowing={isFollowingHost}

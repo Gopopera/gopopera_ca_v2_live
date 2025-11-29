@@ -85,7 +85,7 @@ async function getUserContactInfo(userId: string): Promise<{ email?: string; pho
 export async function sendComprehensiveNotification(
   userId: string,
   notification: {
-    type: 'new-event' | 'new-rsvp' | 'announcement' | 'poll' | 'new-message' | 'followed-host-event';
+    type: 'new-event' | 'new-rsvp' | 'announcement' | 'poll' | 'new-message' | 'followed-host-event' | 'new-follower' | 'event-getting-full' | 'event-trending' | 'follow-host-suggestion';
     title: string;
     body: string;
     eventId?: string;
@@ -724,6 +724,343 @@ export async function notifyUserOfFirstEvent(
       console.error('Error notifying user of first event:', error);
     }
     // Don't throw - event creation should succeed even if notification fails
+  }
+}
+
+/**
+ * Notify host when they gain a new follower
+ */
+export async function notifyHostOfNewFollower(
+  hostId: string,
+  followerId: string
+): Promise<void> {
+  try {
+    const hostInfo = await getUserContactInfo(hostId);
+    const followerInfo = await getUserContactInfo(followerId);
+    const preferences = await getUserNotificationPreferences(hostId);
+
+    // In-app notification
+    if (preferences.notification_opt_in !== false) {
+      try {
+        await createNotification(hostId, {
+          userId: hostId,
+          type: 'new-follower',
+          title: 'New Follower',
+          body: `${followerInfo.name || 'Someone'} started following you`,
+          hostId,
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('Error creating new follower notification:', error);
+        }
+      }
+    }
+
+    // Email (optional, host preference)
+    if (preferences.email_opt_in && hostInfo.email) {
+      try {
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #15383c;">New Follower on Popera</h2>
+            <p>Hello ${hostInfo.name || 'there'},</p>
+            <div style="background-color: #f8fafb; padding: 16px; border-radius: 8px; margin: 20px 0;">
+              <p style="margin: 0; color: #333; line-height: 1.6;">
+                <strong>${followerInfo.name || 'Someone'}</strong> started following you on Popera!
+              </p>
+            </div>
+            <p style="color: #666; font-size: 14px; margin-top: 20px;">
+              When you create new events, your followers will be notified automatically.
+            </p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #666; font-size: 12px;">
+              Popera Team<br>
+              <a href="mailto:support@gopopera.ca" style="color: #e35e25;">support@gopopera.ca</a>
+            </p>
+          </div>
+        `;
+        await sendEmail({
+          to: hostInfo.email,
+          subject: `New Follower: ${followerInfo.name || 'Someone'} is following you`,
+          html: emailHtml,
+          templateName: 'new-follower',
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('Error sending new follower email:', error);
+        }
+      }
+    }
+
+    // SMS disabled (social, not urgent)
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error notifying host of new follower:', error);
+    }
+    // Don't throw - follow should succeed even if notification fails
+  }
+}
+
+/**
+ * Notify users who favorited an event that it's getting full
+ */
+export async function notifyUsersEventGettingFull(
+  eventId: string,
+  eventTitle: string,
+  capacityPercentage: number,
+  userIds: string[]
+): Promise<void> {
+  if (userIds.length === 0) return;
+
+  const notifications = userIds.map(async (userId) => {
+    const contactInfo = await getUserContactInfo(userId);
+    const preferences = await getUserNotificationPreferences(userId);
+
+    // In-app notification
+    if (preferences.notification_opt_in !== false) {
+      try {
+        await createNotification(userId, {
+          userId,
+          type: 'event-getting-full',
+          title: 'Event Getting Full!',
+          body: `${eventTitle} is ${capacityPercentage}% full - Reserve your spot now!`,
+          eventId,
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('Error creating event getting full notification:', error);
+        }
+      }
+    }
+
+    // Email
+    if (preferences.email_opt_in && contactInfo.email) {
+      try {
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #15383c;">${eventTitle} is Getting Full!</h2>
+            <p>Hello ${contactInfo.name || 'there'},</p>
+            <div style="background-color: #fff7ed; border-left: 4px solid #e35e25; padding: 16px; border-radius: 8px; margin: 20px 0;">
+              <p style="margin: 0; color: #333; line-height: 1.6; font-size: 18px; font-weight: bold;">
+                This event is ${capacityPercentage}% full!
+              </p>
+            </div>
+            <p style="color: #666; line-height: 1.6;">
+              You favorited this event but haven't reserved yet. Don't miss out - secure your spot now!
+            </p>
+            <a href="${BASE_URL}/event/${eventId}" style="display: inline-block; background-color: #e35e25; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold;">Reserve Now</a>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #666; font-size: 12px;">
+              Popera Team<br>
+              <a href="mailto:support@gopopera.ca" style="color: #e35e25;">support@gopopera.ca</a>
+            </p>
+          </div>
+        `;
+        await sendEmail({
+          to: contactInfo.email,
+          subject: `Hurry! ${eventTitle} is ${capacityPercentage}% full`,
+          html: emailHtml,
+          templateName: 'event-getting-full',
+          eventId,
+          notificationType: 'event_getting_full',
+          skippedByPreference: false,
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('Error sending event getting full email:', error);
+        }
+      }
+    }
+
+    // SMS (optional, user preference)
+    if (preferences.sms_opt_in && contactInfo.phone) {
+      try {
+        await sendSMSNotification({
+          to: contactInfo.phone,
+          message: `Popera: ${eventTitle} is ${capacityPercentage}% full! Reserve now: ${BASE_URL}/event/${eventId}`,
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('Error sending event getting full SMS:', error);
+        }
+      }
+    }
+  });
+
+  await Promise.all(notifications);
+}
+
+/**
+ * Notify host when their event is trending
+ */
+export async function notifyHostEventTrending(
+  hostId: string,
+  eventId: string,
+  eventTitle: string,
+  trendingReason: string
+): Promise<void> {
+  try {
+    const hostInfo = await getUserContactInfo(hostId);
+    const preferences = await getUserNotificationPreferences(hostId);
+
+    // In-app notification
+    if (preferences.notification_opt_in !== false) {
+      try {
+        await createNotification(hostId, {
+          userId: hostId,
+          type: 'event-trending',
+          title: 'Your Event is Trending! 🔥',
+          body: `${eventTitle} is getting lots of attention: ${trendingReason}`,
+          eventId,
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('Error creating event trending notification:', error);
+        }
+      }
+    }
+
+    // Email
+    if (preferences.email_opt_in && hostInfo.email) {
+      try {
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #15383c;">Your Event is Trending! 🔥</h2>
+            <p>Hello ${hostInfo.name || 'there'},</p>
+            <div style="background-color: #fff7ed; border-left: 4px solid #e35e25; padding: 16px; border-radius: 8px; margin: 20px 0;">
+              <p style="margin: 0; color: #333; line-height: 1.6; font-size: 18px; font-weight: bold;">
+                ${eventTitle} is getting lots of attention!
+              </p>
+              <p style="margin: 8px 0 0 0; color: #666; line-height: 1.6;">
+                ${trendingReason}
+              </p>
+            </div>
+            <p style="color: #666; line-height: 1.6;">
+              Keep the momentum going! Engage with your attendees in the group chat and share updates.
+            </p>
+            <a href="${BASE_URL}/event/${eventId}" style="display: inline-block; background-color: #e35e25; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold;">View Event</a>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #666; font-size: 12px;">
+              Popera Team<br>
+              <a href="mailto:support@gopopera.ca" style="color: #e35e25;">support@gopopera.ca</a>
+            </p>
+          </div>
+        `;
+        await sendEmail({
+          to: hostInfo.email,
+          subject: `🔥 Your Event "${eventTitle}" is Trending!`,
+          html: emailHtml,
+          templateName: 'event-trending',
+          eventId,
+          notificationType: 'event_trending',
+          skippedByPreference: false,
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('Error sending event trending email:', error);
+        }
+      }
+    }
+
+    // SMS (optional, host preference)
+    if (preferences.sms_opt_in && hostInfo.phone) {
+      try {
+        await sendSMSNotification({
+          to: hostInfo.phone,
+          message: `🔥 Popera: Your event "${eventTitle}" is trending! ${trendingReason}`,
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('Error sending event trending SMS:', error);
+        }
+      }
+    }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error notifying host of trending event:', error);
+    }
+    // Don't throw - analytics notification shouldn't break anything
+  }
+}
+
+/**
+ * Suggest following host after event ends
+ */
+export async function suggestFollowingHost(
+  attendeeId: string,
+  hostId: string,
+  eventId: string,
+  eventTitle: string
+): Promise<void> {
+  try {
+    const attendeeInfo = await getUserContactInfo(attendeeId);
+    const hostInfo = await getUserContactInfo(hostId);
+    const preferences = await getUserNotificationPreferences(attendeeId);
+
+    // Check if already following (don't suggest if already following)
+    const { isFollowing } = await import('../firebase/follow');
+    const alreadyFollowing = await isFollowing(attendeeId, hostId);
+    if (alreadyFollowing) {
+      return; // Don't send suggestion if already following
+    }
+
+    // In-app notification
+    if (preferences.notification_opt_in !== false) {
+      try {
+        await createNotification(attendeeId, {
+          userId: attendeeId,
+          type: 'follow-host-suggestion',
+          title: 'Follow the Host',
+          body: `Follow ${hostInfo.name || 'the host'} to get notified about their next pop-up!`,
+          eventId,
+          hostId,
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('Error creating follow host suggestion notification:', error);
+        }
+      }
+    }
+
+    // Email (optional)
+    if (preferences.email_opt_in && attendeeInfo.email) {
+      try {
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #15383c;">Follow ${hostInfo.name || 'the host'} for More Pop-ups!</h2>
+            <p>Hello ${attendeeInfo.name || 'there'},</p>
+            <p style="color: #666; line-height: 1.6;">
+              You recently attended <strong>${eventTitle}</strong>. Follow ${hostInfo.name || 'the host'} to get notified when they create their next pop-up!
+            </p>
+            <a href="${BASE_URL}/event/${eventId}" style="display: inline-block; background-color: #e35e25; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold;">Follow Host</a>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #666; font-size: 12px;">
+              Popera Team<br>
+              <a href="mailto:support@gopopera.ca" style="color: #e35e25;">support@gopopera.ca</a>
+            </p>
+          </div>
+        `;
+        await sendEmail({
+          to: attendeeInfo.email,
+          subject: `Follow ${hostInfo.name || 'the host'} for More Pop-ups!`,
+          html: emailHtml,
+          templateName: 'follow-host-suggestion',
+          eventId,
+          notificationType: 'follow_host_suggestion',
+          skippedByPreference: false,
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('Error sending follow host suggestion email:', error);
+        }
+      }
+    }
+
+    // SMS disabled (social, not urgent)
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error suggesting follow host:', error);
+    }
+    // Don't throw - suggestion shouldn't break anything
   }
 }
 

@@ -424,6 +424,16 @@ const AppContent: React.FC = () => {
       return ViewState.PRIVACY;
     } else if (pathname === '/cancellation') {
       return ViewState.CANCELLATION;
+    } else if (pathname === '/careers') {
+      return ViewState.CAREERS;
+    } else if (pathname === '/report') {
+      return ViewState.REPORT_EVENT;
+    } else if (pathname === '/help') {
+      return ViewState.HELP;
+    } else if (pathname === '/safety') {
+      return ViewState.SAFETY;
+    } else if (pathname === '/press') {
+      return ViewState.PRESS;
     }
     
     // Default to landing page for unknown routes
@@ -766,6 +776,111 @@ const AppContent: React.FC = () => {
     };
   }, [user?.uid, allEvents.length, cleanupEndedFavorites]);
 
+  // Check for follow host suggestions after events end - runs periodically
+  // Suggests following hosts 24-48 hours after event ends
+  useEffect(() => {
+    if (!user?.uid || allEvents.length === 0 || !user.rsvps || user.rsvps.length === 0) return;
+    
+    let isMounted = true;
+    
+    const checkFollowSuggestions = async () => {
+      if (!isMounted || !user?.uid) return;
+      
+      try {
+        const { isEventEnded } = await import('./utils/eventDateHelpers');
+        const { suggestFollowingHost } = await import('./utils/notificationHelpers');
+        const { isFollowing } = await import('./firebase/follow');
+        const { getDbSafe } = await import('./src/lib/firebase');
+        const { doc, getDoc } = await import('firebase/firestore');
+        
+        const db = getDbSafe();
+        if (!db) return;
+        
+        // Check each event the user RSVP'd to
+        for (const eventId of user.rsvps) {
+          const event = allEvents.find(e => e.id === eventId);
+          if (!event || !event.hostId) continue;
+          
+          // Check if event ended 24-48 hours ago
+          if (isEventEnded(event)) {
+            try {
+              // Parse event date and time
+              const eventDate = new Date(event.date);
+              if (event.time) {
+                const timeParts = event.time.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+                if (timeParts) {
+                  let hours = parseInt(timeParts[1], 10);
+                  const minutes = parseInt(timeParts[2], 10);
+                  const period = timeParts[3]?.toUpperCase();
+                  
+                  if (period === 'PM' && hours !== 12) hours += 12;
+                  else if (period === 'AM' && hours === 12) hours = 0;
+                  
+                  eventDate.setHours(hours, minutes, 0, 0);
+                }
+              }
+              
+              const hoursSinceEnd = (Date.now() - eventDate.getTime()) / (1000 * 60 * 60);
+              
+              // Suggest following if event ended 24-48 hours ago
+              if (hoursSinceEnd >= 24 && hoursSinceEnd <= 48) {
+                // Check if already following
+                const alreadyFollowing = await isFollowing(user.uid, event.hostId);
+                if (alreadyFollowing) continue;
+                
+                // Check if we already sent this suggestion (using event doc metadata)
+                const eventRef = doc(db, 'events', eventId);
+                const eventDoc = await getDoc(eventRef);
+                const followSuggestionsSent = eventDoc.data()?.followSuggestionsSent || [];
+                
+                if (!followSuggestionsSent.includes(user.uid)) {
+                  // Send suggestion (non-blocking)
+                  suggestFollowingHost(user.uid, event.hostId, eventId, event.title)
+                    .then(async () => {
+                      // Mark as sent (non-blocking)
+                      try {
+                        const { updateDoc, arrayUnion } = await import('firebase/firestore');
+                        await updateDoc(eventRef, {
+                          followSuggestionsSent: arrayUnion(user.uid)
+                        });
+                      } catch (error) {
+                        // Ignore errors - this is just metadata
+                      }
+                    })
+                    .catch(() => {
+                      // Ignore errors - suggestion is optional
+                    });
+                }
+              }
+            } catch (error) {
+              // Ignore errors for individual events
+              if (import.meta.env.DEV) {
+                console.warn('[FOLLOW_SUGGESTION] Error checking event:', eventId, error);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('[FOLLOW_SUGGESTION] Error checking follow suggestions:', error);
+        }
+      }
+    };
+    
+    // Run check immediately, then every hour
+    checkFollowSuggestions();
+    const interval = setInterval(() => {
+      if (isMounted && user?.uid) {
+        checkFollowSuggestions();
+      }
+    }, 60 * 60 * 1000); // Every hour
+    
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [user?.uid, user?.rsvps, allEvents.length]);
+
   // Filter events based on search, location, category, and tags
   // Apply all filters in sequence for proper combined filtering
   // Filters work together: Category + City + Search all apply simultaneously
@@ -1053,6 +1168,50 @@ const AppContent: React.FC = () => {
       if (currentUrl !== expectedUrl) {
         window.history.replaceState({ viewState: ViewState.CHAT, eventId: selectedEvent.id }, '', expectedUrl);
       }
+    } else if (viewState === ViewState.ABOUT) {
+      if (currentUrl !== '/about') {
+        window.history.replaceState({ viewState: ViewState.ABOUT }, '', '/about');
+      }
+    } else if (viewState === ViewState.CAREERS) {
+      if (currentUrl !== '/careers') {
+        window.history.replaceState({ viewState: ViewState.CAREERS }, '', '/careers');
+      }
+    } else if (viewState === ViewState.CONTACT) {
+      if (currentUrl !== '/contact') {
+        window.history.replaceState({ viewState: ViewState.CONTACT }, '', '/contact');
+      }
+    } else if (viewState === ViewState.TERMS) {
+      if (currentUrl !== '/terms') {
+        window.history.replaceState({ viewState: ViewState.TERMS }, '', '/terms');
+      }
+    } else if (viewState === ViewState.PRIVACY) {
+      if (currentUrl !== '/privacy') {
+        window.history.replaceState({ viewState: ViewState.PRIVACY }, '', '/privacy');
+      }
+    } else if (viewState === ViewState.CANCELLATION) {
+      if (currentUrl !== '/cancellation') {
+        window.history.replaceState({ viewState: ViewState.CANCELLATION }, '', '/cancellation');
+      }
+    } else if (viewState === ViewState.GUIDELINES) {
+      if (currentUrl !== '/guidelines') {
+        window.history.replaceState({ viewState: ViewState.GUIDELINES }, '', '/guidelines');
+      }
+    } else if (viewState === ViewState.REPORT_EVENT) {
+      if (currentUrl !== '/report') {
+        window.history.replaceState({ viewState: ViewState.REPORT_EVENT }, '', '/report');
+      }
+    } else if (viewState === ViewState.HELP) {
+      if (currentUrl !== '/help') {
+        window.history.replaceState({ viewState: ViewState.HELP }, '', '/help');
+      }
+    } else if (viewState === ViewState.SAFETY) {
+      if (currentUrl !== '/safety') {
+        window.history.replaceState({ viewState: ViewState.SAFETY }, '', '/safety');
+      }
+    } else if (viewState === ViewState.PRESS) {
+      if (currentUrl !== '/press') {
+        window.history.replaceState({ viewState: ViewState.PRESS }, '', '/press');
+      }
     }
 
     // Handle browser back/forward buttons
@@ -1084,19 +1243,120 @@ const AppContent: React.FC = () => {
             window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
           }
         } else {
-          // Safe navigation to other views
-          setViewState(targetView);
+          // Safe navigation to other views - validate viewState first
+          const validViewStates = [
+            ViewState.LANDING, ViewState.FEED, ViewState.DETAIL, ViewState.CHAT,
+            ViewState.HOST_PROFILE, ViewState.ABOUT, ViewState.CAREERS, ViewState.CONTACT,
+            ViewState.TERMS, ViewState.PRIVACY, ViewState.CANCELLATION, ViewState.GUIDELINES,
+            ViewState.REPORT_EVENT, ViewState.HELP, ViewState.SAFETY, ViewState.PRESS,
+            ViewState.AUTH, ViewState.CREATE_EVENT, ViewState.EDIT_EVENT,
+            ViewState.PROFILE, ViewState.NOTIFICATIONS, ViewState.MY_POPS,
+            ViewState.FAVORITES, ViewState.MY_CALENDAR,
+            ViewState.PROFILE_BASIC, ViewState.PROFILE_NOTIFICATIONS,
+            ViewState.PROFILE_PRIVACY, ViewState.PROFILE_STRIPE,
+            ViewState.PROFILE_REVIEWS, ViewState.PROFILE_FOLLOWING,
+            ViewState.PROFILE_FOLLOWERS, ViewState.DELETE_ACCOUNT,
+            ViewState.CONFIRM_RESERVATION, ViewState.RESERVATION_CONFIRMED
+          ];
+          
+          if (validViewStates.includes(targetView)) {
+            setViewState(targetView);
+          } else {
+            // Invalid viewState, use URL to determine correct state
+            console.warn('[APP] Invalid viewState in history, using URL to determine state:', targetView);
+            const urlBasedState = getInitialViewState();
+            setViewState(urlBasedState);
+            window.history.replaceState({ viewState: urlBasedState }, '', window.location.pathname);
+          }
         }
       } else {
-        // Default to landing page if no state
-        setViewState(ViewState.LANDING);
-        window.history.replaceState({ viewState: ViewState.LANDING }, '', '/');
+        // No state in history - use URL to determine viewState (handles refresh and direct links)
+        const urlBasedState = getInitialViewState();
+        const pathname = window.location.pathname;
+        
+        // If navigating to an event detail page, try to load the event
+        if (urlBasedState === ViewState.DETAIL && pathname.startsWith('/event/') && !pathname.includes('/chat')) {
+          const eventIdMatch = pathname.match(/^\/event\/([^/]+)/);
+          if (eventIdMatch) {
+            const eventId = eventIdMatch[1];
+            const event = allEvents.find(e => e.id === eventId);
+            if (event) {
+              setSelectedEvent(event);
+              setViewState(ViewState.DETAIL);
+              window.history.replaceState({ viewState: ViewState.DETAIL, eventId }, '', pathname);
+              return; // Early return to prevent fallback
+            } else {
+              // Event not found - might still be loading, wait for events to load
+              console.log('[APP] Event not found yet, waiting for events to load:', eventId);
+              // Set viewState to DETAIL anyway - the useEffect above will handle loading the event
+              setViewState(ViewState.DETAIL);
+              window.history.replaceState({ viewState: ViewState.DETAIL, eventId }, '', pathname);
+              return;
+            }
+          }
+        }
+        
+        // For other viewStates, set normally
+        setViewState(urlBasedState);
+        // Ensure URL matches the viewState
+        window.history.replaceState({ viewState: urlBasedState }, '', window.location.pathname);
       }
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [viewState, setViewState, selectedEvent, allEvents]);
+
+  // Handle direct navigation to event URLs (e.g., shared links)
+  useEffect(() => {
+    const pathname = window.location.pathname;
+    
+    // Check if URL is an event detail page
+    if (pathname.startsWith('/event/') && !pathname.includes('/chat')) {
+      const eventIdMatch = pathname.match(/^\/event\/([^/]+)/);
+      if (eventIdMatch) {
+        const eventId = eventIdMatch[1];
+        
+        // If we already have this event selected and we're on DETAIL view, no need to do anything
+        if (selectedEvent?.id === eventId && viewState === ViewState.DETAIL) {
+          return;
+        }
+        
+        // Wait for events to load, then find the event
+        if (allEvents.length > 0) {
+          const event = allEvents.find(e => e.id === eventId);
+          if (event) {
+            // Found the event - set it and navigate to detail page
+            setSelectedEvent(event);
+            if (viewState !== ViewState.DETAIL) {
+              setViewState(ViewState.DETAIL);
+              window.history.replaceState({ viewState: ViewState.DETAIL, eventId }, '', pathname);
+            }
+          } else {
+            // Event not found in loaded events
+            console.warn('[APP] Event not found in loaded events:', eventId);
+            // If events have finished loading and event not found, fallback to FEED
+            if (!isLoadingEvents) {
+              console.warn('[APP] Events finished loading but event not found, falling back to FEED');
+              if (viewState === ViewState.DETAIL) {
+                setViewState(ViewState.FEED);
+                window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
+              }
+            }
+            // If events are still loading, wait for them to finish
+          }
+        } else if (!isLoadingEvents) {
+          // Events have finished loading but none found - event doesn't exist
+          console.warn('[APP] Events loaded but event not found:', eventId);
+          if (viewState === ViewState.DETAIL) {
+            setViewState(ViewState.FEED);
+            window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
+          }
+        }
+        // If events are still loading, this effect will run again when they finish
+      }
+    }
+  }, [allEvents, isLoadingEvents, pathname, selectedEvent, viewState, setViewState]);
 
   // Scroll restore for list pages
   useEffect(() => {
@@ -1152,6 +1412,7 @@ const AppContent: React.FC = () => {
           event={selectedEvent} 
           onClose={handleCloseChat} 
           onViewDetails={handleViewDetailsFromChat}
+          onHostClick={handleHostClick}
           onReserve={() => {
             if (!user) {
               useUserStore.getState().setRedirectAfterLogin(ViewState.CHAT);

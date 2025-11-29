@@ -11,7 +11,7 @@ export const translations = {
       signIn: 'Sign In',
       signOut: 'Sign Out',
       hostEvent: 'Host Event',
-      myProfile: 'My Profile Settings',
+      myProfile: 'Profile Settings',
       myPops: 'My Pop-ups',
       myFavorites: 'My Favorites',
       notifications: 'Notifications',
