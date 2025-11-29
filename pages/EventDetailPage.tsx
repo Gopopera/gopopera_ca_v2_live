@@ -557,32 +557,34 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10 lg:py-12">
-        {/* Mobile Layout: Symmetric side-by-side */}
+        {/* Mobile Layout: Clean and modern */}
         <div className="flex lg:hidden gap-3 mb-6 items-start">
-          {/* Left: Host Info with Profile Button */}
+          {/* Left: Host Info with Profile Button underneath */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2.5 p-3.5 bg-gray-50 rounded-2xl border border-gray-100">
-              <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden ring-2 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick(displayHostName)}>
-                {hostProfilePicture ? (
-                  <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
-                  }} />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-base">
-                    {displayHostName?.[0]?.toUpperCase() || 'H'}
-                  </div>
-                )}
+            <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100">
+              <div className="flex items-center gap-2.5 mb-2.5">
+                <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden ring-2 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick(displayHostName)}>
+                  {hostProfilePicture ? (
+                    <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
+                    }} />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-base">
+                      {displayHostName?.[0]?.toUpperCase() || 'H'}
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[9px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">{t('event.hostedBy')}</p>
+                  <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[9px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">{t('event.hostedBy')}</p>
-                <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
-              </div>
-              {/* Profile Button - Next to host info */}
+              {/* Profile Button - Under host name */}
               <button 
                 onClick={() => onHostClick(displayHostName)} 
                 aria-label={`View ${displayHostName}'s profile`} 
-                className="px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 shrink-0"
+                className="w-full px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95"
               >
                 Profile
               </button>
@@ -633,11 +635,11 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           </div>
         </div>
 
-        {/* Desktop Layout: Grid */}
+        {/* Desktop Layout: Clean and modern */}
         <div className="hidden lg:grid lg:grid-cols-3 gap-6 sm:gap-8 md:gap-10 lg:gap-12">
           <div className="lg:col-span-2 space-y-6 sm:space-y-8 md:space-y-10">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-5 p-5 sm:p-6 md:p-7 lg:p-8 bg-gray-50 rounded-2xl sm:rounded-3xl border border-gray-100 hover:border-gray-200 transition-colors">
-              <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto min-w-0 flex-1">
+            <div className="p-5 sm:p-6 md:p-7 lg:p-8 bg-gray-50 rounded-2xl sm:rounded-3xl border border-gray-100 hover:border-gray-200 transition-colors">
+              <div className="flex items-center gap-3 sm:gap-4 mb-3">
                  <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-gray-200 overflow-hidden ring-2 sm:ring-4 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick(displayHostName)}>
                    {hostProfilePicture ? (
                      <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
@@ -668,40 +670,37 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                    </button>
                  </div>
               </div>
-              <div className="relative flex flex-col items-end gap-1 w-full sm:w-auto shrink-0">
-                {/* Follow Button - On Top */}
-                {isLoggedIn && (
-                  <button
-                    onClick={handleFollowToggle}
-                    disabled={followLoading}
-                    aria-label={isFollowingHost ? `Unfollow ${event.hostName}` : `Follow ${event.hostName}`}
-                    className={`relative z-10 w-full sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all shadow-md whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-1.5 ${
-                      isFollowingHost
-                        ? 'bg-[#15383c] text-white hover:bg-[#1f4d52] border-2 border-[#15383c]'
-                        : 'bg-white border-2 border-gray-300 text-[#15383c] hover:border-[#e35e25] hover:text-[#e35e25] hover:bg-orange-50'
-                    } disabled:opacity-50`}
-                  >
-                    {isFollowingHost ? (
-                      <>
-                        <UserCheck size={14} className="sm:w-4 sm:h-4" /> {t('event.following')}
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus size={14} className="sm:w-4 sm:h-4" /> {t('event.follow')}
-                      </>
-                    )}
-                  </button>
-                )}
-                {/* Profile Button - Below, slightly offset */}
-                <button 
-                  onClick={() => onHostClick(event.hostName)} 
-                  aria-label={`View ${event.hostName}'s profile`} 
-                  className="relative z-0 w-full sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full text-xs sm:text-sm font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95"
-                  style={{ marginTop: isLoggedIn ? '-10px' : '0' }}
+              {/* Profile Button - Under host name */}
+              <button 
+                onClick={() => onHostClick(displayHostName)} 
+                aria-label={`View ${displayHostName}'s profile`} 
+                className="w-full sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full text-xs sm:text-sm font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 mb-3"
+              >
+                Profile
+              </button>
+              {/* Follow Button - Next to Profile */}
+              {isLoggedIn && (
+                <button
+                  onClick={handleFollowToggle}
+                  disabled={followLoading}
+                  aria-label={isFollowingHost ? `Unfollow ${displayHostName}` : `Follow ${displayHostName}`}
+                  className={`w-full sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all shadow-md whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-1.5 ${
+                    isFollowingHost
+                      ? 'bg-[#15383c] text-white hover:bg-[#1f4d52] border-2 border-[#15383c]'
+                      : 'bg-white border-2 border-gray-300 text-[#15383c] hover:border-[#e35e25] hover:text-[#e35e25] hover:bg-orange-50'
+                  } disabled:opacity-50`}
                 >
-                  Profile
+                  {isFollowingHost ? (
+                    <>
+                      <UserCheck size={14} className="sm:w-4 sm:h-4" /> {t('event.following')}
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus size={14} className="sm:w-4 sm:h-4" /> {t('event.follow')}
+                    </>
+                  )}
                 </button>
-              </div>
+              )}
             </div>
           </div>
 
