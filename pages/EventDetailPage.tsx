@@ -557,9 +557,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10 lg:py-12">
-        {/* Mobile Layout: Flex side-by-side */}
+        {/* Mobile Layout: Symmetric side-by-side */}
         <div className="flex lg:hidden gap-3 mb-6 items-start">
-          {/* Left: Host Info */}
+          {/* Left: Host Info with Profile Button */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2.5 p-3.5 bg-gray-50 rounded-2xl border border-gray-100">
               <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden ring-2 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick(displayHostName)}>
@@ -578,12 +578,20 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 <p className="text-[9px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">{t('event.hostedBy')}</p>
                 <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
               </div>
+              {/* Profile Button - Next to host info */}
+              <button 
+                onClick={() => onHostClick(displayHostName)} 
+                aria-label={`View ${displayHostName}'s profile`} 
+                className="px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 shrink-0"
+              >
+                Profile
+              </button>
             </div>
           </div>
           
-          {/* Right: Metrics in front, then overlapping CTAs */}
+          {/* Right: Metrics and Follow Button */}
           <div className="flex items-start gap-2 shrink-0">
-            {/* Attending & Capacity Metrics - In Front */}
+            {/* Attending & Capacity Metrics */}
             <div className="flex flex-col gap-2">
               <div className="bg-gray-50 p-2 rounded-xl border border-gray-100 text-center" style={{ minWidth: '60px' }}>
                 <h4 className="text-base font-heading font-bold text-popera-teal">
@@ -599,41 +607,29 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               </div>
             </div>
             
-            {/* Profile & Follow CTAs - Overlapping, Follow on top */}
-            <div className="relative flex flex-col items-end gap-1" style={{ width: '80px' }}>
-              {/* Follow Button - On Top */}
-              {isLoggedIn && (
-                <button
-                  onClick={handleFollowToggle}
-                  disabled={followLoading}
-                  aria-label={isFollowingHost ? `Unfollow ${event.hostName}` : `Follow ${event.hostName}`}
-                  className={`relative z-10 px-2.5 py-1.5 rounded-full text-[10px] font-bold transition-all shadow-md whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-1 ${
-                    isFollowingHost
-                      ? 'bg-[#15383c] text-white hover:bg-[#1f4d52] border border-[#15383c]'
-                      : 'bg-white border border-gray-300 text-[#15383c] hover:border-[#e35e25] hover:text-[#e35e25] hover:bg-orange-50'
-                  } disabled:opacity-50`}
-                >
-                  {isFollowingHost ? (
-                    <>
-                      <UserCheck size={12} /> {t('event.following')}
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus size={12} /> {t('event.follow')}
-                    </>
-                  )}
-                </button>
-              )}
-              {/* Profile Button - Below, slightly offset */}
-              <button 
-                onClick={() => onHostClick(event.hostName)} 
-                aria-label={`View ${event.hostName}'s profile`} 
-                className="relative z-0 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95"
-                style={{ marginTop: isLoggedIn ? '-8px' : '0' }}
+            {/* Follow Button */}
+            {isLoggedIn && (
+              <button
+                onClick={handleFollowToggle}
+                disabled={followLoading}
+                aria-label={isFollowingHost ? `Unfollow ${displayHostName}` : `Follow ${displayHostName}`}
+                className={`px-2.5 py-1.5 rounded-full text-[10px] font-bold transition-all shadow-md whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-1 shrink-0 ${
+                  isFollowingHost
+                    ? 'bg-[#15383c] text-white hover:bg-[#1f4d52] border border-[#15383c]'
+                    : 'bg-white border border-gray-300 text-[#15383c] hover:border-[#e35e25] hover:text-[#e35e25] hover:bg-orange-50'
+                } disabled:opacity-50`}
               >
-                Profile
+                {isFollowingHost ? (
+                  <>
+                    <UserCheck size={12} /> {t('event.following')}
+                  </>
+                ) : (
+                  <>
+                    <UserPlus size={12} /> {t('event.follow')}
+                  </>
+                )}
               </button>
-            </div>
+            )}
           </div>
         </div>
 
