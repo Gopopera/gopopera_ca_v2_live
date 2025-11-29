@@ -122,8 +122,8 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
   const shouldShowWhiteBg = isScrolled || isLightPage || mobileMenuOpen;
   
   const navClasses = `fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-    shouldShowWhiteBg ? 'bg-white/95 backdrop-blur-md shadow-sm py-4' : 'bg-transparent py-6'
-  } ${isDetailView ? 'hidden lg:block' : ''}`;
+    shouldShowWhiteBg ? 'bg-white/95 backdrop-blur-md shadow-sm py-4' : 'bg-white/95 backdrop-blur-md py-4'
+  }`;
 
   const getTextColor = (isMobile: boolean) => {
      if (isMobile) return 'text-popera-teal';
