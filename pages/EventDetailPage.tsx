@@ -945,7 +945,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       )}
 
 
-      <section className="bg-gradient-to-br from-[#15383c] to-[#1f4d52] py-6 sm:py-8 md:py-12 lg:py-16 relative overflow-hidden">
+      <section className="bg-[#15383c] py-6 sm:py-8 md:py-12 lg:py-16 relative overflow-hidden">
          <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-10">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6">
                <div className="text-center sm:text-left flex-1">
