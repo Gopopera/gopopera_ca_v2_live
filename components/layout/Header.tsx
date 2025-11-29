@@ -116,20 +116,14 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
   };
 
   const isDetailView = viewState === ViewState.DETAIL;
+  // With a permanently light header background, treat all pages as "light" for icon/text contrast
+  const isLightPage = true;
   
-  // Determine header background: white if scrolled, on light page, or menu is open
-  const isLightPage = viewState === ViewState.FEED || viewState === ViewState.PROFILE || viewState === ViewState.NOTIFICATIONS || viewState === ViewState.MY_POPS || viewState === ViewState.FAVORITES || viewState === ViewState.DELETE_ACCOUNT || viewState === ViewState.CREATE_EVENT;
-  const shouldShowWhiteBg = isScrolled || isLightPage || mobileMenuOpen;
-  
-  const navClasses = `fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-    shouldShowWhiteBg ? 'bg-white/95 backdrop-blur-md shadow-sm py-4' : 'bg-white/95 backdrop-blur-md py-4'
-  }`;
+  // Header background: always solid white with subtle blur and shadow for consistency across all pages
+  const navClasses = 'fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white/95 backdrop-blur-md shadow-sm py-4';
 
-  const getTextColor = (isMobile: boolean) => {
-     if (isMobile) return 'text-popera-teal';
-     if (isLightPage) return 'text-popera-teal'; 
-     return isScrolled ? 'text-popera-teal' : 'text-white';
-  };
+  // Header text/icons: always use brand teal for maximum visibility on all pages
+  const getTextColor = (_isMobile: boolean) => 'text-popera-teal';
 
   return (
     <header className={navClasses}>
@@ -156,11 +150,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
           {/* Language Toggle */}
           <button
             onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
-            className={`w-9 h-9 rounded-full border-2 font-bold text-xs transition-all hover:scale-105 flex items-center justify-center ${
-              isScrolled || isLightPage
-                ? 'border-[#15383c] text-[#15383c] hover:bg-[#15383c]/5'
-                : 'border-white/30 text-white hover:bg-white/10'
-            }`}
+            className="w-9 h-9 rounded-full border-2 border-[#15383c] text-[#15383c] font-bold text-xs transition-all hover:scale-105 flex items-center justify-center hover:bg-[#15383c]/5"
           >
             {language === 'en' ? 'FR' : 'EN'}
           </button>

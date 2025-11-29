@@ -556,81 +556,173 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10 lg:py-12 grid lg:grid-cols-3 gap-6 sm:gap-8 md:gap-10 lg:gap-12">
-        <div className="lg:col-span-2 space-y-6 sm:space-y-8 md:space-y-10">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-5 p-5 sm:p-6 md:p-7 lg:p-8 bg-gray-50 rounded-2xl sm:rounded-3xl border border-gray-100 hover:border-gray-200 transition-colors">
-            <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto min-w-0 flex-1">
-               <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-gray-200 overflow-hidden ring-2 sm:ring-4 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick(displayHostName)}>
-                 {hostProfilePicture ? (
-                   <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
-                     const target = e.target as HTMLImageElement;
-                     target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
-                   }} />
-                 ) : (
-                   <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-lg sm:text-xl md:text-2xl">
-                     {displayHostName?.[0]?.toUpperCase() || 'H'}
-                   </div>
-                 )}
-               </div>
-               <div className="min-w-0 flex-1">
-                 <p className="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">{t('event.hostedBy')}</p>
-                 <h3 className="text-base sm:text-lg md:text-xl font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
-                 <button 
-                   onClick={(e) => {
-                     e.stopPropagation();
-                     if (event.hostId) {
-                       setShowHostReviewsModal(true);
-                     }
-                   }} 
-                   className="flex items-center space-x-1 mt-1.5 bg-white hover:bg-orange-50 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-colors border border-gray-200 hover:border-orange-100 group/rating shrink-0 w-fit touch-manipulation active:scale-95"
-                 >
-                   <Star size={11} className="sm:w-3 sm:h-3 text-gray-300 group-hover/rating:text-popera-orange group-hover/rating:fill-popera-orange transition-colors" fill="currentColor" />
-                   <span className="text-[10px] sm:text-xs font-bold text-popera-teal">{formatRating(currentRating.rating)}</span>
-                   <span className="text-[9px] sm:text-[10px] text-gray-400 group-hover/rating:text-orange-400">({currentRating.reviewCount})</span>
-                 </button>
-               </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10 lg:py-12">
+        {/* Mobile Layout: Flex side-by-side */}
+        <div className="flex lg:hidden gap-3 mb-6 items-start">
+          {/* Left: Host Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2.5 p-3.5 bg-gray-50 rounded-2xl border border-gray-100">
+              <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden ring-2 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick(displayHostName)}>
+                {hostProfilePicture ? (
+                  <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
+                  }} />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-base">
+                    {displayHostName?.[0]?.toUpperCase() || 'H'}
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[9px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">{t('event.hostedBy')}</p>
+                <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
+              </div>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-2.5 w-full sm:w-auto shrink-0">
-              <button onClick={() => onHostClick(event.hostName)} aria-label={`View ${event.hostName}'s profile`} className="w-full sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full text-xs sm:text-sm font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95">{t('profile.myProfile')}</button>
+          </div>
+          
+          {/* Right: Metrics in front, then overlapping CTAs */}
+          <div className="flex items-start gap-2 shrink-0">
+            {/* Attending & Capacity Metrics - In Front */}
+            <div className="flex flex-col gap-2">
+              <div className="bg-gray-50 p-2 rounded-xl border border-gray-100 text-center" style={{ minWidth: '60px' }}>
+                <h4 className="text-base font-heading font-bold text-popera-teal">
+                  {reservationCount !== null ? reservationCount : (event.attendeesCount || 0)}
+                </h4>
+                <p className="text-[8px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">Attending</p>
+              </div>
+              <div className="bg-gray-50 p-2 rounded-xl border border-gray-100 text-center" style={{ minWidth: '60px' }}>
+                <h4 className="text-base font-heading font-bold text-popera-teal">
+                  {event.capacity || '∞'}
+                </h4>
+                <p className="text-[8px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">{t('event.capacity')}</p>
+              </div>
+            </div>
+            
+            {/* Profile & Follow CTAs - Overlapping, Follow on top */}
+            <div className="relative flex flex-col items-end gap-1" style={{ width: '80px' }}>
+              {/* Follow Button - On Top */}
               {isLoggedIn && (
                 <button
                   onClick={handleFollowToggle}
                   disabled={followLoading}
                   aria-label={isFollowingHost ? `Unfollow ${event.hostName}` : `Follow ${event.hostName}`}
-                  className={`w-full sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-1.5 ${
+                  className={`relative z-10 px-2.5 py-1.5 rounded-full text-[10px] font-bold transition-all shadow-md whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-1 ${
                     isFollowingHost
-                      ? 'bg-[#15383c] text-white hover:bg-[#1f4d52] border-2 border-[#15383c]'
-                      : 'bg-white border-2 border-gray-300 text-[#15383c] hover:border-[#e35e25] hover:text-[#e35e25] hover:bg-orange-50'
+                      ? 'bg-[#15383c] text-white hover:bg-[#1f4d52] border border-[#15383c]'
+                      : 'bg-white border border-gray-300 text-[#15383c] hover:border-[#e35e25] hover:text-[#e35e25] hover:bg-orange-50'
                   } disabled:opacity-50`}
                 >
                   {isFollowingHost ? (
                     <>
-                      <UserCheck size={14} className="sm:w-4 sm:h-4" /> {t('event.following')}
+                      <UserCheck size={12} /> {t('event.following')}
                     </>
                   ) : (
                     <>
-                      <UserPlus size={14} className="sm:w-4 sm:h-4" /> {t('event.follow')}
+                      <UserPlus size={12} /> {t('event.follow')}
                     </>
                   )}
                 </button>
               )}
+              {/* Profile Button - Below, slightly offset */}
+              <button 
+                onClick={() => onHostClick(event.hostName)} 
+                aria-label={`View ${event.hostName}'s profile`} 
+                className="relative z-0 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95"
+                style={{ marginTop: isLoggedIn ? '-8px' : '0' }}
+              >
+                Profile
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Right Sidebar - Attending and Capacity stacked vertically */}
-        <div className="lg:col-span-1 space-y-3 sm:space-y-4">
-          <div className="bg-gray-50 p-4 sm:p-5 rounded-2xl border border-gray-100 text-center">
-            <h4 className="text-2xl sm:text-3xl font-heading font-bold text-popera-teal">
-              {reservationCount !== null ? reservationCount : (event.attendeesCount || 0)}
-            </h4>
-            <p className="text-[10px] sm:text-xs uppercase tracking-wide text-gray-500 font-bold mt-1">Attending</p>
+        {/* Desktop Layout: Grid */}
+        <div className="hidden lg:grid lg:grid-cols-3 gap-6 sm:gap-8 md:gap-10 lg:gap-12">
+          <div className="lg:col-span-2 space-y-6 sm:space-y-8 md:space-y-10">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-5 p-5 sm:p-6 md:p-7 lg:p-8 bg-gray-50 rounded-2xl sm:rounded-3xl border border-gray-100 hover:border-gray-200 transition-colors">
+              <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto min-w-0 flex-1">
+                 <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-gray-200 overflow-hidden ring-2 sm:ring-4 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick(displayHostName)}>
+                   {hostProfilePicture ? (
+                     <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
+                       const target = e.target as HTMLImageElement;
+                       target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
+                     }} />
+                   ) : (
+                     <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-lg sm:text-xl md:text-2xl">
+                       {displayHostName?.[0]?.toUpperCase() || 'H'}
+                     </div>
+                   )}
+                 </div>
+                 <div className="min-w-0 flex-1">
+                   <p className="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">{t('event.hostedBy')}</p>
+                   <h3 className="text-base sm:text-lg md:text-xl font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
+                   <button 
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       if (event.hostId) {
+                         setShowHostReviewsModal(true);
+                       }
+                     }} 
+                     className="flex items-center space-x-1 mt-1.5 bg-white hover:bg-orange-50 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-colors border border-gray-200 hover:border-orange-100 group/rating shrink-0 w-fit touch-manipulation active:scale-95"
+                   >
+                     <Star size={11} className="sm:w-3 sm:h-3 text-gray-300 group-hover/rating:text-popera-orange group-hover/rating:fill-popera-orange transition-colors" fill="currentColor" />
+                     <span className="text-[10px] sm:text-xs font-bold text-popera-teal">{formatRating(currentRating.rating)}</span>
+                     <span className="text-[9px] sm:text-[10px] text-gray-400 group-hover/rating:text-orange-400">({currentRating.reviewCount})</span>
+                   </button>
+                 </div>
+              </div>
+              <div className="relative flex flex-col items-end gap-1 w-full sm:w-auto shrink-0">
+                {/* Follow Button - On Top */}
+                {isLoggedIn && (
+                  <button
+                    onClick={handleFollowToggle}
+                    disabled={followLoading}
+                    aria-label={isFollowingHost ? `Unfollow ${event.hostName}` : `Follow ${event.hostName}`}
+                    className={`relative z-10 w-full sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all shadow-md whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-1.5 ${
+                      isFollowingHost
+                        ? 'bg-[#15383c] text-white hover:bg-[#1f4d52] border-2 border-[#15383c]'
+                        : 'bg-white border-2 border-gray-300 text-[#15383c] hover:border-[#e35e25] hover:text-[#e35e25] hover:bg-orange-50'
+                    } disabled:opacity-50`}
+                  >
+                    {isFollowingHost ? (
+                      <>
+                        <UserCheck size={14} className="sm:w-4 sm:h-4" /> {t('event.following')}
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus size={14} className="sm:w-4 sm:h-4" /> {t('event.follow')}
+                      </>
+                    )}
+                  </button>
+                )}
+                {/* Profile Button - Below, slightly offset */}
+                <button 
+                  onClick={() => onHostClick(event.hostName)} 
+                  aria-label={`View ${event.hostName}'s profile`} 
+                  className="relative z-0 w-full sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full text-xs sm:text-sm font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95"
+                  style={{ marginTop: isLoggedIn ? '-10px' : '0' }}
+                >
+                  Profile
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="bg-gray-50 p-4 sm:p-5 rounded-2xl border border-gray-100 text-center">
-            <h4 className="text-2xl sm:text-3xl font-heading font-bold text-popera-teal">
-              {event.capacity || 'Unlimited'}
-            </h4>
-            <p className="text-[10px] sm:text-xs uppercase tracking-wide text-gray-500 font-bold mt-1">{t('event.capacity')}</p>
+
+          {/* Right Sidebar - Attending and Capacity stacked vertically */}
+          <div className="lg:col-span-1 space-y-3 sm:space-y-4">
+            <div className="bg-gray-50 p-4 sm:p-5 rounded-2xl border border-gray-100 text-center">
+              <h4 className="text-2xl sm:text-3xl font-heading font-bold text-popera-teal">
+                {reservationCount !== null ? reservationCount : (event.attendeesCount || 0)}
+              </h4>
+              <p className="text-[10px] sm:text-xs uppercase tracking-wide text-gray-500 font-bold mt-1">Attending</p>
+            </div>
+            <div className="bg-gray-50 p-4 sm:p-5 rounded-2xl border border-gray-100 text-center">
+              <h4 className="text-2xl sm:text-3xl font-heading font-bold text-popera-teal">
+                {event.capacity || 'Unlimited'}
+              </h4>
+              <p className="text-[10px] sm:text-xs uppercase tracking-wide text-gray-500 font-bold mt-1">{t('event.capacity')}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -857,11 +949,20 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       )}
 
 
-      <section className="bg-gradient-to-br from-[#15383c] to-[#1f4d52] py-10 sm:py-12 md:py-16 lg:py-20 relative overflow-hidden">
-         <div className="absolute top-0 left-0 w-64 h-64 bg-[#e35e25] rounded-full blur-[120px] opacity-20 -translate-x-1/3 -translate-y-1/3 pointer-events-none"></div>
-         <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-10 text-center">
-            <h2 className="text-2xl sm:text-3xl md:text-5xl font-heading font-bold text-white mb-5 sm:mb-6">Inspired? Host your own event.</h2>
-            <button className="px-8 sm:px-10 py-3.5 sm:py-4 bg-[#e35e25] text-white rounded-full font-bold text-base sm:text-lg hover:bg-[#cf4d1d] transition-all shadow-xl shadow-orange-900/30 hover:-translate-y-1 touch-manipulation active:scale-95" onClick={() => setViewState(ViewState.CREATE_EVENT)}>Start Hosting</button>
+      <section className="bg-gradient-to-br from-[#15383c] to-[#1f4d52] py-6 sm:py-8 md:py-12 lg:py-16 relative overflow-hidden">
+         <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-10">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6">
+               <div className="text-center sm:text-left flex-1">
+                  <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-heading font-bold text-white mb-2 sm:mb-3 leading-tight">Inspired? Host your own event.</h2>
+                  <p className="text-sm sm:text-base text-white/80 font-light hidden sm:block">Create memorable experiences and connect with your community</p>
+               </div>
+               <button 
+                  className="px-6 sm:px-8 md:px-10 py-2.5 sm:py-3 md:py-3.5 bg-[#e35e25] text-white rounded-full font-bold text-sm sm:text-base md:text-lg hover:bg-[#cf4d1d] transition-all shadow-xl shadow-orange-900/30 hover:-translate-y-0.5 touch-manipulation active:scale-95 whitespace-nowrap shrink-0" 
+                  onClick={() => setViewState(ViewState.CREATE_EVENT)}
+               >
+                  Start Hosting
+               </button>
+            </div>
          </div>
       </section>
 
