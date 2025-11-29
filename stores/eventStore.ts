@@ -5,6 +5,7 @@ import { createEvent as createFirestoreEvent, mapFirestoreEventToEvent } from '.
 import { getDbSafe } from '../src/lib/firebase';
 import { collection, onSnapshot, query, type Unsubscribe } from 'firebase/firestore';
 import type { FirestoreEvent } from '../firebase/types';
+import { isEventEnded } from '../utils/eventDateHelpers';
 
 interface EventStore {
   events: Event[];
@@ -112,6 +113,7 @@ export const useEventStore = create<EventStore>((set, get) => ({
                 return mapFirestoreEventToEvent(firestoreEvent);
               })
               .filter((event): event is Event => event !== null) // Remove nulls
+              .filter((event) => !isEventEnded(event)) // Filter out expired/past events
               // Sort by date client-side (handle missing dates)
               .sort((a, b) => {
                 const dateA = a.date || '';
