@@ -23,12 +23,11 @@
       // Set up error handlers IMMEDIATELY, before anything else loads
       // This must run before React or any other scripts
       (function() {
-        // Check if Google Maps should be disabled (from previous session)
+        // TEMPORARILY DISABLE GOOGLE MAPS - Always disable to prevent errors
+        // This prevents Google Maps from loading at all
+        window.__GOOGLE_MAPS_DISABLED__ = true;
         try {
-          if (sessionStorage.getItem('googleMapsDisabled') === 'true') {
-            // Google Maps is disabled, don't let it load
-            window.__GOOGLE_MAPS_DISABLED__ = true;
-          }
+          sessionStorage.setItem('googleMapsDisabled', 'true');
         } catch (err) {
           // Ignore sessionStorage errors
         }

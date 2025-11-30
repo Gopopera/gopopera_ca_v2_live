@@ -40,23 +40,19 @@ export const MockMap: React.FC<MockMapProps> = ({
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const hasCoordinates = lat !== undefined && lng !== undefined;
   
-  // ALWAYS check session storage and global flag FIRST - if Google Maps was disabled, never try to load it
-  // This prevents any Google Maps code from running if it's been disabled
+  // TEMPORARILY DISABLE GOOGLE MAPS - Always use mock map until API key issues are resolved
+  // This prevents all Google Maps errors from appearing
   const [googleMapsDisabled, setGoogleMapsDisabled] = React.useState(() => {
+    // Always disable Google Maps for now to prevent errors
     if (typeof window !== 'undefined') {
-      // Check global flag set by index.html
-      if ((window as any).__GOOGLE_MAPS_DISABLED__ === true) {
-        return true;
-      }
-      // Check sessionStorage
-      const disabled = sessionStorage.getItem('googleMapsDisabled') === 'true';
-      if (disabled) {
-        // Set global flag for consistency
-        (window as any).__GOOGLE_MAPS_DISABLED__ = true;
-        return true;
+      (window as any).__GOOGLE_MAPS_DISABLED__ = true;
+      try {
+        sessionStorage.setItem('googleMapsDisabled', 'true');
+      } catch (e) {
+        // Ignore sessionStorage errors
       }
     }
-    return false;
+    return true; // Always return true to disable Google Maps
   });
   
   // If Google Maps is disabled, immediately set error state and skip all Google Maps code
@@ -103,68 +99,20 @@ export const MockMap: React.FC<MockMapProps> = ({
     }
   }, []);
 
-  // Load Google Maps components if API key is available AND Google Maps is not disabled
+  // DISABLED: Google Maps is temporarily disabled to prevent errors
+  // Always use mock map instead
   React.useEffect(() => {
-    // CRITICAL: Check ALL sources to see if Google Maps should be disabled
-    // This must happen BEFORE any attempt to load Google Maps
-    if (typeof window !== 'undefined') {
-      // Check global flag (set by index.html before React loads)
-      if ((window as any).__GOOGLE_MAPS_DISABLED__ === true) {
-        setGoogleMapsDisabled(true);
-        setHasError(true);
-        setIsLoading(false);
-        return;
-      }
-      // Check sessionStorage
-      const isDisabled = sessionStorage.getItem('googleMapsDisabled') === 'true';
-      if (isDisabled) {
-        (window as any).__GOOGLE_MAPS_DISABLED__ = true;
-        setGoogleMapsDisabled(true);
-        setHasError(true);
-        setIsLoading(false);
-        return;
-      }
-    }
-    
-    // If already disabled in state, don't load
-    if (googleMapsDisabled) {
-      setIsLoading(false);
-      return;
-    }
-    
-    // Only try to load Google Maps if we have an API key AND it's not disabled
-    if (apiKey && !googleMapsDisabled && !(typeof window !== 'undefined' && (window as any).__GOOGLE_MAPS_DISABLED__)) {
-      // Dynamically import Google Maps components
-      Promise.all([
-        import('@react-google-maps/api').then(m => m.GoogleMap),
-        import('@react-google-maps/api').then(m => m.LoadScript),
-        import('@react-google-maps/api').then(m => m.Marker),
-      ]).then(([GoogleMap, LoadScript, Marker]) => {
-        setGoogleMapComponent(() => GoogleMap);
-        setLoadScriptComponent(() => LoadScript);
-        setMarkerComponent(() => Marker);
-        setIsLoading(false);
-      }).catch((error) => {
-        console.warn('[MOCK_MAP] Error loading Google Maps components, using fallback:', error);
-        setHasError(true);
-        setGoogleMapsDisabled(true);
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem('googleMapsDisabled', 'true');
-        }
-        setIsLoading(false);
-      });
-    } else {
-      // No API key or disabled, don't try to load Google Maps
-      setIsLoading(false);
-    }
-  }, [apiKey, googleMapsDisabled]);
+    // Never load Google Maps - always use mock map
+    setIsLoading(false);
+    setHasError(false); // Not an error, just disabled
+  }, []);
 
   // Catch unhandled promise rejections from Google Maps - MUST run early
+  // Since Google Maps is disabled, this handler just suppresses any errors that might slip through
   React.useEffect(() => {
-    // Check if already disabled
+    // Google Maps is always disabled now, so just suppress any errors
     if (googleMapsDisabled) {
-      setHasError(true);
-      return;
+      return; // Early return - no need to set error state since we're not using Google Maps
     }
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
@@ -343,7 +291,22 @@ export const MockMap: React.FC<MockMapProps> = ({
     );
   }
 
+  // FINAL SAFETY CHECK: Never render Google Maps if disabled
+  // This should never execute since we return early above, but adding as extra safety
+  if (googleMapsDisabled || !apiKey || hasError) {
+    return (
+      <div className={`relative overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 ${className}`}>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-2xl border-4 border-[#e35e25]">
+            <MapPin size={24} className="text-[#e35e25]" fill="currentColor" stroke="currentColor" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Wrap in error boundary - if Google Maps throws any error, catch it and use fallback
+  // NOTE: This code should never execute since Google Maps is disabled
   try {
     return (
       <div className={`relative ${className}`}>
