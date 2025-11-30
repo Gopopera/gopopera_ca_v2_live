@@ -39,6 +39,14 @@ export const MockMap: React.FC<MockMapProps> = ({
 
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const hasCoordinates = lat !== undefined && lng !== undefined;
+  
+  // Check session storage to see if Google Maps was previously disabled due to errors
+  const [googleMapsDisabled, setGoogleMapsDisabled] = React.useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('googleMapsDisabled') === 'true';
+    }
+    return false;
+  });
 
   const center = hasCoordinates 
     ? { lat: lat!, lng: lng! }
@@ -99,25 +107,60 @@ export const MockMap: React.FC<MockMapProps> = ({
   // Catch unhandled promise rejections from Google Maps
   React.useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      // Check if error is from Google Maps
+      // Check if error is from Google Maps - check multiple sources
       const errorMessage = event.reason?.message || String(event.reason || '');
-      if (errorMessage.includes('GD') || errorMessage.includes('map.js') || errorMessage.includes('google.maps')) {
-        console.warn('[MOCK_MAP] Google Maps error detected, switching to fallback:', event.reason);
-        event.preventDefault(); // Prevent error from showing in console
+      const errorStack = event.reason?.stack || '';
+      const errorString = String(event.reason || '');
+      
+      // Check for Google Maps errors in various ways
+      const isGoogleMapsError = 
+        errorMessage.includes('GD') || 
+        errorMessage.includes('map.js') || 
+        errorMessage.includes('google.maps') ||
+        errorMessage.includes('maps.googleapis.com') ||
+        errorStack.includes('map.js') ||
+        errorStack.includes('maps.googleapis.com') ||
+        errorStack.includes('common.js') ||
+        errorString.includes('maps.googleapis.com') ||
+        (event.reason && typeof event.reason === 'object' && 'name' in event.reason && String(event.reason.name).includes('TypeError'));
+      
+      if (isGoogleMapsError) {
+        // Silently suppress Google Maps errors and disable Google Maps for this session
+        event.preventDefault();
+        event.stopPropagation();
         setHasError(true);
+        setGoogleMapsDisabled(true);
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('googleMapsDisabled', 'true');
+        }
         return false;
       }
     };
 
-    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection, true);
     return () => {
-      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection, true);
     };
   }, []);
 
+  // Add timeout to detect if Google Maps fails to load
+  React.useEffect(() => {
+    if (apiKey && !hasError) {
+      const timeout = setTimeout(() => {
+        // If Google Maps hasn't loaded after 10 seconds, assume it failed
+        if (isLoading && GoogleMapComponent) {
+          console.warn('[MOCK_MAP] Google Maps loading timeout, using fallback');
+          setHasError(true);
+        }
+      }, 10000);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [apiKey, hasError, isLoading, GoogleMapComponent]);
+
   // NOW safe to have early returns - all hooks have been called
-  // If no API key or error occurred, show fallback mock map
-  if (!apiKey || hasError) {
+  // If no API key, error occurred, or Google Maps was disabled, show fallback mock map
+  if (!apiKey || hasError || googleMapsDisabled) {
     return (
       <div className={`relative overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 ${className}`}>
         {/* Grid Pattern Background */}
@@ -216,42 +259,65 @@ export const MockMap: React.FC<MockMapProps> = ({
   }
 
   // Use real Google Maps when API key is available and no errors
-  return (
-    <div className={`relative ${className}`}>
-      <LoadScriptComponent 
-        googleMapsApiKey={apiKey!}
-        onLoad={onLoadScript}
-        loadingElement={<div className="text-gray-400 text-sm">Loading map...</div>}
-      >
-        <GoogleMapComponent
-          mapContainerStyle={mapContainerStyle}
-          center={center}
-          zoom={hasCoordinates ? 15 : 10}
-          onLoad={onLoad}
-          onUnmount={onUnmount}
-          options={{
-            disableDefaultUI: false,
-            zoomControl: true,
-            streetViewControl: false,
-            mapTypeControl: false,
-            fullscreenControl: true,
-            styles: [
-              {
-                featureType: 'poi',
-                elementType: 'labels',
-                stylers: [{ visibility: 'off' }]
-              }
-            ]
-          }}
+  // Wrap in error boundary - if Google Maps throws any error, catch it and use fallback
+  try {
+    return (
+      <div className={`relative ${className}`}>
+        <LoadScriptComponent 
+          googleMapsApiKey={apiKey!}
+          onLoad={onLoadScript}
+          loadingElement={<div className="text-gray-400 text-sm">Loading map...</div>}
         >
-          {hasCoordinates && MarkerComponent && markerIcon && (
-            <MarkerComponent
-              position={{ lat: lat!, lng: lng! }}
-              icon={markerIcon}
-            />
-          )}
-        </GoogleMapComponent>
-      </LoadScriptComponent>
-    </div>
-  );
+          <GoogleMapComponent
+            mapContainerStyle={mapContainerStyle}
+            center={center}
+            zoom={hasCoordinates ? 15 : 10}
+            onLoad={(map: any) => {
+              try {
+                onLoad(map);
+              } catch (error) {
+                console.warn('[MOCK_MAP] Error in onLoad, using fallback:', error);
+                setHasError(true);
+              }
+            }}
+            onUnmount={onUnmount}
+            options={{
+              disableDefaultUI: false,
+              zoomControl: true,
+              streetViewControl: false,
+              mapTypeControl: false,
+              fullscreenControl: true,
+              styles: [
+                {
+                  featureType: 'poi',
+                  elementType: 'labels',
+                  stylers: [{ visibility: 'off' }]
+                }
+              ]
+            }}
+          >
+            {hasCoordinates && MarkerComponent && markerIcon && (
+              <MarkerComponent
+                position={{ lat: lat!, lng: lng! }}
+                icon={markerIcon}
+              />
+            )}
+          </GoogleMapComponent>
+        </LoadScriptComponent>
+      </div>
+    );
+  } catch (error) {
+    console.warn('[MOCK_MAP] Error rendering Google Maps, using fallback:', error);
+    setHasError(true);
+    // Return fallback immediately
+    return (
+      <div className={`relative overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 ${className}`}>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-2xl border-4 border-[#e35e25]">
+            <MapPin size={24} className="text-[#e35e25]" fill="currentColor" stroke="currentColor" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 };

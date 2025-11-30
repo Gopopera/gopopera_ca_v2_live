@@ -30,10 +30,41 @@
         // Suppress Google Maps errors - they're handled by MockMap component
         const errorMessage = e?.reason?.message || String(e?.reason || '');
         const errorStack = e?.reason?.stack || '';
-        if (errorMessage.includes('GD') || errorMessage.includes('map.js') || errorMessage.includes('google.maps') || errorStack.includes('map.js') || errorStack.includes('common.js')) {
+        const errorString = String(e?.reason || '');
+        
+        // Get the error source from the event if available
+        const errorSource = e.target || (e as any).src || '';
+        const errorSourceString = String(errorSource);
+        
+        // Check for Google Maps errors from maps.googleapis.com domain
+        // Also check the error source URL and any string representation
+        const isGoogleMapsError = 
+          errorMessage.includes('GD') || 
+          errorMessage.includes('map.js') || 
+          errorMessage.includes('google.maps') ||
+          errorMessage.includes('maps.googleapis.com') ||
+          errorStack.includes('map.js') ||
+          errorStack.includes('maps.googleapis.com') ||
+          errorStack.includes('common.js') ||
+          errorStack.includes('maps-api-v3') ||
+          errorString.includes('maps.googleapis.com') ||
+          errorSourceString.includes('maps.googleapis.com') ||
+          (typeof e.reason === 'string' && e.reason.includes && e.reason.includes('maps.googleapis.com')) ||
+          // Catch TypeError with 'GD' property access
+          (e?.reason && typeof e.reason === 'object' && 'name' in e.reason && e.reason.name === 'TypeError' && (errorMessage.includes('GD') || errorStack.includes('map.js')));
+        
+        if (isGoogleMapsError) {
           // Silently suppress Google Maps errors - they're handled gracefully by the component
+          // Mark Google Maps as disabled in session storage
+          try {
+            sessionStorage.setItem('googleMapsDisabled', 'true');
+          } catch (err) {
+            // Ignore sessionStorage errors
+          }
           e.preventDefault();
-          return;
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          return false;
         }
         // For other errors, show them (but only in development)
         if (import.meta.env.DEV) {
