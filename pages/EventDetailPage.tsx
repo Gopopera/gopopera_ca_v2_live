@@ -574,31 +574,44 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           {/* Left: Host Info with Metrics */}
           <div className="flex-1 min-w-0">
             <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100">
-              <div className="flex items-center gap-2.5 mb-2.5">
-                <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden ring-2 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick(displayHostName)}>
-                  {hostProfilePicture ? (
-                    <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
-                    }} />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-base">
-                      {displayHostName?.[0]?.toUpperCase() || 'H'}
-                    </div>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[9px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">{t('event.hostedBy')}</p>
-                  <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
-                </div>
-              </div>
-              {/* Profile Button - Above capacity, same size as capacity button */}
+              {/* Host Info and Profile Button Row */}
               <div className="flex gap-2 mb-2">
-                <div className="flex-1"></div>
+                {/* Host Info - Left side */}
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden ring-2 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick(displayHostName)}>
+                    {hostProfilePicture ? (
+                      <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
+                      }} />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-base">
+                        {displayHostName?.[0]?.toUpperCase() || 'H'}
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[9px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">{t('event.hostedBy')}</p>
+                    <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
+                  </div>
+                </div>
+                {/* Profile Button - Right side, same size as capacity */}
                 <div 
-                  className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all"
-                  onClick={() => {
-                    console.log('[PROFILE_BUTTON] Clicked, calling onHostClick with:', displayHostName);
+                  className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all relative z-50"
+                  style={{ pointerEvents: 'auto' }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('[PROFILE_BUTTON_MOBILE] Click detected!', displayHostName, 'onHostClick:', !!onHostClick);
+                    if (onHostClick && displayHostName) {
+                      console.log('[PROFILE_BUTTON_MOBILE] Calling onHostClick');
+                      onHostClick(displayHostName);
+                    }
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('[PROFILE_BUTTON_MOBILE] MouseDown');
                     if (onHostClick && displayHostName) {
                       onHostClick(displayHostName);
                     }
@@ -608,7 +621,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   <p className="text-[8px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">View Host</p>
                 </div>
               </div>
-              {/* Attending & Capacity Metrics - Inside component */}
+              {/* Attending & Capacity Metrics */}
               <div className="flex gap-2">
                 <div className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center">
                   <h4 className="text-base font-heading font-bold text-popera-teal">
@@ -656,44 +669,57 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         {/* Desktop Layout: Clean and modern */}
         <div className="hidden lg:block">
           <div className="p-5 sm:p-6 md:p-7 lg:p-8 bg-gray-50 rounded-2xl sm:rounded-3xl border border-gray-100 hover:border-gray-200 transition-colors">
-            <div className="flex items-center gap-3 sm:gap-4 mb-3">
-               <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-gray-200 overflow-hidden ring-2 sm:ring-4 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick(displayHostName)}>
-                 {hostProfilePicture ? (
-                   <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
-                     const target = e.target as HTMLImageElement;
-                     target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
-                   }} />
-                 ) : (
-                   <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-lg sm:text-xl md:text-2xl">
-                     {displayHostName?.[0]?.toUpperCase() || 'H'}
-                   </div>
-                 )}
-               </div>
-               <div className="min-w-0 flex-1">
-                 <p className="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">{t('event.hostedBy')}</p>
-                 <h3 className="text-base sm:text-lg md:text-xl font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
-                 <button 
-                   onClick={(e) => {
-                     e.stopPropagation();
-                     if (event.hostId) {
-                       setShowHostReviewsModal(true);
-                     }
-                   }} 
-                   className="flex items-center space-x-1 mt-1.5 bg-white hover:bg-orange-50 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-colors border border-gray-200 hover:border-orange-100 group/rating shrink-0 w-fit touch-manipulation active:scale-95"
-                 >
-                   <Star size={11} className="sm:w-3 sm:h-3 text-gray-300 group-hover/rating:text-popera-orange group-hover/rating:fill-popera-orange transition-colors" fill="currentColor" />
-                   <span className="text-[10px] sm:text-xs font-bold text-popera-teal">{formatRating(currentRating.rating)}</span>
-                   <span className="text-[9px] sm:text-[10px] text-gray-400 group-hover/rating:text-orange-400">({currentRating.reviewCount})</span>
-                 </button>
-               </div>
-            </div>
-            {/* Profile Button - Above capacity, same size as capacity button */}
+            {/* Host Info and Profile Button Row */}
             <div className="flex gap-2 sm:gap-3 mb-3">
-              <div className="flex-1"></div>
+              {/* Host Info - Left side */}
+              <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-gray-200 overflow-hidden ring-2 sm:ring-4 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick(displayHostName)}>
+                  {hostProfilePicture ? (
+                    <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
+                    }} />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-lg sm:text-xl md:text-2xl">
+                      {displayHostName?.[0]?.toUpperCase() || 'H'}
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">{t('event.hostedBy')}</p>
+                  <h3 className="text-base sm:text-lg md:text-xl font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (event.hostId) {
+                        setShowHostReviewsModal(true);
+                      }
+                    }} 
+                    className="flex items-center space-x-1 mt-1.5 bg-white hover:bg-orange-50 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-colors border border-gray-200 hover:border-orange-100 group/rating shrink-0 w-fit touch-manipulation active:scale-95"
+                  >
+                    <Star size={11} className="sm:w-3 sm:h-3 text-gray-300 group-hover/rating:text-popera-orange group-hover/rating:fill-popera-orange transition-colors" fill="currentColor" />
+                    <span className="text-[10px] sm:text-xs font-bold text-popera-teal">{formatRating(currentRating.rating)}</span>
+                    <span className="text-[9px] sm:text-[10px] text-gray-400 group-hover/rating:text-orange-400">({currentRating.reviewCount})</span>
+                  </button>
+                </div>
+              </div>
+              {/* Profile Button - Right side, same size as capacity */}
               <div 
-                className="flex-1 bg-white p-2 sm:p-3 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all"
-                onClick={() => {
-                  console.log('[PROFILE_BUTTON_DESKTOP] Clicked, calling onHostClick with:', displayHostName);
+                className="flex-1 bg-white p-2 sm:p-3 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all relative z-50"
+                style={{ pointerEvents: 'auto' }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('[PROFILE_BUTTON_DESKTOP] Click detected!', displayHostName, 'onHostClick:', !!onHostClick);
+                  if (onHostClick && displayHostName) {
+                    console.log('[PROFILE_BUTTON_DESKTOP] Calling onHostClick');
+                    onHostClick(displayHostName);
+                  }
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('[PROFILE_BUTTON_DESKTOP] MouseDown');
                   if (onHostClick && displayHostName) {
                     onHostClick(displayHostName);
                   }
