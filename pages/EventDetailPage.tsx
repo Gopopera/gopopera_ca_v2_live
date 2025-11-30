@@ -574,9 +574,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           {/* Left: Host Info with Metrics */}
           <div className="flex-1 min-w-0">
             <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100">
-              {/* Host Info - Centered above Attending */}
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden ring-2 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick(displayHostName)}>
+              {/* Host Info - Aligned with Attending component */}
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden ring-2 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick?.(displayHostName)}>
                   {hostProfilePicture ? (
                     <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
                       const target = e.target as HTMLImageElement;
@@ -590,11 +590,11 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 </div>
                 <div className="min-w-0">
                   <p className="text-[9px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">{t('event.hostedBy')}</p>
-                  <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
+                  <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick?.(displayHostName)}>{displayHostName}</h3>
                 </div>
               </div>
-              {/* Attending & Capacity Metrics with Profile Button */}
-              <div className="flex gap-2">
+              {/* Attending & Capacity Metrics */}
+              <div className="flex gap-2 mb-2">
                 <div className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center">
                   <h4 className="text-base font-heading font-bold text-popera-teal">
                     {reservationCount !== null ? reservationCount : (event.attendeesCount || 0)}
@@ -609,18 +609,16 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 </div>
               </div>
               {/* Profile Button - Aligned with Capacity, same size */}
-              <div className="flex gap-2 mt-2">
+              <div className="flex gap-2">
                 <div className="flex-1"></div>
-                <div 
-                  className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all"
-                  onClick={() => {
-                    console.log('[PROFILE_BUTTON] Direct onClick call', displayHostName);
-                    onHostClick(displayHostName);
-                  }}
+                <button
+                  type="button"
+                  onClick={() => onHostClick?.(displayHostName)}
+                  className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all touch-manipulation active:scale-95"
                 >
                   <h4 className="text-base font-heading font-bold text-popera-teal">Profile</h4>
                   <p className="text-[8px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">View Host</p>
-                </div>
+                </button>
               </div>
             </div>
           </div>
@@ -655,9 +653,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         {/* Desktop Layout: Clean and modern */}
         <div className="hidden lg:block">
           <div className="p-5 sm:p-6 md:p-7 lg:p-8 bg-gray-50 rounded-2xl sm:rounded-3xl border border-gray-100 hover:border-gray-200 transition-colors">
-            {/* Host Info - Centered above Attending */}
-            <div className="flex items-center justify-center gap-3 sm:gap-4 mb-3">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-gray-200 overflow-hidden ring-2 sm:ring-4 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick(displayHostName)}>
+            {/* Host Info - Aligned with Attending component */}
+            <div className="flex items-center gap-3 sm:gap-4 mb-3">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-gray-200 overflow-hidden ring-2 sm:ring-4 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick?.(displayHostName)}>
                 {hostProfilePicture ? (
                   <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
                     const target = e.target as HTMLImageElement;
@@ -671,7 +669,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">{t('event.hostedBy')}</p>
-                <h3 className="text-base sm:text-lg md:text-xl font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
+                <h3 className="text-base sm:text-lg md:text-xl font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick?.(displayHostName)}>{displayHostName}</h3>
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
@@ -690,16 +688,14 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             {/* Profile Button - Aligned with Capacity, same size */}
             <div className="flex gap-2 sm:gap-3 mb-3">
               <div className="flex-1"></div>
-              <div 
-                className="flex-1 bg-white p-2 sm:p-3 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all"
-                onClick={() => {
-                  console.log('[PROFILE_BUTTON_DESKTOP] Direct onClick call', displayHostName);
-                  onHostClick(displayHostName);
-                }}
+              <button
+                type="button"
+                onClick={() => onHostClick?.(displayHostName)}
+                className="flex-1 bg-white p-2 sm:p-3 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all touch-manipulation active:scale-95"
               >
                 <h4 className="text-base sm:text-lg font-heading font-bold text-popera-teal">Profile</h4>
                 <p className="text-[8px] sm:text-[10px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">View Host</p>
-              </div>
+              </button>
             </div>
             {/* Follow Button - Next to Profile */}
             {isLoggedIn && (
