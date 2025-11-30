@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Event, ViewState } from '../types';
 import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info, Star, Sparkles, X, UserPlus, UserCheck, ChevronRight, CheckCircle2, Edit } from 'lucide-react';
 import { followHost, unfollowHost, isFollowing } from '../firebase/follow';
@@ -588,19 +588,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
                 </div>
               </div>
-              {/* Profile Button - Aligned with left edge of profile image, half width - Using div like host image */}
+              {/* Profile Button - Aligned with left edge of profile image, half width - Using native event listener */}
               <div
-                onClick={handleProfileClick}
+                ref={profileButtonRefMobile}
                 role="button"
                 tabIndex={0}
                 aria-label={`View ${displayHostName || 'host'}'s profile`}
                 className="w-1/2 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95 mb-2.5 relative z-50 text-center cursor-pointer"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleProfileClick();
-                  }
-                }}
               >
                 Profile
               </div>
