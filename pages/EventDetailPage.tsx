@@ -592,17 +592,20 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
                 </div>
               </div>
-              {/* Profile Button - Make entire container clickable like host name */}
-              <div 
-                className="w-1/2 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95 mb-2.5 relative z-[100] text-center cursor-pointer"
-                style={{ pointerEvents: 'auto' }}
+              {/* Profile Button - Use anchor tag as fallback */}
+              <a
+                href="#"
+                className="w-1/2 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95 mb-2.5 relative z-[100] text-center cursor-pointer block no-underline"
+                style={{ pointerEvents: 'auto', textDecoration: 'none' }}
                 onClick={(e) => {
+                  e.preventDefault();
                   e.stopPropagation();
-                  console.log('[PROFILE_MOBILE] Click detected, displayHostName:', displayHostName, 'onHostClick exists:', !!onHostClick);
+                  console.log('[PROFILE_MOBILE] Anchor click detected, displayHostName:', displayHostName, 'onHostClick exists:', !!onHostClick);
                   if (onHostClick && displayHostName) {
                     console.log('[PROFILE_MOBILE] Calling onHostClick');
                     onHostClick(displayHostName);
                   }
+                  return false;
                 }}
                 onMouseDown={(e) => {
                   console.log('[PROFILE_MOBILE] MouseDown detected');
@@ -614,7 +617,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 }}
               >
                 Profile
-              </div>
+              </a>
               {/* Attending & Capacity Metrics - Inside component */}
               <div className="flex gap-2">
                 <div className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center">
@@ -694,17 +697,20 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                  </button>
                </div>
             </div>
-            {/* Profile Button - Make entire container clickable like host name */}
-            <div
-              className="w-1/2 sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full text-xs sm:text-sm font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 mb-3 relative z-[100] text-center cursor-pointer"
-              style={{ pointerEvents: 'auto' }}
+            {/* Profile Button - Use anchor tag as fallback */}
+            <a
+              href="#"
+              className="w-1/2 sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full text-xs sm:text-sm font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 mb-3 relative z-[100] text-center cursor-pointer block no-underline"
+              style={{ pointerEvents: 'auto', textDecoration: 'none' }}
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
-                console.log('[PROFILE_DESKTOP] Click detected, displayHostName:', displayHostName, 'onHostClick exists:', !!onHostClick);
+                console.log('[PROFILE_DESKTOP] Anchor click detected, displayHostName:', displayHostName, 'onHostClick exists:', !!onHostClick);
                 if (onHostClick && displayHostName) {
                   console.log('[PROFILE_DESKTOP] Calling onHostClick');
                   onHostClick(displayHostName);
                 }
+                return false;
               }}
               onMouseDown={(e) => {
                 console.log('[PROFILE_DESKTOP] MouseDown detected');
@@ -716,7 +722,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               }}
             >
               Profile
-            </div>
+            </a>
             {/* Follow Button - Next to Profile */}
             {isLoggedIn && (
               <button
