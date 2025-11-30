@@ -82,6 +82,7 @@ export default defineConfig(({ mode }) => {
       build: {
         sourcemap: false, // Disable source maps in production for smaller bundles
         rollupOptions: {
+          external: ['@react-google-maps/api'], // Exclude Google Maps from bundle
           output: {
             manualChunks: {
               'react-vendor': ['react', 'react-dom'],
