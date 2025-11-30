@@ -592,28 +592,16 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
                 </div>
               </div>
-              {/* Profile Button - Aligned with left edge of profile image, half width - Direct inline handler */}
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  console.log('[PROFILE_BUTTON_MOBILE] Direct onClick fired!', displayHostName, onHostClick);
-                  if (onHostClick && displayHostName) {
-                    console.log('[PROFILE_BUTTON_MOBILE] Calling onHostClick');
-                    onHostClick(displayHostName);
-                  } else {
-                    console.log('[PROFILE_BUTTON_MOBILE] Missing onHostClick or displayHostName', { onHostClick: !!onHostClick, displayHostName });
-                  }
+              {/* Profile Button - EXACT same pattern as host image/name that works */}
+              <div 
+                className="w-1/2 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95 mb-2.5 relative z-50 text-center cursor-pointer"
+                onClick={() => {
+                  console.log('[PROFILE_BUTTON_MOBILE] Clicked via div onClick, calling onHostClick');
+                  onHostClick(displayHostName);
                 }}
-                onMouseDown={(e) => {
-                  console.log('[PROFILE_BUTTON_MOBILE] onMouseDown fired!');
-                }}
-                aria-label={`View ${displayHostName || 'host'}'s profile`}
-                className="w-1/2 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95 mb-2.5 relative z-50 text-center"
-                type="button"
               >
                 Profile
-              </button>
+              </div>
               {/* Attending & Capacity Metrics - Inside component */}
               <div className="flex gap-2">
                 <div className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center">
