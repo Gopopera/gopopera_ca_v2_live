@@ -589,16 +589,16 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-[9px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">{t('event.hostedBy')}</p>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
-                    <span 
-                      className="text-[9px] font-bold text-popera-orange cursor-pointer hover:underline shrink-0"
-                      onClick={() => onHostClick(displayHostName)}
-                    >
-                      Profile →
-                    </span>
-                  </div>
+                  <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
                 </div>
+              </div>
+              {/* Profile Button - Above metrics, same size */}
+              <div 
+                className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all mb-2"
+                onClick={() => onHostClick(displayHostName)}
+              >
+                <h4 className="text-base font-heading font-bold text-popera-teal">Profile</h4>
+                <p className="text-[8px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">View Host</p>
               </div>
               {/* Attending & Capacity Metrics - Inside component */}
               <div className="flex gap-2">
@@ -663,15 +663,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                </div>
                <div className="min-w-0 flex-1">
                  <p className="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">{t('event.hostedBy')}</p>
-                 <div className="flex items-center gap-2 flex-wrap">
-                   <h3 className="text-base sm:text-lg md:text-xl font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
-                   <span 
-                     className="text-xs sm:text-sm font-bold text-popera-orange cursor-pointer hover:underline shrink-0"
-                     onClick={() => onHostClick(displayHostName)}
-                   >
-                     Profile →
-                   </span>
-                 </div>
+                 <h3 className="text-base sm:text-lg md:text-xl font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
                  <button 
                    onClick={(e) => {
                      e.stopPropagation();
@@ -686,6 +678,14 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                    <span className="text-[9px] sm:text-[10px] text-gray-400 group-hover/rating:text-orange-400">({currentRating.reviewCount})</span>
                  </button>
                </div>
+            </div>
+            {/* Profile Button - Above metrics, same size */}
+            <div 
+              className="flex-1 bg-white p-2 sm:p-3 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all mb-3"
+              onClick={() => onHostClick(displayHostName)}
+            >
+              <h4 className="text-base sm:text-lg font-heading font-bold text-popera-teal">Profile</h4>
+              <p className="text-[8px] sm:text-[10px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">View Host</p>
             </div>
             {/* Follow Button - Next to Profile */}
             {isLoggedIn && (
