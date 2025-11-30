@@ -585,18 +585,23 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
+                  console.log('[EVENT_DETAIL] Profile button clicked, displayHostName:', displayHostName);
+                  console.log('[EVENT_DETAIL] onHostClick function:', typeof onHostClick);
                   try {
                     if (displayHostName && displayHostName.trim() !== '') {
+                      console.log('[EVENT_DETAIL] Calling onHostClick with:', displayHostName);
                       onHostClick(displayHostName);
+                      console.log('[EVENT_DETAIL] onHostClick called successfully');
                     } else {
-                      console.warn('[EVENT_DETAIL] Cannot navigate to profile: host name is empty');
+                      console.warn('[EVENT_DETAIL] Cannot navigate to profile: host name is empty or invalid');
                     }
                   } catch (error) {
                     console.error('[EVENT_DETAIL] Error navigating to host profile:', error);
                   }
                 }} 
                 aria-label={`View ${displayHostName || 'host'}'s profile`} 
-                className="w-1/2 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95 mb-2.5"
+                className="w-1/2 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95 mb-2.5 relative z-10"
+                type="button"
               >
                 Profile
               </button>
@@ -684,18 +689,23 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                console.log('[EVENT_DETAIL] Profile button clicked (desktop), displayHostName:', displayHostName);
+                console.log('[EVENT_DETAIL] onHostClick function:', typeof onHostClick);
                 try {
                   if (displayHostName && displayHostName.trim() !== '') {
+                    console.log('[EVENT_DETAIL] Calling onHostClick with:', displayHostName);
                     onHostClick(displayHostName);
+                    console.log('[EVENT_DETAIL] onHostClick called successfully');
                   } else {
-                    console.warn('[EVENT_DETAIL] Cannot navigate to profile: host name is empty');
+                    console.warn('[EVENT_DETAIL] Cannot navigate to profile: host name is empty or invalid');
                   }
                 } catch (error) {
                   console.error('[EVENT_DETAIL] Error navigating to host profile:', error);
                 }
               }} 
               aria-label={`View ${displayHostName || 'host'}'s profile`} 
-              className="w-1/2 sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full text-xs sm:text-sm font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 mb-3"
+              className="w-1/2 sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full text-xs sm:text-sm font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 mb-3 relative z-10"
+              type="button"
             >
               Profile
             </button>
