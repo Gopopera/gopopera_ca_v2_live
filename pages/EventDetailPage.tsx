@@ -200,6 +200,37 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     fetchHostProfile();
   }, [event.hostId, event.hostName, user?.uid, user?.photoURL, user?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl]);
   
+  // Attach native event listeners to Profile buttons to bypass React synthetic events
+  useEffect(() => {
+    const handleProfileClick = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('[PROFILE_BUTTON] Native click event fired, displayHostName:', displayHostName);
+      if (onHostClick && displayHostName) {
+        onHostClick(displayHostName);
+      }
+    };
+
+    const mobileBtn = profileButtonRefMobile.current;
+    const desktopBtn = profileButtonRefDesktop.current;
+
+    if (mobileBtn) {
+      mobileBtn.addEventListener('click', handleProfileClick, true); // Use capture phase
+    }
+    if (desktopBtn) {
+      desktopBtn.addEventListener('click', handleProfileClick, true); // Use capture phase
+    }
+
+    return () => {
+      if (mobileBtn) {
+        mobileBtn.removeEventListener('click', handleProfileClick, true);
+      }
+      if (desktopBtn) {
+        desktopBtn.removeEventListener('click', handleProfileClick, true);
+      }
+    };
+  }, [displayHostName, onHostClick]);
+  
   // Fetch real reservation count from Firestore
   useEffect(() => {
     // CRITICAL: Always initialize variables at the top to maintain consistent hook structure
