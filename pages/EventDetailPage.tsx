@@ -582,20 +582,34 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               </div>
               {/* Profile Button - Aligned with left edge of profile image, half width */}
               <button 
-                onClick={() => {
-                  console.log('[PROFILE_BUTTON] Clicked, displayHostName:', displayHostName);
-                  console.log('[PROFILE_BUTTON] onHostClick type:', typeof onHostClick);
-                  console.log('[PROFILE_BUTTON] onHostClick value:', onHostClick);
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('[PROFILE_BUTTON] MouseDown, displayHostName:', displayHostName);
                   if (onHostClick && displayHostName) {
-                    console.log('[PROFILE_BUTTON] Calling onHostClick with:', displayHostName);
                     onHostClick(displayHostName);
-                  } else {
-                    console.error('[PROFILE_BUTTON] Cannot call onHostClick - missing function or host name', { onHostClick, displayHostName });
+                  }
+                }}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('[PROFILE_BUTTON] TouchStart, displayHostName:', displayHostName);
+                  if (onHostClick && displayHostName) {
+                    onHostClick(displayHostName);
+                  }
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('[PROFILE_BUTTON] Clicked, displayHostName:', displayHostName);
+                  if (onHostClick && displayHostName) {
+                    onHostClick(displayHostName);
                   }
                 }}
                 aria-label={`View ${displayHostName || 'host'}'s profile`} 
-                className="w-1/2 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95 mb-2.5 relative z-10"
+                className="w-1/2 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95 mb-2.5 relative z-50"
                 type="button"
+                style={{ pointerEvents: 'auto' }}
               >
                 Profile
               </button>
@@ -680,20 +694,26 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             </div>
             {/* Profile Button - Under host name, half width */}
             <button 
-              onClick={() => {
-                console.log('[PROFILE_BUTTON] Clicked (desktop), displayHostName:', displayHostName);
-                console.log('[PROFILE_BUTTON] onHostClick type:', typeof onHostClick);
-                console.log('[PROFILE_BUTTON] onHostClick value:', onHostClick);
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[PROFILE_BUTTON] MouseDown (desktop), displayHostName:', displayHostName);
                 if (onHostClick && displayHostName) {
-                  console.log('[PROFILE_BUTTON] Calling onHostClick with:', displayHostName);
                   onHostClick(displayHostName);
-                } else {
-                  console.error('[PROFILE_BUTTON] Cannot call onHostClick - missing function or host name', { onHostClick, displayHostName });
+                }
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[PROFILE_BUTTON] Clicked (desktop), displayHostName:', displayHostName);
+                if (onHostClick && displayHostName) {
+                  onHostClick(displayHostName);
                 }
               }}
               aria-label={`View ${displayHostName || 'host'}'s profile`} 
-              className="w-1/2 sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full text-xs sm:text-sm font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 mb-3 relative z-10"
+              className="w-1/2 sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full text-xs sm:text-sm font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 mb-3 relative z-50"
               type="button"
+              style={{ pointerEvents: 'auto' }}
             >
               Profile
             </button>
