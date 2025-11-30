@@ -33,7 +33,7 @@
         const errorString = String(e?.reason || '');
         
         // Get the error source from the event if available
-        const errorSource = e.target || (e as any).src || '';
+        const errorSource = e.target || (e.src || '');
         const errorSourceString = String(errorSource);
         
         // Check for Google Maps errors from maps.googleapis.com domain
@@ -51,7 +51,7 @@
           errorSourceString.includes('maps.googleapis.com') ||
           (typeof e.reason === 'string' && e.reason.includes && e.reason.includes('maps.googleapis.com')) ||
           // Catch TypeError with 'GD' property access
-          (e?.reason && typeof e.reason === 'object' && 'name' in e.reason && e.reason.name === 'TypeError' && (errorMessage.includes('GD') || errorStack.includes('map.js')));
+          (e.reason && typeof e.reason === 'object' && 'name' in e.reason && e.reason.name === 'TypeError' && (errorMessage.includes('GD') || errorStack.includes('map.js')));
         
         if (isGoogleMapsError) {
           // Silently suppress Google Maps errors - they're handled gracefully by the component

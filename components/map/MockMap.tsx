@@ -41,9 +41,14 @@ export const MockMap: React.FC<MockMapProps> = ({
   const hasCoordinates = lat !== undefined && lng !== undefined;
   
   // Check session storage to see if Google Maps was previously disabled due to errors
+  // This check happens immediately to prevent any Google Maps code from running
   const [googleMapsDisabled, setGoogleMapsDisabled] = React.useState(() => {
     if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('googleMapsDisabled') === 'true';
+      const disabled = sessionStorage.getItem('googleMapsDisabled') === 'true';
+      if (disabled) {
+        // If disabled, immediately set error state to use mock map
+        return true;
+      }
     }
     return false;
   });
@@ -80,9 +85,16 @@ export const MockMap: React.FC<MockMapProps> = ({
     }
   }, []);
 
-  // Load Google Maps components if API key is available
+  // Load Google Maps components if API key is available AND Google Maps is not disabled
   React.useEffect(() => {
-    if (apiKey) {
+    // Check if Google Maps was disabled due to previous errors
+    if (typeof window !== 'undefined' && sessionStorage.getItem('googleMapsDisabled') === 'true') {
+      setGoogleMapsDisabled(true);
+      setIsLoading(false);
+      return;
+    }
+    
+    if (apiKey && !googleMapsDisabled) {
       // Dynamically import Google Maps components
       Promise.all([
         import('@react-google-maps/api').then(m => m.GoogleMap),
@@ -96,23 +108,33 @@ export const MockMap: React.FC<MockMapProps> = ({
       }).catch((error) => {
         console.warn('[MOCK_MAP] Error loading Google Maps components, using fallback:', error);
         setHasError(true);
+        setGoogleMapsDisabled(true);
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('googleMapsDisabled', 'true');
+        }
         setIsLoading(false);
       });
     } else {
-      // No API key, don't try to load Google Maps
+      // No API key or disabled, don't try to load Google Maps
       setIsLoading(false);
     }
-  }, [apiKey]);
+  }, [apiKey, googleMapsDisabled]);
 
-  // Catch unhandled promise rejections from Google Maps
+  // Catch unhandled promise rejections from Google Maps - MUST run early
   React.useEffect(() => {
+    // Check if already disabled
+    if (googleMapsDisabled) {
+      setHasError(true);
+      return;
+    }
+
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       // Check if error is from Google Maps - check multiple sources
       const errorMessage = event.reason?.message || String(event.reason || '');
       const errorStack = event.reason?.stack || '';
       const errorString = String(event.reason || '');
       
-      // Check for Google Maps errors in various ways
+      // Check for Google Maps errors in various ways - be very aggressive
       const isGoogleMapsError = 
         errorMessage.includes('GD') || 
         errorMessage.includes('map.js') || 
@@ -121,27 +143,36 @@ export const MockMap: React.FC<MockMapProps> = ({
         errorStack.includes('map.js') ||
         errorStack.includes('maps.googleapis.com') ||
         errorStack.includes('common.js') ||
+        errorStack.includes('maps-api-v3') ||
         errorString.includes('maps.googleapis.com') ||
-        (event.reason && typeof event.reason === 'object' && 'name' in event.reason && String(event.reason.name).includes('TypeError'));
+        (event.reason && typeof event.reason === 'object' && 'name' in event.reason && String(event.reason.name).includes('TypeError')) ||
+        // Check if error source URL contains maps.googleapis.com
+        (event.target && String(event.target).includes('maps.googleapis.com'));
       
       if (isGoogleMapsError) {
-        // Silently suppress Google Maps errors and disable Google Maps for this session
-        event.preventDefault();
-        event.stopPropagation();
+        // Immediately disable Google Maps and suppress error
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.setItem('googleMapsDisabled', 'true');
+          } catch (err) {
+            // Ignore sessionStorage errors
+          }
+        }
         setHasError(true);
         setGoogleMapsDisabled(true);
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem('googleMapsDisabled', 'true');
-        }
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
         return false;
       }
     };
 
+    // Add listener with capture phase to catch early
     window.addEventListener('unhandledrejection', handleUnhandledRejection, true);
     return () => {
       window.removeEventListener('unhandledrejection', handleUnhandledRejection, true);
     };
-  }, []);
+  }, [googleMapsDisabled]);
 
   // Add timeout to detect if Google Maps fails to load
   React.useEffect(() => {
