@@ -837,7 +837,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 <button
                   onClick={handleShare}
                   aria-label="Share event"
-                  className="w-full py-3.5 lg:py-4 bg-popera-teal text-white rounded-full text-base lg:text-lg font-bold hover:bg-[#1f4d52] transition-colors shadow-md whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2 !opacity-100 !visible"
+                  className="w-full py-3.5 lg:py-4 bg-[#15383c] text-white rounded-full text-base lg:text-lg font-bold hover:bg-[#1f4d52] transition-colors shadow-md whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2 !opacity-100 !visible"
+                  style={{ backgroundColor: '#15383c', opacity: '1 !important', visibility: 'visible !important' }}
                 >
                   <Share2 size={18} /> Share Event
                 </button>
