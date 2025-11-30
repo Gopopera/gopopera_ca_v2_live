@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Event, ViewState } from '../types';
 import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info, Star, Sparkles, X, UserPlus, UserCheck, ChevronRight, CheckCircle2, Edit } from 'lucide-react';
 import { followHost, unfollowHost, isFollowing } from '../firebase/follow';
@@ -59,6 +59,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const [reserving, setReserving] = useState(false);
   const [reservationSuccess, setReservationSuccess] = useState(false);
   const [hostProfilePicture, setHostProfilePicture] = useState<string | null>(null);
+  
+  // Refs for Profile buttons to attach native event listeners
+  const profileButtonRefMobile = useRef<HTMLDivElement>(null);
+  const profileButtonRefDesktop = useRef<HTMLDivElement>(null);
   
   // Store hooks - always called
   const user = useUserStore((state) => state.user);
@@ -582,12 +586,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               </div>
               {/* Profile Button - Aligned with left edge of profile image, half width */}
               <div 
-                onClick={() => {
-                  console.log('[PROFILE_BUTTON] Clicked, displayHostName:', displayHostName);
-                  if (onHostClick && displayHostName) {
-                    onHostClick(displayHostName);
-                  }
-                }}
+                ref={profileButtonRefMobile}
                 role="button"
                 tabIndex={0}
                 aria-label={`View ${displayHostName || 'host'}'s profile`} 
@@ -684,12 +683,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             </div>
             {/* Profile Button - Under host name, half width */}
             <div 
-              onClick={() => {
-                console.log('[PROFILE_BUTTON] Clicked (desktop), displayHostName:', displayHostName);
-                if (onHostClick && displayHostName) {
-                  onHostClick(displayHostName);
-                }
-              }}
+              ref={profileButtonRefDesktop}
               role="button"
               tabIndex={0}
               aria-label={`View ${displayHostName || 'host'}'s profile`} 
