@@ -574,54 +574,26 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           {/* Left: Host Info with Metrics */}
           <div className="flex-1 min-w-0">
             <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100">
-              {/* Host Info and Profile Button Row */}
-              <div className="flex gap-2 mb-2">
-                {/* Host Info - Left side */}
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden ring-2 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick(displayHostName)}>
-                    {hostProfilePicture ? (
-                      <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
-                      }} />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-base">
-                        {displayHostName?.[0]?.toUpperCase() || 'H'}
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[9px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">{t('event.hostedBy')}</p>
-                    <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
-                  </div>
+              {/* Host Info - Centered above Attending */}
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden ring-2 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick(displayHostName)}>
+                  {hostProfilePicture ? (
+                    <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
+                    }} />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-base">
+                      {displayHostName?.[0]?.toUpperCase() || 'H'}
+                    </div>
+                  )}
                 </div>
-                {/* Profile Button - Right side, same size as capacity */}
-                <div 
-                  className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all relative z-50"
-                  style={{ pointerEvents: 'auto' }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('[PROFILE_BUTTON_MOBILE] Click detected!', displayHostName, 'onHostClick:', !!onHostClick);
-                    if (onHostClick && displayHostName) {
-                      console.log('[PROFILE_BUTTON_MOBILE] Calling onHostClick');
-                      onHostClick(displayHostName);
-                    }
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('[PROFILE_BUTTON_MOBILE] MouseDown');
-                    if (onHostClick && displayHostName) {
-                      onHostClick(displayHostName);
-                    }
-                  }}
-                >
-                  <h4 className="text-base font-heading font-bold text-popera-teal">Profile</h4>
-                  <p className="text-[8px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">View Host</p>
+                <div className="min-w-0">
+                  <p className="text-[9px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">{t('event.hostedBy')}</p>
+                  <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
                 </div>
               </div>
-              {/* Attending & Capacity Metrics */}
+              {/* Attending & Capacity Metrics with Profile Button */}
               <div className="flex gap-2">
                 <div className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center">
                   <h4 className="text-base font-heading font-bold text-popera-teal">
@@ -634,6 +606,20 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                     {event.capacity || '∞'}
                   </h4>
                   <p className="text-[8px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">{t('event.capacity')}</p>
+                </div>
+              </div>
+              {/* Profile Button - Aligned with Capacity, same size */}
+              <div className="flex gap-2 mt-2">
+                <div className="flex-1"></div>
+                <div 
+                  className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all"
+                  onClick={() => {
+                    console.log('[PROFILE_BUTTON] Direct onClick call', displayHostName);
+                    onHostClick(displayHostName);
+                  }}
+                >
+                  <h4 className="text-base font-heading font-bold text-popera-teal">Profile</h4>
+                  <p className="text-[8px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">View Host</p>
                 </div>
               </div>
             </div>
