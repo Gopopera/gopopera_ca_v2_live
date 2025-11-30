@@ -81,13 +81,41 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   // State for host name (may need to be fetched if missing)
   const [displayHostName, setDisplayHostName] = useState<string>(event.hostName || '');
   
-  // Memoized click handler to prevent recreation on re-renders
-  const handleProfileClick = useCallback(() => {
-    console.log('[PROFILE_BUTTON] Clicked, calling onHostClick with:', displayHostName);
-    if (onHostClick && displayHostName) {
-      onHostClick(displayHostName);
+  // Refs for Profile buttons
+  const profileButtonRefMobile = useRef<HTMLDivElement>(null);
+  const profileButtonRefDesktop = useRef<HTMLDivElement>(null);
+  
+  // Attach native event listeners to Profile buttons to bypass React synthetic events
+  useEffect(() => {
+    const handleProfileClick = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      console.log('[PROFILE_BUTTON] Native click event fired, displayHostName:', displayHostName);
+      if (onHostClick && displayHostName) {
+        onHostClick(displayHostName);
+      }
+    };
+
+    const mobileBtn = profileButtonRefMobile.current;
+    const desktopBtn = profileButtonRefDesktop.current;
+
+    if (mobileBtn) {
+      mobileBtn.addEventListener('click', handleProfileClick, { capture: true, passive: false });
     }
-  }, [onHostClick, displayHostName]);
+    if (desktopBtn) {
+      desktopBtn.addEventListener('click', handleProfileClick, { capture: true, passive: false });
+    }
+
+    return () => {
+      if (mobileBtn) {
+        mobileBtn.removeEventListener('click', handleProfileClick, { capture: true } as EventListenerOptions);
+      }
+      if (desktopBtn) {
+        desktopBtn.removeEventListener('click', handleProfileClick, { capture: true } as EventListenerOptions);
+      }
+    };
+  }, [displayHostName, onHostClick]);
   
   // State for host's overall rating (from all their events)
   const [hostOverallRating, setHostOverallRating] = useState<number | null>(null);
@@ -677,19 +705,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                  </button>
                </div>
             </div>
-            {/* Profile Button - Under host name, half width - Using div like host image */}
+            {/* Profile Button - Under host name, half width - Using native event listener */}
             <div
-              onClick={handleProfileClick}
+              ref={profileButtonRefDesktop}
               role="button"
               tabIndex={0}
               aria-label={`View ${displayHostName || 'host'}'s profile`}
               className="w-1/2 sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full text-xs sm:text-sm font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 mb-3 relative z-50 cursor-pointer text-center"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleProfileClick();
-                }
-              }}
             >
               Profile
             </div>
