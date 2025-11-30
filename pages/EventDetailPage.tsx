@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Event, ViewState } from '../types';
 import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info, Star, Sparkles, X, UserPlus, UserCheck, ChevronRight, CheckCircle2, Edit } from 'lucide-react';
 import { followHost, unfollowHost, isFollowing } from '../firebase/follow';
@@ -570,7 +570,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10 lg:py-12">
         {/* Mobile Layout: Clean and modern */}
         <div className="flex lg:hidden gap-2 mb-6 items-start">
-          {/* Left: Host Info with Profile Button and Metrics */}
+          {/* Left: Host Info with Metrics */}
           <div className="flex-1 min-w-0">
             <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100">
               <div className="flex items-center gap-2.5 mb-2.5">
@@ -593,10 +593,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               </div>
               {/* Profile Button - Aligned with left edge of profile image, half width */}
               <ProfileButton
-                onClick={() => {
-                  console.log('[PROFILE_BUTTON] Clicked, calling onHostClick with:', displayHostName);
-                  onHostClick?.(displayHostName);
-                }}
+                onClick={handleProfileClick}
                 label={`View ${displayHostName || 'host'}'s profile`}
                 className="w-1/2 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95 mb-2.5 relative z-50 text-center"
               />
@@ -681,10 +678,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             </div>
             {/* Profile Button - Under host name, half width */}
             <ProfileButton
-              onClick={() => {
-                console.log('[PROFILE_BUTTON] Clicked (desktop), calling onHostClick with:', displayHostName);
-                onHostClick?.(displayHostName);
-              }}
+              onClick={handleProfileClick}
               label={`View ${displayHostName || 'host'}'s profile`}
               className="w-1/2 sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full text-xs sm:text-sm font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 mb-3 relative z-50"
             />
