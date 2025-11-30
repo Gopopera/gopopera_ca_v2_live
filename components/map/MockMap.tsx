@@ -329,6 +329,20 @@ export const MockMap: React.FC<MockMapProps> = ({
   }
 
   // Use real Google Maps when API key is available and no errors
+  // FINAL CHECK: Make absolutely sure Google Maps is not disabled before rendering LoadScript
+  if (typeof window !== 'undefined' && ((window as any).__GOOGLE_MAPS_DISABLED__ === true || sessionStorage.getItem('googleMapsDisabled') === 'true')) {
+    // Google Maps is disabled, use fallback immediately
+    return (
+      <div className={`relative overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 ${className}`}>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-2xl border-4 border-[#e35e25]">
+            <MapPin size={24} className="text-[#e35e25]" fill="currentColor" stroke="currentColor" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Wrap in error boundary - if Google Maps throws any error, catch it and use fallback
   try {
     return (
