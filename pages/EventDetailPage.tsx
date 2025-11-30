@@ -680,16 +680,15 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                  </button>
                </div>
             </div>
-            {/* Profile Button - Under host name, half width - Using native event listener */}
-            <div
-              ref={profileButtonRefDesktop}
-              role="button"
-              tabIndex={0}
+            {/* Profile Button - Under host name, half width - Simple button like GroupChatHeader */}
+            <button
+              onClick={handleProfileClick}
               aria-label={`View ${displayHostName || 'host'}'s profile`}
-              className="w-1/2 sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full text-xs sm:text-sm font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 mb-3 relative z-50 cursor-pointer text-center"
+              className="w-1/2 sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full text-xs sm:text-sm font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 mb-3 relative z-50 text-center"
+              type="button"
             >
               Profile
-            </div>
+            </button>
             {/* Follow Button - Next to Profile */}
             {isLoggedIn && (
               <button
