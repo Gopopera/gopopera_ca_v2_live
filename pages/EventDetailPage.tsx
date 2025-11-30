@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Event, ViewState } from '../types';
 import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info, Star, Sparkles, X, UserPlus, UserCheck, ChevronRight, CheckCircle2, Edit } from 'lucide-react';
 import { followHost, unfollowHost, isFollowing } from '../firebase/follow';
@@ -81,41 +81,17 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   // State for host name (may need to be fetched if missing)
   const [displayHostName, setDisplayHostName] = useState<string>(event.hostName || '');
   
-  // Refs for Profile buttons
-  const profileButtonRefMobile = useRef<HTMLDivElement>(null);
-  const profileButtonRefDesktop = useRef<HTMLDivElement>(null);
-  
-  // Attach native event listeners to Profile buttons to bypass React synthetic events
-  useEffect(() => {
-    const handleProfileClick = (e: Event) => {
+  // Stable click handler - exactly like GroupChatHeader
+  const handleProfileClick = useCallback((e?: React.MouseEvent) => {
+    if (e) {
       e.preventDefault();
       e.stopPropagation();
-      e.stopImmediatePropagation();
-      console.log('[PROFILE_BUTTON] Native click event fired, displayHostName:', displayHostName);
-      if (onHostClick && displayHostName) {
-        onHostClick(displayHostName);
-      }
-    };
-
-    const mobileBtn = profileButtonRefMobile.current;
-    const desktopBtn = profileButtonRefDesktop.current;
-
-    if (mobileBtn) {
-      mobileBtn.addEventListener('click', handleProfileClick, { capture: true, passive: false });
     }
-    if (desktopBtn) {
-      desktopBtn.addEventListener('click', handleProfileClick, { capture: true, passive: false });
+    console.log('[PROFILE_BUTTON] Clicked, displayHostName:', displayHostName, 'onHostClick:', !!onHostClick);
+    if (onHostClick && displayHostName) {
+      onHostClick(displayHostName);
     }
-
-    return () => {
-      if (mobileBtn) {
-        mobileBtn.removeEventListener('click', handleProfileClick, { capture: true } as EventListenerOptions);
-      }
-      if (desktopBtn) {
-        desktopBtn.removeEventListener('click', handleProfileClick, { capture: true } as EventListenerOptions);
-      }
-    };
-  }, [displayHostName, onHostClick]);
+  }, [onHostClick, displayHostName]);
   
   // State for host's overall rating (from all their events)
   const [hostOverallRating, setHostOverallRating] = useState<number | null>(null);
@@ -616,16 +592,15 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
                 </div>
               </div>
-              {/* Profile Button - Aligned with left edge of profile image, half width - Using native event listener */}
-              <div
-                ref={profileButtonRefMobile}
-                role="button"
-                tabIndex={0}
+              {/* Profile Button - Aligned with left edge of profile image, half width - Simple button like GroupChatHeader */}
+              <button
+                onClick={handleProfileClick}
                 aria-label={`View ${displayHostName || 'host'}'s profile`}
-                className="w-1/2 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95 mb-2.5 relative z-50 text-center cursor-pointer"
+                className="w-1/2 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95 mb-2.5 relative z-50 text-center"
+                type="button"
               >
                 Profile
-              </div>
+              </button>
               {/* Attending & Capacity Metrics - Inside component */}
               <div className="flex gap-2">
                 <div className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center">
