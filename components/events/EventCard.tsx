@@ -94,6 +94,21 @@ export const EventCard: React.FC<EventCardProps> = ({
     };
     
     fetchHostProfile();
+    
+    // If current user is the host, refresh profile picture every 5 seconds to catch updates
+    // This ensures profile picture updates are reflected immediately on event cards
+    let refreshInterval: NodeJS.Timeout | null = null;
+    if (user?.uid === event.hostId) {
+      refreshInterval = setInterval(() => {
+        fetchHostProfile();
+      }, 5000); // Refresh every 5 seconds
+    }
+    
+    return () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    };
   }, [event.hostId, event.hostName, event.hostPhotoURL, user?.uid, user?.photoURL, user?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl]);
   
   // Fetch host's overall rating from all their events
