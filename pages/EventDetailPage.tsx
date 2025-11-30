@@ -434,16 +434,28 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                  onClick={(e) => {
                    e.stopPropagation();
                    e.preventDefault();
+                   if ('nativeEvent' in e) {
+                     e.nativeEvent.stopImmediatePropagation();
+                   }
                    if (!isLoggedIn) {
-                     // If not logged in, show auth modal or redirect to login
                      setShowAuthModal(true);
                      return;
                    }
                    onToggleFavorite(e, event.id);
-                 }} 
-                 className={`w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg hover:scale-105 active:scale-[0.92] transition-all touch-manipulation border border-white/50 ${
+                 }}
+                 onMouseDown={(e) => {
+                   e.stopPropagation();
+                   e.preventDefault();
+                 }}
+                 onTouchStart={(e) => {
+                   e.stopPropagation();
+                   e.preventDefault();
+                 }}
+                 type="button"
+                 className={`w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg hover:scale-105 active:scale-[0.92] transition-all touch-manipulation border border-white/50 z-50 pointer-events-auto ${
                    favorites.includes(event.id) ? 'text-popera-orange' : 'text-popera-teal'
                  }`}
+                 style={{ pointerEvents: 'auto', WebkitTapHighlightColor: 'transparent' }}
                  aria-label={favorites.includes(event.id) ? "Remove from favorites" : "Add to favorites"}
                >
                  <Heart 
@@ -575,6 +587,46 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-[#15383c] via-[#15383c]/40 to-transparent opacity-90 pointer-events-none" />
+        
+        {/* Favorite Button - Top Right on Image */}
+        {onToggleFavorite && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              if ('nativeEvent' in e) {
+                e.nativeEvent.stopImmediatePropagation();
+              }
+              if (!isLoggedIn) {
+                setShowAuthModal(true);
+                return;
+              }
+              onToggleFavorite(e, event.id);
+            }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+            }}
+            onTouchStart={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+            }}
+            type="button"
+            className={`absolute top-4 right-4 w-11 h-11 sm:w-12 sm:h-12 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg hover:scale-105 active:scale-[0.92] transition-all touch-manipulation border border-white/50 z-50 pointer-events-auto ${
+              favorites.includes(event.id) ? 'text-popera-orange' : 'text-white'
+            }`}
+            style={{ pointerEvents: 'auto', WebkitTapHighlightColor: 'transparent' }}
+            aria-label={favorites.includes(event.id) ? "Remove from favorites" : "Add to favorites"}
+          >
+            <Heart 
+              size={22} 
+              className={`sm:w-6 sm:h-6 transition-all ${
+                favorites.includes(event.id) ? 'fill-popera-orange text-popera-orange' : 'fill-none'
+              }`}
+              strokeWidth={2.5}
+            />
+          </button>
+        )}
         
         {/* Image counter for multiple images - bottom right, reduced size by 3x */}
         {event.imageUrls && event.imageUrls.length > 1 && (
