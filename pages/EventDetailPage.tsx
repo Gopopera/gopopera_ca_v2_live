@@ -580,13 +580,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
                 </div>
               </div>
-              {/* Profile Button - Narrow, from image left to text end */}
+              {/* Profile Button - Narrow, from image left to text end, half width */}
               <div className="flex items-center gap-2.5">
                 <div className="w-10 shrink-0"></div>
                 <button 
                   onClick={() => onHostClick(displayHostName)} 
                   aria-label={`View ${displayHostName}'s profile`} 
-                  className="flex-1 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95"
+                  className="w-1/2 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95"
                 >
                   Profile
                 </button>
@@ -673,11 +673,11 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                    </button>
                  </div>
               </div>
-              {/* Profile Button - Under host name */}
+              {/* Profile Button - Under host name, half width */}
               <button 
                 onClick={() => onHostClick(displayHostName)} 
                 aria-label={`View ${displayHostName}'s profile`} 
-                className="w-full sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full text-xs sm:text-sm font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 mb-3"
+                className="w-1/2 sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full text-xs sm:text-sm font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 mb-3"
               >
                 Profile
               </button>
