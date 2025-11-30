@@ -681,28 +681,16 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                  </button>
                </div>
             </div>
-            {/* Profile Button - Under host name, half width - Direct inline handler */}
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('[PROFILE_BUTTON_DESKTOP] Direct onClick fired!', displayHostName, onHostClick);
-                if (onHostClick && displayHostName) {
-                  console.log('[PROFILE_BUTTON_DESKTOP] Calling onHostClick');
-                  onHostClick(displayHostName);
-                } else {
-                  console.log('[PROFILE_BUTTON_DESKTOP] Missing onHostClick or displayHostName', { onHostClick: !!onHostClick, displayHostName });
-                }
+            {/* Profile Button - EXACT same pattern as host image/name that works */}
+            <div
+              className="w-1/2 sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full text-xs sm:text-sm font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 mb-3 relative z-50 text-center cursor-pointer"
+              onClick={() => {
+                console.log('[PROFILE_BUTTON_DESKTOP] Clicked via div onClick, calling onHostClick');
+                onHostClick(displayHostName);
               }}
-              onMouseDown={(e) => {
-                console.log('[PROFILE_BUTTON_DESKTOP] onMouseDown fired!');
-              }}
-              aria-label={`View ${displayHostName || 'host'}'s profile`}
-              className="w-1/2 sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full text-xs sm:text-sm font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 mb-3 relative z-50 text-center"
-              type="button"
             >
               Profile
-            </button>
+            </div>
             {/* Follow Button - Next to Profile */}
             {isLoggedIn && (
               <button
