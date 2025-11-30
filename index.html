@@ -20,13 +20,21 @@
     <meta property="twitter:description" content="Popera is Canada's first community-powered pop-up platform, where anyone can safely create, discover, and join meaningful pop-up experiences near them." />
     <meta property="twitter:image" content="https://gopopera.ca/og-image.png" />
     <script>
-      window.onerror = function (msg, src, line, col, err) {
-        const pre = document.createElement('pre');
-        pre.style.cssText = 'white-space:pre-wrap;color:#fff;background:#111;padding:12px;position:fixed;left:0;right:0;top:0;z-index:999999';
-        pre.textContent = '[onerror] ' + msg + '\n' + (err && err.stack ? err.stack : (src + ':' + line + ':' + col));
-        document.body.prepend(pre);
-      };
-      window.onunhandledrejection = function (e) {
+      // Set up error handlers IMMEDIATELY, before anything else loads
+      // This must run before React or any other scripts
+      (function() {
+        // Check if Google Maps should be disabled (from previous session)
+        try {
+          if (sessionStorage.getItem('googleMapsDisabled') === 'true') {
+            // Google Maps is disabled, don't let it load
+            window.__GOOGLE_MAPS_DISABLED__ = true;
+          }
+        } catch (err) {
+          // Ignore sessionStorage errors
+        }
+        
+        // Global error handler for unhandled promise rejections
+        window.onunhandledrejection = function (e) {
         // Suppress Google Maps errors - they're handled by MockMap component
         const errorMessage = e?.reason?.message || String(e?.reason || '');
         const errorStack = e?.reason?.stack || '';
@@ -67,13 +75,50 @@
           return false;
         }
         // For other errors, show them (but only in development)
-        if (import.meta.env.DEV) {
+        // Check if we're in development mode by checking if Vite dev server is running
+        const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        if (isDev) {
           const pre = document.createElement('pre');
           pre.style.cssText = 'white-space:pre-wrap;color:#fff;background:#311;padding:12px;position:fixed;left:0;right:0;top:44px;z-index:999998';
           pre.textContent = '[unhandledrejection] ' + (e?.reason?.stack || e?.reason?.message || String(e?.reason));
           document.body.prepend(pre);
         }
-      };
+        };
+        
+        // Global error handler for regular errors
+        window.onerror = function (msg, src, line, col, err) {
+          // Check if error is from Google Maps
+          const errorMsg = String(msg || '');
+          const errorSrc = String(src || '');
+          const errorStack = (err && err.stack) ? String(err.stack) : '';
+          
+          if (errorMsg.includes('GD') || 
+              errorMsg.includes('map.js') || 
+              errorMsg.includes('google.maps') ||
+              errorSrc.includes('maps.googleapis.com') ||
+              errorStack.includes('maps.googleapis.com') ||
+              errorStack.includes('map.js')) {
+            // Suppress Google Maps errors
+            try {
+              sessionStorage.setItem('googleMapsDisabled', 'true');
+              window.__GOOGLE_MAPS_DISABLED__ = true;
+            } catch (err) {
+              // Ignore sessionStorage errors
+            }
+            return true; // Prevent default error handling
+          }
+          
+          // For other errors, show them (but only in development)
+          const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+          if (isDev) {
+            const pre = document.createElement('pre');
+            pre.style.cssText = 'white-space:pre-wrap;color:#fff;background:#111;padding:12px;position:fixed;left:0;right:0;top:0;z-index:999999';
+            pre.textContent = '[onerror] ' + msg + '\n' + (err && err.stack ? err.stack : (src + ':' + line + ':' + col));
+            document.body.prepend(pre);
+          }
+          return false;
+        };
+      })();
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
