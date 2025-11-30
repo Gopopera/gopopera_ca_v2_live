@@ -81,16 +81,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   // State for host name (may need to be fetched if missing)
   const [displayHostName, setDisplayHostName] = useState<string>(event.hostName || '');
   
-  // Memoized Profile button component to prevent recreation on re-renders
-  const ProfileButton = React.memo(({ onClick, label, className }: { onClick: () => void; label: string; className: string }) => (
-    <button
-      onClick={onClick}
-      aria-label={label}
-      className={className}
-    >
-      Profile
-    </button>
-  ));
+  // Memoized click handler to prevent recreation on re-renders
+  const handleProfileClick = useCallback(() => {
+    console.log('[PROFILE_BUTTON] Clicked, calling onHostClick with:', displayHostName);
+    if (onHostClick && displayHostName) {
+      onHostClick(displayHostName);
+    }
+  }, [onHostClick, displayHostName]);
   
   // State for host's overall rating (from all their events)
   const [hostOverallRating, setHostOverallRating] = useState<number | null>(null);
@@ -591,12 +588,22 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
                 </div>
               </div>
-              {/* Profile Button - Aligned with left edge of profile image, half width */}
-              <ProfileButton
+              {/* Profile Button - Aligned with left edge of profile image, half width - Using div like host image */}
+              <div
                 onClick={handleProfileClick}
-                label={`View ${displayHostName || 'host'}'s profile`}
-                className="w-1/2 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95 mb-2.5 relative z-50 text-center"
-              />
+                role="button"
+                tabIndex={0}
+                aria-label={`View ${displayHostName || 'host'}'s profile`}
+                className="w-1/2 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95 mb-2.5 relative z-50 text-center cursor-pointer"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleProfileClick();
+                  }
+                }}
+              >
+                Profile
+              </div>
               {/* Attending & Capacity Metrics - Inside component */}
               <div className="flex gap-2">
                 <div className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center">
@@ -676,12 +683,22 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                  </button>
                </div>
             </div>
-            {/* Profile Button - Under host name, half width */}
-            <ProfileButton
+            {/* Profile Button - Under host name, half width - Using div like host image */}
+            <div
               onClick={handleProfileClick}
-              label={`View ${displayHostName || 'host'}'s profile`}
-              className="w-1/2 sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full text-xs sm:text-sm font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 mb-3 relative z-50"
-            />
+              role="button"
+              tabIndex={0}
+              aria-label={`View ${displayHostName || 'host'}'s profile`}
+              className="w-1/2 sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full text-xs sm:text-sm font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 mb-3 relative z-50 cursor-pointer text-center"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleProfileClick();
+                }
+              }}
+            >
+              Profile
+            </div>
             {/* Follow Button - Next to Profile */}
             {isLoggedIn && (
               <button
