@@ -180,6 +180,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   }, [hostOverallRating, hostOverallReviewCount, event.rating, event.reviewCount]);
   
   // Fetch host profile picture and name - always fetch from Firestore for accuracy (works when not logged in)
+  // Also refresh periodically if current user is the host to catch profile picture updates
   useEffect(() => {
     const fetchHostProfile = async () => {
       if (!event.hostId) {
@@ -231,6 +232,21 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     };
     
     fetchHostProfile();
+    
+    // If current user is the host, refresh profile picture every 5 seconds to catch updates
+    // This ensures profile picture updates are reflected immediately
+    let refreshInterval: NodeJS.Timeout | null = null;
+    if (user?.uid === event.hostId) {
+      refreshInterval = setInterval(() => {
+        fetchHostProfile();
+      }, 5000); // Refresh every 5 seconds
+    }
+    
+    return () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    };
   }, [event.hostId, event.hostName, user?.uid, user?.photoURL, user?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl]);
   
   // Fetch real reservation count from Firestore
@@ -602,28 +618,28 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           {/* Left: Host Info with Metrics */}
           <div className="flex-1 min-w-0">
             <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100">
-              {/* Host Info - Aligned with Attending component */}
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden ring-2 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick?.(displayHostName)}>
-                  {hostProfilePicture ? (
-                    <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
-                    }} />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-base">
-                      {displayHostName?.[0]?.toUpperCase() || 'H'}
-                    </div>
-                  )}
+              {/* Symmetric Grid Layout: 2x2 */}
+              <div className="grid grid-cols-2 gap-2">
+                {/* Top Left: Host Info */}
+                <div className="col-span-1 flex items-center gap-2">
+                  <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden ring-2 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick?.(displayHostName)}>
+                    {hostProfilePicture ? (
+                      <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
+                      }} />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-base">
+                        {displayHostName?.[0]?.toUpperCase() || 'H'}
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[9px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">{t('event.hostedBy')}</p>
+                    <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick?.(displayHostName)}>{displayHostName}</h3>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-[9px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">{t('event.hostedBy')}</p>
-                  <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick?.(displayHostName)}>{displayHostName}</h3>
-                </div>
-              </div>
-              {/* Profile Button - Above Capacity, same size */}
-              <div className="flex gap-2 mb-2">
-                <div className="flex-1"></div>
+                {/* Top Right: Profile Button */}
                 <button
                   ref={profileButtonRefMobile}
                   type="button"
@@ -641,22 +657,21 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                     console.log('[PROFILE_BUTTON_MOBILE] TouchStart');
                     handleProfileClick();
                   }}
-                  className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all touch-manipulation active:scale-95 relative z-50"
+                  className="col-span-1 bg-white p-2 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all touch-manipulation active:scale-95 relative z-50"
                   style={{ pointerEvents: 'auto' }}
                 >
                   <h4 className="text-base font-heading font-bold text-popera-teal">Profile</h4>
                   <p className="text-[8px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">View Host</p>
                 </button>
-              </div>
-              {/* Attending & Capacity Metrics */}
-              <div className="flex gap-2">
-                <div className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center">
+                {/* Bottom Left: Attending */}
+                <div className="col-span-1 bg-white p-2 rounded-xl border border-gray-200 text-center">
                   <h4 className="text-base font-heading font-bold text-popera-teal">
                     {reservationCount !== null ? reservationCount : (event.attendeesCount || 0)}
                   </h4>
                   <p className="text-[8px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">Attending</p>
                 </div>
-                <div className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center">
+                {/* Bottom Right: Capacity */}
+                <div className="col-span-1 bg-white p-2 rounded-xl border border-gray-200 text-center">
                   <h4 className="text-base font-heading font-bold text-popera-teal">
                     {event.capacity || '∞'}
                   </h4>
@@ -696,41 +711,41 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         {/* Desktop Layout: Clean and modern */}
         <div className="hidden lg:block">
           <div className="p-5 sm:p-6 md:p-7 lg:p-8 bg-gray-50 rounded-2xl sm:rounded-3xl border border-gray-100 hover:border-gray-200 transition-colors">
-            {/* Host Info - Aligned with Attending component */}
-            <div className="flex items-center gap-3 sm:gap-4 mb-2">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-gray-200 overflow-hidden ring-2 sm:ring-4 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick?.(displayHostName)}>
-                {hostProfilePicture ? (
-                  <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
-                  }} />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-lg sm:text-xl md:text-2xl">
-                    {displayHostName?.[0]?.toUpperCase() || 'H'}
-                  </div>
-                )}
+            {/* Symmetric Grid Layout: 2x2 */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              {/* Top Left: Host Info */}
+              <div className="col-span-1 flex items-center gap-3 sm:gap-4">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-gray-200 overflow-hidden ring-2 sm:ring-4 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick?.(displayHostName)}>
+                  {hostProfilePicture ? (
+                    <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
+                    }} />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-lg sm:text-xl md:text-2xl">
+                      {displayHostName?.[0]?.toUpperCase() || 'H'}
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">{t('event.hostedBy')}</p>
+                  <h3 className="text-base sm:text-lg md:text-xl font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick?.(displayHostName)}>{displayHostName}</h3>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (event.hostId) {
+                        setShowHostReviewsModal(true);
+                      }
+                    }} 
+                    className="flex items-center space-x-1 mt-1.5 bg-white hover:bg-orange-50 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-colors border border-gray-200 hover:border-orange-100 group/rating shrink-0 w-fit touch-manipulation active:scale-95"
+                  >
+                    <Star size={11} className="sm:w-3 sm:h-3 text-gray-300 group-hover/rating:text-popera-orange group-hover/rating:fill-popera-orange transition-colors" fill="currentColor" />
+                    <span className="text-[10px] sm:text-xs font-bold text-popera-teal">{formatRating(currentRating.rating)}</span>
+                    <span className="text-[9px] sm:text-[10px] text-gray-400 group-hover/rating:text-orange-400">({currentRating.reviewCount})</span>
+                  </button>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">{t('event.hostedBy')}</p>
-                <h3 className="text-base sm:text-lg md:text-xl font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick?.(displayHostName)}>{displayHostName}</h3>
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (event.hostId) {
-                      setShowHostReviewsModal(true);
-                    }
-                  }} 
-                  className="flex items-center space-x-1 mt-1.5 bg-white hover:bg-orange-50 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-colors border border-gray-200 hover:border-orange-100 group/rating shrink-0 w-fit touch-manipulation active:scale-95"
-                >
-                  <Star size={11} className="sm:w-3 sm:h-3 text-gray-300 group-hover/rating:text-popera-orange group-hover/rating:fill-popera-orange transition-colors" fill="currentColor" />
-                  <span className="text-[10px] sm:text-xs font-bold text-popera-teal">{formatRating(currentRating.rating)}</span>
-                  <span className="text-[9px] sm:text-[10px] text-gray-400 group-hover/rating:text-orange-400">({currentRating.reviewCount})</span>
-                </button>
-              </div>
-            </div>
-            {/* Profile Button - Above Capacity, same size */}
-            <div className="flex gap-2 sm:gap-3 mb-3">
-              <div className="flex-1"></div>
+              {/* Top Right: Profile Button */}
               <button
                 ref={profileButtonRefDesktop}
                 type="button"
@@ -742,12 +757,26 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   console.log('[PROFILE_BUTTON_DESKTOP] MouseDown');
                   handleProfileClick();
                 }}
-                className="flex-1 bg-white p-2 sm:p-3 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all touch-manipulation active:scale-95 relative z-50"
+                className="col-span-1 bg-white p-2 sm:p-3 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all touch-manipulation active:scale-95 relative z-50"
                 style={{ pointerEvents: 'auto' }}
               >
                 <h4 className="text-base sm:text-lg font-heading font-bold text-popera-teal">Profile</h4>
                 <p className="text-[8px] sm:text-[10px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">View Host</p>
               </button>
+              {/* Bottom Left: Attending */}
+              <div className="col-span-1 bg-white p-2 sm:p-3 rounded-xl border border-gray-200 text-center">
+                <h4 className="text-base sm:text-lg font-heading font-bold text-popera-teal">
+                  {reservationCount !== null ? reservationCount : (event.attendeesCount || 0)}
+                </h4>
+                <p className="text-[8px] sm:text-[10px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">Attending</p>
+              </div>
+              {/* Bottom Right: Capacity */}
+              <div className="col-span-1 bg-white p-2 sm:p-3 rounded-xl border border-gray-200 text-center">
+                <h4 className="text-base sm:text-lg font-heading font-bold text-popera-teal">
+                  {event.capacity || '∞'}
+                </h4>
+                <p className="text-[8px] sm:text-[10px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">{t('event.capacity')}</p>
+              </div>
             </div>
             {/* Follow Button - Next to Profile */}
             {isLoggedIn && (
