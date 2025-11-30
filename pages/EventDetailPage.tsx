@@ -81,25 +81,6 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   // State for host name (may need to be fetched if missing)
   const [displayHostName, setDisplayHostName] = useState<string>(event.hostName || '');
   
-  // Refs for Profile buttons (mobile and desktop)
-  const profileButtonRefMobile = useRef<HTMLButtonElement>(null);
-  const profileButtonRefDesktop = useRef<HTMLButtonElement>(null);
-  
-  // Stable click handler - exactly like GroupChatHeader
-  const handleProfileClick = useCallback((e?: React.MouseEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    console.log('[PROFILE_BUTTON] Clicked, displayHostName:', displayHostName, 'onHostClick:', !!onHostClick);
-    if (onHostClick && displayHostName) {
-      console.log('[PROFILE_BUTTON] Calling onHostClick with:', displayHostName);
-      onHostClick(displayHostName);
-    } else {
-      console.warn('[PROFILE_BUTTON] Missing onHostClick or displayHostName', { onHostClick: !!onHostClick, displayHostName });
-    }
-  }, [onHostClick, displayHostName]);
-  
   // Native event listener as backup (capture phase)
   useEffect(() => {
     const handleNativeClick = (e: Event) => {
@@ -460,14 +441,17 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                    }
                    onToggleFavorite(e, event.id);
                  }} 
-                 className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center text-popera-teal shadow-lg hover:scale-105 active:scale-[0.92] transition-transform touch-manipulation border border-white/50"
+                 className={`w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg hover:scale-105 active:scale-[0.92] transition-all touch-manipulation border border-white/50 ${
+                   favorites.includes(event.id) ? 'text-popera-orange' : 'text-popera-teal'
+                 }`}
                  aria-label={favorites.includes(event.id) ? "Remove from favorites" : "Add to favorites"}
                >
                  <Heart 
                    size={20} 
-                   className="sm:w-5 sm:h-5" 
-                   fill={favorites.includes(event.id) ? "#e35e25" : "none"} 
-                   style={{ color: favorites.includes(event.id) ? "#e35e25" : "currentColor" }} 
+                   className={`sm:w-5 sm:h-5 transition-all ${
+                     favorites.includes(event.id) ? 'fill-popera-orange text-popera-orange' : 'fill-none'
+                   }`}
+                   strokeWidth={2}
                  />
                </button>
              )}
@@ -618,10 +602,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           {/* Left: Host Info with Metrics */}
           <div className="flex-1 min-w-0">
             <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100">
-              {/* Symmetric Grid Layout: 2x2 */}
-              <div className="grid grid-cols-2 gap-2">
-                {/* Top Left: Host Info */}
-                <div className="col-span-1 flex items-center gap-2">
+              {/* Host Info with Follow Button */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
                   <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden ring-2 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick?.(displayHostName)}>
                     {hostProfilePicture ? (
                       <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
@@ -639,39 +622,39 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                     <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick?.(displayHostName)}>{displayHostName}</h3>
                   </div>
                 </div>
-                {/* Top Right: Profile Button */}
-                <button
-                  ref={profileButtonRefMobile}
-                  type="button"
-                  data-profile-button="mobile"
-                  onClick={handleProfileClick}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('[PROFILE_BUTTON_MOBILE] MouseDown');
-                    handleProfileClick();
-                  }}
-                  onTouchStart={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('[PROFILE_BUTTON_MOBILE] TouchStart');
-                    handleProfileClick();
-                  }}
-                  className="col-span-1 bg-white p-2 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all touch-manipulation active:scale-95 relative z-50"
-                  style={{ pointerEvents: 'auto' }}
-                >
-                  <h4 className="text-base font-heading font-bold text-popera-teal">Profile</h4>
-                  <p className="text-[8px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">View Host</p>
-                </button>
-                {/* Bottom Left: Attending */}
-                <div className="col-span-1 bg-white p-2 rounded-xl border border-gray-200 text-center">
+                {/* Follow Button - Right side */}
+                {isLoggedIn && (
+                  <button
+                    onClick={handleFollowToggle}
+                    disabled={followLoading}
+                    aria-label={isFollowingHost ? `Unfollow ${displayHostName}` : `Follow ${displayHostName}`}
+                    className={`px-2.5 py-1.5 rounded-full text-[10px] font-bold transition-all shadow-md whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-1 shrink-0 ${
+                      isFollowingHost
+                        ? 'bg-[#15383c] text-white hover:bg-[#1f4d52] border border-[#15383c]'
+                        : 'bg-white border border-gray-300 text-[#15383c] hover:border-[#e35e25] hover:text-[#e35e25] hover:bg-orange-50'
+                    } disabled:opacity-50`}
+                  >
+                    {isFollowingHost ? (
+                      <>
+                        <UserCheck size={12} /> {t('event.following')}
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus size={12} /> {t('event.follow')}
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+              {/* Attending & Capacity Metrics */}
+              <div className="flex gap-2 mt-2">
+                <div className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center">
                   <h4 className="text-base font-heading font-bold text-popera-teal">
                     {reservationCount !== null ? reservationCount : (event.attendeesCount || 0)}
                   </h4>
                   <p className="text-[8px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">Attending</p>
                 </div>
-                {/* Bottom Right: Capacity */}
-                <div className="col-span-1 bg-white p-2 rounded-xl border border-gray-200 text-center">
+                <div className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center">
                   <h4 className="text-base font-heading font-bold text-popera-teal">
                     {event.capacity || '∞'}
                   </h4>
@@ -681,40 +664,14 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             </div>
           </div>
           
-          {/* Right: Follow Button */}
-          {isLoggedIn && (
-            <div className="shrink-0">
-              <button
-                onClick={handleFollowToggle}
-                disabled={followLoading}
-                aria-label={isFollowingHost ? `Unfollow ${displayHostName}` : `Follow ${displayHostName}`}
-                className={`px-2.5 py-1.5 rounded-full text-[10px] font-bold transition-all shadow-md whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-1 shrink-0 ${
-                  isFollowingHost
-                    ? 'bg-[#15383c] text-white hover:bg-[#1f4d52] border border-[#15383c]'
-                    : 'bg-white border border-gray-300 text-[#15383c] hover:border-[#e35e25] hover:text-[#e35e25] hover:bg-orange-50'
-                } disabled:opacity-50`}
-              >
-                {isFollowingHost ? (
-                  <>
-                    <UserCheck size={12} /> {t('event.following')}
-                  </>
-                ) : (
-                  <>
-                    <UserPlus size={12} /> {t('event.follow')}
-                  </>
-                )}
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Desktop Layout: Clean and modern */}
         <div className="hidden lg:block">
           <div className="p-5 sm:p-6 md:p-7 lg:p-8 bg-gray-50 rounded-2xl sm:rounded-3xl border border-gray-100 hover:border-gray-200 transition-colors">
-            {/* Symmetric Grid Layout: 2x2 */}
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              {/* Top Left: Host Info */}
-              <div className="col-span-1 flex items-center gap-3 sm:gap-4">
+            {/* Host Info with Follow Button */}
+            <div className="flex items-center justify-between gap-3 sm:gap-4 mb-3">
+              <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
                 <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-gray-200 overflow-hidden ring-2 sm:ring-4 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick?.(displayHostName)}>
                   {hostProfilePicture ? (
                     <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
@@ -745,75 +702,43 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   </button>
                 </div>
               </div>
-              {/* Top Right: Profile Button */}
-              <button
-                ref={profileButtonRefDesktop}
-                type="button"
-                data-profile-button="desktop"
-                onClick={handleProfileClick}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  console.log('[PROFILE_BUTTON_DESKTOP] MouseDown');
-                  handleProfileClick();
-                }}
-                className="col-span-1 bg-white p-2 sm:p-3 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all touch-manipulation active:scale-95 relative z-50"
-                style={{ pointerEvents: 'auto' }}
-              >
-                <h4 className="text-base sm:text-lg font-heading font-bold text-popera-teal">Profile</h4>
-                <p className="text-[8px] sm:text-[10px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">View Host</p>
-              </button>
-              {/* Bottom Left: Attending */}
-              <div className="col-span-1 bg-white p-2 sm:p-3 rounded-xl border border-gray-200 text-center">
+              {/* Follow Button - Right side */}
+              {isLoggedIn && (
+                <button
+                  onClick={handleFollowToggle}
+                  disabled={followLoading}
+                  aria-label={isFollowingHost ? `Unfollow ${displayHostName}` : `Follow ${displayHostName}`}
+                  className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all shadow-md whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-1.5 shrink-0 ${
+                    isFollowingHost
+                      ? 'bg-[#15383c] text-white hover:bg-[#1f4d52] border-2 border-[#15383c]'
+                      : 'bg-white border-2 border-gray-300 text-[#15383c] hover:border-[#e35e25] hover:text-[#e35e25] hover:bg-orange-50'
+                  } disabled:opacity-50`}
+                >
+                  {isFollowingHost ? (
+                    <>
+                      <UserCheck size={14} className="sm:w-4 sm:h-4" /> {t('event.following')}
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus size={14} className="sm:w-4 sm:h-4" /> {t('event.follow')}
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+            {/* Attending & Capacity Metrics */}
+            <div className="flex gap-2 sm:gap-3">
+              <div className="flex-1 bg-white p-2 sm:p-3 rounded-xl border border-gray-200 text-center">
                 <h4 className="text-base sm:text-lg font-heading font-bold text-popera-teal">
                   {reservationCount !== null ? reservationCount : (event.attendeesCount || 0)}
                 </h4>
                 <p className="text-[8px] sm:text-[10px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">Attending</p>
               </div>
-              {/* Bottom Right: Capacity */}
-              <div className="col-span-1 bg-white p-2 sm:p-3 rounded-xl border border-gray-200 text-center">
+              <div className="flex-1 bg-white p-2 sm:p-3 rounded-xl border border-gray-200 text-center">
                 <h4 className="text-base sm:text-lg font-heading font-bold text-popera-teal">
                   {event.capacity || '∞'}
                 </h4>
                 <p className="text-[8px] sm:text-[10px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">{t('event.capacity')}</p>
-              </div>
-            </div>
-            {/* Follow Button - Next to Profile */}
-            {isLoggedIn && (
-              <button
-                onClick={handleFollowToggle}
-                disabled={followLoading}
-                aria-label={isFollowingHost ? `Unfollow ${displayHostName}` : `Follow ${displayHostName}`}
-                className={`w-full sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all shadow-md whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-1.5 mb-3 ${
-                  isFollowingHost
-                    ? 'bg-[#15383c] text-white hover:bg-[#1f4d52] border-2 border-[#15383c]'
-                    : 'bg-white border-2 border-gray-300 text-[#15383c] hover:border-[#e35e25] hover:text-[#e35e25] hover:bg-orange-50'
-                } disabled:opacity-50`}
-              >
-                {isFollowingHost ? (
-                  <>
-                    <UserCheck size={14} className="sm:w-4 sm:h-4" /> {t('event.following')}
-                  </>
-                ) : (
-                  <>
-                    <UserPlus size={14} className="sm:w-4 sm:h-4" /> {t('event.follow')}
-                  </>
-                )}
-              </button>
-            )}
-            {/* Attending & Capacity Metrics - Inside component */}
-            <div className="flex gap-3">
-              <div className="flex-1 bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 text-center">
-                <h4 className="text-2xl sm:text-3xl font-heading font-bold text-popera-teal">
-                  {reservationCount !== null ? reservationCount : (event.attendeesCount || 0)}
-                </h4>
-                <p className="text-[10px] sm:text-xs uppercase tracking-wide text-gray-500 font-bold mt-1">Attending</p>
-              </div>
-              <div className="flex-1 bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 text-center">
-                <h4 className="text-2xl sm:text-3xl font-heading font-bold text-popera-teal">
-                  {event.capacity || 'Unlimited'}
-                </h4>
-                <p className="text-[10px] sm:text-xs uppercase tracking-wide text-gray-500 font-bold mt-1">{t('event.capacity')}</p>
               </div>
             </div>
           </div>
