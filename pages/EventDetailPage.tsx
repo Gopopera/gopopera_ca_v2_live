@@ -837,7 +837,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 <button
                   onClick={handleShare}
                   aria-label="Share event"
-                  className="w-full py-3.5 lg:py-4 bg-popera-teal text-white rounded-full text-base lg:text-lg font-bold hover:bg-[#1f4d52] transition-colors shadow-md whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2 opacity-100 visible"
+                  className="w-full py-3.5 lg:py-4 bg-popera-teal text-white rounded-full text-base lg:text-lg font-bold hover:bg-[#1f4d52] transition-colors shadow-md whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2 !opacity-100 !visible"
                 >
                   <Share2 size={18} /> Share Event
                 </button>
@@ -1022,7 +1022,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
              <div className="flex items-center gap-3 sm:gap-3 flex-1 justify-end min-w-0">
                <button 
                  onClick={handleShare}
-                 className="w-12 h-12 sm:w-12 sm:h-12 shrink-0 rounded-full border-2 border-[#15383c] bg-[#15383c] text-white flex items-center justify-center active:scale-[0.92] transition-transform touch-manipulation shadow-sm hover:bg-[#1f4d52] hover:border-[#1f4d52] opacity-100 visible"
+                 className="w-12 h-12 sm:w-12 sm:h-12 shrink-0 rounded-full border-2 border-[#15383c] bg-[#15383c] text-white flex items-center justify-center active:scale-[0.92] transition-transform touch-manipulation shadow-sm hover:bg-[#1f4d52] hover:border-[#1f4d52] !opacity-100 !visible"
                  aria-label="Share"
                >
                  <Share2 size={20} className="sm:w-5 sm:h-5" />
