@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ViewState } from '../types';
-import { ChevronLeft, HelpCircle, MessageCircle, BookOpen, Shield, CreditCard, Users, Calendar, Search, Mail, ExternalLink, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, HelpCircle, MessageCircle, BookOpen, Shield, CreditCard, Users, Calendar, Mail, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface HelpPageProps {
   setViewState: (view: ViewState) => void;
@@ -8,7 +8,6 @@ interface HelpPageProps {
 
 export const HelpPage: React.FC<HelpPageProps> = ({ setViewState }) => {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
 
   const toggleSection = (section: string) => {
     setExpandedSection(expandedSection === section ? null : section);
@@ -159,13 +158,7 @@ export const HelpPage: React.FC<HelpPageProps> = ({ setViewState }) => {
     }
   ];
 
-  const filteredCategories = faqCategories.map(category => ({
-    ...category,
-    questions: category.questions.filter(q => 
-      q.q.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      q.a.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  })).filter(category => category.questions.length > 0);
+  const filteredCategories = faqCategories;
 
   const quickLinks = [
     { title: 'Contact Us', view: ViewState.CONTACT, icon: <Mail size={18} /> },
@@ -194,20 +187,6 @@ export const HelpPage: React.FC<HelpPageProps> = ({ setViewState }) => {
           <p className="text-gray-300 text-base sm:text-lg max-w-2xl mx-auto">
             Find answers to common questions or get in touch with our support team
           </p>
-        </div>
-
-        {/* Search Bar */}
-        <div className="mb-8 sm:mb-12">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search for help..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#1a454a] border border-[#2d6a70] rounded-full py-3 sm:py-4 pl-12 pr-4 text-base text-white placeholder-white/30 focus:outline-none focus:border-[#e35e25] focus:ring-1 focus:ring-[#e35e25] transition-all"
-            />
-          </div>
         </div>
 
         {/* Quick Links */}
@@ -240,14 +219,7 @@ export const HelpPage: React.FC<HelpPageProps> = ({ setViewState }) => {
             Frequently Asked Questions
           </h2>
           
-          {filteredCategories.length === 0 && searchQuery ? (
-            <div className="bg-white/5 p-8 rounded-2xl border border-white/10 text-center">
-              <HelpCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-300">No results found for "{searchQuery}"</p>
-              <p className="text-gray-400 text-sm mt-2">Try a different search term or contact support</p>
-            </div>
-          ) : (
-            filteredCategories.map((category) => (
+          {filteredCategories.map((category) => (
               <div key={category.id} className="bg-white/5 rounded-2xl border border-white/10 overflow-hidden">
                 <button
                   onClick={() => toggleSection(category.id)}
@@ -283,8 +255,7 @@ export const HelpPage: React.FC<HelpPageProps> = ({ setViewState }) => {
                   </div>
                 )}
               </div>
-            ))
-          )}
+            ))}
         </div>
 
         {/* Contact Support */}
@@ -316,33 +287,6 @@ export const HelpPage: React.FC<HelpPageProps> = ({ setViewState }) => {
                   <ExternalLink size={16} className="sm:w-4 sm:h-4" />
                 </a>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Additional Resources */}
-        <div className="mt-8 sm:mt-12">
-          <h2 className="text-xl sm:text-2xl font-heading font-bold text-white mb-4 sm:mb-6">
-            Additional Resources
-          </h2>
-          <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
-            <div className="bg-white/5 p-5 sm:p-6 rounded-xl border border-white/10">
-              <h3 className="font-bold text-white mb-2 sm:mb-3 flex items-center gap-2">
-                <BookOpen size={18} className="text-[#e35e25]" />
-                Documentation
-              </h3>
-              <p className="text-gray-400 text-sm leading-relaxed">
-                Learn more about hosting, attending, and using Popera's features
-              </p>
-            </div>
-            <div className="bg-white/5 p-5 sm:p-6 rounded-xl border border-white/10">
-              <h3 className="font-bold text-white mb-2 sm:mb-3 flex items-center gap-2">
-                <Shield size={18} className="text-[#e35e25]" />
-                Safety & Security
-              </h3>
-              <p className="text-gray-400 text-sm leading-relaxed">
-                Learn about our safety measures and how to report issues
-              </p>
             </div>
           </div>
         </div>
