@@ -54,6 +54,8 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
     };
+    // Check initial scroll position
+    handleScroll();
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -119,14 +121,19 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
   };
 
   const isDetailView = viewState === ViewState.DETAIL;
-  // With a permanently light header background, treat all pages as "light" for icon/text contrast
-  const isLightPage = true;
+  const isLandingPage = viewState === ViewState.LANDING;
+  // On landing page at top: transparent header with white text/icons
+  // On landing page scrolled or other pages: white header with teal text/icons
+  const isLightPage = !isLandingPage || isScrolled;
+  const isLandingAtTop = isLandingPage && !isScrolled;
   
-  // Header background: always solid white with subtle blur and shadow for consistency across all pages
-  const navClasses = 'fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white/95 backdrop-blur-md shadow-sm py-4';
+  // Header background: transparent on landing at top, white otherwise
+  const navClasses = isLandingAtTop
+    ? 'fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-transparent py-4'
+    : 'fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white/95 backdrop-blur-md shadow-sm py-4';
 
-  // Header text/icons: always use brand teal for maximum visibility on all pages
-  const getTextColor = (_isMobile: boolean) => 'text-popera-teal';
+  // Header text/icons: white on landing at top, teal otherwise
+  const getTextColor = (_isMobile: boolean) => isLandingAtTop ? 'text-white' : 'text-popera-teal';
 
   return (
     <header className={navClasses}>
@@ -153,7 +160,11 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
           {/* Language Toggle */}
           <button
             onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
-            className="w-9 h-9 rounded-full border-2 border-[#15383c] text-[#15383c] font-bold text-xs transition-all hover:scale-105 flex items-center justify-center hover:bg-[#15383c]/5"
+            className={`w-9 h-9 rounded-full border-2 font-bold text-xs transition-all hover:scale-105 flex items-center justify-center ${
+              isLandingAtTop
+                ? 'border-white/40 text-white hover:bg-white/10'
+                : 'border-[#15383c] text-[#15383c] hover:bg-[#15383c]/5'
+            }`}
           >
             {language === 'en' ? 'FR' : 'EN'}
           </button>
@@ -229,7 +240,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
           {/* Desktop Menu Toggle - Right Side */}
           <button 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className={`${isScrolled || isLightPage || mobileMenuOpen ? 'text-popera-teal' : 'text-white'} w-10 h-10 flex items-center justify-center hover:bg-white/10 transition-colors rounded-full`}
+            className={`${isLandingAtTop ? 'text-white' : 'text-popera-teal'} w-10 h-10 flex items-center justify-center hover:bg-white/10 transition-colors rounded-full`}
             aria-label="Toggle menu"
           >
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -242,9 +253,9 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
           <button
             onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
             className={`w-10 h-10 rounded-full border-2 font-bold text-xs transition-all active:scale-[0.95] touch-manipulation flex items-center justify-center ${
-              isScrolled || isLightPage || mobileMenuOpen
-                ? 'border-[#15383c] text-[#15383c] hover:bg-[#15383c]/5'
-                : 'border-white/40 text-white hover:bg-white/10'
+              isLandingAtTop && !mobileMenuOpen
+                ? 'border-white/40 text-white hover:bg-white/10'
+                : 'border-[#15383c] text-[#15383c] hover:bg-[#15383c]/5'
             }`}
           >
             {language === 'en' ? 'FR' : 'EN'}
@@ -280,7 +291,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
           
           <button 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className={`${isScrolled || isLightPage || mobileMenuOpen ? 'text-popera-teal' : 'text-white'} w-11 h-11 flex items-center justify-center active:scale-[0.95] touch-manipulation rounded-full hover:bg-white/10 transition-colors`}
+            className={`${isLandingAtTop && !mobileMenuOpen ? 'text-white' : 'text-popera-teal'} w-11 h-11 flex items-center justify-center active:scale-[0.95] touch-manipulation rounded-full hover:bg-white/10 transition-colors`}
             aria-label="Toggle menu"
           >
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
