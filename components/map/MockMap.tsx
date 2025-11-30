@@ -1,6 +1,7 @@
 import React from 'react';
 import { MapPin } from 'lucide-react';
 
+// Mock Map Component - Always uses mock map (Google Maps disabled)
 interface MockMapProps {
   lat?: number;
   lng?: number;
