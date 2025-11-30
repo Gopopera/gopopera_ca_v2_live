@@ -581,24 +581,28 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 </div>
               </div>
               {/* Profile Button - Aligned with left edge of profile image, half width */}
-              <button 
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
+              <div 
+                onClick={() => {
                   console.log('[PROFILE_BUTTON] Clicked, displayHostName:', displayHostName);
-                  // Use setTimeout to ensure click handler runs after any state updates that cause re-render
-                  setTimeout(() => {
+                  if (onHostClick && displayHostName) {
+                    onHostClick(displayHostName);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-label={`View ${displayHostName || 'host'}'s profile`} 
+                className="w-1/2 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95 mb-2.5 relative z-50 cursor-pointer text-center"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
                     if (onHostClick && displayHostName) {
                       onHostClick(displayHostName);
                     }
-                  }, 0);
+                  }
                 }}
-                aria-label={`View ${displayHostName || 'host'}'s profile`} 
-                className="w-1/2 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95 mb-2.5 relative z-50"
-                type="button"
               >
                 Profile
-              </button>
+              </div>
               {/* Attending & Capacity Metrics - Inside component */}
               <div className="flex gap-2">
                 <div className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center">
@@ -679,24 +683,28 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                </div>
             </div>
             {/* Profile Button - Under host name, half width */}
-            <button 
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
+            <div 
+              onClick={() => {
                 console.log('[PROFILE_BUTTON] Clicked (desktop), displayHostName:', displayHostName);
-                // Use setTimeout to ensure click handler runs after any state updates that cause re-render
-                setTimeout(() => {
+                if (onHostClick && displayHostName) {
+                  onHostClick(displayHostName);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label={`View ${displayHostName || 'host'}'s profile`} 
+              className="w-1/2 sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full text-xs sm:text-sm font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 mb-3 relative z-50 cursor-pointer text-center"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
                   if (onHostClick && displayHostName) {
                     onHostClick(displayHostName);
                   }
-                }, 0);
+                }
               }}
-              aria-label={`View ${displayHostName || 'host'}'s profile`} 
-              className="w-1/2 sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full text-xs sm:text-sm font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 mb-3 relative z-50"
-              type="button"
             >
               Profile
-            </button>
+            </div>
             {/* Follow Button - Next to Profile */}
             {isLoggedIn && (
               <button
