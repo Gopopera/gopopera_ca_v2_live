@@ -95,6 +95,9 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
         window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
       } else if (view === ViewState.LANDING) {
         window.history.replaceState({ viewState: ViewState.LANDING }, '', '/');
+      } else if (view === ViewState.AUTH) {
+        window.history.replaceState({ viewState: ViewState.AUTH }, '', '/auth');
+        window.scrollTo(0, 0);
       } else if (view === ViewState.PROFILE || view === ViewState.MY_POPS || view === ViewState.FAVORITES) {
         // These views don't require additional state, safe to navigate
         window.history.replaceState({ viewState: view }, '', `/${view.toLowerCase()}`);

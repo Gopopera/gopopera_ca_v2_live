@@ -1218,6 +1218,10 @@ const AppContent: React.FC = () => {
     } else if (viewState === ViewState.HOST_PROFILE && selectedHost) {
       // HOST_PROFILE doesn't need URL sync - it's a modal-like overlay
       // Keep current URL to allow back button to work
+    } else if (viewState === ViewState.AUTH) {
+      if (currentUrl !== '/auth') {
+        window.history.replaceState({ viewState: ViewState.AUTH }, '', '/auth');
+      }
     }
 
     // Handle browser back/forward buttons
@@ -1330,8 +1334,8 @@ const AppContent: React.FC = () => {
           return;
         }
         
-        // Don't reset viewState if we're on HOST_PROFILE (user clicked Profile button)
-        if (viewState === ViewState.HOST_PROFILE) {
+        // Don't reset viewState if we're on HOST_PROFILE or AUTH (user clicked Profile button or Sign In)
+        if (viewState === ViewState.HOST_PROFILE || viewState === ViewState.AUTH) {
           return;
         }
         
