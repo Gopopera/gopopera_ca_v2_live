@@ -694,7 +694,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         <div className="hidden lg:block">
           <div className="p-5 sm:p-6 md:p-7 lg:p-8 bg-gray-50 rounded-2xl sm:rounded-3xl border border-gray-100 hover:border-gray-200 transition-colors">
             {/* Host Info - Aligned with Attending component */}
-            <div className="flex items-center gap-3 sm:gap-4 mb-3">
+            <div className="flex items-center gap-3 sm:gap-4 mb-2">
               <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-gray-200 overflow-hidden ring-2 sm:ring-4 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick?.(displayHostName)}>
                 {hostProfilePicture ? (
                   <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
