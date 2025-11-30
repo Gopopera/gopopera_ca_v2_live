@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Event, ViewState } from '../types';
 import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info, Star, Sparkles, X, UserPlus, UserCheck, ChevronRight, CheckCircle2, Edit } from 'lucide-react';
 import { followHost, unfollowHost, isFollowing } from '../firebase/follow';
@@ -59,10 +59,6 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const [reserving, setReserving] = useState(false);
   const [reservationSuccess, setReservationSuccess] = useState(false);
   const [hostProfilePicture, setHostProfilePicture] = useState<string | null>(null);
-  
-  // Refs for Profile buttons to attach native event listeners
-  const profileButtonRefMobile = useRef<HTMLDivElement>(null);
-  const profileButtonRefDesktop = useRef<HTMLDivElement>(null);
   
   // Store hooks - always called
   const user = useUserStore((state) => state.user);
@@ -199,37 +195,6 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     
     fetchHostProfile();
   }, [event.hostId, event.hostName, user?.uid, user?.photoURL, user?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl]);
-  
-  // Attach native event listeners to Profile buttons to bypass React synthetic events
-  useEffect(() => {
-    const handleProfileClick = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-      console.log('[PROFILE_BUTTON] Native click event fired, displayHostName:', displayHostName);
-      if (onHostClick && displayHostName) {
-        onHostClick(displayHostName);
-      }
-    };
-
-    const mobileBtn = profileButtonRefMobile.current;
-    const desktopBtn = profileButtonRefDesktop.current;
-
-    if (mobileBtn) {
-      mobileBtn.addEventListener('click', handleProfileClick, true); // Use capture phase
-    }
-    if (desktopBtn) {
-      desktopBtn.addEventListener('click', handleProfileClick, true); // Use capture phase
-    }
-
-    return () => {
-      if (mobileBtn) {
-        mobileBtn.removeEventListener('click', handleProfileClick, true);
-      }
-      if (desktopBtn) {
-        desktopBtn.removeEventListener('click', handleProfileClick, true);
-      }
-    };
-  }, [displayHostName, onHostClick]);
   
   // Fetch real reservation count from Firestore
   useEffect(() => {
@@ -616,23 +581,16 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 </div>
               </div>
               {/* Profile Button - Aligned with left edge of profile image, half width */}
-              <div 
-                ref={profileButtonRefMobile}
-                role="button"
-                tabIndex={0}
-                aria-label={`View ${displayHostName || 'host'}'s profile`} 
-                className="w-1/2 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95 mb-2.5 relative z-50 cursor-pointer text-center"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    if (onHostClick && displayHostName) {
-                      onHostClick(displayHostName);
-                    }
-                  }
+              <button
+                onClick={() => {
+                  console.log('[PROFILE_BUTTON] Clicked, calling onHostClick with:', displayHostName);
+                  onHostClick?.(displayHostName);
                 }}
+                aria-label={`View ${displayHostName || 'host'}'s profile`} 
+                className="w-1/2 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95 mb-2.5 relative z-50 text-center"
               >
                 Profile
-              </div>
+              </button>
               {/* Attending & Capacity Metrics - Inside component */}
               <div className="flex gap-2">
                 <div className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center">
@@ -713,23 +671,16 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                </div>
             </div>
             {/* Profile Button - Under host name, half width */}
-            <div 
-              ref={profileButtonRefDesktop}
-              role="button"
-              tabIndex={0}
-              aria-label={`View ${displayHostName || 'host'}'s profile`} 
-              className="w-1/2 sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full text-xs sm:text-sm font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 mb-3 relative z-50 cursor-pointer text-center"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  if (onHostClick && displayHostName) {
-                    onHostClick(displayHostName);
-                  }
-                }
+            <button
+              onClick={() => {
+                console.log('[PROFILE_BUTTON] Clicked (desktop), calling onHostClick with:', displayHostName);
+                onHostClick?.(displayHostName);
               }}
+              aria-label={`View ${displayHostName || 'host'}'s profile`} 
+              className="w-1/2 sm:w-auto px-3 sm:px-4 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full text-xs sm:text-sm font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 mb-3 relative z-50"
             >
               Profile
-            </div>
+            </button>
             {/* Follow Button - Next to Profile */}
             {isLoggedIn && (
               <button
