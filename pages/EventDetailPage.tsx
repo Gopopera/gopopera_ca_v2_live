@@ -592,13 +592,21 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
                 </div>
               </div>
-              {/* Profile Button - Above metrics, same size */}
-              <div 
-                className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all mb-2"
-                onClick={() => onHostClick(displayHostName)}
-              >
-                <h4 className="text-base font-heading font-bold text-popera-teal">Profile</h4>
-                <p className="text-[8px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">View Host</p>
+              {/* Profile Button - Above capacity, same size as capacity button */}
+              <div className="flex gap-2 mb-2">
+                <div className="flex-1"></div>
+                <div 
+                  className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all"
+                  onClick={() => {
+                    console.log('[PROFILE_BUTTON] Clicked, calling onHostClick with:', displayHostName);
+                    if (onHostClick && displayHostName) {
+                      onHostClick(displayHostName);
+                    }
+                  }}
+                >
+                  <h4 className="text-base font-heading font-bold text-popera-teal">Profile</h4>
+                  <p className="text-[8px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">View Host</p>
+                </div>
               </div>
               {/* Attending & Capacity Metrics - Inside component */}
               <div className="flex gap-2">
@@ -679,13 +687,21 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                  </button>
                </div>
             </div>
-            {/* Profile Button - Above metrics, same size */}
-            <div 
-              className="flex-1 bg-white p-2 sm:p-3 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all mb-3"
-              onClick={() => onHostClick(displayHostName)}
-            >
-              <h4 className="text-base sm:text-lg font-heading font-bold text-popera-teal">Profile</h4>
-              <p className="text-[8px] sm:text-[10px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">View Host</p>
+            {/* Profile Button - Above capacity, same size as capacity button */}
+            <div className="flex gap-2 sm:gap-3 mb-3">
+              <div className="flex-1"></div>
+              <div 
+                className="flex-1 bg-white p-2 sm:p-3 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all"
+                onClick={() => {
+                  console.log('[PROFILE_BUTTON_DESKTOP] Clicked, calling onHostClick with:', displayHostName);
+                  if (onHostClick && displayHostName) {
+                    onHostClick(displayHostName);
+                  }
+                }}
+              >
+                <h4 className="text-base sm:text-lg font-heading font-bold text-popera-teal">Profile</h4>
+                <p className="text-[8px] sm:text-[10px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">View Host</p>
+              </div>
             </div>
             {/* Follow Button - Next to Profile */}
             {isLoggedIn && (
