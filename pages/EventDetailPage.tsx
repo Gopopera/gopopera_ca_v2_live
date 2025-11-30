@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Event, ViewState } from '../types';
 import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info, Star, Sparkles, X, UserPlus, UserCheck, ChevronRight, CheckCircle2, Edit } from 'lucide-react';
 import { followHost, unfollowHost, isFollowing } from '../firebase/follow';
@@ -81,6 +81,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   // State for host name (may need to be fetched if missing)
   const [displayHostName, setDisplayHostName] = useState<string>(event.hostName || '');
   
+  // Refs for Profile buttons (mobile and desktop)
+  const profileButtonRefMobile = useRef<HTMLButtonElement>(null);
+  const profileButtonRefDesktop = useRef<HTMLButtonElement>(null);
+  
   // Stable click handler - exactly like GroupChatHeader
   const handleProfileClick = useCallback((e?: React.MouseEvent) => {
     if (e) {
@@ -89,8 +93,29 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     }
     console.log('[PROFILE_BUTTON] Clicked, displayHostName:', displayHostName, 'onHostClick:', !!onHostClick);
     if (onHostClick && displayHostName) {
+      console.log('[PROFILE_BUTTON] Calling onHostClick with:', displayHostName);
       onHostClick(displayHostName);
+    } else {
+      console.warn('[PROFILE_BUTTON] Missing onHostClick or displayHostName', { onHostClick: !!onHostClick, displayHostName });
     }
+  }, [onHostClick, displayHostName]);
+  
+  // Native event listener as backup (capture phase)
+  useEffect(() => {
+    const handleNativeClick = (e: Event) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('[data-profile-button]')) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        console.log('[PROFILE_BUTTON_NATIVE] Native click detected!', displayHostName);
+        if (onHostClick && displayHostName) {
+          onHostClick(displayHostName);
+        }
+      }
+    };
+    
+    document.addEventListener('click', handleNativeClick, true); // Capture phase
+    return () => document.removeEventListener('click', handleNativeClick, true);
   }, [onHostClick, displayHostName]);
   
   // State for host's overall rating (from all their events)
@@ -593,8 +618,35 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick?.(displayHostName)}>{displayHostName}</h3>
                 </div>
               </div>
-              {/* Attending & Capacity Metrics */}
+              {/* Profile Button - Above Capacity, same size */}
               <div className="flex gap-2 mb-2">
+                <div className="flex-1"></div>
+                <button
+                  ref={profileButtonRefMobile}
+                  type="button"
+                  data-profile-button="mobile"
+                  onClick={handleProfileClick}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('[PROFILE_BUTTON_MOBILE] MouseDown');
+                    handleProfileClick();
+                  }}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('[PROFILE_BUTTON_MOBILE] TouchStart');
+                    handleProfileClick();
+                  }}
+                  className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all touch-manipulation active:scale-95 relative z-50"
+                  style={{ pointerEvents: 'auto' }}
+                >
+                  <h4 className="text-base font-heading font-bold text-popera-teal">Profile</h4>
+                  <p className="text-[8px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">View Host</p>
+                </button>
+              </div>
+              {/* Attending & Capacity Metrics */}
+              <div className="flex gap-2">
                 <div className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center">
                   <h4 className="text-base font-heading font-bold text-popera-teal">
                     {reservationCount !== null ? reservationCount : (event.attendeesCount || 0)}
@@ -607,18 +659,6 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   </h4>
                   <p className="text-[8px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">{t('event.capacity')}</p>
                 </div>
-              </div>
-              {/* Profile Button - Aligned with Capacity, same size */}
-              <div className="flex gap-2">
-                <div className="flex-1"></div>
-                <button
-                  type="button"
-                  onClick={() => onHostClick?.(displayHostName)}
-                  className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all touch-manipulation active:scale-95"
-                >
-                  <h4 className="text-base font-heading font-bold text-popera-teal">Profile</h4>
-                  <p className="text-[8px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">View Host</p>
-                </button>
               </div>
             </div>
           </div>
@@ -685,13 +725,22 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 </button>
               </div>
             </div>
-            {/* Profile Button - Aligned with Capacity, same size */}
+            {/* Profile Button - Above Capacity, same size */}
             <div className="flex gap-2 sm:gap-3 mb-3">
               <div className="flex-1"></div>
               <button
+                ref={profileButtonRefDesktop}
                 type="button"
-                onClick={() => onHostClick?.(displayHostName)}
-                className="flex-1 bg-white p-2 sm:p-3 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all touch-manipulation active:scale-95"
+                data-profile-button="desktop"
+                onClick={handleProfileClick}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('[PROFILE_BUTTON_DESKTOP] MouseDown');
+                  handleProfileClick();
+                }}
+                className="flex-1 bg-white p-2 sm:p-3 rounded-xl border border-gray-200 text-center cursor-pointer hover:border-popera-orange hover:bg-orange-50 transition-all touch-manipulation active:scale-95 relative z-50"
+                style={{ pointerEvents: 'auto' }}
               >
                 <h4 className="text-base sm:text-lg font-heading font-bold text-popera-teal">Profile</h4>
                 <p className="text-[8px] sm:text-[10px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">View Host</p>
