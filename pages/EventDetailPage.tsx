@@ -580,17 +580,14 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick(displayHostName)}>{displayHostName}</h3>
                 </div>
               </div>
-              {/* Profile Button - Narrow, from image left to text end, half width */}
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 shrink-0"></div>
-                <button 
-                  onClick={() => onHostClick(displayHostName)} 
-                  aria-label={`View ${displayHostName}'s profile`} 
-                  className="w-1/2 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95"
-                >
-                  Profile
-                </button>
-              </div>
+              {/* Profile Button - Aligned with left edge of profile image, half width */}
+              <button 
+                onClick={() => onHostClick(displayHostName)} 
+                aria-label={`View ${displayHostName}'s profile`} 
+                className="w-1/2 px-2.5 py-1.5 bg-white border border-gray-300 rounded-full text-[10px] font-bold text-popera-teal hover:border-popera-orange hover:text-popera-orange hover:bg-orange-50 transition-all shadow-sm touch-manipulation active:scale-95"
+              >
+                Profile
+              </button>
             </div>
           </div>
           
