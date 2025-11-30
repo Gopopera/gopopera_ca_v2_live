@@ -56,11 +56,14 @@ export const MockMap: React.FC<MockMapProps> = ({
     if (typeof window !== 'undefined' && (window as any).google?.maps) {
       try {
         const google = (window as any).google;
-        setMarkerIcon({
-          url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDBDMTIuMjY4IDAgNiA2LjI2OCA2IDE0QzYgMjEuNzMyIDEyLjI2OCAyOCAyMCAyOEMyNy43MzIgMjggMzQgMjEuNzMyIDM0IDE0QzM0IDYuMjY4IDI3LjczMiAwIDIwIDBaIiBmaWxsPSIjRTM1RTI1Ii8+CjxwYXRoIGQ9Ik0yMCAyMEMxOC4zNDMgMjAgMTcgMTguNjU3IDE3IDE3QzE3IDE1LjM0MyAxOC4zNDMgMTQgMjAgMTRDMjEuNjU3IDE0IDIzIDE1LjM0MyAyMyAxN0MyMyAxOC42NTcgMjEuNjU3IDIwIDIwIDIwWiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+',
-          scaledSize: new google.maps.Size(40, 40),
-          anchor: new google.maps.Point(20, 40)
-        });
+        // Check if google.maps.Size and Point are available before using them
+        if (google.maps && google.maps.Size && google.maps.Point) {
+          setMarkerIcon({
+            url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwIDBDMTIuMjY4IDAgNiA2LjI2OCA2IDE0QzYgMjEuNzMyIDEyLjI2OCAyOCAyMCAyOEMyNy43MzIgMjggMzQgMjEuNzMyIDM0IDE0QzM0IDYuMjY4IDI3LjczMiAwIDIwIDBaIiBmaWxsPSIjRTM1RTI1Ii8+CjxwYXRoIGQ9Ik0yMCAyMEMxOC4zNDMgMjAgMTcgMTguNjU3IDE3IDE3QzE3IDE1LjM0MyAxOC4zNDMgMTQgMjAgMTRDMjEuNjU3IDE0IDIzIDE1LjM0MyAyMyAxN0MyMyAxOC42NTcgMjEuNjU3IDIwIDIwIDIwWiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+',
+            scaledSize: new google.maps.Size(40, 40),
+            anchor: new google.maps.Point(20, 40)
+          });
+        }
       } catch (error) {
         console.warn('[MOCK_MAP] Error creating marker icon:', error);
         setMarkerIcon(undefined);
@@ -179,41 +182,55 @@ export const MockMap: React.FC<MockMapProps> = ({
   }
 
   // Use real Google Maps when API key is available
-  return (
-    <div className={`relative ${className}`}>
-      <LoadScriptComponent 
-        googleMapsApiKey={apiKey}
-        onLoad={onLoadScript}
-      >
-        <GoogleMapComponent
-          mapContainerStyle={mapContainerStyle}
-          center={center}
-          zoom={hasCoordinates ? 15 : 10}
-          onLoad={onLoad}
-          onUnmount={onUnmount}
-          options={{
-            disableDefaultUI: false,
-            zoomControl: true,
-            streetViewControl: false,
-            mapTypeControl: false,
-            fullscreenControl: true,
-            styles: [
-              {
-                featureType: 'poi',
-                elementType: 'labels',
-                stylers: [{ visibility: 'off' }]
-              }
-            ]
-          }}
+  try {
+    return (
+      <div className={`relative ${className}`}>
+        <LoadScriptComponent 
+          googleMapsApiKey={apiKey}
+          onLoad={onLoadScript}
         >
-          {hasCoordinates && MarkerComponent && markerIcon && (
-            <MarkerComponent
-              position={{ lat: lat!, lng: lng! }}
-              icon={markerIcon}
-            />
-          )}
-        </GoogleMapComponent>
-      </LoadScriptComponent>
-    </div>
-  );
+          <GoogleMapComponent
+            mapContainerStyle={mapContainerStyle}
+            center={center}
+            zoom={hasCoordinates ? 15 : 10}
+            onLoad={onLoad}
+            onUnmount={onUnmount}
+            options={{
+              disableDefaultUI: false,
+              zoomControl: true,
+              streetViewControl: false,
+              mapTypeControl: false,
+              fullscreenControl: true,
+              styles: [
+                {
+                  featureType: 'poi',
+                  elementType: 'labels',
+                  stylers: [{ visibility: 'off' }]
+                }
+              ]
+            }}
+          >
+            {hasCoordinates && MarkerComponent && markerIcon && (
+              <MarkerComponent
+                position={{ lat: lat!, lng: lng! }}
+                icon={markerIcon}
+              />
+            )}
+          </GoogleMapComponent>
+        </LoadScriptComponent>
+      </div>
+    );
+  } catch (error) {
+    console.error('[MOCK_MAP] Error rendering Google Maps, falling back to mock:', error);
+    // Fallback to mock map on error
+    return (
+      <div className={`relative overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 ${className}`}>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-2xl border-4 border-[#e35e25]">
+            <MapPin size={24} className="text-[#e35e25]" fill="currentColor" stroke="currentColor" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 };
