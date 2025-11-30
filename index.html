@@ -27,10 +27,21 @@
         document.body.prepend(pre);
       };
       window.onunhandledrejection = function (e) {
-        const pre = document.createElement('pre');
-        pre.style.cssText = 'white-space:pre-wrap;color:#fff;background:#311;padding:12px;position:fixed;left:0;right:0;top:44px;z-index:999998';
-        pre.textContent = '[unhandledrejection] ' + (e?.reason?.stack || e?.reason?.message || String(e?.reason));
-        document.body.prepend(pre);
+        // Suppress Google Maps errors - they're handled by MockMap component
+        const errorMessage = e?.reason?.message || String(e?.reason || '');
+        const errorStack = e?.reason?.stack || '';
+        if (errorMessage.includes('GD') || errorMessage.includes('map.js') || errorMessage.includes('google.maps') || errorStack.includes('map.js') || errorStack.includes('common.js')) {
+          // Silently suppress Google Maps errors - they're handled gracefully by the component
+          e.preventDefault();
+          return;
+        }
+        // For other errors, show them (but only in development)
+        if (import.meta.env.DEV) {
+          const pre = document.createElement('pre');
+          pre.style.cssText = 'white-space:pre-wrap;color:#fff;background:#311;padding:12px;position:fixed;left:0;right:0;top:44px;z-index:999998';
+          pre.textContent = '[unhandledrejection] ' + (e?.reason?.stack || e?.reason?.message || String(e?.reason));
+          document.body.prepend(pre);
+        }
       };
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
