@@ -1004,6 +1004,9 @@ const AppContent: React.FC = () => {
   const handleHostClick = (hostName: string) => {
     setSelectedHost(hostName);
     setViewState(ViewState.HOST_PROFILE);
+    // Update URL to prevent viewState from being reset by URL sync
+    const hostProfileUrl = `/host/${encodeURIComponent(hostName)}`;
+    window.history.replaceState({ viewState: ViewState.HOST_PROFILE, hostName }, '', hostProfileUrl);
     window.scrollTo(0, 0);
   };
 
@@ -1212,6 +1215,9 @@ const AppContent: React.FC = () => {
       if (currentUrl !== '/press') {
         window.history.replaceState({ viewState: ViewState.PRESS }, '', '/press');
       }
+    } else if (viewState === ViewState.HOST_PROFILE && selectedHost) {
+      // HOST_PROFILE doesn't need URL sync - it's a modal-like overlay
+      // Keep current URL to allow back button to work
     }
 
     // Handle browser back/forward buttons
@@ -1321,6 +1327,11 @@ const AppContent: React.FC = () => {
         
         // If we already have this event selected and we're on DETAIL view, no need to do anything
         if (selectedEvent?.id === eventId && viewState === ViewState.DETAIL) {
+          return;
+        }
+        
+        // Don't reset viewState if we're on HOST_PROFILE (user clicked Profile button)
+        if (viewState === ViewState.HOST_PROFILE) {
           return;
         }
         
