@@ -316,60 +316,47 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
           
           console.log(`[CREATE_EVENT] Uploading image "${processed.file.name}" (${(processed.file.size / 1024 / 1024).toFixed(2)}MB)...`);
           // uploadImage handles retries internally (2 retries = 3 total attempts)
+          // Increased timeout to 120 seconds for large images (compressed images should be < 5MB, but allow time for slow connections)
           const uploadedUrl = await uploadImage(path, processed.file, { 
-            retries: 2 // 3 total attempts
+            retries: 2, // 3 total attempts
+            maxUploadTime: 120000 // 120 seconds (2 minutes) - enough for large compressed images on slow connections
           });
           console.log(`[CREATE_EVENT] ✅ Uploaded successfully: ${uploadedUrl.substring(0, 50)}...`);
           return uploadedUrl;
         };
         
-        // Upload all images in PARALLEL with AGGRESSIVE TIMEOUT - create event even if uploads hang
+        // Upload all images in PARALLEL - uploadImage handles timeouts internally
         const timestamp = Date.now();
-        const UPLOAD_TIMEOUT_MS = 15000; // 15 seconds timeout (reduced for faster fallback)
-        
-        // Helper to add timeout to a promise
-        const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> => {
-          return Promise.race([
-            promise,
-            new Promise<T>((_, reject) => 
-              setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs)
-            )
-          ]);
-        };
         
         const uploadPromises = imageFiles.map((file, i) => {
           const imagePath = `events/${user.uid}/${timestamp}_${i}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
           console.log(`[CREATE_EVENT] Processing image ${i + 1}/${imageFiles.length}: "${file.name}" (${(file.size / 1024 / 1024).toFixed(2)}MB, ${file.type})...`);
           
-          // Each promise MUST settle - either resolve with URL or reject with error
-          return withTimeout(
-            processAndUploadImage(file, imagePath)
-              .then((url) => {
-                console.log(`[CREATE_EVENT] ✅ Image ${i + 1}/${imageFiles.length} uploaded successfully`);
-                return url;
-              })
-              .catch((error: any) => {
-                console.error(`[CREATE_EVENT] ❌ Failed to upload image ${i + 1}/${imageFiles.length}:`, error);
-                // Re-throw to ensure Promise.allSettled sees it as rejected
-                throw error;
-              }),
-            UPLOAD_TIMEOUT_MS,
-            `Upload timeout after ${UPLOAD_TIMEOUT_MS / 1000}s`
-          );
+          // Process and upload - uploadImage handles timeouts and retries internally
+          return processAndUploadImage(file, imagePath)
+            .then((url) => {
+              console.log(`[CREATE_EVENT] ✅ Image ${i + 1}/${imageFiles.length} uploaded successfully`);
+              return url;
+            })
+            .catch((error: any) => {
+              console.error(`[CREATE_EVENT] ❌ Failed to upload image ${i + 1}/${imageFiles.length}:`, error);
+              // Re-throw to ensure Promise.allSettled sees it as rejected
+              throw error;
+            });
         });
         
-        // Wait for all uploads to complete with timeout - allSettled ALWAYS resolves
-        // Add an additional overall timeout to force completion even if Promise.allSettled hangs
-        console.log(`[CREATE_EVENT] Waiting for Promise.allSettled with ${uploadPromises.length} promises (${UPLOAD_TIMEOUT_MS / 1000}s timeout per image, 20s overall timeout)...`);
+        // Wait for all uploads to complete - allSettled ALWAYS resolves
+        // Each upload has its own 120s timeout, so we allow up to 180s overall (3 minutes) for all uploads
+        console.log(`[CREATE_EVENT] Waiting for Promise.allSettled with ${uploadPromises.length} promise(s) (120s timeout per image, 180s overall timeout)...`);
         
         // Add overall timeout to prevent hanging - if Promise.allSettled takes too long, force completion
         type UploadResult = PromiseSettledResult<string>;
         const overallTimeoutPromise = new Promise<UploadResult[]>((resolve) => {
           setTimeout(() => {
-            console.warn('[CREATE_EVENT] ⚠️ Overall upload timeout reached (20s) - forcing completion with placeholder images');
+            console.warn('[CREATE_EVENT] ⚠️ Overall upload timeout reached (180s) - forcing completion with placeholder images');
             // Return rejected results to force placeholder usage
-            resolve(uploadPromises.map(() => ({ status: 'rejected' as const, reason: new Error('Overall timeout after 20s') })));
-          }, 20000); // 20 seconds overall timeout
+            resolve(uploadPromises.map(() => ({ status: 'rejected' as const, reason: new Error('Overall timeout after 180s') })));
+          }, 180000); // 180 seconds (3 minutes) overall timeout - enough for multiple large images
         });
         
         const uploadResults = await Promise.race([

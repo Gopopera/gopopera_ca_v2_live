@@ -158,7 +158,10 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
             }
             
             console.log('[EDIT_EVENT] Uploading image to path:', path);
-            return await uploadImage(path, processedFile, { maxUploadTime: 90000 });
+            return await uploadImage(path, processedFile, { 
+              retries: 2,
+              maxUploadTime: 120000 // 120 seconds (2 minutes) - enough for large compressed images
+            });
           };
           
           const timestamp = Date.now();
