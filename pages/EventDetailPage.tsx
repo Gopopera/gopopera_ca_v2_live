@@ -68,13 +68,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   // Get favorites directly from user store for reactive updates
   // This ensures the UI updates immediately when favorites change
   const storeFavorites = useUserStore((state) => state.user?.favorites ?? []);
-  const currentFavorites = useMemo(() => {
-    // Prefer store favorites (most up-to-date) over prop favorites
-    return storeFavorites.length > 0 ? storeFavorites : favorites;
-  }, [storeFavorites, favorites]);
   
-  // Check if this event is favorited - reactive to store changes
-  const isFavorite = useMemo(() => currentFavorites.includes(event.id), [currentFavorites, event.id]);
+  // Check if this event is favorited - directly reactive to store changes
+  // Use store favorites first (most up-to-date), fallback to prop favorites
+  const isFavorite = (storeFavorites.length > 0 ? storeFavorites : favorites).includes(event.id);
   
   // Memoized values - always called (safe even if event is undefined)
   const isFakeEvent = useMemo(() => event?.isFakeEvent === true, [event?.isFakeEvent]);
@@ -472,8 +469,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                  <Heart 
                    size={20} 
                    className={`sm:w-5 sm:h-5 transition-all ${
-                     isFavorite ? 'fill-[#e35e25] text-[#e35e25]' : 'fill-none'
+                     isFavorite ? 'fill-[#e35e25] text-[#e35e25]' : 'fill-none text-popera-teal'
                    }`}
+                   style={isFavorite ? { fill: '#e35e25', color: '#e35e25' } : { fill: 'none' }}
                    strokeWidth={2}
                  />
                </button>
@@ -632,8 +630,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             <Heart 
               size={22} 
               className={`sm:w-6 sm:h-6 transition-all ${
-                isFavorite ? 'fill-[#e35e25] text-[#e35e25]' : 'fill-none'
+                isFavorite ? 'fill-[#e35e25] text-[#e35e25]' : 'fill-none text-white'
               }`}
+              style={isFavorite ? { fill: '#e35e25', color: '#e35e25' } : { fill: 'none', color: 'white' }}
               strokeWidth={2.5}
             />
           </button>
