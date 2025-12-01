@@ -65,6 +65,17 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const userProfile = useUserStore((state) => state.userProfile);
   const { t } = useLanguage();
   
+  // Get favorites directly from user store for reactive updates
+  // This ensures the UI updates immediately when favorites change
+  const storeFavorites = useUserStore((state) => state.user?.favorites ?? []);
+  const currentFavorites = useMemo(() => {
+    // Prefer store favorites (most up-to-date) over prop favorites
+    return storeFavorites.length > 0 ? storeFavorites : favorites;
+  }, [storeFavorites, favorites]);
+  
+  // Check if this event is favorited - reactive to store changes
+  const isFavorite = useMemo(() => currentFavorites.includes(event.id), [currentFavorites, event.id]);
+  
   // Memoized values - always called (safe even if event is undefined)
   const isFakeEvent = useMemo(() => event?.isFakeEvent === true, [event?.isFakeEvent]);
   const isDemo = useMemo(() => event?.isDemo === true || isFakeEvent, [event?.isDemo, isFakeEvent]);
@@ -453,15 +464,15 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                  }}
                  type="button"
                  className={`w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg hover:scale-105 active:scale-[0.92] transition-all touch-manipulation border border-white/50 z-50 pointer-events-auto ${
-                   favorites.includes(event.id) ? 'text-popera-orange' : 'text-popera-teal'
+                   isFavorite ? 'text-[#e35e25]' : 'text-popera-teal'
                  }`}
                  style={{ pointerEvents: 'auto', WebkitTapHighlightColor: 'transparent' }}
-                 aria-label={favorites.includes(event.id) ? "Remove from favorites" : "Add to favorites"}
+                 aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
                >
                  <Heart 
                    size={20} 
                    className={`sm:w-5 sm:h-5 transition-all ${
-                     favorites.includes(event.id) ? 'fill-popera-orange text-popera-orange' : 'fill-none'
+                     isFavorite ? 'fill-[#e35e25] text-[#e35e25]' : 'fill-none'
                    }`}
                    strokeWidth={2}
                  />
@@ -613,15 +624,15 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             }}
             type="button"
             className={`absolute top-4 right-4 w-11 h-11 sm:w-12 sm:h-12 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg hover:scale-105 active:scale-[0.92] transition-all touch-manipulation border border-white/50 z-50 pointer-events-auto ${
-              favorites.includes(event.id) ? 'text-popera-orange' : 'text-white'
+              isFavorite ? 'text-[#e35e25]' : 'text-white'
             }`}
             style={{ pointerEvents: 'auto', WebkitTapHighlightColor: 'transparent' }}
-            aria-label={favorites.includes(event.id) ? "Remove from favorites" : "Add to favorites"}
+            aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
           >
             <Heart 
               size={22} 
               className={`sm:w-6 sm:h-6 transition-all ${
-                favorites.includes(event.id) ? 'fill-popera-orange text-popera-orange' : 'fill-none'
+                isFavorite ? 'fill-[#e35e25] text-[#e35e25]' : 'fill-none'
               }`}
               strokeWidth={2.5}
             />
