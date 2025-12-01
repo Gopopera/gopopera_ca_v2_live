@@ -345,7 +345,7 @@ export const translations = {
       pollQuestion: 'Will you join the after-party?',
       yes: 'Yes',
       no: 'No',
-      hostReply: 'Thanks for the feedback! We'll set up the after-party at 7 PM. See you there! 🎉',
+      hostReply: "Thanks for the feedback! We'll set up the after-party at 7 PM. See you there! 🎉",
       alex: 'Alex',
       priya: 'Priya',
       host: 'Host',
