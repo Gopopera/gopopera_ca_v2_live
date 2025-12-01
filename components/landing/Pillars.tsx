@@ -70,8 +70,8 @@ export const Pillars: React.FC = () => {
                   {pillar.category}
                 </span>
                 
-                {/* Title - Popera heading style */}
-                <h3 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-heading font-bold mb-3 sm:mb-2.5 md:mb-3 lg:mb-4 leading-[1.2] sm:leading-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                {/* Title - Popera heading style - Reduced size for French to fit on one line */}
+                <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-heading font-bold mb-3 sm:mb-2.5 md:mb-3 lg:mb-4 leading-[1.2] sm:leading-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
                   {pillar.title}
                 </h3>
                 
