@@ -141,27 +141,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const faqs = [
     {
       question: "1. What is Popera?",
-      answer: "Popera is Canada's first community-powered pop-up platform, where anyone can safely create, discover, and join meaningful pop-up experiences near them. From garage sales to art shows, local meetups, and cultural events, Popera helps bring people together through authentic, real-world moments. All powered by simple RSVPs, built-in group chats, and transparent reviews."
+      answer: "Popera is a social platform that helps people form small Circles and join meaningful real-life Sessions near them. Whether it's a creative meet-up, a wellness ritual, a study circle, or a local hobby crew, Popera makes it easy to discover, host, and grow authentic in-person connections—with simple RSVPs, built-in group chats, and community-led trust."
     },
     {
-      question: "2. What is a \"Pop-up\"?",
-      answer: "A \"Pop-up\" is a short-term, real-world experience: a sale, gathering, or creative moment. Hosted by everyday people, creators, or small brands. Think of it as a mini event that appears, connects people, and disappears until the next one. Popera makes hosting or joining these pop-ups as easy as sending an invite or claiming a spot and allows connections to be more efficient before, during and after the event."
+      question: "2. What is a Circle?",
+      answer: "A Circle is a small, interest-based social group. It can be ongoing, seasonal, or short-term. Circles host Sessions, which are the individual meetups or gatherings members attend. Circles help people find their community and stay connected through real-world experiences."
     },
     {
-      question: "3. How do RSVPs and the address unlock work?",
-      answer: "When you RSVP to a Popera event, you instantly join its private group chat and community. The exact address stays hidden until your reservation is confirmed. This ensures privacy and safety for hosts and guests alike. Once confirmed, you'll unlock the address and get all event details right in your group conversation."
+      question: "3. What is a Session?",
+      answer: "A Session is a real-life gathering hosted by a Circle. It can be a ritual, meetup, activity, or micro-event. When users RSVP, they join the Circle's private group chat and receive all Session details as the date approaches."
     },
     {
-      question: "4. Why is there a commitment fee?",
-      answer: "Not every event has a fee. Many Popera events are free, while others include a small reservation/commitment fee set by the host. It varies by community norms, event type, and the host's preference (e.g., limited spots, high-demand pop-ups). When a fee is used, it's there to reduce no-shows and protect everyone's time. You'll always see the amount upfront before you RSVP."
+      question: "4. How do RSVPs and the address unlock work?",
+      answer: "When a user RSVPs to a Session, they immediately join the Circle's private group chat. The exact address remains hidden until the reservation is confirmed. Once confirmed, users unlock the location and all Session details."
     },
     {
-      question: "5. Is my payment secure, and what if an event is canceled?",
-      answer: "Absolutely. All payments on Popera are processed through Stripe, a trusted global payment provider. If a host cancels, your reservation is automatically refunded. Your data and payments are protected end-to-end, so you can focus on enjoying the experience."
+      question: "5. Why is there a commitment fee?",
+      answer: "Most Sessions are free, but some Circles include a small optional commitment fee to reduce no-shows. The amount is always shown upfront before reserving, and fees may be refundable depending on the host's settings."
     },
     {
-      question: "6. Who can host and how do you keep it safe?",
-      answer: "Anyone with a passion to share can host. From local artists and entrepreneurs to neighbors organizing a garage sale. Popera verifies hosts through Stripe Identity and phone verification, and community feedback adds another layer of trust. Every event is supported by clear rules, transparent reviews, and responsive moderation to keep pop-ups safe, inclusive, and fun for everyone."
+      question: "6. Is my payment secure, and what if a Session is canceled?",
+      answer: "All payments are processed securely through Stripe. If a host cancels a Session, the reservation is automatically refunded. User data and payment details remain fully protected."
+    },
+    {
+      question: "7. Who can host a Circle, and how do you keep it safe?",
+      answer: "Anyone with a passion to share can start a Circle. Host identity is verified through Stripe Identity and phone verification. Transparent reviews and active moderation help maintain safe, inclusive, and trustworthy Circles."
     }
   ];
 
@@ -461,8 +465,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </h2>
           
           <p className="text-base sm:text-lg md:text-xl text-gray-300 mb-8 sm:mb-10 md:mb-12 font-light max-w-2xl mx-auto leading-relaxed">
-            Be part of Canada's first pop-up community. <br className="hidden md:block" />
-            Join the waitlist before launch on the 15th of May 2026.
+            Be part of Canada's first platform for Circles and real-life Sessions. <br className="hidden md:block" />
+            Join the waitlist before launch on May 15th, 2026.
           </p>
 
           <form 

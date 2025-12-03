@@ -20,7 +20,7 @@ export const translations = {
     // Hero
     hero: {
       badge: 'Local Circle Discovery',
-      title: 'Find, start, or join a circle.',
+      title: 'Find, start or join a circle.',
       titleHighlight: '',
       description: 'A social platform for small Circles and meaningful real-life Sessions.',
       getStarted: 'Get Started',
