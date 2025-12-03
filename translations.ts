@@ -30,32 +30,32 @@ export const translations = {
     // Pillars
     pillars: {
       badge: 'Our Ecosystem',
-      title: 'How to Move Your Crowd',
-      description: 'One simple tool to activate your audience—whether you\'re selling tickets, building connections, or driving impact.',
+      title: 'How Popera Brings People Together',
+      description: 'One simple platform to bring people together—whether you\'re sharing goods, offering experiences, or building community impact.',
       sellShop: {
         category: 'SHOPPING',
         title: 'Sell & Shop',
-        description: 'Turn your audience into attendees. Sell tickets, host popups, and manage your entire marketplace.',
+        description: 'Meet people who love what you offer. Host small-group selling Sessions, manage pickups, and grow a trusted local Circle.',
       },
       connectPromote: {
         category: 'EXPERIENCES',
         title: 'Connect & Promote',
-        description: 'Don\'t just reach your crowd—gather them. Build your profile and connect with the people who care.',
+        description: 'Create Circles around your craft, passion, or experience—and host Sessions that turn followers into real relationships.',
       },
       mobilizeSupport: {
         category: 'GATHERINGS',
         title: 'Mobilize & Support',
-        description: 'Turn gatherings into movements. Mobilize your community to raise funds and spread awareness.',
+        description: 'Start Circles dedicated to causes or local impact, and bring people together through meaningful real-life Sessions.',
       },
     },
     // Landing Page
     landing: {
-      badge: 'Home of Popup Culture',
-      title: 'Popups &',
-      titleHighlight: 'Crowd Activation',
-      description: 'From micro-influencers to creators and community organizers, Popera provides the simplest tool to',
-      descriptionHighlight: 'gather your crowd anywhere',
-      descriptionEnd: ': transforming cafés, boutiques, parks, and living rooms into spaces for connection.',
+      badge: 'Where Local Circles Begin',
+      title: 'Social Circles &',
+      titleHighlight: 'Real-Life Sessions',
+      description: 'From creators to community organizers, Popera makes it simple to form small Circles and host meaningful real-life Sessions, turning cafés, parks, studios, and living rooms into spaces for connection.',
+      descriptionHighlight: '',
+      descriptionEnd: '',
       signUp: 'Sign Up',
       seeGuidelines: 'See Guidelines',
     },
@@ -68,9 +68,9 @@ export const translations = {
       thisMonth: 'This Month',
       showingResults: 'Showing {count} {count, plural, =1 {result} other {results}} in {location}',
       noResults: 'No events found matching your criteria.',
-      happeningNow: 'Happening Now',
-      upcomingPopups: 'Upcoming Popups',
-      seeWhereCrowd: 'See where the crowd is going. Discover the moments bringing people together this week.',
+      happeningNow: 'Active Now',
+      upcomingPopups: 'Active Circles',
+      seeWhereCrowd: 'Find Circles that match your interests and join their upcoming Sessions.',
       searchPlaceholder: 'Search events, hosts, or venues...',
     },
     // Common
@@ -547,6 +547,37 @@ export const translations = {
       whatHappensReportA: 'Our team reviews all reports promptly. We may contact you for additional information. Depending on the severity, actions may include warnings, account restrictions, or permanent suspension.',
       howUpdateProfile: 'How do I update my profile?',
       howUpdateProfileA: 'Go to your profile page (click your profile picture in the header), then click "Edit Profile". You can update your name, bio, profile picture, and other details.',
+    },
+    // Landing Page FAQs
+    landingFaqs: {
+      whatIsPopera: {
+        question: '1. What is Popera?',
+        answer: 'Popera is a social platform that helps people form small Circles and join meaningful real-life Sessions near them. Whether it\'s a creative meet-up, a wellness ritual, a study circle, or a local hobby crew, Popera makes it easy to discover, host, and grow authentic in-person connections—with simple RSVPs, built-in group chats, and community-led trust.',
+      },
+      whatIsCircle: {
+        question: '2. What is a Circle?',
+        answer: 'A Circle is a small, interest-based social group. It can be ongoing, seasonal, or short-term. Circles host Sessions, which are the individual meetups or gatherings members attend. Circles help people find their community and stay connected through real-world experiences.',
+      },
+      whatIsSession: {
+        question: '3. What is a Session?',
+        answer: 'A Session is a real-life gathering hosted by a Circle. It can be a ritual, meetup, activity, or micro-event. When users RSVP, they join the Circle\'s private group chat and receive all Session details as the date approaches.',
+      },
+      howRSVPWorks: {
+        question: '4. How do RSVPs and the address unlock work?',
+        answer: 'When a user RSVPs to a Session, they immediately join the Circle\'s private group chat. The exact address remains hidden until the reservation is confirmed. Once confirmed, users unlock the location and all Session details.',
+      },
+      whyCommitmentFee: {
+        question: '5. Why is there a commitment fee?',
+        answer: 'Most Sessions are free, but some Circles include a small optional commitment fee to reduce no-shows. The amount is always shown upfront before reserving, and fees may be refundable depending on the host\'s settings.',
+      },
+      paymentSecurity: {
+        question: '6. Is my payment secure, and what if a Session is canceled?',
+        answer: 'All payments are processed securely through Stripe. If a host cancels a Session, the reservation is automatically refunded. User data and payment details remain fully protected.',
+      },
+      whoCanHost: {
+        question: '7. Who can host a Circle, and how do you keep it safe?',
+        answer: 'Anyone with a passion to share can start a Circle. Host identity is verified through Stripe Identity and phone verification. Transparent reviews and active moderation help maintain safe, inclusive, and trustworthy Circles.',
+      },
       howChangeNotifications: 'How do I change my notification settings?',
       howChangeNotificationsA: 'Go to your profile, then "Settings" → "Notifications". You can customize which notifications you receive via email, SMS, and in-app alerts.',
       howDeleteAccount: 'How do I delete my account?',
@@ -834,32 +865,32 @@ export const translations = {
     // Pillars
     pillars: {
       badge: 'Notre écosystème',
-      title: 'Comment mobiliser votre foule',
-      description: 'Un outil simple pour activer votre public—que vous vendiez des billets, construisiez des connexions ou génériez un impact.',
+      title: 'Comment Popera rassemble les gens',
+      description: 'Une plateforme simple pour rassembler les gens—que vous partagiez des biens, offriez des expériences ou créiez un impact communautaire.',
       sellShop: {
         category: 'ACHATS',
         title: 'Vendre et acheter',
-        description: 'Transformez votre public en participants. Vendez des billets, organisez des popups et gérez tout votre marché.',
+        description: 'Rencontrez des gens qui aiment ce que vous offrez. Organisez des Sessions de vente en petits groupes, gérez les collectes et développez un Cercle local de confiance.',
       },
       connectPromote: {
         category: 'EXPÉRIENCES',
         title: 'Connecter et promouvoir',
-        description: 'Ne vous contentez pas d\'atteindre votre foule—rassemblez-la. Construisez votre profil et connectez-vous avec les personnes qui comptent.',
+        description: 'Créez des Cercles autour de votre art, de votre passion ou de votre expérience—et organisez des Sessions qui transforment les abonnés en relations réelles.',
       },
       mobilizeSupport: {
         category: 'RASSEMBLEMENTS',
         title: 'Mobiliser et soutenir',
-        description: 'Transformez les rassemblements en mouvements. Mobilisez votre communauté pour collecter des fonds et sensibiliser.',
+        description: 'Démarrez des Cercles dédiés à des causes ou à un impact local, et rassemblez les gens à travers des Sessions en personne significatives.',
       },
     },
     // Landing Page
     landing: {
-      badge: 'Maison de la culture Popup',
-      title: 'Popups et',
-      titleHighlight: 'Activation de foule',
-      description: 'Des micro-influenceurs aux créateurs et organisateurs communautaires, Popera fournit l\'outil le plus simple pour',
-      descriptionHighlight: 'rassembler votre foule partout',
-      descriptionEnd: ': transformer les cafés, boutiques, parcs et salons en espaces de connexion.',
+      badge: 'Là où les Cercles locaux commencent',
+      title: 'Cercles sociaux &',
+      titleHighlight: 'Sessions en personne',
+      description: 'Des créateurs aux organisateurs communautaires, Popera simplifie la formation de petits Cercles et l\'organisation de Sessions en personne significatives, transformant les cafés, parcs, studios et salons en espaces de connexion.',
+      descriptionHighlight: '',
+      descriptionEnd: '',
       signUp: 'S\'inscrire',
       seeGuidelines: 'Voir les directives',
     },
@@ -872,9 +903,9 @@ export const translations = {
       thisMonth: 'Ce mois-ci',
       showingResults: 'Affichage de {count} {count, plural, =1 {résultat} other {résultats}} à {location}',
       noResults: 'Aucun événement trouvé correspondant à vos critères.',
-      happeningNow: 'En ce moment',
-      upcomingPopups: 'Popups à venir',
-      seeWhereCrowd: 'Découvrez où va la foule. Découvrez les moments qui rassemblent les gens cette semaine.',
+      happeningNow: 'Actif maintenant',
+      upcomingPopups: 'Cercles actifs',
+      seeWhereCrowd: 'Trouvez des Cercles qui correspondent à vos intérêts et rejoignez leurs Sessions à venir.',
       searchPlaceholder: 'Rechercher des événements, organisateurs ou lieux...',
     },
     // Common
@@ -1357,6 +1388,37 @@ export const translations = {
       howDeleteAccountA: 'Allez sur votre profil → "Paramètres" → "Supprimer le compte". Cette action est permanente et supprimera toutes vos données, événements et réservations. Assurez-vous d\'annuler tous les événements à venir d\'abord.',
       canChangeEmail: 'Puis-je changer mon adresse email?',
       canChangeEmailA: 'Oui, vous pouvez mettre à jour votre email dans les paramètres de votre profil. Vous devrez peut-être vérifier la nouvelle adresse email.',
+    },
+    // Landing Page FAQs
+    landingFaqs: {
+      whatIsPopera: {
+        question: '1. Qu\'est-ce que Popera?',
+        answer: 'Popera est une plateforme sociale qui aide les gens à former de petits Cercles et à rejoindre des Sessions en personne significatives près de chez eux. Que ce soit une rencontre créative, un rituel de bien-être, un cercle d\'étude ou un groupe de loisirs local, Popera facilite la découverte, l\'organisation et le développement de connexions authentiques en personne—avec des RSVP simples, des chats de groupe intégrés et une confiance dirigée par la communauté.',
+      },
+      whatIsCircle: {
+        question: '2. Qu\'est-ce qu\'un Cercle?',
+        answer: 'Un Cercle est un petit groupe social basé sur les intérêts. Il peut être continu, saisonnier ou à court terme. Les Cercles organisent des Sessions, qui sont les rencontres individuelles ou les rassemblements auxquels les membres assistent. Les Cercles aident les gens à trouver leur communauté et à rester connectés à travers des expériences du monde réel.',
+      },
+      whatIsSession: {
+        question: '3. Qu\'est-ce qu\'une Session?',
+        answer: 'Une Session est un rassemblement en personne organisé par un Cercle. Il peut s\'agir d\'un rituel, d\'une rencontre, d\'une activité ou d\'un micro-événement. Lorsque les utilisateurs font un RSVP, ils rejoignent le chat de groupe privé du Cercle et reçoivent tous les détails de la Session à mesure que la date approche.',
+      },
+      howRSVPWorks: {
+        question: '4. Comment fonctionnent les RSVP et le déverrouillage de l\'adresse?',
+        answer: 'Lorsqu\'un utilisateur fait un RSVP à une Session, il rejoint immédiatement le chat de groupe privé du Cercle. L\'adresse exacte reste cachée jusqu\'à ce que la réservation soit confirmée. Une fois confirmée, les utilisateurs déverrouillent l\'emplacement et tous les détails de la Session.',
+      },
+      whyCommitmentFee: {
+        question: '5. Pourquoi y a-t-il des frais d\'engagement?',
+        answer: 'La plupart des Sessions sont gratuites, mais certains Cercles incluent de petits frais d\'engagement optionnels pour réduire les absences. Le montant est toujours affiché à l\'avance avant la réservation, et les frais peuvent être remboursables selon les paramètres de l\'organisateur.',
+      },
+      paymentSecurity: {
+        question: '6. Mon paiement est-il sécurisé, et que se passe-t-il si une Session est annulée?',
+        answer: 'Tous les paiements sont traités en toute sécurité via Stripe. Si un organisateur annule une Session, la réservation est automatiquement remboursée. Les données utilisateur et les détails de paiement restent entièrement protégés.',
+      },
+      whoCanHost: {
+        question: '7. Qui peut organiser un Cercle, et comment assurez-vous la sécurité?',
+        answer: 'Toute personne ayant une passion à partager peut démarrer un Cercle. L\'identité de l\'organisateur est vérifiée via Stripe Identity et la vérification téléphonique. Les avis transparents et la modération active aident à maintenir des Cercles sûrs, inclusifs et dignes de confiance.',
+      },
     },
     // Report Page
     report: {

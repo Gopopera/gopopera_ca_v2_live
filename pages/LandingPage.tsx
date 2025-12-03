@@ -140,32 +140,32 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   const faqs = [
     {
-      question: "1. What is Popera?",
-      answer: "Popera is a social platform that helps people form small Circles and join meaningful real-life Sessions near them. Whether it's a creative meet-up, a wellness ritual, a study circle, or a local hobby crew, Popera makes it easy to discover, host, and grow authentic in-person connections—with simple RSVPs, built-in group chats, and community-led trust."
+      question: t('landingFaqs.whatIsPopera.question'),
+      answer: t('landingFaqs.whatIsPopera.answer')
     },
     {
-      question: "2. What is a Circle?",
-      answer: "A Circle is a small, interest-based social group. It can be ongoing, seasonal, or short-term. Circles host Sessions, which are the individual meetups or gatherings members attend. Circles help people find their community and stay connected through real-world experiences."
+      question: t('landingFaqs.whatIsCircle.question'),
+      answer: t('landingFaqs.whatIsCircle.answer')
     },
     {
-      question: "3. What is a Session?",
-      answer: "A Session is a real-life gathering hosted by a Circle. It can be a ritual, meetup, activity, or micro-event. When users RSVP, they join the Circle's private group chat and receive all Session details as the date approaches."
+      question: t('landingFaqs.whatIsSession.question'),
+      answer: t('landingFaqs.whatIsSession.answer')
     },
     {
-      question: "4. How do RSVPs and the address unlock work?",
-      answer: "When a user RSVPs to a Session, they immediately join the Circle's private group chat. The exact address remains hidden until the reservation is confirmed. Once confirmed, users unlock the location and all Session details."
+      question: t('landingFaqs.howRSVPWorks.question'),
+      answer: t('landingFaqs.howRSVPWorks.answer')
     },
     {
-      question: "5. Why is there a commitment fee?",
-      answer: "Most Sessions are free, but some Circles include a small optional commitment fee to reduce no-shows. The amount is always shown upfront before reserving, and fees may be refundable depending on the host's settings."
+      question: t('landingFaqs.whyCommitmentFee.question'),
+      answer: t('landingFaqs.whyCommitmentFee.answer')
     },
     {
-      question: "6. Is my payment secure, and what if a Session is canceled?",
-      answer: "All payments are processed securely through Stripe. If a host cancels a Session, the reservation is automatically refunded. User data and payment details remain fully protected."
+      question: t('landingFaqs.paymentSecurity.question'),
+      answer: t('landingFaqs.paymentSecurity.answer')
     },
     {
-      question: "7. Who can host a Circle, and how do you keep it safe?",
-      answer: "Anyone with a passion to share can start a Circle. Host identity is verified through Stripe Identity and phone verification. Transparent reviews and active moderation help maintain safe, inclusive, and trustworthy Circles."
+      question: t('landingFaqs.whoCanHost.question'),
+      answer: t('landingFaqs.whoCanHost.answer')
     }
   ];
 
@@ -352,7 +352,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </h2>
             
             <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-600 font-light leading-relaxed mb-8 sm:mb-10 md:mb-12 max-w-4xl mx-auto px-4 sm:px-6">
-              {t('landing.description')} <span className="text-[#15383c] font-medium border-b-2 border-[#15383c]/20 pb-1">{t('landing.descriptionHighlight')}</span>{t('landing.descriptionEnd')}
+              {t('landing.description')}
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-5 md:gap-6 px-4">
