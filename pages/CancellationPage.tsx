@@ -1,12 +1,14 @@
 import React from 'react';
 import { ViewState } from '../types';
 import { ChevronLeft, Clock, XCircle, AlertCircle, CreditCard, UserX, Edit, HelpCircle, DollarSign, Mail, CheckCircle, X, AlertTriangle } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface CancellationPageProps {
   setViewState: (view: ViewState) => void;
 }
 
 export const CancellationPage: React.FC<CancellationPageProps> = ({ setViewState }) => {
+  const { t } = useLanguage();
   return (
     <div className="min-h-screen bg-[#15383c] text-gray-200 font-sans pt-20 sm:pt-24 pb-12 sm:pb-20">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 mb-6 sm:mb-10">
@@ -20,13 +22,13 @@ export const CancellationPage: React.FC<CancellationPageProps> = ({ setViewState
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-10 sm:mb-12 md:mb-16">
           <h1 className="font-heading font-bold text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl text-white mb-3 sm:mb-4">
-            Refund and Cancellation Policy
+            {t('cancellation.title')}
           </h1>
           <p className="text-xs sm:text-sm font-medium text-gray-400 uppercase tracking-wider mb-4 sm:mb-6">
-            Last updated: January 1, 2024
+            {t('cancellation.lastUpdated')}
           </p>
           <p className="text-base sm:text-lg text-gray-300 font-light max-w-2xl mx-auto leading-relaxed">
-            Clear, fair policies for hosts and attendees
+            {t('cancellation.subtitle')}
           </p>
         </div>
 
@@ -35,11 +37,11 @@ export const CancellationPage: React.FC<CancellationPageProps> = ({ setViewState
           <section className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
               <AlertCircle className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
-              Overview
+              {t('cancellation.overview')}
             </h2>
             <div className="space-y-4 sm:space-y-6 text-base sm:text-lg font-light leading-relaxed text-gray-300">
               <p>
-                This policy outlines the refund and cancellation procedures for events hosted on Popera. Both hosts and attendees have rights and responsibilities regarding cancellations and refunds.
+                {t('cancellation.overviewDesc')}
               </p>
             </div>
           </section>
@@ -48,7 +50,7 @@ export const CancellationPage: React.FC<CancellationPageProps> = ({ setViewState
           <section>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
               <UserX className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
-              Attendee Cancellations
+              {t('cancellation.attendeeCancellations')}
             </h2>
             
             {/* Free Events Card */}
@@ -58,9 +60,9 @@ export const CancellationPage: React.FC<CancellationPageProps> = ({ setViewState
                   <CheckCircle className="text-green-400 w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-bold text-white mb-2 sm:mb-3 text-lg sm:text-xl">Free Events</h3>
+                  <h3 className="font-bold text-white mb-2 sm:mb-3 text-lg sm:text-xl">{t('cancellation.freeEvents')}</h3>
                   <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
-                    You may cancel your RSVP at any time before the event starts. No fees apply.
+                    {t('cancellation.freeEventsDesc')}
                   </p>
                 </div>
               </div>
@@ -73,9 +75,9 @@ export const CancellationPage: React.FC<CancellationPageProps> = ({ setViewState
                   <DollarSign className="text-[#e35e25] w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-bold text-white mb-2 sm:mb-3 text-lg sm:text-xl">Paid Events</h3>
+                  <h3 className="font-bold text-white mb-2 sm:mb-3 text-lg sm:text-xl">{t('cancellation.paidEvents')}</h3>
                   <p className="text-gray-300 text-sm sm:text-base leading-relaxed mb-4 sm:mb-6">
-                    Cancellation policies vary by event and are set by the host. Common policies include:
+                    {t('cancellation.paidEventsDesc')}
                   </p>
                 </div>
               </div>
@@ -84,28 +86,28 @@ export const CancellationPage: React.FC<CancellationPageProps> = ({ setViewState
                 <div className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 bg-[#15383c] rounded-lg border border-white/5">
                   <CheckCircle className="text-green-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-bold text-white text-sm sm:text-base mb-1">Full refund</p>
-                    <p className="text-gray-400 text-xs sm:text-sm">If you cancel more than 48 hours before the event</p>
+                    <p className="font-bold text-white text-sm sm:text-base mb-1">{t('cancellation.fullRefund')}</p>
+                    <p className="text-gray-400 text-xs sm:text-sm">{t('cancellation.fullRefundDesc')}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 bg-[#15383c] rounded-lg border border-white/5">
                   <AlertTriangle className="text-yellow-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-bold text-white text-sm sm:text-base mb-1">Partial refund (typically 50%)</p>
-                    <p className="text-gray-400 text-xs sm:text-sm">If you cancel 24-48 hours before the event</p>
+                    <p className="font-bold text-white text-sm sm:text-base mb-1">{t('cancellation.partialRefund')}</p>
+                    <p className="text-gray-400 text-xs sm:text-sm">{t('cancellation.partialRefundDesc')}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 bg-[#15383c] rounded-lg border border-white/5">
                   <X className="text-red-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-bold text-white text-sm sm:text-base mb-1">No refund</p>
-                    <p className="text-gray-400 text-xs sm:text-sm">If you cancel less than 24 hours before the event or fail to attend</p>
+                    <p className="font-bold text-white text-sm sm:text-base mb-1">{t('cancellation.noRefund')}</p>
+                    <p className="text-gray-400 text-xs sm:text-sm">{t('cancellation.noRefundDesc')}</p>
                   </div>
                 </div>
               </div>
               
               <p className="text-gray-400 text-xs sm:text-sm mt-4 sm:mt-6 ml-0 sm:ml-16 italic">
-                The specific cancellation policy for each event is displayed before you confirm your RSVP.
+                {t('cancellation.specificPolicy')}
               </p>
             </div>
           </section>
@@ -114,35 +116,35 @@ export const CancellationPage: React.FC<CancellationPageProps> = ({ setViewState
           <section>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
               <XCircle className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
-              Host Cancellations
+              {t('cancellation.hostCancellations')}
             </h2>
             <div className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
               <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300 mb-4 sm:mb-6">
-                If a host cancels an event:
+                {t('cancellation.hostCancellationsDesc')}
               </p>
               <div className="space-y-3 sm:space-y-4">
                 <div className="flex items-start gap-3 sm:gap-4">
                   <CheckCircle className="text-green-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
                   <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
-                    All attendees receive a <strong className="text-white">full refund</strong>, including any service fees
+                    {t('cancellation.allAttendeesRefund')} <strong className="text-white">{t('cancellation.fullRefundIncluding')}</strong>, {t('cancellation.includingServiceFees')}
                   </p>
                 </div>
                 <div className="flex items-start gap-3 sm:gap-4">
                   <CheckCircle className="text-green-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
                   <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
-                    Attendees are notified immediately via email and in-app notification
+                    {t('cancellation.notifiedImmediately')}
                   </p>
                 </div>
                 <div className="flex items-start gap-3 sm:gap-4">
                   <AlertCircle className="text-yellow-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
                   <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
-                    The host's account may be reviewed for repeated cancellations
+                    {t('cancellation.accountReviewed')}
                   </p>
                 </div>
               </div>
               <div className="mt-6 sm:mt-8 p-4 sm:p-5 bg-[#e35e25]/10 rounded-xl border border-[#e35e25]/20">
                 <p className="text-sm sm:text-base text-gray-300 leading-relaxed">
-                  <strong className="text-white">Tip:</strong> Hosts are encouraged to cancel events as early as possible to minimize inconvenience to attendees.
+                  <strong className="text-white">{t('cancellation.tip')}</strong> {t('cancellation.tipDesc')}
                 </p>
               </div>
             </div>
@@ -152,25 +154,25 @@ export const CancellationPage: React.FC<CancellationPageProps> = ({ setViewState
           <section>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
               <CreditCard className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
-              Refund Processing
+              {t('cancellation.refundProcessing')}
             </h2>
             <div className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
               <div className="space-y-4 sm:space-y-6 text-base sm:text-lg font-light leading-relaxed text-gray-300">
                 <div className="flex items-start gap-3 sm:gap-4">
                   <Clock className="text-[#e35e25] w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
                   <div>
-                    <p className="font-bold text-white mb-2">Processing Time</p>
+                    <p className="font-bold text-white mb-2">{t('cancellation.processingTime')}</p>
                     <p>
-                      Refunds are processed to the original payment method within <strong className="text-white">5-10 business days</strong>. Processing times may vary depending on your bank or payment provider.
+                      {t('cancellation.processingTimeDesc')} <strong className="text-white">{t('cancellation.businessDays')}</strong>{t('cancellation.processingTimeDesc2')}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 sm:gap-4 pt-4 sm:pt-6 border-t border-white/10">
                   <DollarSign className="text-[#e35e25] w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
                   <div>
-                    <p className="font-bold text-white mb-2">Service Fee Refunds</p>
+                    <p className="font-bold text-white mb-2">{t('cancellation.serviceFeeRefunds')}</p>
                     <p>
-                      Popera's <strong className="text-[#e35e25]">10% service fee</strong> is refunded in full when an event is cancelled by the host or when a refund is issued due to host misconduct.
+                      {t('cancellation.serviceFeeRefundsDesc')} <strong className="text-[#e35e25]">{t('cancellation.serviceFeePercent')}</strong> {t('cancellation.serviceFeeRefundsDesc2')}
                     </p>
                   </div>
                 </div>
@@ -182,23 +184,23 @@ export const CancellationPage: React.FC<CancellationPageProps> = ({ setViewState
           <section>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
               <AlertTriangle className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
-              No-Show Policy
+              {t('cancellation.noShowPolicy')}
             </h2>
             <div className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
               <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300 mb-4 sm:mb-6">
-                If you RSVP to an event but fail to attend without cancelling:
+                {t('cancellation.noShowPolicyDesc')}
               </p>
               <div className="space-y-3 sm:space-y-4">
                 <div className="flex items-start gap-3 sm:gap-4">
                   <X className="text-red-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
                   <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
-                    You will <strong className="text-white">not receive a refund</strong> for paid events
+                    {t('cancellation.noRefundNoShow')} <strong className="text-white">{t('cancellation.notReceiveRefund')}</strong> {t('cancellation.noRefundNoShowDesc')}
                   </p>
                 </div>
                 <div className="flex items-start gap-3 sm:gap-4">
                   <AlertTriangle className="text-red-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
                   <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
-                    <strong className="text-white">Repeated no-shows</strong> may result in restrictions on future RSVPs
+                    <strong className="text-white">{t('cancellation.repeatedNoShows')}</strong> {t('cancellation.repeatedNoShowsDesc')}
                   </p>
                 </div>
               </div>
@@ -209,22 +211,22 @@ export const CancellationPage: React.FC<CancellationPageProps> = ({ setViewState
           <section>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
               <Edit className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
-              Event Modifications
+              {t('cancellation.eventModifications')}
             </h2>
             <div className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
               <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300 mb-4 sm:mb-6">
-                If a host significantly modifies an event (date, time, location, or nature), attendees will be notified and may:
+                {t('cancellation.eventModificationsDesc')}
               </p>
               <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
                 <div className="p-4 sm:p-5 bg-[#15383c] rounded-xl border border-white/5">
                   <CheckCircle className="text-green-400 w-6 h-6 sm:w-7 sm:h-7 mb-3 sm:mb-4" />
-                  <p className="font-bold text-white text-sm sm:text-base mb-2">Accept the changes</p>
-                  <p className="text-gray-400 text-xs sm:text-sm">Keep your RSVP and attend the modified event</p>
+                  <p className="font-bold text-white text-sm sm:text-base mb-2">{t('cancellation.acceptChanges')}</p>
+                  <p className="text-gray-400 text-xs sm:text-sm">{t('cancellation.acceptChangesDesc')}</p>
                 </div>
                 <div className="p-4 sm:p-5 bg-[#15383c] rounded-xl border border-white/5">
                   <XCircle className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7 mb-3 sm:mb-4" />
-                  <p className="font-bold text-white text-sm sm:text-base mb-2">Cancel and get refunded</p>
-                  <p className="text-gray-400 text-xs sm:text-sm">Receive a full refund if you choose not to attend</p>
+                  <p className="font-bold text-white text-sm sm:text-base mb-2">{t('cancellation.cancelRefunded')}</p>
+                  <p className="text-gray-400 text-xs sm:text-sm">{t('cancellation.cancelRefundedDesc')}</p>
                 </div>
               </div>
             </div>
@@ -234,15 +236,15 @@ export const CancellationPage: React.FC<CancellationPageProps> = ({ setViewState
           <section>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
               <HelpCircle className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
-              Disputes and Exceptions
+              {t('cancellation.disputesExceptions')}
             </h2>
             <div className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
               <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300 mb-4 sm:mb-6">
-                In exceptional circumstances (natural disasters, emergencies, host misconduct), Popera may issue refunds outside the standard policy.
+                {t('cancellation.disputesExceptionsDesc')}
               </p>
               <div className="bg-[#e35e25]/10 p-4 sm:p-5 rounded-xl border border-[#e35e25]/20">
                 <p className="text-sm sm:text-base text-gray-300 leading-relaxed">
-                  <strong className="text-white">Need help?</strong> Contact our support team at <a href="mailto:support@gopopera.ca" className="text-[#e35e25] hover:underline">support@gopopera.ca</a> to request a review.
+                  <strong className="text-white">{t('cancellation.needHelp')}</strong> {t('cancellation.needHelpDesc')} <a href="mailto:support@gopopera.ca" className="text-[#e35e25] hover:underline">support@gopopera.ca</a> {t('cancellation.needHelpDesc2')}
                 </p>
               </div>
             </div>
@@ -252,25 +254,25 @@ export const CancellationPage: React.FC<CancellationPageProps> = ({ setViewState
           <section>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
               <DollarSign className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
-              Host Payment
+              {t('cancellation.hostPayment')}
             </h2>
             <div className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
               <div className="space-y-4 sm:space-y-6 text-base sm:text-lg font-light leading-relaxed text-gray-300">
                 <div className="flex items-start gap-3 sm:gap-4">
                   <CheckCircle className="text-green-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
                   <div>
-                    <p className="font-bold text-white mb-2">Payment Timeline</p>
+                    <p className="font-bold text-white mb-2">{t('cancellation.paymentTimeline')}</p>
                     <p>
-                      Hosts receive payment for their events <strong className="text-white">after the event concludes</strong>, minus Popera's 10% service fee. Payments are processed within <strong className="text-white">3-5 business days</strong> after the event date.
+                      {t('cancellation.paymentTimelineDesc')} <strong className="text-white">{t('cancellation.afterEventConcludes')}</strong>{t('cancellation.paymentTimelineDesc2')} <strong className="text-white">{t('cancellation.threeFiveDays')}</strong>{t('cancellation.paymentTimelineDesc3')}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 sm:gap-4 pt-4 sm:pt-6 border-t border-white/10">
                   <AlertCircle className="text-yellow-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
                   <div>
-                    <p className="font-bold text-white mb-2">Cancelled Events</p>
+                    <p className="font-bold text-white mb-2">{t('cancellation.cancelledEvents')}</p>
                     <p>
-                      If an event is cancelled or significantly disrupted, payment may be withheld or adjusted accordingly.
+                      {t('cancellation.cancelledEventsDesc')}
                     </p>
                   </div>
                 </div>
@@ -282,17 +284,17 @@ export const CancellationPage: React.FC<CancellationPageProps> = ({ setViewState
           <section className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
             <h2 className="text-xl sm:text-2xl font-bold text-white font-heading mb-4 sm:mb-6 flex items-center gap-3">
               <Mail className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
-              Contact for Refunds
+              {t('cancellation.contactRefunds')}
             </h2>
             <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300 mb-4 sm:mb-6">
-              If you have questions about refunds or cancellations, please contact us:
+              {t('cancellation.contactRefundsDesc')}
             </p>
             <div className="space-y-2 sm:space-y-3">
               <p className="text-base sm:text-lg text-white">
-                <strong>Email:</strong> <a href="mailto:support@gopopera.ca" className="text-[#e35e25] hover:underline">support@gopopera.ca</a>
+                <strong>{t('cancellation.email')}</strong> <a href="mailto:support@gopopera.ca" className="text-[#e35e25] hover:underline">support@gopopera.ca</a>
               </p>
               <p className="text-base sm:text-lg text-white">
-                <strong>Website:</strong> <a href="https://www.gopopera.ca" className="text-[#e35e25] hover:underline">www.gopopera.ca</a>
+                <strong>{t('cancellation.website')}</strong> <a href="https://www.gopopera.ca" className="text-[#e35e25] hover:underline">www.gopopera.ca</a>
               </p>
             </div>
           </section>

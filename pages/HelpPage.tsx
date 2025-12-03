@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { ViewState } from '../types';
 import { ChevronLeft, HelpCircle, MessageCircle, BookOpen, Shield, CreditCard, Users, Calendar, Mail, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface HelpPageProps {
   setViewState: (view: ViewState) => void;
 }
 
 export const HelpPage: React.FC<HelpPageProps> = ({ setViewState }) => {
+  const { t } = useLanguage();
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
   const toggleSection = (section: string) => {
@@ -16,143 +18,143 @@ export const HelpPage: React.FC<HelpPageProps> = ({ setViewState }) => {
   const faqCategories = [
     {
       id: 'getting-started',
-      title: 'Getting Started',
+      title: t('help.gettingStarted'),
       icon: <BookOpen size={20} />,
       questions: [
         {
-          q: 'How do I create an account?',
-          a: 'Click "Sign In / Sign Up" in the header, then choose your preferred sign-in method (Google, email, etc.). Once signed in, you can create events, RSVP to events, and connect with other users.'
+          q: t('help.howCreateAccount'),
+          a: t('help.howCreateAccountA')
         },
         {
-          q: 'How do I host my first event?',
-          a: 'Click "Host Event" in the header (or from your profile menu), fill in the event details (title, description, date, time, location, images), set a capacity and optional reservation fee, then publish. Your event will appear in the feed for others to discover.'
+          q: t('help.howHostFirst'),
+          a: t('help.howHostFirstA')
         },
         {
-          q: 'How do I RSVP to an event?',
-          a: 'Browse events in the feed, click on any event to view details, then click "Reserve" or "RSVP". For paid events, you\'ll complete payment during the reservation process. You\'ll receive a confirmation and can access the event\'s group chat.'
+          q: t('help.howRSVP'),
+          a: t('help.howRSVPA')
         },
         {
-          q: 'What is a reservation fee?',
-          a: 'Hosts can optionally charge a small reservation fee to reduce no-shows and ensure commitment. Popera takes a 10% service fee on reservation fees. Free events have no fees.'
+          q: t('help.whatReservationFee'),
+          a: t('help.whatReservationFeeA')
         }
       ]
     },
     {
       id: 'hosting',
-      title: 'Hosting Events',
+      title: t('help.hostingEvents'),
       icon: <Users size={20} />,
       questions: [
         {
-          q: 'How do I edit or cancel my event?',
-          a: 'Go to your event detail page and click "Edit Event" (if you\'re the host). You can modify details, update capacity, or cancel the event. If you cancel, all attendees will receive full refunds automatically.'
+          q: t('help.howEditCancel'),
+          a: t('help.howEditCancelA')
         },
         {
-          q: 'When do I receive payment for my event?',
-          a: 'Hosts receive payment after the event concludes, minus Popera\'s 10% service fee. Payments are processed within 3-5 business days after the event date.'
+          q: t('help.whenReceivePayment'),
+          a: t('help.whenReceivePaymentA')
         },
         {
-          q: 'How do I manage RSVPs and attendees?',
-          a: 'On your event detail page, you can see all RSVPs, manage capacity, and communicate with attendees through the group chat. You\'ll also receive notifications for new RSVPs and messages.'
+          q: t('help.howManageRSVPs'),
+          a: t('help.howManageRSVPsA')
         },
         {
-          q: 'Can I charge different prices for different attendees?',
-          a: 'Currently, each event has one reservation fee that applies to all attendees. You can create separate events with different pricing if needed.'
+          q: t('help.differentPrices'),
+          a: t('help.differentPricesA')
         },
         {
-          q: 'What happens if I need to cancel my event?',
-          a: 'If you cancel an event, all attendees receive full refunds (including service fees) automatically. You\'ll be notified immediately, and repeated cancellations may result in account review.'
+          q: t('help.whatHappensCancel'),
+          a: t('help.whatHappensCancelA')
         }
       ]
     },
     {
       id: 'attending',
-      title: 'Attending Events',
+      title: t('help.attendingEvents'),
       icon: <Calendar size={20} />,
       questions: [
         {
-          q: 'How do I cancel my RSVP?',
-          a: 'Go to the event detail page and click "Cancel Reservation". For free events, you can cancel anytime. For paid events, refund policies vary (typically full refund if cancelled 48+ hours before, partial or no refund for last-minute cancellations).'
+          q: t('help.howCancelRSVP'),
+          a: t('help.howCancelRSVPA')
         },
         {
-          q: 'What if I can\'t attend an event I RSVP\'d to?',
-          a: 'Cancel your RSVP as early as possible through the event page. This allows others to join and ensures you receive any applicable refunds according to the event\'s cancellation policy.'
+          q: t('help.whatIfCantAttend'),
+          a: t('help.whatIfCantAttendA')
         },
         {
-          q: 'How do I communicate with the host or other attendees?',
-          a: 'Each event has a built-in group chat. Once you RSVP, you can access the chat to ask questions, coordinate arrival, or connect with other attendees. The host can also send updates through the chat.'
+          q: t('help.howCommunicate'),
+          a: t('help.howCommunicateA')
         },
         {
-          q: 'What if the event is different from what was described?',
-          a: 'Contact the host through the group chat or report the event through our reporting system. You can also leave an honest review after the event. In cases of significant misrepresentation, you may be eligible for a refund.'
+          q: t('help.whatIfDifferent'),
+          a: t('help.whatIfDifferentA')
         }
       ]
     },
     {
       id: 'payments',
-      title: 'Payments & Refunds',
+      title: t('help.paymentsRefunds'),
       icon: <CreditCard size={20} />,
       questions: [
         {
-          q: 'How do refunds work?',
-          a: 'Refunds depend on the event\'s cancellation policy. Free events: cancel anytime, no fees. Paid events: typically full refund if cancelled 48+ hours before, partial (50%) if 24-48 hours before, no refund if less than 24 hours or no-show. Host cancellations result in full refunds for all attendees.'
+          q: t('help.howRefundsWork'),
+          a: t('help.howRefundsWorkA')
         },
         {
-          q: 'How long do refunds take?',
-          a: 'Refunds are processed to your original payment method within 5-10 business days. Processing times may vary depending on your bank or payment provider.'
+          q: t('help.howLongRefunds'),
+          a: t('help.howLongRefundsA')
         },
         {
-          q: 'What is Popera\'s service fee?',
-          a: 'Popera charges a 10% service fee on reservation fees set by hosts. This fee is clearly displayed before you confirm your RSVP. The service fee is refunded in full if an event is cancelled by the host.'
+          q: t('help.whatServiceFee'),
+          a: t('help.whatServiceFeeA')
         },
         {
-          q: 'How do I get a refund for a cancelled event?',
-          a: 'If a host cancels an event, refunds are processed automatically. You\'ll receive an email notification and the refund will appear in your account within 5-10 business days. No action is required on your part.'
+          q: t('help.howGetRefund'),
+          a: t('help.howGetRefundA')
         }
       ]
     },
     {
       id: 'safety',
-      title: 'Safety & Reporting',
+      title: t('help.safetyReporting'),
       icon: <Shield size={20} />,
       questions: [
         {
-          q: 'How do I report a problem or safety concern?',
-          a: 'Use the "Report Event" button on any event page, or contact support@gopopera.ca directly. For immediate safety concerns, contact local authorities first, then report to us.'
+          q: t('help.howReport'),
+          a: t('help.howReportA')
         },
         {
-          q: 'What should I do if I feel unsafe at an event?',
-          a: 'Leave the event immediately if you feel unsafe. Report the issue through our in-app reporting system or email support@gopopera.ca. Contact local authorities if it\'s an emergency.'
+          q: t('help.whatIfUnsafe'),
+          a: t('help.whatIfUnsafeA')
         },
         {
-          q: 'How does Popera verify hosts?',
-          a: 'Every host is verified for authenticity. We review profiles and event listings to ensure legitimacy and protect our community. Verified hosts have a checkmark on their profile.'
+          q: t('help.howVerifyHosts'),
+          a: t('help.howVerifyHostsA')
         },
         {
-          q: 'What happens when I report an event or user?',
-          a: 'Our team reviews all reports promptly. We may contact you for additional information. Depending on the severity, actions may include warnings, account restrictions, or permanent suspension.'
+          q: t('help.whatHappensReport'),
+          a: t('help.whatHappensReportA')
         }
       ]
     },
     {
       id: 'account',
-      title: 'Account & Profile',
+      title: t('help.accountProfile'),
       icon: <Users size={20} />,
       questions: [
         {
-          q: 'How do I update my profile?',
-          a: 'Go to your profile page (click your profile picture in the header), then click "Edit Profile". You can update your name, bio, profile picture, and other details.'
+          q: t('help.howUpdateProfile'),
+          a: t('help.howUpdateProfileA')
         },
         {
-          q: 'How do I change my notification settings?',
-          a: 'Go to your profile, then "Settings" → "Notifications". You can customize which notifications you receive via email, SMS, and in-app alerts.'
+          q: t('help.howChangeNotifications'),
+          a: t('help.howChangeNotificationsA')
         },
         {
-          q: 'How do I delete my account?',
-          a: 'Go to your profile → "Settings" → "Delete Account". This action is permanent and will remove all your data, events, and RSVPs. Make sure to cancel any upcoming events first.'
+          q: t('help.howDeleteAccount'),
+          a: t('help.howDeleteAccountA')
         },
         {
-          q: 'Can I change my email address?',
-          a: 'Yes, you can update your email in your profile settings. You may need to verify the new email address.'
+          q: t('help.canChangeEmail'),
+          a: t('help.canChangeEmailA')
         }
       ]
     }
@@ -182,17 +184,17 @@ export const HelpPage: React.FC<HelpPageProps> = ({ setViewState }) => {
         {/* Header */}
         <div className="text-center mb-8 sm:mb-12">
           <h1 className="font-heading font-bold text-3xl sm:text-4xl md:text-5xl mb-3 sm:mb-4">
-            Help & Support
+            {t('help.title')}
           </h1>
           <p className="text-gray-300 text-base sm:text-lg max-w-2xl mx-auto">
-            Find answers to common questions or get in touch with our support team
+            {t('help.subtitle')}
           </p>
         </div>
 
         {/* Quick Links */}
         <div className="mb-8 sm:mb-12">
           <h2 className="text-xl sm:text-2xl font-heading font-bold text-white mb-4 sm:mb-6">
-            Quick Links
+            {t('help.quickLinks')}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {quickLinks.map((link) => (
@@ -207,7 +209,7 @@ export const HelpPage: React.FC<HelpPageProps> = ({ setViewState }) => {
                   </div>
                   <h3 className="font-bold text-white text-sm sm:text-base">{link.title}</h3>
                 </div>
-                <p className="text-gray-400 text-xs sm:text-sm">View details →</p>
+                <p className="text-gray-400 text-xs sm:text-sm">{t('help.viewDetails')}</p>
               </button>
             ))}
           </div>
@@ -216,7 +218,7 @@ export const HelpPage: React.FC<HelpPageProps> = ({ setViewState }) => {
         {/* FAQ Sections */}
         <div className="space-y-4 sm:space-y-6">
           <h2 className="text-xl sm:text-2xl font-heading font-bold text-white mb-4 sm:mb-6">
-            Frequently Asked Questions
+            {t('help.frequentlyAsked')}
           </h2>
           
           {filteredCategories.map((category) => (
@@ -266,10 +268,10 @@ export const HelpPage: React.FC<HelpPageProps> = ({ setViewState }) => {
             </div>
             <div className="flex-1">
               <h2 className="text-xl sm:text-2xl font-heading font-bold text-white mb-3 sm:mb-4">
-                Still Need Help?
+                {t('help.stillNeedHelp')}
               </h2>
               <p className="text-gray-300 text-sm sm:text-base leading-relaxed mb-4 sm:mb-6">
-                Can't find what you're looking for? Our support team is here to help. Reach out to us and we'll get back to you as soon as possible.
+                {t('help.stillNeedHelpDesc')}
               </p>
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <button
@@ -277,7 +279,7 @@ export const HelpPage: React.FC<HelpPageProps> = ({ setViewState }) => {
                   className="bg-[#e35e25] hover:bg-[#cf4d1d] text-white font-bold py-3 sm:py-3.5 px-6 sm:px-8 rounded-full transition-all flex items-center justify-center gap-2 text-sm sm:text-base touch-manipulation active:scale-95"
                 >
                   <Mail size={18} className="sm:w-5 sm:h-5" />
-                  Contact Support
+                  {t('help.contactSupport')}
                 </button>
                 <a
                   href="mailto:support@gopopera.ca"

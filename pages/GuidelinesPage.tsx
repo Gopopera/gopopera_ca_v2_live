@@ -1,12 +1,14 @@
 import React from 'react';
 import { ViewState } from '../types';
 import { ChevronLeft, Heart, Shield, AlertTriangle, UserCheck, MessageCircle, Users } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface GuidelinesPageProps {
   setViewState: (view: ViewState) => void;
 }
 
 export const GuidelinesPage: React.FC<GuidelinesPageProps> = ({ setViewState }) => {
+  const { t } = useLanguage();
   return (
     <div className="min-h-screen bg-[#15383c] text-gray-200 font-sans pt-20 sm:pt-24 pb-12 sm:pb-20">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 mb-6 sm:mb-10">
@@ -20,10 +22,10 @@ export const GuidelinesPage: React.FC<GuidelinesPageProps> = ({ setViewState }) 
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-10 sm:mb-12 md:mb-16">
           <h1 className="font-heading font-bold text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl text-white mb-3 sm:mb-4">
-            Community Guidelines
+            {t('guidelines.title')}
           </h1>
           <p className="text-base sm:text-lg text-gray-300 font-light max-w-2xl mx-auto leading-relaxed">
-            Building a safe, respectful, and vibrant community for everyone
+            {t('guidelines.subtitle')}
           </p>
         </div>
 
@@ -32,11 +34,11 @@ export const GuidelinesPage: React.FC<GuidelinesPageProps> = ({ setViewState }) 
           <section className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
               <Heart className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
-              Our Core Principles
+              {t('guidelines.corePrinciples')}
             </h2>
             <div className="space-y-4 sm:space-y-6 text-base sm:text-lg font-light leading-relaxed text-gray-300">
               <p>
-                Popera is built on trust, respect, and genuine connection. These guidelines help ensure everyone has a positive experience, whether you're hosting or attending events.
+                {t('guidelines.corePrinciplesDesc')}
               </p>
             </div>
           </section>
@@ -45,25 +47,25 @@ export const GuidelinesPage: React.FC<GuidelinesPageProps> = ({ setViewState }) 
           <section>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
               <Users className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
-              For Everyone
+              {t('guidelines.forEveryone')}
             </h2>
             <div className="space-y-4 sm:space-y-6 text-base sm:text-lg font-light leading-relaxed text-gray-300">
               <div className="bg-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">Be Respectful</h3>
+                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">{t('guidelines.beRespectful')}</h3>
                 <p className="mb-3 sm:mb-4">
-                  Treat everyone with kindness and respect. Harassment, discrimination, hate speech, or abusive behavior will not be tolerated.
+                  {t('guidelines.beRespectfulDesc')}
                 </p>
               </div>
               <div className="bg-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">Be Honest</h3>
+                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">{t('guidelines.beHonest')}</h3>
                 <p className="mb-3 sm:mb-4">
-                  Provide accurate information in your profile and event listings. Misleading or false information undermines trust and may result in account restrictions.
+                  {t('guidelines.beHonestDesc')}
                 </p>
               </div>
               <div className="bg-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">Be Safe</h3>
+                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">{t('guidelines.beSafe')}</h3>
                 <p className="mb-3 sm:mb-4">
-                  Prioritize your safety and the safety of others. Report suspicious behavior, unsafe conditions, or violations of these guidelines immediately.
+                  {t('guidelines.beSafeDesc')}
                 </p>
               </div>
             </div>
@@ -73,31 +75,31 @@ export const GuidelinesPage: React.FC<GuidelinesPageProps> = ({ setViewState }) 
           <section>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
               <UserCheck className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
-              For Hosts
+              {t('guidelines.forHosts')}
             </h2>
             <div className="space-y-4 sm:space-y-6 text-base sm:text-lg font-light leading-relaxed text-gray-300">
               <div className="bg-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">Host Verification</h3>
+                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">{t('guidelines.hostVerification')}</h3>
                 <p className="mb-3 sm:mb-4">
-                  Every host is verified for authenticity. We review profiles and event listings to ensure legitimacy and protect our community.
+                  {t('guidelines.hostVerificationDesc')}
                 </p>
               </div>
               <div className="bg-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">Accurate Listings</h3>
+                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">{t('guidelines.accurateListings')}</h3>
                 <p className="mb-3 sm:mb-4">
-                  Provide clear, accurate descriptions of your events, including date, time, location, and what attendees can expect. Update your listing if details change.
+                  {t('guidelines.accurateListingsDesc')}
                 </p>
               </div>
               <div className="bg-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">Honor Commitments</h3>
+                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">{t('guidelines.honorCommitments')}</h3>
                 <p className="mb-3 sm:mb-4">
-                  If you accept RSVPs, honor them. Cancellations should be rare and communicated as early as possible. Repeated cancellations may result in restrictions.
+                  {t('guidelines.honorCommitmentsDesc')}
                 </p>
               </div>
               <div className="bg-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">Safe Spaces</h3>
+                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">{t('guidelines.safeSpaces')}</h3>
                 <p className="mb-3 sm:mb-4">
-                  Create and maintain a safe, welcoming environment at your events. Address any issues promptly and professionally.
+                  {t('guidelines.safeSpacesDesc')}
                 </p>
               </div>
             </div>
@@ -107,25 +109,25 @@ export const GuidelinesPage: React.FC<GuidelinesPageProps> = ({ setViewState }) 
           <section>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
               <MessageCircle className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
-              For Attendees
+              {t('guidelines.forAttendees')}
             </h2>
             <div className="space-y-4 sm:space-y-6 text-base sm:text-lg font-light leading-relaxed text-gray-300">
               <div className="bg-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">RSVP Responsibly</h3>
+                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">{t('guidelines.rsvpResponsibly')}</h3>
                 <p className="mb-3 sm:mb-4">
-                  Only RSVP to events you genuinely plan to attend. If your plans change, cancel your RSVP as early as possible to allow others to join.
+                  {t('guidelines.rsvpResponsiblyDesc')}
                 </p>
               </div>
               <div className="bg-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">Respect the Space</h3>
+                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">{t('guidelines.respectSpace')}</h3>
                 <p className="mb-3 sm:mb-4">
-                  Follow the host's rules and guidelines. Respect the venue, other attendees, and the host's property.
+                  {t('guidelines.respectSpaceDesc')}
                 </p>
               </div>
               <div className="bg-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">Honest Reviews</h3>
+                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">{t('guidelines.honestReviews')}</h3>
                 <p className="mb-3 sm:mb-4">
-                  Reviews stay public and honest. Share constructive, truthful feedback that helps others make informed decisions. Reviews should focus on the event experience, not personal attacks.
+                  {t('guidelines.honestReviewsDesc')}
                 </p>
               </div>
             </div>
@@ -135,19 +137,19 @@ export const GuidelinesPage: React.FC<GuidelinesPageProps> = ({ setViewState }) 
           <section>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
               <MessageCircle className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
-              Group Chats & Communication
+              {t('guidelines.groupChats')}
             </h2>
             <div className="space-y-4 sm:space-y-6 text-base sm:text-lg font-light leading-relaxed text-gray-300">
               <div className="bg-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">Moderated Conversations</h3>
+                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">{t('guidelines.moderatedConversations')}</h3>
                 <p className="mb-3 sm:mb-4">
-                  Group chats are moderated to ensure respect. Keep conversations relevant, respectful, and appropriate. Spam, off-topic content, or inappropriate messages may be removed.
+                  {t('guidelines.moderatedConversationsDesc')}
                 </p>
               </div>
               <div className="bg-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">Privacy</h3>
+                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">{t('guidelines.privacy')}</h3>
                 <p className="mb-3 sm:mb-4">
-                  Respect others' privacy. Do not share personal information without consent, and do not use group chats for unsolicited marketing or promotions.
+                  {t('guidelines.privacyDesc')}
                 </p>
               </div>
             </div>
@@ -157,18 +159,18 @@ export const GuidelinesPage: React.FC<GuidelinesPageProps> = ({ setViewState }) 
           <section>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
               <AlertTriangle className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
-              Prohibited Content & Behavior
+              {t('guidelines.prohibitedContent')}
             </h2>
             <div className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
               <ul className="space-y-3 sm:space-y-4 text-base sm:text-lg font-light leading-relaxed text-gray-300 list-disc list-inside ml-2 sm:ml-4">
-                <li>Illegal activities or events promoting illegal behavior</li>
-                <li>Discrimination, hate speech, or harassment of any kind</li>
-                <li>Fraudulent, misleading, or deceptive listings</li>
-                <li>Spam, unsolicited advertising, or pyramid schemes</li>
-                <li>Adult content, explicit material, or events inappropriate for general audiences</li>
-                <li>Violence, threats, or intimidation</li>
-                <li>Impersonation or fake accounts</li>
-                <li>Circumventing platform policies or fees</li>
+                <li>{t('guidelines.illegalActivities')}</li>
+                <li>{t('guidelines.discrimination')}</li>
+                <li>{t('guidelines.fraudulent')}</li>
+                <li>{t('guidelines.spam')}</li>
+                <li>{t('guidelines.adultContent')}</li>
+                <li>{t('guidelines.violence')}</li>
+                <li>{t('guidelines.impersonation')}</li>
+                <li>{t('guidelines.circumventing')}</li>
               </ul>
             </div>
           </section>
@@ -177,20 +179,20 @@ export const GuidelinesPage: React.FC<GuidelinesPageProps> = ({ setViewState }) 
           <section>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
               <Shield className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
-              Enforcement & Reporting
+              {t('guidelines.enforcement')}
             </h2>
             <div className="space-y-4 sm:space-y-6 text-base sm:text-lg font-light leading-relaxed text-gray-300">
               <p>
-                Violations of these guidelines may result in:
+                {t('guidelines.violationsMayResult')}
               </p>
               <ul className="list-disc list-inside space-y-2 sm:space-y-3 ml-4 sm:ml-6">
-                <li>Warnings and educational notices</li>
-                <li>Temporary restrictions on account features</li>
-                <li>Permanent account suspension</li>
-                <li>Legal action in cases of serious violations</li>
+                <li>{t('guidelines.warnings')}</li>
+                <li>{t('guidelines.temporaryRestrictions')}</li>
+                <li>{t('guidelines.permanentSuspension')}</li>
+                <li>{t('guidelines.legalAction')}</li>
               </ul>
               <p className="mt-4 sm:mt-6">
-                If you witness or experience violations, please report them immediately through our reporting system or contact support@gopopera.ca. Your safety and experience comes first.
+                {t('guidelines.reportViolations')}
               </p>
             </div>
           </section>
@@ -198,14 +200,14 @@ export const GuidelinesPage: React.FC<GuidelinesPageProps> = ({ setViewState }) 
           {/* Contact */}
           <section className="bg-[#e35e25]/10 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-[#e35e25]/20">
             <h2 className="text-xl sm:text-2xl font-bold text-white font-heading mb-4 sm:mb-6">
-              Questions or Concerns?
+              {t('guidelines.questionsConcerns')}
             </h2>
             <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300 mb-4 sm:mb-6">
-              If you have questions about these guidelines or need to report a violation, please contact us:
+              {t('guidelines.questionsDesc')}
             </p>
             <p className="text-base sm:text-lg font-light text-gray-300">
-              Email: support@gopopera.ca<br />
-              Website: www.gopopera.ca
+              {t('guidelines.email')}<br />
+              {t('guidelines.website')}
             </p>
           </section>
         </div>

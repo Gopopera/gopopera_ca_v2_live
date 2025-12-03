@@ -36,8 +36,7 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
         </div>
         
         <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-heading font-bold text-white mb-5 sm:mb-6 md:mb-7 lg:mb-8 leading-[1.15] sm:leading-[1.1] md:leading-[1.05] tracking-tight px-2 sm:px-4">
-          {t('hero.title')} <br />
-          <span className="text-[#e35e25]">{t('hero.titleHighlight')}</span>
+          {t('hero.title')}
         </h1>
         
         <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-300 mb-8 sm:mb-10 md:mb-12 lg:mb-14 max-w-2xl mx-auto font-light leading-[1.6] sm:leading-relaxed opacity-90 px-4 sm:px-6">

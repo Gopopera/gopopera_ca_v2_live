@@ -4,12 +4,14 @@ import { ChevronLeft, CheckCircle2 } from 'lucide-react';
 import { useUserStore } from '../stores/userStore';
 import { getDbSafe } from '../src/lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface ReportPageProps {
   setViewState: (view: ViewState) => void;
 }
 
 export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
+  const { t } = useLanguage();
   const user = useUserStore((state) => state.user);
   const [name, setName] = useState(user?.displayName || user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -23,7 +25,7 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
     e.preventDefault();
     
     if (!name.trim() || !email.trim() || !subject.trim() || !message.trim()) {
-      setError('All fields are required');
+      setError(t('report.allFieldsRequired'));
       return;
     }
 
@@ -66,7 +68,7 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
       }, 3000);
     } catch (err) {
       console.error('Error submitting report:', err);
-      setError('Failed to submit report. Please try again.');
+      setError(t('report.failedSubmit'));
     } finally {
       setSubmitting(false);
     }
@@ -88,16 +90,16 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
               <CheckCircle2 size={32} className="text-green-600" />
             </div>
             <h2 className="text-2xl sm:text-3xl font-heading font-bold text-[#15383c] mb-3">
-              Report Submitted
+              {t('report.reportSubmitted')}
             </h2>
             <p className="text-gray-600 mb-6">
-              Thank you for your report. We'll review it and get back to you at {email || user?.email}.
+              {t('report.thankYou')} {email || user?.email}.
             </p>
             <button
               onClick={() => setViewState(ViewState.LANDING)}
               className="px-6 py-3 bg-[#e35e25] text-white rounded-full font-medium hover:bg-[#d14e1a] transition-colors"
             >
-              Return Home
+              {t('report.returnHome')}
             </button>
           </div>
         </div>
@@ -117,10 +119,10 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
 
         <div className="text-center mb-6 sm:mb-8">
           <h1 className="font-heading font-bold text-3xl sm:text-4xl md:text-5xl mb-3 sm:mb-4 text-[#15383c]">
-            Report an Issue
+            {t('report.title')}
           </h1>
           <p className="text-gray-600 text-sm sm:text-base">
-            Help us improve Popera by reporting bugs, safety concerns, or other issues.
+            {t('report.subtitle')}
           </p>
         </div>
 
@@ -134,14 +136,14 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
           {/* Name */}
           <div>
             <label className="block text-sm font-medium text-[#15383c] mb-2">
-              Name <span className="text-red-500">*</span>
+              {t('report.name')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              placeholder="Your name"
+              placeholder={t('report.name')}
               className="w-full bg-white border border-gray-200 rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all"
             />
           </div>
@@ -149,7 +151,7 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
           {/* Email */}
           <div>
             <label className="block text-sm font-medium text-[#15383c] mb-2">
-              Email <span className="text-red-500">*</span>
+              {t('report.email')} <span className="text-red-500">*</span>
             </label>
             <input
               type="email"
@@ -164,14 +166,14 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
           {/* Subject */}
           <div>
             <label className="block text-sm font-medium text-[#15383c] mb-2">
-              Subject <span className="text-red-500">*</span>
+              {t('report.subject')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               required
-              placeholder="Brief description of the issue"
+              placeholder={t('report.subjectPlaceholder')}
               className="w-full bg-white border border-gray-200 rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all"
             />
           </div>
@@ -179,14 +181,14 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
           {/* Message */}
           <div>
             <label className="block text-sm font-medium text-[#15383c] mb-2">
-              Message <span className="text-red-500">*</span>
+              {t('report.message')} <span className="text-red-500">*</span>
             </label>
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               required
               rows={6}
-              placeholder="Please provide as much detail as possible..."
+              placeholder={t('report.messagePlaceholder')}
               className="w-full bg-white border border-gray-200 rounded-2xl sm:rounded-3xl py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all resize-none"
             />
           </div>
@@ -198,14 +200,14 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
               onClick={() => setViewState(ViewState.LANDING)}
               className="flex-1 px-6 py-3 bg-gray-100 text-[#15383c] rounded-full font-medium hover:bg-gray-200 transition-colors"
             >
-              Cancel
+              {t('report.cancel')}
             </button>
             <button
               type="submit"
               disabled={submitting}
               className="flex-1 px-6 py-3 bg-[#e35e25] text-white rounded-full font-medium hover:bg-[#d14e1a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submitting ? 'Submitting...' : 'Submit Report'}
+              {submitting ? t('report.submitting') : t('report.submit')}
             </button>
           </div>
         </form>
