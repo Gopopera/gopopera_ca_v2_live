@@ -100,14 +100,21 @@ export const ChatMockupSection: React.FC = () => {
                       <div className="bg-white p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl rounded-tl-none shadow-md text-[12px] sm:text-sm text-gray-700 max-w-[85%] border border-gray-200 hover:shadow-lg transition-shadow">
                          {t('chatMockup.heyEveryone')}
                       </div>
-                      <span className="text-[10px] sm:text-[11px] text-gray-500 ml-3 font-medium">{t('chatMockup.alex')} - 14:37</span>
+                      <span className="text-[10px] sm:text-[11px] text-gray-500 ml-3 font-medium">{t('chatMockup.alex')} - 07:10 AM</span>
                    </div>
 
                    <div className="flex flex-col items-start gap-1.5">
                       <div className="bg-white p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl rounded-tl-none shadow-md text-[12px] sm:text-sm text-gray-700 max-w-[85%] border border-gray-200 hover:shadow-lg transition-shadow">
                          {t('chatMockup.parkingTight')}
                       </div>
-                      <span className="text-[10px] sm:text-[11px] text-gray-500 ml-3 font-medium">{t('chatMockup.priya')} - 14:39</span>
+                      <span className="text-[10px] sm:text-[11px] text-gray-500 ml-3 font-medium">{t('chatMockup.priya')} - 07:12 AM</span>
+                   </div>
+
+                   <div className="flex flex-col items-start gap-1.5">
+                      <div className="bg-white p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl rounded-tl-none shadow-md text-[12px] sm:text-sm text-gray-700 max-w-[85%] border border-gray-200 hover:shadow-lg transition-shadow">
+                         {t('chatMockup.maraMessage')}
+                      </div>
+                      <span className="text-[10px] sm:text-[11px] text-gray-500 ml-3 font-medium">{t('chatMockup.mara')} - 07:13 AM</span>
                    </div>
 
                    <div className="bg-gradient-to-br from-[#15383c] to-[#1a4549] p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-xl text-white relative overflow-hidden border border-[#15383c]/50">
@@ -119,26 +126,11 @@ export const ChatMockupSection: React.FC = () => {
                       <p className="text-[11px] sm:text-sm opacity-95 relative z-10 leading-relaxed">{t('chatMockup.announcementText')}</p>
                    </div>
 
-                   <div className="bg-gradient-to-br from-[#15383c] to-[#1a4549] p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-xl text-white border border-[#15383c]/50">
-                      <h4 className="font-bold text-sm sm:text-base mb-3 sm:mb-4">{t('chatMockup.pollQuestion')}</h4>
-                      <div className="flex gap-2 sm:gap-3">
-                         <div className="flex-1 bg-white/15 rounded-xl p-2.5 sm:p-3 text-center border border-white/10 shadow-inner">
-                            <span className="block font-bold text-base sm:text-lg md:text-xl mb-1">90%</span>
-                            <span className="text-[9px] sm:text-[10px] uppercase tracking-wider opacity-80">{t('chatMockup.yes')}</span>
-                         </div>
-                         <div className="flex-1 bg-white/10 rounded-xl p-2.5 sm:p-3 text-center border border-white/5">
-                            <span className="block font-bold text-base sm:text-lg md:text-xl text-white/50 mb-1">10%</span>
-                            <span className="text-[9px] sm:text-[10px] uppercase tracking-wider opacity-60">{t('chatMockup.no')}</span>
-                         </div>
-                      </div>
-                   </div>
-
-                   {/* Host Reply Message */}
                    <div className="flex flex-col items-start gap-1.5">
                       <div className="bg-white p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl rounded-tl-none shadow-md text-[12px] sm:text-sm text-gray-700 max-w-[85%] border border-gray-200 hover:shadow-lg transition-shadow">
-                         {t('chatMockup.hostReply')}
+                         {t('chatMockup.jonMessage')}
                       </div>
-                      <span className="text-[10px] sm:text-[11px] text-gray-500 ml-3 font-medium">{t('chatMockup.host')} - 14:45</span>
+                      <span className="text-[10px] sm:text-[11px] text-gray-500 ml-3 font-medium">{t('chatMockup.jon')} - 07:15 AM</span>
                    </div>
                 </div>
 
