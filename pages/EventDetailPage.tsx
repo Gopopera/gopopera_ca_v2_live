@@ -98,14 +98,20 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     [allEvents, eventId]
   );
   // Stabilize rsvps array reference to prevent unnecessary re-renders
+  // Use a ref to track the actual array contents, not the reference
   const rsvpsRef = useRef<string[]>(rsvps);
-  useEffect(() => {
+  const rsvpsStringRef = useRef<string>(rsvps.join(','));
+  
+  // Only update ref if the actual contents changed (not just the reference)
+  const currentRsvpsString = rsvps.join(',');
+  if (currentRsvpsString !== rsvpsStringRef.current) {
     rsvpsRef.current = rsvps;
-  }, [rsvps]);
+    rsvpsStringRef.current = currentRsvpsString;
+  }
   
   const hasRSVPed = useMemo(() => {
     return rsvpsRef.current.includes(eventId);
-  }, [eventId]); // Only depend on eventId, not rsvps array
+  }, [eventId, rsvpsStringRef.current]); // Depend on string representation, not array reference
   
   // State for host name (may need to be fetched if missing)
   // Initialize with eventHostName but don't reset if event object changes but hostName stays same
@@ -215,7 +221,26 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   
   // Fetch host profile picture and name - always fetch from Firestore for accuracy (works when not logged in)
   // Also refresh periodically if current user is the host to catch profile picture updates
+  // CRITICAL: Use refs to track previous values and prevent infinite loops
+  const prevHostIdRef = useRef<string>('');
+  const prevHostNameRef = useRef<string>('');
+  const isFetchingRef = useRef<boolean>(false);
+  
   useEffect(() => {
+    // CRITICAL: Only fetch if hostId actually changed, not just reference
+    if (eventHostId === prevHostIdRef.current && eventHostName === prevHostNameRef.current) {
+      return; // No change, skip fetch
+    }
+    
+    // Update refs immediately to prevent duplicate fetches
+    prevHostIdRef.current = eventHostId;
+    prevHostNameRef.current = eventHostName;
+    
+    // Prevent concurrent fetches
+    if (isFetchingRef.current) {
+      return;
+    }
+    
     const fetchHostProfile = async () => {
       if (!eventHostId) {
         setHostProfilePicture(null);
@@ -223,39 +248,55 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         return;
       }
       
-      // ALWAYS fetch from Firestore to ensure we have the latest host information
-      // This prevents stale/cached data from showing wrong names or pictures
-      // Even if event.hostName exists, we fetch to ensure it's up-to-date
+      isFetchingRef.current = true;
+      
       try {
+        // ALWAYS fetch from Firestore to ensure we have the latest host information
         const hostProfile = await getUserProfile(eventHostId);
+        
         if (hostProfile) {
           // Priority: photoURL > imageUrl (both from Firestore - always latest)
           const profilePic = hostProfile.photoURL || hostProfile.imageUrl || null;
           // Only update if actually changed
-          setHostProfilePicture(prev => prev !== profilePic ? profilePic : prev);
+          setHostProfilePicture(prev => {
+            if (prev === profilePic) return prev;
+            return profilePic;
+          });
           
           // Always use Firestore name as source of truth (most up-to-date)
           const firestoreName = hostProfile.name || hostProfile.displayName;
           if (firestoreName && firestoreName.trim() !== '' && firestoreName !== 'You') {
             // Only update if actually changed
-            setDisplayHostName(prev => prev !== firestoreName ? firestoreName : prev);
+            setDisplayHostName(prev => {
+              if (prev === firestoreName) return prev;
+              return firestoreName;
+            });
           } else {
             // Fallback to eventHostName only if Firestore doesn't have a valid name
             const fallbackName = eventHostName && eventHostName !== 'You' && eventHostName !== 'Unknown Host' 
               ? eventHostName 
               : 'Unknown Host';
             // Only update if actually changed
-            setDisplayHostName(prev => prev !== fallbackName ? fallbackName : prev);
+            setDisplayHostName(prev => {
+              if (prev === fallbackName) return prev;
+              return fallbackName;
+            });
           }
         } else {
           // If profile doesn't exist in Firestore, use event data as fallback
-          // But clean up "You" and empty strings
           const fallbackName = eventHostName && eventHostName !== 'You' && eventHostName.trim() !== ''
             ? eventHostName 
             : 'Unknown Host';
-          setHostProfilePicture(prev => prev !== (event.hostPhotoURL || null) ? (event.hostPhotoURL || null) : prev);
+          setHostProfilePicture(prev => {
+            const newPic = event.hostPhotoURL || null;
+            if (prev === newPic) return prev;
+            return newPic;
+          });
           // Only update if actually changed
-          setDisplayHostName(prev => prev !== fallbackName ? fallbackName : prev);
+          setDisplayHostName(prev => {
+            if (prev === fallbackName) return prev;
+            return fallbackName;
+          });
         }
       } catch (error: any) {
         // Handle permission errors gracefully - don't spam console
@@ -265,9 +306,17 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           console.error('Error fetching host profile:', error);
         }
         const fallbackName = eventHostName || 'Unknown Host';
-        setHostProfilePicture(prev => prev !== null ? null : prev);
+        setHostProfilePicture(prev => {
+          if (prev === null) return prev;
+          return null;
+        });
         // Only update if actually changed
-        setDisplayHostName(prev => prev !== fallbackName ? fallbackName : prev);
+        setDisplayHostName(prev => {
+          if (prev === fallbackName) return prev;
+          return fallbackName;
+        });
+      } finally {
+        isFetchingRef.current = false;
       }
     };
     
@@ -279,7 +328,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     const currentUserId = user?.uid;
     if (currentUserId === eventHostId) {
       refreshInterval = setInterval(() => {
-        fetchHostProfile();
+        if (!isFetchingRef.current) {
+          fetchHostProfile();
+        }
       }, 5000); // Refresh every 5 seconds
     }
     
@@ -287,10 +338,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       if (refreshInterval) {
         clearInterval(refreshInterval);
       }
+      isFetchingRef.current = false;
     };
-    // Only depend on event.hostId and event.hostName - user properties can change frequently
-    // and cause infinite loops. The interval check uses a captured value instead.
-  }, [eventHostId, eventHostName]); // Use stable primitive values
+  }, [eventHostId, eventHostName, user?.uid]); // Use stable primitive values
   
   // Fetch real reservation count from Firestore
   useEffect(() => {
@@ -332,9 +382,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           }
           return;
         }
-        // Fallback to event.attendeesCount if available
+        // Fallback to eventAttendeesCount if available
         if (isMounted) {
-          setReservationCount(event.attendeesCount || 0);
+          setReservationCount(eventAttendeesCount);
         }
       }
     };
@@ -375,7 +425,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   }, [user?.uid, eventHostId]); // Use stable primitive value
 
   const handleFollowToggle = async () => {
-    if (!user?.uid || !event.hostId) {
+    if (!user?.uid || !eventHostId) {
       setShowAuthModal(true);
       return;
     }
@@ -383,10 +433,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     setFollowLoading(true);
     try {
       if (isFollowingHost) {
-        await unfollowHost(user.uid, event.hostId);
+        await unfollowHost(user.uid, eventHostId);
         setIsFollowingHost(false);
       } else {
-        await followHost(user.uid, event.hostId);
+        await followHost(user.uid, eventHostId);
         setIsFollowingHost(true);
       }
     } catch (error) {
