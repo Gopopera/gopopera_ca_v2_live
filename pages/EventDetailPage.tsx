@@ -84,10 +84,27 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     allEvents.filter(e => e.id !== event?.id).slice(0, 5), 
     [allEvents, event?.id]
   );
-  const hasRSVPed = useMemo(() => rsvps.includes(event?.id || ''), [rsvps, event?.id]);
+  // Stabilize rsvps array reference to prevent unnecessary re-renders
+  const rsvpsRef = useRef<string[]>(rsvps);
+  useEffect(() => {
+    rsvpsRef.current = rsvps;
+  }, [rsvps]);
+  
+  const hasRSVPed = useMemo(() => {
+    return rsvpsRef.current.includes(event?.id || '');
+  }, [event?.id]); // Only depend on event.id, not rsvps array
   
   // State for host name (may need to be fetched if missing)
-  const [displayHostName, setDisplayHostName] = useState<string>(event.hostName || '');
+  // Initialize with event.hostName but don't reset if event object changes but hostName stays same
+  const [displayHostName, setDisplayHostName] = useState<string>(() => event.hostName || '');
+  
+  // Update displayHostName only if event.hostName actually changed
+  useEffect(() => {
+    if (event.hostName && event.hostName !== displayHostName && displayHostName === '') {
+      // Only update if currently empty (initial state) or if hostName changed significantly
+      setDisplayHostName(event.hostName);
+    }
+  }, [event.hostName]); // Only depend on hostName, not the whole event object
   
   // Native event listener as backup (capture phase)
   // Use refs to avoid recreating the listener on every render
@@ -163,18 +180,31 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   }, [event.hostId]);
   
   // Update rating when host overall rating or event changes
+  // Use refs to track previous values and only update if they actually changed
+  const prevRatingRef = useRef<{ rating: number; reviewCount: number } | null>(null);
+  
   useEffect(() => {
+    let newRating: { rating: number; reviewCount: number };
+    
     if (hostOverallRating !== null) {
-      setCurrentRating({
+      newRating = {
         rating: hostOverallRating,
         reviewCount: hostOverallReviewCount
-      });
+      };
     } else {
       // Fallback to event rating if host rating not available
-      setCurrentRating({
+      newRating = {
         rating: event.rating || 0,
         reviewCount: event.reviewCount || 0
-      });
+      };
+    }
+    
+    // Only update if values actually changed
+    if (!prevRatingRef.current || 
+        prevRatingRef.current.rating !== newRating.rating || 
+        prevRatingRef.current.reviewCount !== newRating.reviewCount) {
+      setCurrentRating(newRating);
+      prevRatingRef.current = newRating;
     }
   }, [hostOverallRating, hostOverallReviewCount, event.rating, event.reviewCount]);
   
@@ -196,18 +226,21 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         if (hostProfile) {
           // Priority: photoURL > imageUrl (both from Firestore - always latest)
           const profilePic = hostProfile.photoURL || hostProfile.imageUrl || null;
-          setHostProfilePicture(profilePic);
+          // Only update if actually changed
+          setHostProfilePicture(prev => prev !== profilePic ? profilePic : prev);
           
           // Always use Firestore name as source of truth (most up-to-date)
           const firestoreName = hostProfile.name || hostProfile.displayName;
           if (firestoreName && firestoreName.trim() !== '' && firestoreName !== 'You') {
-            setDisplayHostName(firestoreName);
+            // Only update if actually changed
+            setDisplayHostName(prev => prev !== firestoreName ? firestoreName : prev);
           } else {
             // Fallback to event.hostName only if Firestore doesn't have a valid name
             const fallbackName = event.hostName && event.hostName !== 'You' && event.hostName !== 'Unknown Host' 
               ? event.hostName 
               : 'Unknown Host';
-            setDisplayHostName(fallbackName);
+            // Only update if actually changed
+            setDisplayHostName(prev => prev !== fallbackName ? fallbackName : prev);
           }
         } else {
           // If profile doesn't exist in Firestore, use event data as fallback
@@ -215,8 +248,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           const fallbackName = event.hostName && event.hostName !== 'You' && event.hostName.trim() !== ''
             ? event.hostName 
             : 'Unknown Host';
-          setHostProfilePicture(event.hostPhotoURL || null);
-          setDisplayHostName(fallbackName);
+          setHostProfilePicture(prev => prev !== (event.hostPhotoURL || null) ? (event.hostPhotoURL || null) : prev);
+          // Only update if actually changed
+          setDisplayHostName(prev => prev !== fallbackName ? fallbackName : prev);
         }
       } catch (error: any) {
         // Handle permission errors gracefully - don't spam console
@@ -225,8 +259,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         } else {
           console.error('Error fetching host profile:', error);
         }
-        setHostProfilePicture(null);
-        setDisplayHostName(event.hostName || 'Unknown Host');
+        const fallbackName = event.hostName || 'Unknown Host';
+        setHostProfilePicture(prev => prev !== null ? null : prev);
+        // Only update if actually changed
+        setDisplayHostName(prev => prev !== fallbackName ? fallbackName : prev);
       }
     };
     
