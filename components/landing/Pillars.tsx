@@ -7,9 +7,9 @@ export const Pillars: React.FC = () => {
   const pillars = [
     {
       id: "01",
-      title: t('pillars.sellShop.title'),
-      category: t('pillars.sellShop.category'),
-      description: t('pillars.sellShop.description'),
+      title: t('pillars.curatedSales.title'),
+      category: t('pillars.curatedSales.category'),
+      description: t('pillars.curatedSales.description'),
       image: "/justin-lim-sale.webp",
     },
     {
@@ -25,6 +25,13 @@ export const Pillars: React.FC = () => {
       category: t('pillars.mobilizeSupport.category'),
       description: t('pillars.mobilizeSupport.description'),
       image: "https://images.unsplash.com/photo-1531206715517-5c0ba140b2b8?q=80&w=2074&auto=format&fit=crop",
+    },
+    {
+      id: "04",
+      title: t('pillars.learningWorkshops.title'),
+      category: t('pillars.learningWorkshops.category'),
+      description: t('pillars.learningWorkshops.description'),
+      image: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?q=80&w=2029&auto=format&fit=crop",
     }
   ];
 
@@ -45,7 +52,7 @@ export const Pillars: React.FC = () => {
         </div>
 
         {/* Cards Container - Horizontal scroll on mobile, grid on desktop */}
-        <div className="flex md:grid md:grid-cols-3 gap-4 sm:gap-5 md:gap-6 lg:gap-8 overflow-x-auto md:overflow-x-visible pb-6 sm:pb-8 md:pb-0 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth hide-scrollbar w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+        <div className="flex md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6 lg:gap-8 overflow-x-auto md:overflow-x-visible pb-6 sm:pb-8 md:pb-0 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth hide-scrollbar w-full touch-pan-x overscroll-x-contain scroll-pl-4">
           {pillars.map((pillar) => (
             <div 
               key={pillar.id}

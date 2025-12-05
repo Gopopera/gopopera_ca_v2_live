@@ -32,20 +32,25 @@ export const translations = {
       badge: 'Our Ecosystem',
       title: 'How Popera Brings People Together',
       description: 'One simple platform to bring people together. Whether you\'re exchanging goods, offering experiences, or building community impact.',
-      sellShop: {
+      curatedSales: {
         category: 'SHOPPING',
-        title: 'Sell & Shop',
-        description: 'Meet people who love what you offer. Host small-group selling Sessions, manage pickups, and grow a trusted local Circle.',
+        title: 'Curated Sales',
+        description: 'Host curated selling Sessions, manage buyers, and bring your community together with small-group drops.',
       },
       connectPromote: {
         category: 'EXPERIENCES',
         title: 'Connect & Promote',
-        description: 'Create Circles around your craft, passion, or experience and host Sessions that turn followers into long term relationships.',
+        description: 'Create Circles around your craft, passion, or skill and host Sessions that turn followers into long-term relationships.',
       },
       mobilizeSupport: {
         category: 'GATHERINGS',
         title: 'Mobilize & Support',
         description: 'Start Circles dedicated to causes or local impact, and bring people together through meaningful real-life Sessions.',
+      },
+      learningWorkshops: {
+        category: 'LEARNING',
+        title: 'Learn & Grow Together',
+        description: 'Host workshops, classes, and skill-building Sessions. From drawing and cooking to tech meetups and wellness practices, inside a Circle designed for growth.',
       },
     },
     // Landing Page
@@ -871,20 +876,25 @@ export const translations = {
       badge: 'Notre écosystème',
       title: 'Comment Popera rassemble les gens',
       description: 'Une plateforme simple pour rassembler les gens—que vous partagiez des biens, offriez des expériences ou créiez un impact communautaire.',
-      sellShop: {
+      curatedSales: {
         category: 'ACHATS',
-        title: 'Vendre et acheter',
-        description: 'Rencontrez des gens qui aiment ce que vous offrez. Organisez des Sessions de vente en petits groupes, gérez les collectes et développez un Cercle local de confiance.',
+        title: 'Ventes sélectionnées',
+        description: 'Organisez des Sessions de vente sélectionnées, gérez les acheteurs et rassemblez votre communauté avec des ventes en petits groupes.',
       },
       connectPromote: {
         category: 'EXPÉRIENCES',
         title: 'Connecter et promouvoir',
-        description: 'Créez des Cercles autour de votre art, de votre passion ou de votre expérience—et organisez des Sessions qui transforment les abonnés en relations réelles.',
+        description: 'Créez des Cercles autour de votre art, de votre passion ou de votre compétence et organisez des Sessions qui transforment les abonnés en relations à long terme.',
       },
       mobilizeSupport: {
         category: 'RASSEMBLEMENTS',
         title: 'Mobiliser et soutenir',
         description: 'Démarrez des Cercles dédiés à des causes ou à un impact local, et rassemblez les gens à travers des Sessions en personne significatives.',
+      },
+      learningWorkshops: {
+        category: 'APPRENTISSAGE',
+        title: 'Apprendre et grandir ensemble',
+        description: 'Organisez des ateliers, des cours et des Sessions de développement des compétences. Du dessin et de la cuisine aux rencontres technologiques et aux pratiques de bien-être, dans un Cercle conçu pour la croissance.',
       },
     },
     // Landing Page

@@ -5,11 +5,14 @@ import { EventFeed } from '../components/events/EventFeed';
 import { EventCard } from '../components/events/EventCard';
 import { ChatMockupSection } from '../components/landing/ChatMockupSection';
 import { CityInput } from '../components/layout/CityInput';
+import { FilterDrawer } from '../components/filters/FilterDrawer';
 import { Event, ViewState } from '../types';
-import { ArrowRight, Sparkles, Check, ChevronDown, Search, MapPin, PlusCircle, CheckCircle2, ChevronRight, ChevronLeft } from 'lucide-react';
+import { ArrowRight, Sparkles, Check, ChevronDown, Search, MapPin, PlusCircle, CheckCircle2, ChevronRight, ChevronLeft, Filter } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { categoryMatches, translateCategory } from '../utils/categoryMapper';
 import { useSelectedCity, useSetCity, type City } from '../src/stores/cityStore';
+import { useFilterStore } from '../stores/filterStore';
+import { applyEventFilters } from '../utils/filterEvents';
 import { getDbSafe } from '../src/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { sendEmail } from '../src/lib/email';
@@ -46,6 +49,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const city = useSelectedCity();
   const setCity = useSetCity();
   const location = city;
+  const { filters, isFilterDrawerOpen, setFilterDrawerOpen, getActiveFilterCount } = useFilterStore();
   
   // Category keys (English) for internal logic
   const categoryKeys = [
@@ -124,13 +128,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       });
     }
     
+    // Apply filter store filters (vibes, session frequency, mode, etc.)
+    filtered = applyEventFilters(filtered, filters);
+    
     console.log('[LANDING_PAGE] Final filtered events:', {
       count: filtered.length,
       titles: filtered.map(e => e.title),
     });
     
     return filtered;
-  }, [events, activeCategory, location, searchQuery]);
+  }, [events, activeCategory, location, searchQuery, filters]);
 
   const toggleFaq = (index: number) => {
     setOpenFaqIndex(openFaqIndex === index ? null : index);
@@ -214,25 +221,41 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
              </div>
 
-             {/* Horizontal Categories */}
-             <div className="relative z-10">
-               <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4">
-                  {categories.map(cat => (
-                    <button
-                      key={cat}
-                      onClick={() => setActiveCategory(cat)}
-                      className={`
-                        px-5 sm:px-5 py-2.5 sm:py-2 rounded-full text-sm sm:text-sm font-medium whitespace-nowrap transition-all border flex-shrink-0 touch-manipulation active:scale-[0.95] min-h-[40px] sm:min-h-0
-                        ${activeCategory === cat
-                          ? 'bg-[#15383c] text-white border-[#15383c] shadow-lg shadow-teal-900/20'
-                          : 'bg-white text-gray-600 sm:text-gray-500 border-gray-200 hover:border-[#e35e25] hover:text-[#e35e25] hover:shadow-sm active:bg-gray-50'}
-                      `}
-                    >
-                      {cat}
-                    </button>
-                  ))}
+             {/* Horizontal Categories and Filter Button */}
+             <div className="flex items-center gap-3">
+               <div className="relative z-10 flex-1">
+                 <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+                    {categories.map(cat => (
+                      <button
+                        key={cat}
+                        onClick={() => setActiveCategory(cat)}
+                        className={`
+                          px-5 sm:px-5 py-2.5 sm:py-2 rounded-full text-sm sm:text-sm font-medium whitespace-nowrap transition-all border flex-shrink-0 touch-manipulation active:scale-[0.95] min-h-[40px] sm:min-h-0
+                          ${activeCategory === cat
+                            ? 'bg-[#15383c] text-white border-[#15383c] shadow-lg shadow-teal-900/20'
+                            : 'bg-white text-gray-600 sm:text-gray-500 border-gray-200 hover:border-[#e35e25] hover:text-[#e35e25] hover:shadow-sm active:bg-gray-50'}
+                        `}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                 </div>
+                 <div className="absolute right-0 top-0 bottom-2 w-6 sm:w-8 bg-gradient-to-l from-[#FAFAFA] to-transparent pointer-events-none md:hidden"></div>
                </div>
-               <div className="absolute right-0 top-0 bottom-2 w-6 sm:w-8 bg-gradient-to-l from-[#FAFAFA] to-transparent pointer-events-none md:hidden"></div>
+               
+               {/* Filter Button */}
+               <button
+                 onClick={() => setFilterDrawerOpen(true)}
+                 className="flex items-center gap-2 px-4 py-2.5 rounded-full border-2 border-[#15383c] text-[#15383c] font-medium hover:bg-[#15383c] hover:text-white transition-colors flex-shrink-0 touch-manipulation active:scale-[0.95] min-h-[40px] sm:min-h-0"
+               >
+                 <Filter size={18} />
+                 <span className="hidden sm:inline">Filters</span>
+                 {getActiveFilterCount() > 0 && (
+                   <span className="px-2 py-0.5 rounded-full bg-[#e35e25] text-white text-xs font-bold">
+                     {getActiveFilterCount()}
+                   </span>
+                 )}
+               </button>
              </div>
           </div>
         </div>
@@ -603,6 +626,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </p>
         </div>
       </section>
+
+      {/* Filter Drawer */}
+      <FilterDrawer
+        isOpen={isFilterDrawerOpen}
+        onClose={() => setFilterDrawerOpen(false)}
+        events={events}
+      />
     </main>
   );
 };
