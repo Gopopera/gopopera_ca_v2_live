@@ -109,26 +109,18 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   
   // State for host name (may need to be fetched if missing)
   // Initialize with eventHostName but don't reset if event object changes but hostName stays same
+  // The fetchHostProfile useEffect will update this if needed, so we don't need a separate useEffect
   const [displayHostName, setDisplayHostName] = useState<string>(() => eventHostName);
-  
-  // Update displayHostName only if eventHostName actually changed (and is not empty)
-  useEffect(() => {
-    if (eventHostName && eventHostName !== displayHostName) {
-      // Only update if hostName changed and is not empty
-      setDisplayHostName(eventHostName);
-    }
-  }, [eventHostName]); // Only depend on eventHostName, not the whole event object
   
   // Native event listener as backup (capture phase)
   // Use refs to avoid recreating the listener on every render
   const onHostClickRef = useRef(onHostClick);
   const displayHostNameRef = useRef(displayHostName);
   
-  // Keep refs in sync
-  useEffect(() => {
-    onHostClickRef.current = onHostClick;
-    displayHostNameRef.current = displayHostName;
-  }, [onHostClick, displayHostName]);
+  // Update refs directly in render (refs don't cause re-renders, so this is safe)
+  // This avoids useEffect dependencies that could cause infinite loops
+  onHostClickRef.current = onHostClick;
+  displayHostNameRef.current = displayHostName;
   
   useEffect(() => {
     const handleNativeClick = (e: Event) => {
@@ -153,8 +145,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   
   // State for rating - use host's overall rating if available, otherwise fallback to event rating
   const [currentRating, setCurrentRating] = useState<{ rating: number; reviewCount: number }>({
-    rating: event.rating || 0,
-    reviewCount: event.reviewCount || 0
+    rating: eventRating,
+    reviewCount: eventReviewCount
   });
   
   // Fetch host's overall rating from all their events
