@@ -67,16 +67,17 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   
   // CRITICAL: Extract primitive values from event object to stabilize dependencies
   // This prevents infinite loops when event object reference changes but values stay same
-  const eventId = event?.id || '';
-  const eventHostId = event?.hostId || '';
-  const eventHostName = event?.hostName || '';
-  const eventRating = event?.rating || 0;
-  const eventReviewCount = event?.reviewCount || 0;
-  const eventAttendeesCount = event?.attendeesCount || 0;
-  const eventIsFakeEvent = event?.isFakeEvent === true;
-  const eventIsDemo = event?.isDemo === true;
-  const eventIsPoperaOwned = event?.isPoperaOwned === true;
-  const eventIsOfficialLaunch = event?.isOfficialLaunch === true;
+  // Use useMemo to ensure these values only change when the actual event data changes
+  const eventId = useMemo(() => event?.id || '', [event?.id]);
+  const eventHostId = useMemo(() => event?.hostId || '', [event?.hostId]);
+  const eventHostName = useMemo(() => event?.hostName || '', [event?.hostName]);
+  const eventRating = useMemo(() => event?.rating || 0, [event?.rating]);
+  const eventReviewCount = useMemo(() => event?.reviewCount || 0, [event?.reviewCount]);
+  const eventAttendeesCount = useMemo(() => event?.attendeesCount || 0, [event?.attendeesCount]);
+  const eventIsFakeEvent = useMemo(() => event?.isFakeEvent === true, [event?.isFakeEvent]);
+  const eventIsDemo = useMemo(() => event?.isDemo === true, [event?.isDemo]);
+  const eventIsPoperaOwned = useMemo(() => event?.isPoperaOwned === true, [event?.isPoperaOwned]);
+  const eventIsOfficialLaunch = useMemo(() => event?.isOfficialLaunch === true, [event?.isOfficialLaunch]);
   
   // Get favorites directly from user store for reactive updates
   // This ensures the UI updates immediately when favorites change
@@ -87,10 +88,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const isFavorite = (storeFavorites.length > 0 ? storeFavorites : favorites).includes(eventId);
   
   // Memoized values - always called (safe even if event is undefined)
-  const isFakeEvent = useMemo(() => eventIsFakeEvent, [eventIsFakeEvent]);
-  const isDemo = useMemo(() => eventIsDemo || isFakeEvent, [eventIsDemo, isFakeEvent]);
-  const isPoperaOwned = useMemo(() => eventIsPoperaOwned, [eventIsPoperaOwned]);
-  const isOfficialLaunch = useMemo(() => eventIsOfficialLaunch, [eventIsOfficialLaunch]);
+  const isFakeEvent = eventIsFakeEvent;
+  const isDemo = eventIsDemo || isFakeEvent;
+  const isPoperaOwned = eventIsPoperaOwned;
+  const isOfficialLaunch = eventIsOfficialLaunch;
   
   // Derived values - safe to compute after all hooks
   const recommendedEvents = useMemo(() => 
@@ -225,19 +226,27 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   // Fetch host profile picture and name - always fetch from Firestore for accuracy (works when not logged in)
   // Also refresh periodically if current user is the host to catch profile picture updates
   // CRITICAL: Use refs to track previous values and prevent infinite loops
+  // These refs MUST be declared at hook level, not inside useEffect
   const prevHostIdRef = useRef<string>('');
   const prevHostNameRef = useRef<string>('');
   const isFetchingRef = useRef<boolean>(false);
+  const lastFetchTimeRef = useRef<number>(0);
   
   useEffect(() => {
     // CRITICAL: Only fetch if hostId actually changed, not just reference
+    // Also add a debounce to prevent rapid successive calls
+    const now = Date.now();
     if (eventHostId === prevHostIdRef.current && eventHostName === prevHostNameRef.current) {
-      return; // No change, skip fetch
+      // Check if we recently fetched (within last 100ms) to prevent rapid calls
+      if (now - lastFetchTimeRef.current < 100) {
+        return; // Too soon, skip fetch
+      }
     }
     
     // Update refs immediately to prevent duplicate fetches
     prevHostIdRef.current = eventHostId;
     prevHostNameRef.current = eventHostName;
+    lastFetchTimeRef.current = now;
     
     // Prevent concurrent fetches
     if (isFetchingRef.current) {
@@ -343,7 +352,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       }
       isFetchingRef.current = false;
     };
-  }, [eventHostId, eventHostName, user?.uid]); // Use stable primitive values
+    // CRITICAL: Only depend on stable memoized values
+    // user?.uid is stable as it's a primitive, but we track it separately to avoid issues
+  }, [eventHostId, eventHostName]); // Remove user?.uid from deps - use captured value in interval check
   
   // Fetch real reservation count from Firestore
   useEffect(() => {
