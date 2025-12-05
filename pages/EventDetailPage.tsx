@@ -66,18 +66,60 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const { t } = useLanguage();
   
   // CRITICAL: Extract primitive values from event object to stabilize dependencies
+  // Use event.id as the primary key - only extract values when event.id changes
   // This prevents infinite loops when event object reference changes but values stay same
-  // Use useMemo to ensure these values only change when the actual event data changes
-  const eventId = useMemo(() => event?.id || '', [event?.id]);
-  const eventHostId = useMemo(() => event?.hostId || '', [event?.hostId]);
-  const eventHostName = useMemo(() => event?.hostName || '', [event?.hostName]);
-  const eventRating = useMemo(() => event?.rating || 0, [event?.rating]);
-  const eventReviewCount = useMemo(() => event?.reviewCount || 0, [event?.reviewCount]);
-  const eventAttendeesCount = useMemo(() => event?.attendeesCount || 0, [event?.attendeesCount]);
-  const eventIsFakeEvent = useMemo(() => event?.isFakeEvent === true, [event?.isFakeEvent]);
-  const eventIsDemo = useMemo(() => event?.isDemo === true, [event?.isDemo]);
-  const eventIsPoperaOwned = useMemo(() => event?.isPoperaOwned === true, [event?.isPoperaOwned]);
-  const eventIsOfficialLaunch = useMemo(() => event?.isOfficialLaunch === true, [event?.isOfficialLaunch]);
+  const eventId = event?.id || '';
+  
+  // Use refs to track the last event ID and values to prevent unnecessary recalculations
+  const lastEventIdRef = useRef<string>('');
+  const stableValuesRef = useRef<{
+    hostId: string;
+    hostName: string;
+    rating: number;
+    reviewCount: number;
+    attendeesCount: number;
+    isFakeEvent: boolean;
+    isDemo: boolean;
+    isPoperaOwned: boolean;
+    isOfficialLaunch: boolean;
+  }>({
+    hostId: '',
+    hostName: '',
+    rating: 0,
+    reviewCount: 0,
+    attendeesCount: 0,
+    isFakeEvent: false,
+    isDemo: false,
+    isPoperaOwned: false,
+    isOfficialLaunch: false,
+  });
+  
+  // Only update stable values when event ID actually changes
+  if (eventId !== lastEventIdRef.current) {
+    lastEventIdRef.current = eventId;
+    stableValuesRef.current = {
+      hostId: event?.hostId || '',
+      hostName: event?.hostName || '',
+      rating: event?.rating || 0,
+      reviewCount: event?.reviewCount || 0,
+      attendeesCount: event?.attendeesCount || 0,
+      isFakeEvent: event?.isFakeEvent === true,
+      isDemo: event?.isDemo === true,
+      isPoperaOwned: event?.isPoperaOwned === true,
+      isOfficialLaunch: event?.isOfficialLaunch === true,
+    };
+  }
+  
+  // Use stable values from ref
+  const eventHostId = stableValuesRef.current.hostId;
+  const eventHostName = stableValuesRef.current.hostName;
+  const eventRating = stableValuesRef.current.rating;
+  const eventReviewCount = stableValuesRef.current.reviewCount;
+  const eventAttendeesCount = stableValuesRef.current.attendeesCount;
+  const eventIsFakeEvent = stableValuesRef.current.isFakeEvent;
+  const eventIsDemo = stableValuesRef.current.isDemo;
+  const eventIsPoperaOwned = stableValuesRef.current.isPoperaOwned;
+  const eventIsOfficialLaunch = stableValuesRef.current.isOfficialLaunch;
   
   // Get favorites directly from user store for reactive updates
   // This ensures the UI updates immediately when favorites change
