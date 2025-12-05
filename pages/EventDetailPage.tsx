@@ -28,6 +28,9 @@ interface EventDetailPageProps {
   rsvps?: string[];
 }
 
+// Reusable constant to avoid creating new array references in selectors
+const EMPTY_ARRAY: string[] = [];
+
 export const EventDetailPage: React.FC<EventDetailPageProps> = ({ 
   event, 
   setViewState, 
@@ -123,7 +126,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   
   // Get favorites directly from user store for reactive updates
   // This ensures the UI updates immediately when favorites change
-  const storeFavorites = useUserStore((state) => state.user?.favorites ?? []);
+  // Use stable fallback to avoid useSyncExternalStore warning/infinite loop
+  const storeFavorites = useUserStore((state) => state.user?.favorites ?? EMPTY_ARRAY);
   
   // Check if this event is favorited - directly reactive to store changes
   // Use store favorites first (most up-to-date), fallback to prop favorites
