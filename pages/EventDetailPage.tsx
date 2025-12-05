@@ -336,10 +336,12 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     
     // If current user is the host, refresh profile picture every 5 seconds to catch updates
     // This ensures profile picture updates are reflected immediately
+    // CRITICAL: Capture user?.uid at effect time to avoid dependency issues
     let refreshInterval: NodeJS.Timeout | null = null;
     const currentUserId = user?.uid;
-    if (currentUserId === eventHostId) {
+    if (currentUserId && currentUserId === eventHostId) {
       refreshInterval = setInterval(() => {
+        // Double-check we're still the host and not already fetching
         if (!isFetchingRef.current) {
           fetchHostProfile();
         }
@@ -353,7 +355,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       isFetchingRef.current = false;
     };
     // CRITICAL: Only depend on stable memoized values
-    // user?.uid is stable as it's a primitive, but we track it separately to avoid issues
+    // user?.uid is captured in the closure, not in dependencies to avoid infinite loops
   }, [eventHostId, eventHostName]); // Remove user?.uid from deps - use captured value in interval check
   
   // Fetch real reservation count from Firestore
