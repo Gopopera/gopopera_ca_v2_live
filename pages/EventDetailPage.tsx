@@ -103,15 +103,18 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const rsvpsStringRef = useRef<string>(rsvps.join(','));
   
   // Only update ref if the actual contents changed (not just the reference)
-  const currentRsvpsString = rsvps.join(',');
-  if (currentRsvpsString !== rsvpsStringRef.current) {
-    rsvpsRef.current = rsvps;
-    rsvpsStringRef.current = currentRsvpsString;
-  }
+  // Do this in a useEffect to avoid side effects during render
+  useEffect(() => {
+    const currentRsvpsString = rsvps.join(',');
+    if (currentRsvpsString !== rsvpsStringRef.current) {
+      rsvpsRef.current = rsvps;
+      rsvpsStringRef.current = currentRsvpsString;
+    }
+  }, [rsvps]);
   
   const hasRSVPed = useMemo(() => {
     return rsvpsRef.current.includes(eventId);
-  }, [eventId, rsvpsStringRef.current]); // Depend on string representation, not array reference
+  }, [eventId]); // Only depend on eventId - ref is updated separately
   
   // State for host name (may need to be fetched if missing)
   // Initialize with eventHostName but don't reset if event object changes but hostName stays same
