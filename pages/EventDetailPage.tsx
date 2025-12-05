@@ -124,6 +124,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const eventIsPoperaOwned = stableValuesRef.current.isPoperaOwned;
   const eventIsOfficialLaunch = stableValuesRef.current.isOfficialLaunch;
   
+  // Store hostPhotoURL in ref to avoid direct event access
+  const eventHostPhotoURLRef = useRef<string | null>(null);
+  if (eventId !== lastEventIdRef.current || event?.hostPhotoURL !== eventHostPhotoURLRef.current) {
+    eventHostPhotoURLRef.current = event?.hostPhotoURL || null;
+  }
+  const eventHostPhotoURL = eventHostPhotoURLRef.current;
+  
   // Get favorites directly from user store for reactive updates
   // This ensures the UI updates immediately when favorites change
   // Use stable fallback to avoid useSyncExternalStore warning/infinite loop
@@ -346,7 +353,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             ? eventHostName 
             : 'Unknown Host';
           setHostProfilePicture(prev => {
-            const newPic = event.hostPhotoURL || null;
+            const newPic = eventHostPhotoURL || null;
             if (prev === newPic) return prev;
             return newPic;
           });
