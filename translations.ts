@@ -31,7 +31,7 @@ export const translations = {
     pillars: {
       badge: 'Our Ecosystem',
       title: 'How Popera Brings People Together',
-      description: 'One simple platform to bring people together—whether you\'re sharing goods, offering experiences, or building community impact.',
+      description: 'One simple platform to bring people together. Whether you\'re exchanging goods, offering experiences, or building community impact.',
       sellShop: {
         category: 'SHOPPING',
         title: 'Sell & Shop',
@@ -40,7 +40,7 @@ export const translations = {
       connectPromote: {
         category: 'EXPERIENCES',
         title: 'Connect & Promote',
-        description: 'Create Circles around your craft, passion, or experience—and host Sessions that turn followers into real relationships.',
+        description: 'Create Circles around your craft, passion, or experience and host Sessions that turn followers into long term relationships.',
       },
       mobilizeSupport: {
         category: 'GATHERINGS',
