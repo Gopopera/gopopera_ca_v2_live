@@ -65,6 +65,11 @@ export const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event 
     aboutEvent: firestoreEvent.aboutEvent || undefined,
     whatToExpect: firestoreEvent.whatToExpect || undefined,
     isDraft: firestoreEvent.isDraft === true,
+    // New fields for event cards and filtering
+    vibes: Array.isArray(firestoreEvent.vibes) ? firestoreEvent.vibes : undefined,
+    sessionFrequency: firestoreEvent.sessionFrequency || undefined,
+    sessionMode: firestoreEvent.sessionMode || undefined,
+    country: firestoreEvent.country || undefined,
   };
   
   return standardizedEvent;

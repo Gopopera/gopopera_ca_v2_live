@@ -1732,46 +1732,50 @@ const AppContent: React.FC = () => {
                </div>
             </div>
 
-            {/* Always show events grouped by city, with selected city first */}
-            <div className="space-y-4 animate-fade-in">
-              {/* Show results count if filters are applied */}
-              {(searchQuery.trim() || activeCategory !== 'All' || (location && location.trim() && location !== 'montreal')) && (
-                <div className="mb-6 text-gray-500 text-sm font-medium">
-                  Showing {filteredEvents.length} result{filteredEvents.length !== 1 ? 's' : ''}
-                  {location && location !== 'montreal' && ` in ${location.charAt(0).toUpperCase() + location.slice(1)}`}
-                </div>
-              )}
-
-              {/* Group filtered events by city, with selected city first */}
-              {(() => {
-                // Group filtered events by city
-                const filteredEventsByCity: Record<string, Event[]> = {};
-                filteredEvents.forEach((event) => {
-                  if (event?.city) {
-                    if (!filteredEventsByCity[event.city]) {
-                      filteredEventsByCity[event.city] = [];
-                    }
-                    filteredEventsByCity[event.city].push(event);
+            {/* Use EventFeed component with filters */}
+            <React.Suspense fallback={<div className="text-center py-20">Loading events...</div>}>
+              <EventFeed
+                events={filteredEvents}
+                onEventClick={handleEventClick}
+                onChatClick={handleChatClick}
+                onReviewsClick={handleReviewsClick}
+                isLoggedIn={isLoggedIn}
+                favorites={favorites}
+                onToggleFavorite={handleToggleFavorite}
+              />
+            </React.Suspense>
+            
+            {/* Legacy grouped view - disabled, using EventFeed instead */}
+            {false && (
+              <div className="space-y-4">
+                {(() => {
+                  const filteredEventsByCity: Record<string, Event[]> = {};
+              filteredEvents.forEach((event) => {
+                if (event?.city) {
+                  if (!filteredEventsByCity[event.city]) {
+                    filteredEventsByCity[event.city] = [];
                   }
-                });
+                  filteredEventsByCity[event.city].push(event);
+                }
+              });
 
-                // Sort cities: selected city first, then alphabetically
-                const cityEntries = Object.entries(filteredEventsByCity);
-                const selectedCityName = location && location !== 'montreal' 
-                  ? cityEntries.find(([city]) => 
-                      city.toLowerCase().includes(location.toLowerCase()) || 
-                      location.toLowerCase().includes(city.split(',')[0].toLowerCase())
-                    )?.[0]
-                  : null;
+              // Sort cities: selected city first, then alphabetically
+              const cityEntries = Object.entries(filteredEventsByCity);
+              const selectedCityName = location && location !== 'montreal' 
+                ? cityEntries.find(([city]) => 
+                    city.toLowerCase().includes(location.toLowerCase()) || 
+                    location.toLowerCase().includes(city.split(',')[0].toLowerCase())
+                  )?.[0]
+                : null;
 
-                // Sort: selected city first, then alphabetically
-                cityEntries.sort(([cityA], [cityB]) => {
-                  if (selectedCityName) {
-                    if (cityA === selectedCityName) return -1;
-                    if (cityB === selectedCityName) return 1;
-                  }
-                  return cityA.localeCompare(cityB);
-                });
+              // Sort: selected city first, then alphabetically
+              cityEntries.sort(([cityA], [cityB]) => {
+                if (selectedCityName) {
+                  if (cityA === selectedCityName) return -1;
+                  if (cityB === selectedCityName) return 1;
+                }
+                return cityA.localeCompare(cityB);
+              });
 
                 if (cityEntries.length === 0) {
                   return (
@@ -1896,8 +1900,9 @@ const AppContent: React.FC = () => {
                     })}
                   </div>
                 );
-              })()}
-            </div>
+                })()}
+              </div>
+            )}
             
             {/* Mobile CTA FAB - Only show when logged in */}
             {isLoggedIn && (

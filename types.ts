@@ -35,6 +35,11 @@ export interface Event {
   aboutEvent?: string; // "About this event" section
   whatToExpect?: string; // "What to expect" section
   isDraft?: boolean; // True for draft events (not published)
+  // New fields for event cards and filtering
+  vibes?: string[]; // Array of vibe tags (e.g., ["Creative", "Social", "Wellness"])
+  sessionFrequency?: string; // "Weekly" | "Monthly" | "One-Time" | "Flexible"
+  sessionMode?: string; // "In-Person" | "Remote"
+  country?: string; // Country name (e.g., "Canada", "United States")
 }
 
 export enum ViewState {

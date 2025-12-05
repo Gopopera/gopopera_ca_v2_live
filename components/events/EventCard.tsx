@@ -1,11 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Calendar, MessageCircle, Star, Heart, Edit, Users } from 'lucide-react';
+import { MapPin, Calendar, MessageCircle, Star, Heart, Edit, Users, Award } from 'lucide-react';
 import { Event } from '@/types';
 import { formatDate } from '@/utils/dateFormatter';
 import { formatRating } from '@/utils/formatRating';
 import { useUserStore } from '@/stores/userStore';
 import { getUserProfile, listHostReviews } from '../../firebase/db';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { VibePillList } from './VibePill';
+import { 
+  getCircleContinuityText, 
+  getSessionFrequencyText, 
+  getSessionModeText,
+  getAvailableSpots 
+} from '../../utils/eventHelpers';
 
 interface EventCardProps {
   event: Event;
@@ -328,38 +335,70 @@ export const EventCard: React.FC<EventCardProps> = ({
 
       {/* Content */}
       <div className="p-5 lg:p-6 flex flex-col flex-grow min-h-0">
-        {/* Host & Rating Row */}
-        <div className="mb-3 flex items-center justify-between gap-2">
-           {/* Host Info */}
-           <div className="flex items-center space-x-2 overflow-hidden min-w-0 flex-1">
-             <span className="w-6 h-6 shrink-0 rounded-full bg-gray-200 overflow-hidden ring-1 ring-gray-200 aspect-square flex-shrink-0">
-               {hostProfilePicture ? (
-                 <img 
-                   src={hostProfilePicture} 
-                   alt={displayHostName} 
-                   className="w-full h-full object-cover aspect-square"
-                   style={{ objectFit: 'cover', aspectRatio: '1 / 1' }}
-                   onError={(e) => {
-                     const target = e.target as HTMLImageElement;
-                     target.src = `https://picsum.photos/seed/${displayHostName}/50/50`;
-                   }}
-                 />
-               ) : (
-                 <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-xs aspect-square">
-                   {displayHostName?.[0]?.toUpperCase() || 'H'}
-                 </div>
-               )}
-             </span>
-             <p className="text-xs font-medium text-gray-600 sm:text-gray-500 uppercase tracking-wide truncate">
-               {t('event.hostedBy')} {displayHostName ? displayHostName.split(' ')[0] : 'Unknown'}
-             </p>
-           </div>
+        {/* Top Tags Section - Session Frequency, Session Mode, Vibes */}
+        <div className="mb-3 space-y-2">
+          {/* Session Frequency & Mode Tags - Always show with defaults */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#15383c]/5 text-[#15383c] border border-[#15383c]/10 text-xs font-medium">
+              {getSessionFrequencyText(event.sessionFrequency || 'Flexible')}
+            </span>
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#15383c]/5 text-[#15383c] border border-[#15383c]/10 text-xs font-medium">
+              {getSessionModeText(event.sessionMode || 'In-Person')}
+            </span>
+          </div>
+          
+          {/* Vibes Tags */}
+          {event.vibes && event.vibes.length > 0 && (
+            <VibePillList vibes={event.vibes} maxVisible={4} size="sm" />
+          )}
+        </div>
 
-           {/* FEATURE: Clickable Ratings - Shows host's overall rating from all events */}
-           <button 
-             onClick={(e) => { e.stopPropagation(); onReviewsClick(e, event); }}
-             className="flex items-center space-x-1.5 bg-gray-50 hover:bg-orange-50 px-2.5 sm:px-2 py-1.5 sm:py-1 rounded-lg transition-colors border border-gray-100 hover:border-orange-100 group/rating shrink-0 touch-manipulation active:scale-[0.95] min-h-[32px] sm:min-h-0"
-           >
+        {/* Title & Host Section */}
+        <div className="mb-3">
+          <h3 className="text-lg lg:text-xl font-heading font-semibold text-popera-teal mb-2 group-hover:text-popera-orange transition-colors line-clamp-2 leading-snug">
+            {event.title}
+          </h3>
+          
+          {/* Host Info with Badge */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center space-x-2 overflow-hidden min-w-0 flex-1">
+              <span className="w-7 h-7 shrink-0 rounded-full bg-gray-200 overflow-hidden ring-1 ring-gray-200 aspect-square flex-shrink-0">
+                {hostProfilePicture ? (
+                  <img 
+                    src={hostProfilePicture} 
+                    alt={displayHostName} 
+                    className="w-full h-full object-cover aspect-square"
+                    style={{ objectFit: 'cover', aspectRatio: '1 / 1' }}
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = `https://picsum.photos/seed/${displayHostName}/50/50`;
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-xs aspect-square">
+                    {displayHostName?.[0]?.toUpperCase() || 'H'}
+                  </div>
+                )}
+              </span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <p className="text-xs font-medium text-gray-600 sm:text-gray-500 truncate">
+                  {displayHostName || 'Unknown Host'}
+                </p>
+                {/* Grounded Host Badge - Show if host has good rating */}
+                {hostOverallRating !== null && hostOverallRating >= 4.0 && hostOverallReviewCount >= 3 && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#e35e25]/10 text-[#e35e25] border border-[#e35e25]/20 text-[10px] font-medium shrink-0">
+                    <Award size={10} />
+                    Grounded Host
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Ratings Button */}
+            <button 
+              onClick={(e) => { e.stopPropagation(); onReviewsClick(e, event); }}
+              className="flex items-center space-x-1.5 bg-gray-50 hover:bg-orange-50 px-2.5 sm:px-2 py-1.5 sm:py-1 rounded-lg transition-colors border border-gray-100 hover:border-orange-100 group/rating shrink-0 touch-manipulation active:scale-[0.95] min-h-[32px] sm:min-h-0"
+            >
               <Star size={14} className="sm:w-3 sm:h-3 text-gray-300 group-hover/rating:text-popera-orange group-hover/rating:fill-popera-orange transition-colors" fill="currentColor" />
               <span className="text-xs font-bold text-popera-teal">
                 {hostOverallRating !== null ? formatRating(hostOverallRating) : formatRating(event.rating || 0)}
@@ -367,61 +406,60 @@ export const EventCard: React.FC<EventCardProps> = ({
               <span className="text-[10px] text-gray-500 sm:text-gray-400 group-hover/rating:text-orange-400">
                 ({hostOverallReviewCount > 0 ? hostOverallReviewCount : (event.reviewCount || 0)})
               </span>
-           </button>
+            </button>
+          </div>
         </div>
 
-        <h3 className="text-lg lg:text-xl font-heading font-semibold text-popera-teal mb-2 lg:mb-0 group-hover:text-popera-orange transition-colors line-clamp-2 leading-snug">
-          {event.title}
-        </h3>
+        {/* Description */}
+        {event.description && (
+          <p className="text-sm text-gray-600 mb-3 line-clamp-2 leading-relaxed">
+            {event.description}
+          </p>
+        )}
 
-        <div className="mt-auto space-y-2 lg:space-y-1.5">
-          {/* Attendees / Capacity - Always shown */}
-          <div className="flex items-center text-gray-600 text-sm lg:text-base">
-            <Users size={16} className="sm:w-4 sm:h-4 mr-2 text-popera-orange shrink-0" />
-            <span className="truncate leading-relaxed">
-              {event.attendeesCount ?? 0} / {event.capacity ?? 'Unlimited'}
+        {/* Circle Continuity Indicator */}
+        {getCircleContinuityText(event) && (
+          <div className="mb-3">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#e35e25]/10 text-[#e35e25] border border-[#e35e25]/20 text-xs font-medium">
+              {getCircleContinuityText(event)}
             </span>
           </div>
-          <div className="flex items-center text-gray-600 text-sm lg:text-base">
+        )}
+
+        {/* Engagement Indicators */}
+        <div className="mt-auto space-y-2">
+          {/* Member Count & Spots Available */}
+          <div className="flex items-center text-gray-600 text-sm">
+            <Users size={16} className="sm:w-4 sm:h-4 mr-2 text-popera-orange shrink-0" />
+            <span className="truncate leading-relaxed">
+              {event.attendeesCount ?? 0} / {event.capacity ?? 'Unlimited'} Members Joined
+              {(() => {
+                const availableSpots = getAvailableSpots(event);
+                if (availableSpots !== null && availableSpots > 0) {
+                  return ` · ${availableSpots} Spot${availableSpots !== 1 ? 's' : ''} Available`;
+                }
+                return null;
+              })()}
+            </span>
+          </div>
+          
+          {/* Date & Time */}
+          <div className="flex items-center text-gray-600 text-sm">
             <Calendar size={16} className="sm:w-4 sm:h-4 mr-2 text-popera-orange shrink-0" />
             <span className="truncate leading-relaxed">{formatDate(event.date)} • {event.time}</span>
           </div>
-          <div className="flex items-center text-gray-600 text-sm lg:text-base min-w-0">
+          
+          {/* Location */}
+          <div className="flex items-center text-gray-600 text-sm min-w-0">
             <MapPin size={16} className="sm:w-4 sm:h-4 mr-2 text-popera-orange shrink-0" />
             <div className="flex items-center min-w-0 flex-1 gap-1.5">
-              {/* City - always visible, never truncates, in bold */}
               <span className="font-bold text-popera-teal shrink-0 whitespace-nowrap">{event.city}</span>
-              {/* Address/Venue - extract from location if it contains more than just city */}
-              {(() => {
-                // If location is just the city, don't show address
-                if (event.location.trim() === event.city || !event.location.includes(',')) {
-                  return null;
-                }
-                // Extract address part (everything before the city)
-                const locationParts = event.location.split(',');
-                const cityIndex = locationParts.findIndex(part => part.trim() === event.city);
-                if (cityIndex > 0) {
-                  // Address is everything before the city
-                  const address = locationParts.slice(0, cityIndex).join(',').trim();
-                  return address ? (
-                    <>
-                      <span className="text-gray-600 shrink-0">—</span>
-                      <span className="truncate text-gray-600 leading-relaxed">
-                        {address}
-                      </span>
-                    </>
-                  ) : null;
-                }
-                // Fallback: use address field if available
-                return event.address ? (
-                  <>
-                    <span className="text-gray-600 shrink-0">—</span>
-                    <span className="truncate text-gray-600 leading-relaxed">
-                      {event.address}
-                    </span>
-                  </>
-                ) : null;
-              })()}
+              {event.address && event.address.trim() !== event.city && (
+                <>
+                  <span className="text-gray-600 shrink-0">—</span>
+                  <span className="truncate text-gray-600 leading-relaxed">{event.address}</span>
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -13,7 +13,9 @@ module.exports = {
         brand: {
           DEFAULT: "#15383c",
           accent: "#e35e25",
-        }
+        },
+        'popera-teal': '#15383c',
+        'popera-orange': '#e35e25',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

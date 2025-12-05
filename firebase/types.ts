@@ -47,6 +47,11 @@ export interface FirestoreEvent {
   allowRsvp?: boolean; // Whether RSVP is enabled
   isDraft?: boolean; // True for draft events (not published)
   hostPhoneNumber?: string; // Host's phone number for event contact
+  // New fields for event cards and filtering
+  vibes?: string[]; // Array of vibe tags (e.g., ["Creative", "Social", "Wellness"])
+  sessionFrequency?: string; // "Weekly" | "Monthly" | "One-Time" | "Flexible"
+  sessionMode?: string; // "In-Person" | "Remote"
+  country?: string; // Country name (e.g., "Canada", "United States")
 }
 
 export interface FirestoreUser {
