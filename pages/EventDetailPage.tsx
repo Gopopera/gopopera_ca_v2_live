@@ -65,24 +65,37 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const userProfile = useUserStore((state) => state.userProfile);
   const { t } = useLanguage();
   
+  // CRITICAL: Extract primitive values from event object to stabilize dependencies
+  // This prevents infinite loops when event object reference changes but values stay same
+  const eventId = event?.id || '';
+  const eventHostId = event?.hostId || '';
+  const eventHostName = event?.hostName || '';
+  const eventRating = event?.rating || 0;
+  const eventReviewCount = event?.reviewCount || 0;
+  const eventAttendeesCount = event?.attendeesCount || 0;
+  const eventIsFakeEvent = event?.isFakeEvent === true;
+  const eventIsDemo = event?.isDemo === true;
+  const eventIsPoperaOwned = event?.isPoperaOwned === true;
+  const eventIsOfficialLaunch = event?.isOfficialLaunch === true;
+  
   // Get favorites directly from user store for reactive updates
   // This ensures the UI updates immediately when favorites change
   const storeFavorites = useUserStore((state) => state.user?.favorites ?? []);
   
   // Check if this event is favorited - directly reactive to store changes
   // Use store favorites first (most up-to-date), fallback to prop favorites
-  const isFavorite = (storeFavorites.length > 0 ? storeFavorites : favorites).includes(event.id);
+  const isFavorite = (storeFavorites.length > 0 ? storeFavorites : favorites).includes(eventId);
   
   // Memoized values - always called (safe even if event is undefined)
-  const isFakeEvent = useMemo(() => event?.isFakeEvent === true, [event?.isFakeEvent]);
-  const isDemo = useMemo(() => event?.isDemo === true || isFakeEvent, [event?.isDemo, isFakeEvent]);
-  const isPoperaOwned = useMemo(() => event?.isPoperaOwned === true, [event?.isPoperaOwned]);
-  const isOfficialLaunch = useMemo(() => event?.isOfficialLaunch === true, [event?.isOfficialLaunch]);
+  const isFakeEvent = useMemo(() => eventIsFakeEvent, [eventIsFakeEvent]);
+  const isDemo = useMemo(() => eventIsDemo || isFakeEvent, [eventIsDemo, isFakeEvent]);
+  const isPoperaOwned = useMemo(() => eventIsPoperaOwned, [eventIsPoperaOwned]);
+  const isOfficialLaunch = useMemo(() => eventIsOfficialLaunch, [eventIsOfficialLaunch]);
   
   // Derived values - safe to compute after all hooks
   const recommendedEvents = useMemo(() => 
-    allEvents.filter(e => e.id !== event?.id).slice(0, 5), 
-    [allEvents, event?.id]
+    allEvents.filter(e => e.id !== eventId).slice(0, 5), 
+    [allEvents, eventId]
   );
   // Stabilize rsvps array reference to prevent unnecessary re-renders
   const rsvpsRef = useRef<string[]>(rsvps);
@@ -91,20 +104,20 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   }, [rsvps]);
   
   const hasRSVPed = useMemo(() => {
-    return rsvpsRef.current.includes(event?.id || '');
-  }, [event?.id]); // Only depend on event.id, not rsvps array
+    return rsvpsRef.current.includes(eventId);
+  }, [eventId]); // Only depend on eventId, not rsvps array
   
   // State for host name (may need to be fetched if missing)
-  // Initialize with event.hostName but don't reset if event object changes but hostName stays same
-  const [displayHostName, setDisplayHostName] = useState<string>(() => event.hostName || '');
+  // Initialize with eventHostName but don't reset if event object changes but hostName stays same
+  const [displayHostName, setDisplayHostName] = useState<string>(() => eventHostName);
   
-  // Update displayHostName only if event.hostName actually changed
+  // Update displayHostName only if eventHostName actually changed (and is not empty)
   useEffect(() => {
-    if (event.hostName && event.hostName !== displayHostName && displayHostName === '') {
-      // Only update if currently empty (initial state) or if hostName changed significantly
-      setDisplayHostName(event.hostName);
+    if (eventHostName && eventHostName !== displayHostName) {
+      // Only update if hostName changed and is not empty
+      setDisplayHostName(eventHostName);
     }
-  }, [event.hostName]); // Only depend on hostName, not the whole event object
+  }, [eventHostName]); // Only depend on eventHostName, not the whole event object
   
   // Native event listener as backup (capture phase)
   // Use refs to avoid recreating the listener on every render
@@ -147,7 +160,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   // Fetch host's overall rating from all their events
   useEffect(() => {
     const fetchHostOverallRating = async () => {
-      if (!event.hostId) {
+      if (!eventHostId) {
         setHostOverallRating(null);
         setHostOverallReviewCount(0);
         return;
@@ -155,7 +168,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       
       try {
         // Only get accepted reviews (includePending=false) to ensure count matches displayed reviews
-        const acceptedReviews = await listHostReviews(event.hostId, false);
+        const acceptedReviews = await listHostReviews(eventHostId, false);
         
         if (acceptedReviews.length === 0) {
           setHostOverallRating(null);
@@ -177,7 +190,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     };
     
     fetchHostOverallRating();
-  }, [event.hostId]);
+  }, [eventHostId]); // Use stable primitive value
   
   // Update rating when host overall rating or event changes
   // Use refs to track previous values and only update if they actually changed
@@ -194,8 +207,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     } else {
       // Fallback to event rating if host rating not available
       newRating = {
-        rating: event.rating || 0,
-        reviewCount: event.reviewCount || 0
+        rating: eventRating,
+        reviewCount: eventReviewCount
       };
     }
     
@@ -206,13 +219,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       setCurrentRating(newRating);
       prevRatingRef.current = newRating;
     }
-  }, [hostOverallRating, hostOverallReviewCount, event.rating, event.reviewCount]);
+  }, [hostOverallRating, hostOverallReviewCount, eventRating, eventReviewCount]); // Use stable primitive values
   
   // Fetch host profile picture and name - always fetch from Firestore for accuracy (works when not logged in)
   // Also refresh periodically if current user is the host to catch profile picture updates
   useEffect(() => {
     const fetchHostProfile = async () => {
-      if (!event.hostId) {
+      if (!eventHostId) {
         setHostProfilePicture(null);
         setDisplayHostName('Unknown Host');
         return;
@@ -222,7 +235,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       // This prevents stale/cached data from showing wrong names or pictures
       // Even if event.hostName exists, we fetch to ensure it's up-to-date
       try {
-        const hostProfile = await getUserProfile(event.hostId);
+        const hostProfile = await getUserProfile(eventHostId);
         if (hostProfile) {
           // Priority: photoURL > imageUrl (both from Firestore - always latest)
           const profilePic = hostProfile.photoURL || hostProfile.imageUrl || null;
@@ -235,9 +248,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             // Only update if actually changed
             setDisplayHostName(prev => prev !== firestoreName ? firestoreName : prev);
           } else {
-            // Fallback to event.hostName only if Firestore doesn't have a valid name
-            const fallbackName = event.hostName && event.hostName !== 'You' && event.hostName !== 'Unknown Host' 
-              ? event.hostName 
+            // Fallback to eventHostName only if Firestore doesn't have a valid name
+            const fallbackName = eventHostName && eventHostName !== 'You' && eventHostName !== 'Unknown Host' 
+              ? eventHostName 
               : 'Unknown Host';
             // Only update if actually changed
             setDisplayHostName(prev => prev !== fallbackName ? fallbackName : prev);
@@ -245,8 +258,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         } else {
           // If profile doesn't exist in Firestore, use event data as fallback
           // But clean up "You" and empty strings
-          const fallbackName = event.hostName && event.hostName !== 'You' && event.hostName.trim() !== ''
-            ? event.hostName 
+          const fallbackName = eventHostName && eventHostName !== 'You' && eventHostName.trim() !== ''
+            ? eventHostName 
             : 'Unknown Host';
           setHostProfilePicture(prev => prev !== (event.hostPhotoURL || null) ? (event.hostPhotoURL || null) : prev);
           // Only update if actually changed
@@ -259,7 +272,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         } else {
           console.error('Error fetching host profile:', error);
         }
-        const fallbackName = event.hostName || 'Unknown Host';
+        const fallbackName = eventHostName || 'Unknown Host';
         setHostProfilePicture(prev => prev !== null ? null : prev);
         // Only update if actually changed
         setDisplayHostName(prev => prev !== fallbackName ? fallbackName : prev);
@@ -272,7 +285,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     // This ensures profile picture updates are reflected immediately
     let refreshInterval: NodeJS.Timeout | null = null;
     const currentUserId = user?.uid;
-    if (currentUserId === event.hostId) {
+    if (currentUserId === eventHostId) {
       refreshInterval = setInterval(() => {
         fetchHostProfile();
       }, 5000); // Refresh every 5 seconds
@@ -285,7 +298,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     };
     // Only depend on event.hostId and event.hostName - user properties can change frequently
     // and cause infinite loops. The interval check uses a captured value instead.
-  }, [event.hostId, event.hostName]);
+  }, [eventHostId, eventHostName]); // Use stable primitive values
   
   // Fetch real reservation count from Firestore
   useEffect(() => {
@@ -295,8 +308,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     let interval: NodeJS.Timeout | null = null;
     
     // Always set initial count first
-    if (!event.id || isDemo) {
-      setReservationCount(event.attendeesCount || 0);
+    if (!eventId || isDemo) {
+      setReservationCount(eventAttendeesCount);
       // CRITICAL: Always return a cleanup function (even if no-op) to maintain hook order
       return () => {
         isMounted = false;
@@ -308,7 +321,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       if (hasPermissionError || !isMounted) return;
       
       try {
-        const count = await getReservationCountForEvent(event.id);
+        const count = await getReservationCountForEvent(eventId);
         if (isMounted) {
           setReservationCount(count);
         }
@@ -318,7 +331,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           // Stop polling on permission errors to prevent infinite loops
           console.warn('[EVENT_DETAIL] Permission denied for reservation count - stopping polling');
           if (isMounted) {
-            setReservationCount(event.attendeesCount || 0);
+            setReservationCount(eventAttendeesCount);
           }
           // Clear interval if it exists
           if (interval) {
@@ -351,15 +364,15 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         clearInterval(interval);
       }
     };
-  }, [event.id, event.attendeesCount, isDemo]);
+  }, [eventId, eventAttendeesCount, isDemo]); // Use stable primitive values
 
   // Check if user is following the host
   useEffect(() => {
     // CRITICAL: Always call the effect, but conditionally execute logic inside
     // This ensures consistent hook order across renders
-    if (user?.uid && event.hostId) {
+    if (user?.uid && eventHostId) {
       const checkFollowStatus = async () => {
-        const following = await isFollowing(user.uid, event.hostId);
+        const following = await isFollowing(user.uid, eventHostId);
         setIsFollowingHost(following);
       };
       checkFollowStatus();
@@ -367,7 +380,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       // Reset follow status if user or hostId is missing
       setIsFollowingHost(false);
     }
-  }, [user?.uid, event.hostId]);
+  }, [user?.uid, eventHostId]); // Use stable primitive value
 
   const handleFollowToggle = async () => {
     if (!user?.uid || !event.hostId) {
