@@ -90,22 +90,32 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const [displayHostName, setDisplayHostName] = useState<string>(event.hostName || '');
   
   // Native event listener as backup (capture phase)
+  // Use refs to avoid recreating the listener on every render
+  const onHostClickRef = useRef(onHostClick);
+  const displayHostNameRef = useRef(displayHostName);
+  
+  // Keep refs in sync
+  useEffect(() => {
+    onHostClickRef.current = onHostClick;
+    displayHostNameRef.current = displayHostName;
+  }, [onHostClick, displayHostName]);
+  
   useEffect(() => {
     const handleNativeClick = (e: Event) => {
       const target = e.target as HTMLElement;
       if (target.closest('[data-profile-button]')) {
         e.preventDefault();
         e.stopImmediatePropagation();
-        console.log('[PROFILE_BUTTON_NATIVE] Native click detected!', displayHostName);
-        if (onHostClick && displayHostName) {
-          onHostClick(displayHostName);
+        console.log('[PROFILE_BUTTON_NATIVE] Native click detected!', displayHostNameRef.current);
+        if (onHostClickRef.current && displayHostNameRef.current) {
+          onHostClickRef.current(displayHostNameRef.current);
         }
       }
     };
     
     document.addEventListener('click', handleNativeClick, true); // Capture phase
     return () => document.removeEventListener('click', handleNativeClick, true);
-  }, [onHostClick, displayHostName]);
+  }, []); // Empty deps - refs are used instead
   
   // State for host's overall rating (from all their events)
   const [hostOverallRating, setHostOverallRating] = useState<number | null>(null);
@@ -225,7 +235,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     // If current user is the host, refresh profile picture every 5 seconds to catch updates
     // This ensures profile picture updates are reflected immediately
     let refreshInterval: NodeJS.Timeout | null = null;
-    if (user?.uid === event.hostId) {
+    const currentUserId = user?.uid;
+    if (currentUserId === event.hostId) {
       refreshInterval = setInterval(() => {
         fetchHostProfile();
       }, 5000); // Refresh every 5 seconds
@@ -236,7 +247,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         clearInterval(refreshInterval);
       }
     };
-  }, [event.hostId, event.hostName, user?.uid, user?.photoURL, user?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl]);
+    // Only depend on event.hostId and event.hostName - user properties can change frequently
+    // and cause infinite loops. The interval check uses a captured value instead.
+  }, [event.hostId, event.hostName]);
   
   // Fetch real reservation count from Firestore
   useEffect(() => {
