@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Calendar, MessageCircle, Star, Heart, Edit, Award } from 'lucide-react';
+import { MapPin, Calendar, MessageCircle, Star, Heart, Edit, Award, Users } from 'lucide-react';
 import { Event } from '@/types';
 import { formatDate } from '@/utils/dateFormatter';
 import { formatRating } from '@/utils/formatRating';
@@ -457,6 +457,7 @@ export const EventCard: React.FC<EventCardProps> = ({
         <div className="mt-auto space-y-2">
           {/* Member Count & Spots Available - Improved format */}
           <div className="flex items-center text-gray-600 text-sm">
+            <Users size={16} className="sm:w-4 sm:h-4 mr-2 text-popera-orange shrink-0" />
             <span className="truncate leading-relaxed">
               {(() => {
                 const joinedCount = event.attendeesCount ?? 0;
@@ -464,11 +465,11 @@ export const EventCard: React.FC<EventCardProps> = ({
                 const availableSpots = getAvailableSpots(event);
                 
                 if (capacity === 'Unlimited') {
-                  return `👥 ${joinedCount} members joined`;
+                  return `${joinedCount} members joined`;
                 }
                 
                 const spotsLeft = availableSpots !== null ? availableSpots : 0;
-                return `👥 ${joinedCount} of ${capacity} members joined • ${spotsLeft} spot${spotsLeft !== 1 ? 's' : ''} left`;
+                return `${joinedCount} of ${capacity} members joined • ${spotsLeft} spot${spotsLeft !== 1 ? 's' : ''} left`;
               })()}
             </span>
           </div>

@@ -52,11 +52,11 @@ export const Pillars: React.FC = () => {
         </div>
 
         {/* Cards Container - Horizontal scroll on mobile, grid on desktop */}
-        <div className="flex md:grid md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-7 md:gap-8 lg:gap-10 xl:gap-12 overflow-x-auto md:overflow-x-visible pb-8 sm:pb-10 md:pb-0 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth hide-scrollbar w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+        <div className="flex md:grid md:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10 md:gap-12 lg:gap-14 xl:gap-16 overflow-x-auto md:overflow-x-visible pb-8 sm:pb-10 md:pb-0 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth hide-scrollbar w-full touch-pan-x overscroll-x-contain scroll-pl-4">
           {pillars.map((pillar) => (
             <div 
               key={pillar.id}
-              className="group relative h-auto min-h-[420px] sm:min-h-[480px] md:min-h-[520px] lg:h-[580px] xl:h-[640px] min-w-[80vw] sm:min-w-[60vw] md:min-w-[320px] lg:min-w-0 rounded-3xl sm:rounded-[2rem] md:rounded-[2.5rem] lg:rounded-[3rem] overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-3 snap-center flex-shrink-0"
+              className="group relative h-auto min-h-[500px] sm:min-h-[560px] md:min-h-[600px] lg:h-[680px] xl:h-[720px] min-w-[85vw] sm:min-w-[70vw] md:min-w-[380px] lg:min-w-0 rounded-3xl sm:rounded-[2rem] md:rounded-[2.5rem] lg:rounded-[3rem] overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-3 snap-center flex-shrink-0"
             >
               {/* Background Image - No filters, crisp and clean */}
               <img 
@@ -71,14 +71,14 @@ export const Pillars: React.FC = () => {
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none"></div>
               
               {/* Content */}
-              <div className="absolute inset-0 p-6 sm:p-7 md:p-8 lg:p-10 xl:p-12 flex flex-col justify-end z-20">
+              <div className="absolute inset-0 p-8 sm:p-9 md:p-10 lg:p-12 xl:p-14 flex flex-col justify-end z-20">
                 {/* Title - Styled with the badge styling (rounded-full, orange background) matching original category tag size */}
-                <h3 className="inline-block py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#e35e25]/90 border-2 border-[#e35e25] text-white text-[10px] sm:text-[11px] md:text-xs font-bold tracking-[0.2em] uppercase mb-4 sm:mb-5 md:mb-6 w-fit shadow-lg">
+                <h3 className="inline-block py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#e35e25]/90 border-2 border-[#e35e25] text-white text-[10px] sm:text-[11px] md:text-xs font-bold tracking-[0.2em] uppercase mb-5 sm:mb-6 md:mb-7 w-fit shadow-lg">
                   {pillar.title}
                 </h3>
                 
                 {/* Description - High contrast body text with better spacing */}
-                <p className="text-white text-sm sm:text-base md:text-lg lg:text-xl font-sans font-normal leading-relaxed mb-0 border-l-4 border-[#e35e25] pl-4 sm:pl-5 md:pl-6 lg:pl-7 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] bg-black/30 backdrop-blur-md py-3 sm:py-4 md:py-5 pr-3 sm:pr-4 md:pr-5 rounded-r-xl">
+                <p className="text-white text-base sm:text-lg md:text-xl lg:text-2xl font-sans font-normal leading-relaxed mb-0 border-l-4 border-[#e35e25] pl-5 sm:pl-6 md:pl-7 lg:pl-8 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] bg-black/30 backdrop-blur-md py-4 sm:py-5 md:py-6 pr-4 sm:pr-5 md:pr-6 rounded-r-xl">
                   {pillar.description}
                 </p>
               </div>
