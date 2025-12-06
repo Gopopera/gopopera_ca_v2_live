@@ -38,6 +38,7 @@ import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import { CityInput } from './components/layout/CityInput';
+import { FilterDrawer } from './components/filters/FilterDrawer';
 // Route-level code splitting for performance
 const LandingPage = React.lazy(() => import('./pages/LandingPage').then(m => ({ default: m.LandingPage })));
 const EventDetailPage = React.lazy(() => import('./pages/EventDetailPage').then(m => ({ default: m.EventDetailPage })));
@@ -81,7 +82,7 @@ const ReservationConfirmationPage = React.lazy(() => import('./pages/Reservation
 const ConfirmReservationPage = React.lazy(() => import('./pages/ConfirmReservationPage').then(m => ({ default: m.ConfirmReservationPage })));
 
 import { Event, ViewState } from './types';
-import { Search, ArrowRight, MapPin, PlusCircle, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Search, ArrowRight, MapPin, PlusCircle, ChevronRight, ChevronLeft, Filter, Sparkles } from 'lucide-react';
 import { EventCard } from './components/events/EventCard';
 import { useEventStore } from './stores/eventStore';
 import { useUserStore } from './stores/userStore';
@@ -89,6 +90,7 @@ import { categoryMatches } from './utils/categoryMapper';
 import { useDebouncedFavorite } from './hooks/useDebouncedFavorite';
 import { ConversationButtonModal } from './components/chat/ConversationButtonModal';
 import { useSelectedCity, useSetCity, type City } from './src/stores/cityStore';
+import { useFilterStore } from './stores/filterStore';
 import { NotificationsModal } from './components/notifications/NotificationsModal';
 import { isPrivateMode, getPrivateModeMessage } from './utils/browserDetection';
 
@@ -448,6 +450,7 @@ const AppContent: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const setCity = useSetCity();
   const location = city;
+  const { isFilterDrawerOpen, setFilterDrawerOpen, getActiveFilterCount } = useFilterStore();
   const [showConversationModal, setShowConversationModal] = useState(false);
   const [conversationModalEvent, setConversationModalEvent] = useState<Event | null>(null);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
@@ -1673,62 +1676,86 @@ const AppContent: React.FC = () => {
             )}
 
             {viewState === ViewState.FEED && (
-          <main className="min-h-screen pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-12 sm:pb-16 md:pb-20 lg:pb-24">
+          <main className="min-h-screen pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-12 sm:pb-16 md:pb-20 lg:pb-24 bg-[#FAFAFA]">
             {/* Container wrapper for consistent alignment */}
-            <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             
-            {/* Header Section with Search */}
-            <div className="mb-8 sm:mb-10 md:mb-12">
-               <div className="flex flex-col md:flex-row md:items-end justify-between gap-5 sm:gap-6 mb-6 sm:mb-8">
-                  <div className="max-w-2xl">
-                     <span className="inline-block py-1.5 sm:py-2 px-4 sm:px-5 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] text-[10px] sm:text-[11px] md:text-xs font-bold tracking-[0.2em] uppercase mb-3 sm:mb-4">
-                       {t('feed.discover')}
-                     </span>
-                     <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-heading font-bold text-[#15383c] mb-2 sm:mb-3">{t('feed.explorePopups')}</h1>
-                     <p className="text-gray-500 text-sm sm:text-base md:text-lg font-light leading-relaxed">{t('feed.description')}</p>
+            {/* Header Section - Matching Landing Page Structure */}
+            <div className="mb-6 sm:mb-8 md:mb-10 lg:mb-12">
+               {/* Page Tag, Title, Subtitle */}
+               <div className="flex flex-col gap-4 sm:gap-5 md:gap-6 mb-6 sm:mb-8 md:mb-10">
+                  <div className="max-w-3xl">
+                     <div className="mb-3 sm:mb-4">
+                        <span className="inline-flex items-center gap-2 py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">
+                          <Sparkles size={10} className="sm:w-3 sm:h-3 -mt-0.5" />
+                          {t('feed.discover')}
+                        </span>
+                     </div>
+                     <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-[#15383c] mb-2 sm:mb-3 md:mb-4 px-4 sm:px-0">{t('feed.explorePopups')}</h1>
+                     <p className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-500 font-light leading-relaxed px-4 sm:px-0">{t('feed.description')}</p>
                   </div>
 
-                  {/* Search Inputs Row - Location + Keyword */}
-                  <div className="flex flex-col gap-3 w-full md:max-w-xl relative z-30">
+                  {/* Search Inputs Row - Below Title (matching landing page) */}
+                  <div className="mt-4 space-y-6 px-4 sm:px-0">
+                     <div className="flex flex-col md:flex-row gap-3 w-full md:max-w-3xl relative z-30">
                         
                         {/* City Input with Autocomplete */}
-                        <CityInput />
+                        <div className="w-full md:w-1/3">
+                          <CityInput />
+                        </div>
 
                         {/* Keyword Search Bar */}
-                        <div className="relative w-full group z-40">
+                        <div className="relative w-full md:w-2/3 group z-10">
                              <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
                                 <Search size={20} className="text-gray-400 group-focus-within:text-[#e35e25] transition-colors" />
                              </div>
                              <input
                                type="text"
-                               placeholder="Search events, hosts, or venues..."
-                               className="w-full pl-12 pr-4 py-3 sm:py-3.5 bg-white border border-gray-200 rounded-full text-sm sm:text-base focus:outline-none focus:border-[#15383c] focus:ring-2 focus:ring-[#15383c]/10 shadow-sm hover:shadow-md transition-all"
+                               placeholder={t('feed.searchPlaceholder')}
+                               className="w-full pl-12 pr-4 py-3.5 md:py-4 min-h-[48px] sm:min-h-0 bg-white border border-gray-200 rounded-full text-base sm:text-sm focus:outline-none focus:border-[#15383c] focus:ring-2 focus:ring-[#15383c]/10 shadow-sm hover:shadow-md transition-all"
                                value={searchQuery}
                                onChange={(e) => setSearchQuery(e.target.value)}
                              />
                         </div>
-                  </div>
-               </div>
+                     </div>
 
-               {/* Horizontal Categories */}
-               <div className="relative z-10">
-                 <div className="flex items-center gap-2.5 sm:gap-3 overflow-x-auto pb-3 sm:pb-4 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4">
-                    {categories.map(cat => (
-                      <button
-                        key={cat}
-                        onClick={() => setActiveCategory(cat)}
-                        className={`
-                          px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition-all border flex-shrink-0 touch-manipulation active:scale-95
-                          ${activeCategory === cat
-                            ? 'bg-[#15383c] text-white border-[#15383c] shadow-lg shadow-teal-900/20 scale-105'
-                            : 'bg-white text-gray-500 border-gray-200 hover:border-[#e35e25] hover:text-[#e35e25] hover:shadow-sm'}
-                        `}
-                      >
-                        {cat}
-                      </button>
-                    ))}
-                 </div>
-                 <div className="absolute right-0 top-0 bottom-3 sm:bottom-4 w-8 sm:w-12 bg-gradient-to-l from-gray-50 to-transparent pointer-events-none md:hidden"></div>
+                     {/* Horizontal Categories and Filter Button - Matching Landing Page */}
+                     <div className="flex items-center gap-3">
+                       <div className="relative z-10 flex-1">
+                         <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+                            {categories.map(cat => (
+                              <button
+                                key={cat}
+                                onClick={() => setActiveCategory(cat)}
+                                className={`
+                                  px-5 sm:px-5 py-2.5 sm:py-2 rounded-full text-sm sm:text-sm font-medium whitespace-nowrap transition-all border flex-shrink-0 touch-manipulation active:scale-[0.95] min-h-[40px] sm:min-h-0
+                                  ${activeCategory === cat
+                                    ? 'bg-[#15383c] text-white border-[#15383c] shadow-lg shadow-teal-900/20'
+                                    : 'bg-white text-gray-600 sm:text-gray-500 border-gray-200 hover:border-[#e35e25] hover:text-[#e35e25] hover:shadow-sm active:bg-gray-50'}
+                                `}
+                              >
+                                {cat}
+                              </button>
+                            ))}
+                         </div>
+                         <div className="absolute right-0 top-0 bottom-2 w-6 sm:w-8 bg-gradient-to-l from-[#FAFAFA] to-transparent pointer-events-none md:hidden"></div>
+                       </div>
+                       
+                       {/* Filter Button - Matching Landing Page */}
+                       <button
+                         onClick={() => setFilterDrawerOpen(true)}
+                         className="flex items-center gap-2 px-4 py-2.5 rounded-full border-2 border-[#15383c] text-[#15383c] font-medium hover:bg-[#15383c] hover:text-white transition-colors flex-shrink-0 touch-manipulation active:scale-[0.95] min-h-[40px] sm:min-h-0"
+                       >
+                         <Filter size={18} />
+                         <span className="hidden sm:inline">Filters</span>
+                         {getActiveFilterCount() > 0 && (
+                           <span className="px-2 py-0.5 rounded-full bg-[#e35e25] text-white text-xs font-bold">
+                             {getActiveFilterCount()}
+                           </span>
+                         )}
+                       </button>
+                     </div>
+                  </div>
                </div>
             </div>
 
@@ -1744,6 +1771,13 @@ const AppContent: React.FC = () => {
                 onToggleFavorite={handleToggleFavorite}
               />
             </React.Suspense>
+
+            {/* Filter Drawer for Explore Page */}
+            <FilterDrawer
+              isOpen={isFilterDrawerOpen}
+              onClose={() => setFilterDrawerOpen(false)}
+              events={allEvents}
+            />
             
             {/* Legacy grouped view - disabled, using EventFeed instead */}
             {false && (
