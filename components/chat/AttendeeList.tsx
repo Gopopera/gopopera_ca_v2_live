@@ -41,6 +41,16 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
   useEffect(() => {
     if (isOpen) {
       loadAttendees();
+      
+      // Refresh attendees list periodically to catch profile picture updates
+      // This ensures profile pictures are always synchronized
+      const refreshInterval = setInterval(() => {
+        loadAttendees();
+      }, 3000); // Refresh every 3 seconds for faster sync
+      
+      return () => {
+        clearInterval(refreshInterval);
+      };
     }
   }, [isOpen, eventId]);
 

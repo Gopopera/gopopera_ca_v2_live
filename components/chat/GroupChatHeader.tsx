@@ -31,25 +31,60 @@ export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({
   const [hostProfilePicture, setHostProfilePicture] = useState<string | null>(null);
   const [displayHostName, setDisplayHostName] = useState<string>(event.hostName || '');
 
-  // Fetch host profile from Firestore for accurate data
+  // CRITICAL: Always fetch host profile picture from Firestore (source of truth)
+  // This ensures profile pictures are synchronized across all views for ALL users
   useEffect(() => {
     const fetchHostProfile = async () => {
-      if (!event.hostId) return;
+      if (!event.hostId) {
+        setHostProfilePicture(null);
+        setDisplayHostName(event.hostName || '');
+        return;
+      }
       
+      // ALWAYS fetch from Firestore to ensure we have the latest host information
+      // Firestore is the SINGLE SOURCE OF TRUTH for all profile data
       try {
         const hostProfile = await getUserProfile(event.hostId);
         if (hostProfile) {
+          // Priority: photoURL > imageUrl (both from Firestore - always latest)
           const profilePic = hostProfile.photoURL || hostProfile.imageUrl || null;
           setHostProfilePicture(profilePic);
-          const name = hostProfile.name || hostProfile.displayName || event.hostName || '';
-          setDisplayHostName(name);
+          
+          // Always use Firestore name as source of truth (most up-to-date)
+          const firestoreName = hostProfile.name || hostProfile.displayName;
+          if (firestoreName && firestoreName.trim() !== '' && firestoreName !== 'You') {
+            setDisplayHostName(firestoreName);
+          } else {
+            setDisplayHostName(event.hostName || '');
+          }
+        } else {
+          setHostProfilePicture(null);
+          setDisplayHostName(event.hostName || '');
         }
       } catch (error) {
-        console.warn('[GROUP_CHAT_HEADER] Failed to fetch host profile:', error);
+        console.warn('[GROUP_CHAT_HEADER] ⚠️ Failed to fetch host profile from Firestore:', error);
+        setHostProfilePicture(null);
+        setDisplayHostName(event.hostName || '');
       }
     };
     
+    // Fetch immediately on mount
     fetchHostProfile();
+    
+    // Refresh profile picture periodically to catch updates immediately
+    // This ensures profile pictures are always synchronized across all views for ALL users
+    let refreshInterval: NodeJS.Timeout | null = null;
+    if (event.hostId) {
+      refreshInterval = setInterval(() => {
+        fetchHostProfile();
+      }, 3000); // Refresh every 3 seconds for faster sync (all users)
+    }
+    
+    return () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    };
   }, [event.hostId, event.hostName]);
 
   // Get host profile image with fallback

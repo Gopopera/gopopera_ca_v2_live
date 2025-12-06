@@ -21,12 +21,65 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
   const { language, setLanguage, t } = useLanguage();
   const user = useUserStore((state) => state.user);
   const userProfile = useUserStore((state) => state.userProfile);
-  // Get profile picture from multiple sources (user store, userProfile, Firebase auth)
-  // This is reactive - will update when user or userProfile changes in the store
-  // Priority: userProfile (Firestore - most up-to-date) > user (Auth) > fallback
-  const userPhoto = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl;
+  // State for profile picture (synced from Firestore - always latest)
+  const [userPhoto, setUserPhoto] = useState<string | null>(
+    userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null
+  );
   // Get user initials for fallback
   const userInitials = user?.displayName?.[0] || user?.name?.[0] || userProfile?.displayName?.[0] || userProfile?.name?.[0] || 'P';
+  
+  // CRITICAL: Always fetch profile picture from Firestore (source of truth)
+  // This ensures profile pictures are synchronized across all views
+  useEffect(() => {
+    const fetchProfilePicture = async () => {
+      if (!user?.uid) {
+        setUserPhoto(null);
+        return;
+      }
+      
+      // ALWAYS fetch from Firestore to ensure we have the latest profile picture
+      // Firestore is the SINGLE SOURCE OF TRUTH for all profile data
+      try {
+        const { getUserProfile } = await import('../../firebase/db');
+        const freshProfile = await getUserProfile(user.uid);
+        if (freshProfile) {
+          // Priority: photoURL > imageUrl (both from Firestore - always latest)
+          const latestPic = freshProfile.photoURL || freshProfile.imageUrl || null;
+          setUserPhoto(latestPic);
+        } else {
+          // Fallback to userProfile or user if Firestore fetch fails
+          const fallbackPic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null;
+          setUserPhoto(fallbackPic);
+        }
+      } catch (error) {
+        console.warn('[HEADER] ⚠️ Failed to fetch profile picture from Firestore:', error);
+        // Fallback to userProfile or user if Firestore fetch fails
+        const fallbackPic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null;
+        setUserPhoto(fallbackPic);
+      }
+    };
+    
+    // Fetch immediately on mount
+    fetchProfilePicture();
+    
+    // Refresh profile picture periodically to catch updates immediately
+    // This ensures profile pictures are always synchronized when users update them
+    const refreshInterval = setInterval(() => {
+      fetchProfilePicture();
+    }, 3000); // Refresh every 3 seconds for faster sync
+    
+    return () => {
+      clearInterval(refreshInterval);
+    };
+  }, [user?.uid]);
+  
+  // Also update immediately when userProfile changes (instant sync)
+  useEffect(() => {
+    const latestPic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null;
+    if (latestPic !== userPhoto) {
+      setUserPhoto(latestPic);
+    }
+  }, [userProfile?.photoURL, userProfile?.imageUrl, user?.photoURL, user?.profileImageUrl, userPhoto]);
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Real-time subscription to unread notification count
