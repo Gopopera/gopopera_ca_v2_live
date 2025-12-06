@@ -1,3 +1,4 @@
+console.log("[BOOT] GroupChat.tsx loaded at runtime");
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X, Users, Send, Megaphone, BarChart2, MessageCircle, FileText, ChevronRight, Sparkles, ArrowLeft, MoreVertical, Pin, Image as ImageIcon, Lock, Download, MessageSquareOff } from 'lucide-react';
 import { Event } from '@/types';
@@ -142,7 +143,23 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   const canAccessChat = (viewType === 'host' || viewType === 'participant') && !isBanned;
   const canSendMessages = canAccessChat && !isDemo && !!currentUser && !chatLocked; // Require authentication and not demo
   
+  // CRITICAL DIAGNOSTIC: Log when messages are retrieved
   const messages = getMessagesForEvent(event.id);
+  console.log(`[DIAGNOSTIC] 🟡 GroupChat RENDER - messages retrieved for eventId: ${event.id}`, {
+    eventId: event.id,
+    messageCount: messages.length,
+    isHost,
+    userId: currentUser?.id,
+    hostId: event.hostId,
+    messageIds: messages.map(m => m.id),
+    messageDetails: messages.map(m => ({
+      id: m.id,
+      userId: m.userId,
+      isHost: m.isHost,
+      text: m.message.substring(0, 30),
+    })),
+  });
+  
   const poll = getPollForEvent(event.id);
   
   // CRITICAL: Consolidated subscription logic for group conversation
@@ -183,6 +200,13 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
     });
     
     // CRITICAL: Subscribe immediately - this establishes the Firestore listener
+    console.log(`[DIAGNOSTIC] 🟣 GroupChat calling subscribeToEventChat() for eventId: ${event.id}`, {
+      eventId: event.id,
+      isHost,
+      userId: currentUser?.id,
+      hostId: event.hostId,
+      timestamp: new Date().toISOString(),
+    });
     subscribeToEventChat(event.id);
     
     // For hosts: Add periodic verification to catch any subscription issues

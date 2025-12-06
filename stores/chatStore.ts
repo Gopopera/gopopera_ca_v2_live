@@ -97,19 +97,37 @@ const mapFirestoreMessageToChatMessage = (msg: FirestoreChatMessage): ChatMessag
     isHost: msg.isHost || false,
   };
   
-  // Log each mapped message for debugging
-  console.log(`[CHAT MAPPED MESSAGE] ✅ Mapped message ${msg.id}:`, {
-    id: mappedMessage.id,
-    eventId: mappedMessage.eventId,
-    userId: mappedMessage.userId,
-    senderId: msg.senderId,  // Log original senderId
-    originalUserId: msg.userId,  // Log original userId
-    userName: mappedMessage.userName,
-    messageLength: mappedMessage.message.length,
-    timestamp: mappedMessage.timestamp,
-    type: mappedMessage.type,
-    isHost: mappedMessage.isHost,
+  // CRITICAL DIAGNOSTIC: Log each mapped message
+  console.log(`[DIAGNOSTIC] 🟢 mapFirestoreMessageToChatMessage() MAPPED message ${msg.id}:`, {
+    originalMessage: {
+      id: msg.id,
+      senderId: msg.senderId,
+      userId: msg.userId,
+      text: msg.text?.substring(0, 30),
+      createdAt: msg.createdAt,
+      isHost: msg.isHost,
+    },
+    mappedMessage: {
+      id: mappedMessage.id,
+      eventId: mappedMessage.eventId,
+      userId: mappedMessage.userId,
+      userName: mappedMessage.userName,
+      messageLength: mappedMessage.message.length,
+      timestamp: mappedMessage.timestamp,
+      type: mappedMessage.type,
+      isHost: mappedMessage.isHost,
+    },
+    mappingSuccess: !!mappedMessage.userId,
   });
+  
+  // CRITICAL DIAGNOSTIC: Warn if mapping failed
+  if (!mappedMessage.userId) {
+    console.error(`[DIAGNOSTIC] 🔴 mapFirestoreMessageToChatMessage() FAILED - no userId for message ${msg.id}`, {
+      messageId: msg.id,
+      originalSenderId: msg.senderId,
+      originalUserId: msg.userId,
+    });
+  }
   
   return mappedMessage;
 };
@@ -188,14 +206,36 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   subscribeToEventChat: (eventId: string) => {
+    // CRITICAL DIAGNOSTIC: Log when subscribeToEventChat is called
+    console.log(`[DIAGNOSTIC] 🟣 subscribeToEventChat() CALLED for eventId: ${eventId}`, {
+      eventId,
+      timestamp: new Date().toISOString(),
+      existingSubscription: !!get().unsubscribeCallbacks[eventId],
+    });
+    
     // Unsubscribe from previous subscription if exists
     const existingUnsubscribe = get().unsubscribeCallbacks[eventId];
     if (existingUnsubscribe) {
+      console.log(`[DIAGNOSTIC] 🧹 subscribeToEventChat() unsubscribing from existing subscription for eventId: ${eventId}`);
       existingUnsubscribe();
     }
 
     // Subscribe to Firestore realtime updates
+    console.log(`[DIAGNOSTIC] 📞 subscribeToEventChat() calling subscribeToChat() for eventId: ${eventId}`);
     const unsubscribe = subscribeToChat(eventId, (firestoreMessages: FirestoreChatMessage[]) => {
+      // CRITICAL DIAGNOSTIC: Log when callback receives messages
+      console.log(`[DIAGNOSTIC] 🟠 subscribeToEventChat() CALLBACK RECEIVED ${firestoreMessages.length} messages for eventId: ${eventId}`, {
+        eventId,
+        messageCount: firestoreMessages.length,
+        messageIds: firestoreMessages.map(m => m.id),
+        messageDetails: firestoreMessages.map(m => ({
+          id: m.id,
+          senderId: m.senderId,
+          userId: m.userId,
+          isHost: m.isHost,
+          text: m.text?.substring(0, 30),
+        })),
+      });
       console.log(`[CHAT_STORE] 📨 Received ${firestoreMessages.length} messages for event ${eventId}`, {
         eventId,
         messageCount: firestoreMessages.length,
@@ -213,6 +253,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       });
       
       // CRITICAL: Ensure messages are properly stored
+      console.log(`[DIAGNOSTIC] 💾 subscribeToEventChat() updating store state for eventId: ${eventId}`, {
+        eventId,
+        messageCount: firestoreMessages.length,
+        beforeUpdate: get().firestoreMessages[eventId]?.length || 0,
+      });
+      
       set((state) => {
         const updatedMessages = {
           ...state.firestoreMessages,
@@ -223,6 +269,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           eventId,
           messageCount: firestoreMessages.length,
           storedCount: updatedMessages[eventId]?.length || 0,
+        });
+        
+        // CRITICAL DIAGNOSTIC: Log after state update
+        console.log(`[DIAGNOSTIC] ✅ subscribeToEventChat() store state UPDATED for eventId: ${eventId}`, {
+          eventId,
+          storedMessageCount: updatedMessages[eventId]?.length || 0,
+          storedMessageIds: updatedMessages[eventId]?.map(m => m.id) || [],
         });
         
         return {
@@ -254,6 +307,16 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   getMessagesForEvent: (eventId: string) => {
+    // CRITICAL DIAGNOSTIC: Log when getMessagesForEvent is called
+    console.log(`[DIAGNOSTIC] 🔵 getMessagesForEvent() CALLED for eventId: ${eventId}`, {
+      eventId,
+      timestamp: new Date().toISOString(),
+      storeState: {
+        hasFirestoreMessages: !!get().firestoreMessages[eventId],
+        firestoreMessageCount: get().firestoreMessages[eventId]?.length || 0,
+      },
+    });
+    
     // CRITICAL: Always prefer Firestore messages (real-time, most up-to-date)
     // NO FILTERING - All users (host and attendees) should see ALL messages
     const firestoreMsgs = get().firestoreMessages[eventId];
@@ -305,6 +368,19 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           type: m.type,
           timestamp: m.timestamp,
           text: m.message.substring(0, 50) 
+        })),
+      });
+      
+      // CRITICAL DIAGNOSTIC: Log before returning
+      console.log(`[DIAGNOSTIC] ✅ getMessagesForEvent() RETURNING ${sortedMessages.length} messages for eventId: ${eventId}`, {
+        eventId,
+        returnCount: sortedMessages.length,
+        returnMessageIds: sortedMessages.map(m => m.id),
+        returnMessageDetails: sortedMessages.map(m => ({
+          id: m.id,
+          userId: m.userId,
+          isHost: m.isHost,
+          text: m.message.substring(0, 30),
         })),
       });
       

@@ -32,23 +32,54 @@ export function subscribeToChat(
   eventId: string,
   cb: (messages: FirestoreChatMessage[]) => void
 ): Unsubscribe {
+  // CRITICAL DIAGNOSTIC: Log when subscribeToChat is called
+  console.log(`[DIAGNOSTIC] 🔵 subscribeToChat() CALLED for eventId: ${eventId}`, {
+    eventId,
+    timestamp: new Date().toISOString(),
+    stackTrace: new Error().stack,
+  });
+  
   const db = getDbSafe();
   if (!db) {
+    console.error(`[DIAGNOSTIC] ❌ subscribeToChat() FAILED - Firestore not available for eventId: ${eventId}`);
     if (import.meta.env.DEV) {
       console.warn('[FIREBASE] Firestore not available, returning no-op unsubscribe');
     }
     cb([]);
     return () => {};
   }
+  
   try {
     const messagesCol = collection(db, "events", eventId, "messages");
+    
+    // CRITICAL DIAGNOSTIC: Log collection path
+    console.log(`[DIAGNOSTIC] 📍 subscribeToChat() creating collection reference: events/${eventId}/messages`, {
+      eventId,
+      collectionPath: `events/${eventId}/messages`,
+    });
     
     // CRITICAL FIX: Try with orderBy first, but fallback to no orderBy if index doesn't exist
     // This ensures the subscription works even if the Firestore index hasn't been created yet
     let useOrderBy = true;
     let q = query(messagesCol, orderBy("createdAt", "asc"));
+    
+    // CRITICAL DIAGNOSTIC: Log when onSnapshot is about to be registered
+    console.log(`[DIAGNOSTIC] 🎯 subscribeToChat() registering onSnapshot listener for eventId: ${eventId}`, {
+      eventId,
+      useOrderBy,
+      queryPath: `events/${eventId}/messages`,
+    });
 
-    return onSnapshot(q, (snap) => {
+    const unsubscribe = onSnapshot(q, (snap) => {
+      // CRITICAL DIAGNOSTIC: Log when onSnapshot callback fires
+      console.log(`[DIAGNOSTIC] 🟢 onSnapshot() CALLBACK FIRED for eventId: ${eventId}`, {
+        eventId,
+        documentCount: snap.docs.length,
+        hasPendingWrites: snap.metadata.hasPendingWrites,
+        fromCache: snap.metadata.fromCache,
+        timestamp: new Date().toISOString(),
+      });
+      
       // CRITICAL: Log raw Firestore documents before any processing
       console.log(`[CHAT LISTENER FIRESTORE RAW] 📥 Received ${snap.docs.length} documents for event ${eventId}`);
       snap.docs.forEach((doc) => {
@@ -108,8 +139,23 @@ export function subscribeToChat(
         })),
       });
       
+      // CRITICAL DIAGNOSTIC: Log before calling callback
+      console.log(`[DIAGNOSTIC] 🟡 subscribeToChat() calling callback with ${msgs.length} messages for eventId: ${eventId}`, {
+        eventId,
+        messageCount: msgs.length,
+        messageIds: msgs.map(m => m.id),
+        messageSenderIds: msgs.map(m => ({ id: m.id, senderId: m.senderId, userId: m.userId })),
+      });
+      
       cb(msgs);
     }, (error) => {
+      // CRITICAL DIAGNOSTIC: Log subscription errors
+      console.error(`[DIAGNOSTIC] 🔴 onSnapshot() ERROR for eventId: ${eventId}`, {
+        eventId,
+        error: error.message,
+        code: error.code,
+        timestamp: new Date().toISOString(),
+      });
       // CRITICAL: Log detailed error information for debugging
       console.error("[FIREBASE] ❌ Error in chat subscription:", {
         eventId,
@@ -178,7 +224,20 @@ export function subscribeToChat(
         cb([]);
       }
     });
+    
+    // CRITICAL DIAGNOSTIC: Log successful listener registration
+    console.log(`[DIAGNOSTIC] ✅ subscribeToChat() successfully registered listener for eventId: ${eventId}`, {
+      eventId,
+      unsubscribeFunction: typeof unsubscribe === 'function' ? 'present' : 'missing',
+    });
+    
+    return unsubscribe;
   } catch (error) {
+    console.error(`[DIAGNOSTIC] 🔴 subscribeToChat() SETUP ERROR for eventId: ${eventId}`, {
+      eventId,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     if (import.meta.env.DEV) {
       console.error("[FIREBASE] ❌ Error setting up chat subscription:", error);
     }
