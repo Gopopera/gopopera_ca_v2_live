@@ -11,6 +11,7 @@ import { ExpelUserModal } from './ExpelUserModal';
 import { CreatePollModal } from './CreatePollModal';
 import { CreateAnnouncementModal } from './CreateAnnouncementModal';
 import { CreateSurveyModal } from './CreateSurveyModal';
+import { MoreToolsModal } from './MoreToolsModal';
 import { POPERA_HOST_ID } from '@/stores/userStore';
 import { getDbSafe } from '../../src/lib/firebase';
 import { doc, updateDoc, arrayUnion, arrayRemove, getDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
@@ -38,6 +39,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   const [showCreatePollModal, setShowCreatePollModal] = useState(false);
   const [showCreateAnnouncementModal, setShowCreateAnnouncementModal] = useState(false);
   const [showCreateSurveyModal, setShowCreateSurveyModal] = useState(false);
+  const [showMoreToolsModal, setShowMoreToolsModal] = useState(false);
   const [isFollowingHost, setIsFollowingHost] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const currentUser = useUserStore((state) => state.getCurrentUser());
@@ -52,7 +54,8 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   const isOfficialLaunch = event.isOfficialLaunch === true;
   const isFakeEvent = event.isFakeEvent === true;
   const isDemo = event.isDemo === true || isFakeEvent; // Check both flags for compatibility
-  const isHost = currentUser && currentUser.id === event.hostId;
+  // CRITICAL: Host identification - must be accurate for message visibility
+  const isHost = currentUser && currentUser.id && event.hostId && currentUser.id === event.hostId;
   // CRITICAL: Check RSVPs from current user - this updates when user reserves
   const hasReserved = currentUser ? currentUser.rsvps.includes(event.id) : false;
   
@@ -99,14 +102,35 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   const messages = getMessagesForEvent(event.id);
   const poll = getPollForEvent(event.id);
   
-  // Force subscription refresh when host opens chat
+  // CRITICAL: Force subscription refresh when host opens chat
+  // Host should ALWAYS see all messages, so we ensure subscription is active immediately
   useEffect(() => {
-    if (isHost && canAccessChat && !isDemo && !isBanned) {
-      // Ensure subscription is active for host
-      console.log('[GROUP_CHAT] 🔄 Ensuring subscription for host:', event.id);
+    if (isHost && !isDemo) {
+      // Force subscription for host - they should ALWAYS see all messages
+      console.log('[GROUP_CHAT] 🔄 Ensuring subscription for host (ALWAYS):', {
+        eventId: event.id,
+        userId: currentUser?.id,
+        hostId: event.hostId,
+      });
       subscribeToEventChat(event.id);
+      
+      // Double-check messages are loaded
+      setTimeout(() => {
+        const messages = getMessagesForEvent(event.id);
+        console.log('[GROUP_CHAT] 🎯 Host message verification:', {
+          eventId: event.id,
+          messageCount: messages.length,
+          messages: messages.map(m => ({ 
+            id: m.id, 
+            userId: m.userId,
+            userName: m.userName, 
+            isHost: m.isHost,
+            text: m.message.substring(0, 50) 
+          })),
+        });
+      }, 500);
     }
-  }, [isHost, event.id, canAccessChat, isDemo, isBanned, subscribeToEventChat]);
+  }, [isHost, event.id, event.hostId, isDemo, subscribeToEventChat, currentUser?.id, getMessagesForEvent]);
   
   // Debug: Log messages for host
   useEffect(() => {
@@ -123,10 +147,15 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   
   // Subscribe to Firestore realtime chat updates
   // CRITICAL: All participants (host and attendees) must subscribe to see all messages
-  // Host should ALWAYS have access and see all messages
+  // Host should ALWAYS have access and see all messages - NO EXCEPTIONS (except demo events)
   useEffect(() => {
-    // Subscribe if user has access (host or participant) and event is not demo
-    if (canAccessChat && !isDemo && !isBanned) {
+    // CRITICAL FIX: Host should ALWAYS subscribe to see all messages, regardless of other conditions
+    // Only exception: demo events (which are blocked for everyone)
+    const shouldSubscribe = isHost 
+      ? !isDemo  // Host always subscribes unless it's a demo event
+      : (canAccessChat && !isDemo && !isBanned); // Attendees need proper access
+    
+    if (shouldSubscribe) {
       console.log('[GROUP_CHAT] ✅ Subscribing to chat:', {
         eventId: event.id,
         isHost,
@@ -134,9 +163,11 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
         canAccessChat,
         viewType,
         userId: currentUser?.id,
+        shouldSubscribe,
       });
       
-      // Ensure subscription happens
+      // CRITICAL: Force subscription immediately for host
+      // This ensures host sees all messages from the moment they open the chat
       subscribeToEventChat(event.id);
       
       // Verify subscription is active after a short delay
@@ -146,7 +177,13 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
           eventId: event.id,
           messageCount: messages.length,
           isHost,
-          messages: messages.map(m => ({ id: m.id, userName: m.userName, text: m.message.substring(0, 50) })),
+          messages: messages.map(m => ({ 
+            id: m.id, 
+            userId: m.userId,
+            userName: m.userName, 
+            isHost: m.isHost,
+            text: m.message.substring(0, 50) 
+          })),
         });
       }, 1000);
       
@@ -164,6 +201,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
         hasReserved,
         viewType,
         userId: currentUser?.id,
+        shouldSubscribe,
       });
     }
   }, [event.id, canAccessChat, isDemo, isBanned, subscribeToEventChat, unsubscribeFromEventChat, isHost, hasReserved, currentUser?.id, viewType, getMessagesForEvent]);
@@ -215,7 +253,18 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
     if (!message.trim() || !canSendMessages || !currentUser || chatLocked) return;
     
     const messageText = message.trim();
-    await addMessage(event.id, currentUser.id, currentUser.name, messageText, 'message', isHost);
+    // CRITICAL: Ensure isHost flag is correctly set when sending messages
+    // This ensures host messages are properly identified in the chat
+    const messageIsHost = currentUser.id === event.hostId;
+    console.log('[GROUP_CHAT] 📤 Sending message:', {
+      eventId: event.id,
+      userId: currentUser.id,
+      userName: currentUser.name,
+      isHost: messageIsHost,
+      hostId: event.hostId,
+      messagePreview: messageText.substring(0, 50),
+    });
+    await addMessage(event.id, currentUser.id, currentUser.name, messageText, 'message', messageIsHost);
     setMessage('');
 
     // Notify attendees and host of new message (non-blocking, fire-and-forget)
@@ -295,9 +344,19 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
       const reader = new FileReader();
       reader.onloadend = async () => {
         const imageUrl = reader.result as string;
+        // CRITICAL: Ensure isHost flag is correctly set when sending image messages
+        const messageIsHost = currentUser.id === event.hostId;
+        console.log('[GROUP_CHAT] 📤 Sending image message:', {
+          eventId: event.id,
+          userId: currentUser.id,
+          userName: currentUser.name,
+          isHost: messageIsHost,
+          hostId: event.hostId,
+          filename: file.name,
+        });
         // Send image as message with data URL (format: [Image:dataUrl:filename])
         // Message will be saved to Firestore and synced in real-time
-        await addMessage(event.id, currentUser.id, currentUser.name || currentUser.displayName || 'User', `[Image:${imageUrl}:${file.name}]`, 'message', isHost);
+        await addMessage(event.id, currentUser.id, currentUser.name || currentUser.displayName || 'User', `[Image:${imageUrl}:${file.name}]`, 'message', messageIsHost);
         
         // Notify attendees and host of new image message (same as text messages)
         import('../../utils/notificationHelpers').then(async ({ notifyAttendeesOfNewMessage }) => {
@@ -491,7 +550,10 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   };
 
   const handleCloseChatEarly = async () => {
-    if (!isHost || !confirm('Close chat early? This will prevent new messages.')) return;
+    if (!isHost) {
+      console.error('[GROUP_CHAT] Cannot close chat: user is not the host');
+      return;
+    }
     
     try {
       const db = getDbSafe();
@@ -501,10 +563,11 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
           chatClosedAt: Date.now(),
         });
         setChatLocked(true);
-        alert('Chat closed');
+        console.log('[GROUP_CHAT] ✅ Chat closed early');
       }
     } catch (error) {
-      console.error('Error closing chat:', error);
+      console.error('[GROUP_CHAT] ❌ Error closing chat:', error);
+      throw error; // Re-throw so modal can handle it
     }
   };
 
@@ -773,21 +836,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                   <span className="text-xs font-medium text-gray-700">Survey</span>
                 </button>
                 <button
-                  onClick={() => {
-                    // Show more tools menu
-                    const action = prompt('More Tools:\n1. Close Chat Early\n2. Lock New Messages\n3. Mute All\n4. Download Chat History\n\nEnter number (1-4):');
-                    if (action === '1') {
-                      handleCloseChatEarly();
-                    } else if (action === '2') {
-                      setChatLocked(!chatLocked);
-                      alert(chatLocked ? 'Chat unlocked' : 'Chat locked - new messages disabled');
-                    } else if (action === '3') {
-                      setMuteAll(!muteAll);
-                      alert(muteAll ? 'All notifications unmuted' : 'All notifications muted');
-                    } else if (action === '4') {
-                      handleDownloadChatHistory();
-                    }
-                  }}
+                  onClick={() => setShowMoreToolsModal(true)}
                   className="flex flex-col items-center gap-2 p-3 rounded-lg border border-gray-200 hover:border-[#e35e25] hover:bg-[#e35e25]/5 transition-colors touch-manipulation active:scale-95"
                 >
                   <MoreVertical size={20} className="text-[#15383c]" />
@@ -1152,6 +1201,98 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
             alert('Failed to create announcement. Please try again.');
           }
         }}
+      />
+
+      {/* Create Survey Modal */}
+      <CreateSurveyModal
+        isOpen={showCreateSurveyModal}
+        onClose={() => setShowCreateSurveyModal(false)}
+        onCreateSurvey={async (questions) => {
+          if (!currentUser?.id) {
+            console.error('[GROUP_CHAT] Cannot create survey: currentUser is null');
+            alert('You must be logged in to create surveys.');
+            return;
+          }
+          
+          if (!isHost) {
+            console.error('[GROUP_CHAT] Cannot create survey: user is not the host', {
+              userId: currentUser.id,
+              hostId: event.hostId,
+              isHost,
+            });
+            alert('Only the host can create surveys.');
+            return;
+          }
+          
+          try {
+            console.log('[GROUP_CHAT] Creating survey:', {
+              eventId: event.id,
+              userId: currentUser.id,
+              userName: currentUser.name,
+              questionCount: questions.length,
+            });
+            
+            const db = getDbSafe();
+            if (!db) {
+              throw new Error('Firestore not initialized');
+            }
+            
+            // Save survey to Firestore subcollection
+            const surveysRef = collection(db, 'events', event.id, 'surveys');
+            const surveyData = {
+              questions,
+              createdBy: currentUser.id,
+              createdByName: currentUser.name || currentUser.displayName || 'Host',
+              createdAt: Date.now(),
+              status: 'active',
+            };
+            
+            await addDoc(surveysRef, surveyData);
+            
+            // Also create a message in the chat to notify attendees
+            const surveyText = `📋 Survey Created: ${questions.length} question(s)\n${questions.map((q, i) => `${i + 1}. ${q.question}${q.type === 'multiple' ? ` (Options: ${q.options?.join(', ')})` : ''}`).join('\n')}`;
+            
+            await addMessage(
+              event.id,
+              currentUser.id,
+              currentUser.name || currentUser.displayName || 'Host',
+              surveyText,
+              'system',
+              true
+            );
+            
+            console.log('[GROUP_CHAT] ✅ Survey created successfully');
+            alert(`Survey created with ${questions.length} question(s)!`);
+          } catch (error) {
+            console.error('[GROUP_CHAT] ❌ Error creating survey:', error);
+            alert('Failed to create survey. Please try again.');
+          }
+        }}
+      />
+
+      {/* More Tools Modal */}
+      <MoreToolsModal
+        isOpen={showMoreToolsModal}
+        onClose={() => setShowMoreToolsModal(false)}
+        onCloseChatEarly={async () => {
+          try {
+            await handleCloseChatEarly();
+            // Success message is shown by the modal's confirm dialog
+          } catch (error) {
+            alert('Failed to close chat. Please try again.');
+          }
+        }}
+        onToggleLockMessages={() => {
+          setChatLocked(!chatLocked);
+          alert(chatLocked ? 'Chat unlocked - new messages enabled' : 'Chat locked - new messages disabled');
+        }}
+        onToggleMuteAll={() => {
+          setMuteAll(!muteAll);
+          alert(muteAll ? 'All notifications unmuted' : 'All notifications muted');
+        }}
+        onDownloadHistory={handleDownloadChatHistory}
+        chatLocked={chatLocked}
+        muteAll={muteAll}
       />
     </div>
   );

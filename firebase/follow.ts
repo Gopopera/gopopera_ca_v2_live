@@ -166,6 +166,40 @@ export function subscribeToFollowersCount(
 }
 
 /**
+ * Subscribe to following count in real-time
+ */
+export function subscribeToFollowingCount(
+  userId: string,
+  callback: (count: number) => void
+): Unsubscribe {
+  const db = getDbSafe();
+  if (!db) {
+    callback(0);
+    return () => {};
+  }
+
+  try {
+    const userRef = doc(db, 'users', userId);
+    
+    return onSnapshot(
+      userRef,
+      (snapshot) => {
+        const following = snapshot.data()?.following || [];
+        callback(Array.isArray(following) ? following.length : 0);
+      },
+      (error) => {
+        console.error('Error in following count subscription:', error);
+        callback(0);
+      }
+    );
+  } catch (error) {
+    console.error('Error setting up following count subscription:', error);
+    callback(0);
+    return () => {};
+  }
+}
+
+/**
  * Notify all followers when a host creates a new event
  * This is now handled by notificationHelpers.ts for comprehensive notifications (in-app + email + SMS)
  */

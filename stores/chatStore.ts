@@ -138,17 +138,45 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   getMessagesForEvent: (eventId: string) => {
-    // Prefer Firestore messages if available
+    // CRITICAL: Always prefer Firestore messages (real-time, most up-to-date)
+    // NO FILTERING - All users (host and attendees) should see ALL messages
     const firestoreMsgs = get().firestoreMessages[eventId];
     if (firestoreMsgs && firestoreMsgs.length > 0) {
-      return firestoreMsgs.map(mapFirestoreMessageToChatMessage)
+      const mappedMessages = firestoreMsgs.map(mapFirestoreMessageToChatMessage)
         .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      
+      // Debug logging for host visibility
+      if (import.meta.env.DEV) {
+        console.log(`[CHAT_STORE] 📨 getMessagesForEvent(${eventId}):`, {
+          eventId,
+          messageCount: mappedMessages.length,
+          messages: mappedMessages.map(m => ({ 
+            id: m.id, 
+            userId: m.userId, 
+            userName: m.userName, 
+            isHost: m.isHost,
+            type: m.type,
+            text: m.message.substring(0, 50) 
+          })),
+        });
+      }
+      
+      return mappedMessages;
     }
     
-    // Fallback to local messages
-    return get().messages
+    // Fallback to local messages (only if Firestore subscription hasn't loaded yet)
+    const localMessages = get().messages
       .filter(msg => msg.eventId === eventId)
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    
+    if (import.meta.env.DEV && localMessages.length > 0) {
+      console.log(`[CHAT_STORE] ⚠️ Using fallback local messages for ${eventId}:`, {
+        eventId,
+        messageCount: localMessages.length,
+      });
+    }
+    
+    return localMessages;
   },
 
   addPoll: (eventId, question, options) => {

@@ -163,22 +163,66 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
     calculateMetrics();
   }, [user?.uid, allEvents.length, user?.rsvps?.length]); // Use length to avoid unnecessary recalculations
   
-  // Subscribe to real-time followers count updates
+  // Subscribe to real-time metrics updates
   useEffect(() => {
     if (!user?.uid) return;
     
-    // Use dynamic import for ES module compatibility
-    import('../firebase/follow').then(({ subscribeToFollowersCount }) => {
-      const unsubscribe = subscribeToFollowersCount(user.uid, (count: number) => {
+    const unsubscribes: (() => void)[] = [];
+    
+    // Subscribe to followers count (real-time)
+    import('../firebase/follow').then(({ subscribeToFollowersCount, subscribeToFollowingCount }) => {
+      const unsubscribeFollowers = subscribeToFollowersCount(user.uid, (count: number) => {
         setStats(prev => ({ ...prev, followers: count }));
       });
+      unsubscribes.push(unsubscribeFollowers);
       
-      return () => {
-        unsubscribe();
-      };
+      // Subscribe to following count (real-time)
+      const unsubscribeFollowing = subscribeToFollowingCount(user.uid, (count: number) => {
+        setStats(prev => ({ ...prev, following: count }));
+      });
+      unsubscribes.push(unsubscribeFollowing);
     }).catch((error) => {
       console.error('[PROFILE_PAGE] Error loading follow module:', error);
     });
+    
+    // Subscribe to hosted events count (real-time)
+    import('../firebase/db').then(({ 
+      subscribeToHostedEventsCount, 
+      subscribeToAttendedEventsCount,
+      subscribeToTotalAttendeesCount,
+      subscribeToReviewsCount
+    }) => {
+      // Subscribe to hosted events count
+      const unsubscribeHosted = subscribeToHostedEventsCount(user.uid, (count: number) => {
+        setStats(prev => ({ ...prev, hosted: count }));
+      });
+      unsubscribes.push(unsubscribeHosted);
+      
+      // Subscribe to attended events count (real-time)
+      const unsubscribeAttended = subscribeToAttendedEventsCount(user.uid, (count: number) => {
+        setStats(prev => ({ ...prev, attended: count }));
+      });
+      unsubscribes.push(unsubscribeAttended);
+      
+      // Subscribe to total attendees count across all hosted events (real-time)
+      const unsubscribeAttendees = subscribeToTotalAttendeesCount(user.uid, (count: number) => {
+        setStats(prev => ({ ...prev, attendees: count }));
+      });
+      unsubscribes.push(unsubscribeAttendees);
+      
+      // Subscribe to reviews count (real-time)
+      const unsubscribeReviews = subscribeToReviewsCount(user.uid, (count: number) => {
+        setStats(prev => ({ ...prev, reviews: count }));
+      });
+      unsubscribes.push(unsubscribeReviews);
+    }).catch((error) => {
+      console.error('[PROFILE_PAGE] Error loading db module:', error);
+    });
+    
+    // Cleanup all subscriptions
+    return () => {
+      unsubscribes.forEach(unsubscribe => unsubscribe());
+    };
   }, [user?.uid]);
   
   const settingsLinks = [

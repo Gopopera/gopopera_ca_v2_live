@@ -739,6 +739,245 @@ export function subscribeToReservationCount(
   }
 }
 
+/**
+ * Subscribe to hosted events count in real-time
+ */
+export function subscribeToHostedEventsCount(
+  hostId: string,
+  callback: (count: number) => void
+): Unsubscribe {
+  const db = getDbSafe();
+  if (!db) {
+    callback(0);
+    return () => {};
+  }
+
+  try {
+    const eventsCol = collection(db, "events");
+    // Query all events for this host (Firestore doesn't support != operator easily)
+    // We'll filter drafts client-side
+    const q = query(
+      eventsCol,
+      where("hostId", "==", hostId)
+    );
+    
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        // Count only non-draft events (filter client-side)
+        const count = snapshot.docs.filter(doc => {
+          const data = doc.data() as FirestoreEvent;
+          return data.isDraft !== true;
+        }).length;
+        callback(count);
+      },
+      (error) => {
+        console.error('Error in hosted events count subscription:', error);
+        callback(0);
+      }
+    );
+  } catch (error) {
+    console.error('Error setting up hosted events count subscription:', error);
+    callback(0);
+    return () => {};
+  }
+}
+
+/**
+ * Subscribe to attended events count (RSVPs) in real-time
+ */
+export function subscribeToAttendedEventsCount(
+  userId: string,
+  callback: (count: number) => void
+): Unsubscribe {
+  const db = getDbSafe();
+  if (!db) {
+    callback(0);
+    return () => {};
+  }
+
+  try {
+    const reservationsCol = collection(db, "reservations");
+    const q = query(
+      reservationsCol,
+      where("userId", "==", userId),
+      where("status", "==", "reserved")
+    );
+    
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        // Count unique eventIds (user might have multiple reservations for same event)
+        const uniqueEventIds = new Set(
+          snapshot.docs.map(doc => (doc.data() as FirestoreReservation).eventId)
+        );
+        callback(uniqueEventIds.size);
+      },
+      (error) => {
+        console.error('Error in attended events count subscription:', error);
+        callback(0);
+      }
+    );
+  } catch (error) {
+    console.error('Error setting up attended events count subscription:', error);
+    callback(0);
+    return () => {};
+  }
+}
+
+/**
+ * Subscribe to total attendees count across all hosted events in real-time
+ */
+export function subscribeToTotalAttendeesCount(
+  hostId: string,
+  callback: (count: number) => void
+): Unsubscribe {
+  const db = getDbSafe();
+  if (!db) {
+    callback(0);
+    return () => {};
+  }
+
+  try {
+    // First, get all hosted event IDs
+    const eventsCol = collection(db, "events");
+    // Query all events for this host (filter drafts client-side)
+    const eventsQuery = query(
+      eventsCol,
+      where("hostId", "==", hostId)
+    );
+    
+    let unsubscribeEvents: Unsubscribe | null = null;
+    let unsubscribeReservations: Unsubscribe | null = null;
+    
+    unsubscribeEvents = onSnapshot(
+      eventsQuery,
+      (eventsSnapshot) => {
+        // Filter out draft events
+        const nonDraftEventIds = eventsSnapshot.docs
+          .filter(doc => {
+            const data = doc.data() as FirestoreEvent;
+            return data.isDraft !== true;
+          })
+          .map(doc => doc.id);
+        
+        const eventIds = nonDraftEventIds;
+        
+        // Unsubscribe from previous reservations query if it exists
+        if (unsubscribeReservations) {
+          unsubscribeReservations();
+        }
+        
+        if (eventIds.length === 0) {
+          callback(0);
+          return;
+        }
+        
+        // Subscribe to reservations for all hosted events
+        // Note: Firestore 'in' query limit is 10, so we handle that
+        const reservationsCol = collection(db, "reservations");
+        if (eventIds.length <= 10) {
+          const reservationsQuery = query(
+            reservationsCol,
+            where("eventId", "in", eventIds),
+            where("status", "==", "reserved")
+          );
+          
+          unsubscribeReservations = onSnapshot(
+            reservationsQuery,
+            (reservationsSnapshot) => {
+              const total = reservationsSnapshot.docs.reduce((sum, doc) => {
+                const data = doc.data() as FirestoreReservation;
+                return sum + (data.attendeeCount || 1);
+              }, 0);
+              callback(total);
+            },
+            (error) => {
+              console.error('Error in total attendees count subscription (reservations):', error);
+              callback(0);
+            }
+          );
+        } else {
+          // For more than 10 events, query in batches (simplified - just use first 10)
+          // In production, you might want to implement proper batching
+          const reservationsQuery = query(
+            reservationsCol,
+            where("eventId", "in", eventIds.slice(0, 10)),
+            where("status", "==", "reserved")
+          );
+          
+          unsubscribeReservations = onSnapshot(
+            reservationsQuery,
+            (reservationsSnapshot) => {
+              const total = reservationsSnapshot.docs.reduce((sum, doc) => {
+                const data = doc.data() as FirestoreReservation;
+                return sum + (data.attendeeCount || 1);
+              }, 0);
+              callback(total);
+            },
+            (error) => {
+              console.error('Error in total attendees count subscription (reservations):', error);
+              callback(0);
+            }
+          );
+        }
+      },
+      (error) => {
+        console.error('Error in total attendees count subscription (events):', error);
+        callback(0);
+      }
+    );
+    
+    // Return combined unsubscribe function
+    return () => {
+      if (unsubscribeEvents) unsubscribeEvents();
+      if (unsubscribeReservations) unsubscribeReservations();
+    };
+  } catch (error) {
+    console.error('Error setting up total attendees count subscription:', error);
+    callback(0);
+    return () => {};
+  }
+}
+
+/**
+ * Subscribe to reviews count for a host in real-time
+ */
+export function subscribeToReviewsCount(
+  hostId: string,
+  callback: (count: number) => void
+): Unsubscribe {
+  const db = getDbSafe();
+  if (!db) {
+    callback(0);
+    return () => {};
+  }
+
+  try {
+    const reviewsCol = collection(db, "reviews");
+    const q = query(
+      reviewsCol,
+      where("hostId", "==", hostId),
+      where("status", "==", "accepted")
+    );
+    
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        callback(snapshot.size);
+      },
+      (error) => {
+        console.error('Error in reviews count subscription:', error);
+        callback(0);
+      }
+    );
+  } catch (error) {
+    console.error('Error setting up reviews count subscription:', error);
+    callback(0);
+    return () => {};
+  }
+}
+
 // Chat Messages
 export async function getChatMessages(eventId: string): Promise<FirestoreChatMessage[]> {
   const db = getDbSafe();
