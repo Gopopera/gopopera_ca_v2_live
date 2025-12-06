@@ -72,8 +72,8 @@ export const Pillars: React.FC = () => {
               
               {/* Content */}
               <div className="absolute inset-0 p-6 sm:p-7 md:p-8 lg:p-10 xl:p-12 flex flex-col justify-end z-20">
-                {/* Title - Styled with the badge styling (rounded-full, orange background) but with larger text for readability */}
-                <h3 className="inline-block py-2.5 sm:py-3 md:py-3.5 lg:py-4 px-5 sm:px-6 md:px-7 lg:px-8 rounded-full bg-[#e35e25]/95 border-2 border-[#e35e25] text-white text-sm sm:text-base md:text-lg lg:text-xl font-bold tracking-[0.1em] uppercase mb-4 sm:mb-5 md:mb-6 w-fit shadow-xl">
+                {/* Title - Styled with the badge styling (rounded-full, orange background) matching original category tag size */}
+                <h3 className="inline-block py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#e35e25]/90 border-2 border-[#e35e25] text-white text-[10px] sm:text-[11px] md:text-xs font-bold tracking-[0.2em] uppercase mb-4 sm:mb-5 md:mb-6 w-fit shadow-lg">
                   {pillar.title}
                 </h3>
                 

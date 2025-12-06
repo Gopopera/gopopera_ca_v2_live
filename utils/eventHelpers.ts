@@ -72,7 +72,7 @@ export function getCircleContinuityText(event: Event): { text: string; type: 'st
 
 /**
  * Get session frequency display text
- * Maps: weekly → 'Weekly Session', monthly → 'Monthly Session', one-time → 'One-Time Session', flexible → 'Flexible Schedule'
+ * Maps: weekly → 'Weekly Session', monthly → 'Monthly Session', one-time → 'One-Time Session'
  */
 export function getSessionFrequencyText(frequency?: string): string {
   if (!frequency) return '';
@@ -85,7 +85,6 @@ export function getSessionFrequencyText(frequency?: string): string {
     'monthly': 'Monthly Session',
     'one-time': 'One-Time Session',
     'onetime': 'One-Time Session',
-    'flexible': 'Flexible Schedule',
   };
   
   return frequencyMap[normalized] || frequency;
