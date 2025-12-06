@@ -413,68 +413,37 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     // user?.uid is captured in the closure, not in dependencies to avoid infinite loops
   }, [eventHostId, eventHostName]); // Remove user?.uid from deps - use captured value in interval check
   
-  // Fetch real reservation count from Firestore
+  // Subscribe to real-time reservation count from Firestore
   useEffect(() => {
-    // CRITICAL: Always initialize variables at the top to maintain consistent hook structure
-    let hasPermissionError = false;
-    let isMounted = true;
-    let interval: NodeJS.Timeout | null = null;
-    
     // Always set initial count first
     if (!eventId || isDemo) {
       setReservationCount(eventAttendeesCount);
-      // CRITICAL: Always return a cleanup function (even if no-op) to maintain hook order
-      return () => {
-        isMounted = false;
-        // No-op cleanup - but structure must be consistent
-      };
+      return () => {}; // No-op cleanup
     }
     
-    const safeFetchReservationCount = async () => {
-      if (hasPermissionError || !isMounted) return;
-      
-      try {
-        const count = await getReservationCountForEvent(eventId);
-        if (isMounted) {
-          setReservationCount(count);
-        }
-      } catch (error: any) {
-        if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
-          hasPermissionError = true;
-          // Stop polling on permission errors to prevent infinite loops
-          console.warn('[EVENT_DETAIL] Permission denied for reservation count - stopping polling');
-          if (isMounted) {
-            setReservationCount(eventAttendeesCount);
-          }
-          // Clear interval if it exists
-          if (interval) {
-            clearInterval(interval);
-            interval = null;
-          }
-          return;
-        }
-        // Fallback to eventAttendeesCount if available
-        if (isMounted) {
-          setReservationCount(eventAttendeesCount);
-        }
-      }
-    };
+    // Use real-time subscription for instant updates
+    let unsubscribe: (() => void) | null = null;
     
-    // Initial fetch
-    safeFetchReservationCount();
+    import('../firebase/db').then(({ subscribeToReservationCount }) => {
+      unsubscribe = subscribeToReservationCount(eventId, (count: number) => {
+        setReservationCount(count);
+        if (import.meta.env.DEV) {
+          console.log('[EVENT_DETAIL] ✅ Real-time reservation count updated:', {
+            eventId,
+            count,
+          });
+        }
+      });
+    }).catch((error) => {
+      console.error('[EVENT_DETAIL] Error loading reservation count subscription:', error);
+      // Fallback to eventAttendeesCount on error
+      setReservationCount(eventAttendeesCount);
+    });
     
-    // Refresh count every 30 seconds (reduced frequency) - only if no permission errors
-    interval = setInterval(() => {
-      if (!hasPermissionError && isMounted) {
-        safeFetchReservationCount();
-      }
-    }, 30000);
-    
-    // Always return cleanup function (React hook rule)
+    // Always return cleanup function
     return () => {
-      isMounted = false;
-      if (interval) {
-        clearInterval(interval);
+      if (unsubscribe) {
+        unsubscribe();
       }
     };
   }, [eventId, eventAttendeesCount, isDemo]); // Use stable primitive values

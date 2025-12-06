@@ -7,7 +7,7 @@
  */
 
 import { getDbSafe } from "../src/lib/firebase";
-import { collection, doc, getDoc, getDocs, query, where, orderBy, addDoc, updateDoc, setDoc, deleteDoc, serverTimestamp, arrayUnion } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where, orderBy, addDoc, updateDoc, setDoc, deleteDoc, serverTimestamp, arrayUnion, onSnapshot, type Unsubscribe } from "firebase/firestore";
 import { FirestoreEvent, FirestoreReservation, FirestoreChatMessage, FirestoreReview, FirestoreUser } from "./types";
 import { Event } from "../types";
 import { validateFirestoreData, removeUndefinedValues, sanitizeFirestoreData } from "../utils/firestoreValidation";
@@ -692,6 +692,50 @@ export async function getReservationCountForEvent(eventId: string): Promise<numb
       console.error("Error fetching reservation count:", error);
     }
     return 0;
+  }
+}
+
+/**
+ * Subscribe to reservation count in real-time for an event
+ * Returns unsubscribe function
+ */
+export function subscribeToReservationCount(
+  eventId: string,
+  callback: (count: number) => void
+): Unsubscribe {
+  const db = getDbSafe();
+  if (!db) {
+    callback(0);
+    return () => {};
+  }
+
+  try {
+    const reservationsCol = collection(db, "reservations");
+    const q = query(
+      reservationsCol, 
+      where("eventId", "==", eventId), 
+      where("status", "==", "reserved")
+    );
+    
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        // Sum up attendeeCount from all reservations (default to 1 if not specified)
+        const count = snapshot.docs.reduce((total, doc) => {
+          const data = doc.data() as FirestoreReservation;
+          return total + (data.attendeeCount || 1);
+        }, 0);
+        callback(count);
+      },
+      (error) => {
+        console.error('Error in reservation count subscription:', error);
+        callback(0);
+      }
+    );
+  } catch (error) {
+    console.error('Error setting up reservation count subscription:', error);
+    callback(0);
+    return () => {};
   }
 }
 
