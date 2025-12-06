@@ -52,33 +52,35 @@ export const Pillars: React.FC = () => {
         </div>
 
         {/* Cards Container - Horizontal scroll on mobile, grid on desktop */}
-        <div className="flex md:grid md:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10 md:gap-12 lg:gap-14 xl:gap-16 overflow-x-auto md:overflow-x-visible pb-8 sm:pb-10 md:pb-0 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth hide-scrollbar w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+        <div className="flex md:grid md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 md:gap-6 lg:gap-6 xl:gap-8 overflow-x-auto md:overflow-x-visible pb-8 sm:pb-10 md:pb-0 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth hide-scrollbar w-full overscroll-x-contain scroll-pl-4" style={{ touchAction: 'pan-x pan-y' }}>
           {pillars.map((pillar) => (
             <div 
               key={pillar.id}
-              className="group relative h-auto min-h-[500px] sm:min-h-[560px] md:min-h-[600px] lg:h-[680px] xl:h-[720px] min-w-[85vw] sm:min-w-[70vw] md:min-w-[380px] lg:min-w-0 rounded-3xl sm:rounded-[2rem] md:rounded-[2.5rem] lg:rounded-[3rem] overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-3 snap-center flex-shrink-0"
+              className="group relative h-auto min-h-[500px] sm:min-h-[560px] md:min-h-[550px] lg:min-h-[600px] xl:min-h-[650px] min-w-[85vw] sm:min-w-[70vw] md:min-w-0 lg:min-w-0 rounded-3xl sm:rounded-[2rem] md:rounded-[2.5rem] lg:rounded-[3rem] overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-3 snap-center flex-shrink-0"
+              style={{ touchAction: 'pan-x pan-y' }}
             >
               {/* Background Image - No filters, crisp and clean */}
               <img 
                 src={pillar.image} 
                 alt={pillar.title} 
-                className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-110"
-                style={{ filter: 'none' }}
+                className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-110 pointer-events-none"
+                style={{ filter: 'none', touchAction: 'none' }}
                 loading="lazy"
+                draggable="false"
               />
               
-              {/* Subtle bottom gradient for text readability only - minimal */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none"></div>
+              {/* Enhanced gradient for better text readability on desktop */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10 pointer-events-none"></div>
               
               {/* Content */}
-              <div className="absolute inset-0 p-8 sm:p-9 md:p-10 lg:p-12 xl:p-14 flex flex-col justify-end z-20">
+              <div className="absolute inset-0 p-6 sm:p-7 md:p-6 lg:p-8 xl:p-10 flex flex-col justify-end z-20">
                 {/* Title - Styled with the badge styling (rounded-full, orange background) matching original category tag size */}
-                <h3 className="inline-block py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#e35e25]/90 border-2 border-[#e35e25] text-white text-[10px] sm:text-[11px] md:text-xs font-bold tracking-[0.2em] uppercase mb-5 sm:mb-6 md:mb-7 w-fit shadow-lg">
+                <h3 className="inline-block py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#e35e25]/95 border-2 border-[#e35e25] text-white text-[10px] sm:text-[11px] md:text-xs font-bold tracking-[0.2em] uppercase mb-4 sm:mb-5 md:mb-5 lg:mb-6 w-fit shadow-lg">
                   {pillar.title}
                 </h3>
                 
-                {/* Description - High contrast body text with better spacing */}
-                <p className="text-white text-base sm:text-lg md:text-xl lg:text-2xl font-sans font-normal leading-relaxed mb-0 border-l-4 border-[#e35e25] pl-5 sm:pl-6 md:pl-7 lg:pl-8 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] bg-black/30 backdrop-blur-md py-4 sm:py-5 md:py-6 pr-4 sm:pr-5 md:pr-6 rounded-r-xl">
+                {/* Description - High contrast body text optimized for desktop readability */}
+                <p className="text-white text-sm sm:text-base md:text-sm lg:text-base xl:text-lg font-sans font-normal leading-relaxed mb-0 border-l-4 border-[#e35e25] pl-4 sm:pl-5 md:pl-4 lg:pl-5 xl:pl-6 drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] bg-black/40 backdrop-blur-md py-3 sm:py-4 md:py-3 lg:py-4 xl:py-5 pr-3 sm:pr-4 md:pr-3 lg:pr-4 xl:pr-5 rounded-r-xl">
                   {pillar.description}
                 </p>
               </div>
