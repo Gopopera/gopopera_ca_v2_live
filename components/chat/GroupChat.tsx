@@ -262,8 +262,14 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
             messageText.slice(0, 100), // Snippet
             allRecipients
           );
+          
+          console.log('[GROUP_CHAT] ✅ Message notifications sent successfully:', {
+            eventId: event.id,
+            recipientCount: allRecipients.length,
+          });
         } catch (error) {
-          console.error('[GROUP_CHAT] Error sending message notifications:', error);
+          console.error('[GROUP_CHAT] ❌ Error sending message notifications:', error);
+          // Don't block message sending if notifications fail
         }
       }
     }).catch((error) => {

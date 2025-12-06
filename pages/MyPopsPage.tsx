@@ -385,7 +385,8 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              onEventClick(event);
+                              // Navigate to group conversation for managing the event
+                              onChatClick(e, event);
                             }}
                             className="flex-1 px-3 py-1.5 sm:py-2 bg-[#e35e25] text-white text-[10px] sm:text-xs font-bold rounded-full hover:bg-[#cf4d1d] transition-colors flex items-center justify-center gap-1 sm:gap-1.5 active:scale-95 touch-manipulation"
                           >

@@ -402,56 +402,79 @@ export async function notifyAttendeesOfNewMessage(
   const recipients = attendeeIds.filter(id => id !== senderId);
 
   const notifications = recipients.map(async (userId) => {
-    const contactInfo = await getUserContactInfo(userId);
-    const preferences = await getUserNotificationPreferences(userId);
+    try {
+      const contactInfo = await getUserContactInfo(userId);
+      const preferences = await getUserNotificationPreferences(userId);
 
-    // In-app notification (always enabled for messages)
-    await createNotification(userId, {
-      userId,
-      type: 'new-message',
-      title: `New message in ${eventTitle}`,
-      body: `${senderName}: ${messageSnippet}`,
-      eventId,
-    });
-
-    // Email (optional, can be disabled for high-volume chats)
-    if (preferences.email_opt_in && contactInfo.email) {
+      // ALWAYS send in-app notification (cannot be disabled)
       try {
-        const emailHtml = `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #15383c;">New message in ${eventTitle}</h2>
-            <p>Hello ${contactInfo.name || 'there'},</p>
-            <div style="background-color: #f8fafb; padding: 16px; border-radius: 8px; margin: 20px 0;">
-              <p style="margin: 0 0 8px 0; color: #666; font-size: 14px;"><strong>${senderName}</strong> sent a message:</p>
-              <p style="margin: 0; color: #333; line-height: 1.6;">"${messageSnippet}"</p>
-            </div>
-            <a href="${BASE_URL}/event/${eventId}" style="display: inline-block; background-color: #e35e25; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin: 20px 0;">View Event</a>
-            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-            <p style="color: #666; font-size: 12px;">
-              Popera Team<br>
-              <a href="mailto:support@gopopera.ca" style="color: #e35e25;">support@gopopera.ca</a>
-            </p>
-          </div>
-        `;
-        await sendEmail({
-          to: contactInfo.email,
-          subject: `New message in ${eventTitle}`,
-          html: emailHtml,
-          templateName: 'new-message',
+        await createNotification(userId, {
+          userId,
+          type: 'new-message',
+          title: `New message in ${eventTitle}`,
+          body: `${senderName}: ${messageSnippet}`,
+          eventId,
         });
+        console.log(`[NOTIFICATIONS] ✅ In-app notification sent to ${userId} for message in ${eventTitle}`);
       } catch (error) {
-        console.error('Error sending new message email:', error);
+        console.error(`[NOTIFICATIONS] ❌ Error creating in-app notification for ${userId}:`, error);
+        // Continue with email/SMS even if in-app fails
       }
-    }
 
-    // SMS (usually disabled for messages to avoid spam)
-    // Uncomment if needed:
-    // if (preferences.sms_opt_in && contactInfo.phone) {
-    //   await notifyNewMessageSMS(contactInfo.phone, eventTitle, senderName);
-    // }
+      // Email (optional, based on user preferences)
+      if (preferences.email_opt_in && contactInfo.email) {
+        try {
+          const emailHtml = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h2 style="color: #15383c;">New message in ${eventTitle}</h2>
+              <p>Hello ${contactInfo.name || 'there'},</p>
+              <div style="background-color: #f8fafb; padding: 16px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0 0 8px 0; color: #666; font-size: 14px;"><strong>${senderName}</strong> sent a message:</p>
+                <p style="margin: 0; color: #333; line-height: 1.6;">"${messageSnippet}"</p>
+              </div>
+              <a href="${BASE_URL}/event/${eventId}" style="display: inline-block; background-color: #e35e25; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin: 20px 0;">View Event</a>
+              <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+              <p style="color: #666; font-size: 12px;">
+                Popera Team<br>
+                <a href="mailto:support@gopopera.ca" style="color: #e35e25;">support@gopopera.ca</a>
+              </p>
+            </div>
+          `;
+          await sendEmail({
+            to: contactInfo.email,
+            subject: `New message in ${eventTitle}`,
+            html: emailHtml,
+            templateName: 'new-message',
+          });
+          console.log(`[NOTIFICATIONS] ✅ Email notification sent to ${contactInfo.email} for message in ${eventTitle}`);
+        } catch (error) {
+          console.error(`[NOTIFICATIONS] ❌ Error sending email to ${contactInfo.email}:`, error);
+        }
+      } else if (contactInfo.email) {
+        console.log(`[NOTIFICATIONS] ⏭️ Email skipped for ${userId} (preference: email_opt_in=${preferences.email_opt_in})`);
+      }
+
+      // SMS (optional, based on user preferences - usually disabled for messages to avoid spam)
+      // Uncomment if you want SMS notifications for messages:
+      // if (preferences.sms_opt_in && contactInfo.phone) {
+      //   try {
+      //     await sendSMSNotification({
+      //       to: contactInfo.phone,
+      //       message: `New message in ${eventTitle} from ${senderName}: ${messageSnippet}`,
+      //     });
+      //     console.log(`[NOTIFICATIONS] ✅ SMS notification sent to ${contactInfo.phone} for message in ${eventTitle}`);
+      //   } catch (error) {
+      //     console.error(`[NOTIFICATIONS] ❌ Error sending SMS to ${contactInfo.phone}:`, error);
+      //   }
+      // }
+    } catch (error) {
+      console.error(`[NOTIFICATIONS] ❌ Error processing notification for user ${userId}:`, error);
+      // Continue with other recipients even if one fails
+    }
   });
 
   await Promise.all(notifications);
+  console.log(`[NOTIFICATIONS] ✅ Completed sending message notifications to ${recipients.length} recipients for event ${eventId}`);
 }
 
 /**
