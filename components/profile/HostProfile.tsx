@@ -50,7 +50,8 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
   const isFollowing = hostId ? profileStore.isFollowing(currentUser?.id || '', hostId) : false;
   const followersCount = hostId ? profileStore.getFollowersCount(hostId) : 0;
   
-  // Fetch host profile picture from Firestore (synced with event cards)
+  // CRITICAL: Always fetch host profile picture from Firestore (source of truth)
+  // This ensures profile pictures are synchronized across all views for ALL users
   useEffect(() => {
     const fetchHostProfile = async () => {
       if (!hostId || isPoperaProfile) {
@@ -58,30 +59,41 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
         return;
       }
       
+      // ALWAYS fetch from Firestore to ensure we have the latest profile picture
+      // Firestore is the SINGLE SOURCE OF TRUTH for all profile data
       try {
         const hostProfile = await getUserProfile(hostId);
         if (hostProfile) {
           // Priority: photoURL > imageUrl (both from Firestore - always latest)
           const profilePic = hostProfile.photoURL || hostProfile.imageUrl || null;
           setHostProfilePicture(profilePic);
+          
+          if (import.meta.env.DEV) {
+            console.log('[HOST_PROFILE] ✅ Fetched host profile from Firestore:', {
+              hostId,
+              hasProfilePic: !!profilePic,
+            });
+          }
         } else {
           setHostProfilePicture(null);
         }
       } catch (error) {
-        console.error('[HOST_PROFILE] Error fetching host profile:', error);
+        console.error('[HOST_PROFILE] ⚠️ Error fetching host profile from Firestore:', error);
         setHostProfilePicture(null);
       }
     };
     
+    // Fetch immediately on mount
     fetchHostProfile();
     
-    // Refresh profile picture more frequently to catch updates immediately
+    // Refresh profile picture periodically to catch updates immediately
     // This ensures profile pictures are always synchronized when users update them
+    // Works for ALL users, not just the current user viewing their own profile
     let refreshInterval: NodeJS.Timeout | null = null;
     if (hostId && !isPoperaProfile) {
       refreshInterval = setInterval(() => {
         fetchHostProfile();
-      }, 3000); // Refresh every 3 seconds for faster sync
+      }, 3000); // Refresh every 3 seconds for faster sync (all users)
     }
     
     return () => {
@@ -91,15 +103,22 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
     };
   }, [hostId, isPoperaProfile]);
   
-  // Also refresh when current user's profile picture changes (if viewing own profile)
+  // Also update immediately when userProfile changes (if viewing own profile)
+  // This provides instant updates when the current user updates their own profile
   useEffect(() => {
     if (hostId && currentUser?.id === hostId && !isPoperaProfile) {
-      const currentUserPic = currentUser?.photoURL || currentUser?.profileImageUrl || userProfile?.photoURL || userProfile?.imageUrl || null;
+      const currentUserPic = userProfile?.photoURL || userProfile?.imageUrl || currentUser?.photoURL || currentUser?.profileImageUrl || null;
       if (currentUserPic && currentUserPic !== hostProfilePicture) {
         setHostProfilePicture(currentUserPic);
+        if (import.meta.env.DEV) {
+          console.log('[HOST_PROFILE] ✅ Updated profile picture from userProfile:', {
+            hostId,
+            hasProfilePic: !!currentUserPic,
+          });
+        }
       }
     }
-  }, [hostId, currentUser?.id, currentUser?.photoURL, currentUser?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl, hostProfilePicture, isPoperaProfile]);
+  }, [hostId, currentUser?.id, userProfile?.photoURL, userProfile?.imageUrl, currentUser?.photoURL, currentUser?.profileImageUrl, hostProfilePicture, isPoperaProfile]);
   
   // Fetch reviews from Firestore (only accepted reviews for accurate count)
   useEffect(() => {

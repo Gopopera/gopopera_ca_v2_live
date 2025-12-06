@@ -51,6 +51,8 @@ export const EventCard: React.FC<EventCardProps> = ({
   const [hostOverallRating, setHostOverallRating] = React.useState<number | null>(null);
   const [hostOverallReviewCount, setHostOverallReviewCount] = React.useState<number>(0);
   
+  // CRITICAL: Always fetch host profile picture from Firestore (source of truth)
+  // This ensures profile pictures are synchronized across all views for ALL users
   React.useEffect(() => {
     const fetchHostProfile = async () => {
       if (!event.hostId) {
@@ -61,7 +63,7 @@ export const EventCard: React.FC<EventCardProps> = ({
       
       // ALWAYS fetch from Firestore to ensure we have the latest host information
       // This prevents stale/cached data from showing wrong names or pictures
-      // Even if event.hostName exists, we fetch to ensure it's up-to-date
+      // Firestore is the SINGLE SOURCE OF TRUTH for all profile data
       try {
         const hostProfile = await getUserProfile(event.hostId);
         if (hostProfile) {
@@ -71,14 +73,24 @@ export const EventCard: React.FC<EventCardProps> = ({
           
           // Always use Firestore name as source of truth (most up-to-date)
           const firestoreName = hostProfile.name || hostProfile.displayName;
+          let finalHostName: string;
           if (firestoreName && firestoreName.trim() !== '' && firestoreName !== 'You') {
-            setDisplayHostName(firestoreName);
+            finalHostName = firestoreName;
+            setDisplayHostName(finalHostName);
           } else {
             // Fallback to event.hostName only if Firestore doesn't have a valid name
-            const fallbackName = event.hostName && event.hostName !== 'You' && event.hostName !== 'Unknown Host' 
+            finalHostName = event.hostName && event.hostName !== 'You' && event.hostName !== 'Unknown Host' 
               ? event.hostName 
               : 'Unknown Host';
-            setDisplayHostName(fallbackName);
+            setDisplayHostName(finalHostName);
+          }
+          
+          if (import.meta.env.DEV) {
+            console.log('[EVENT_CARD] ✅ Fetched host profile from Firestore:', {
+              hostId: event.hostId,
+              hostName: finalHostName,
+              hasProfilePic: !!profilePic,
+            });
           }
         } else {
           // If profile doesn't exist in Firestore, use event data as fallback
@@ -91,7 +103,7 @@ export const EventCard: React.FC<EventCardProps> = ({
         }
       } catch (error) {
         // On error, use event data as fallback (but clean up invalid values)
-        console.warn('[EVENT_CARD] Failed to fetch host profile:', error);
+        console.warn('[EVENT_CARD] ⚠️ Failed to fetch host profile from Firestore:', error);
         const fallbackName = event.hostName && event.hostName !== 'You' && event.hostName.trim() !== ''
           ? event.hostName 
           : 'Unknown Host';
@@ -100,15 +112,17 @@ export const EventCard: React.FC<EventCardProps> = ({
       }
     };
     
+    // Fetch immediately on mount
     fetchHostProfile();
     
-    // Refresh profile picture more frequently to catch updates immediately
-    // This ensures profile pictures are always synchronized across all views
+    // Refresh profile picture periodically to catch updates immediately
+    // This ensures profile pictures are always synchronized across all views for ALL users
+    // Works for all users, not just the current user viewing their own events
     let refreshInterval: NodeJS.Timeout | null = null;
     if (event.hostId) {
       refreshInterval = setInterval(() => {
         fetchHostProfile();
-      }, 3000); // Refresh every 3 seconds for faster sync (all users, not just host)
+      }, 3000); // Refresh every 3 seconds for faster sync (all users)
     }
     
     return () => {
@@ -116,17 +130,24 @@ export const EventCard: React.FC<EventCardProps> = ({
         clearInterval(refreshInterval);
       }
     };
-  }, [event.hostId, event.hostName, user?.uid, user?.photoURL, user?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl]);
+  }, [event.hostId, event.hostName]);
   
-  // Also update immediately when current user's profile picture changes (if viewing own events)
+  // Also update immediately when userProfile changes (if viewing own events)
+  // This provides instant updates when the current user updates their own profile
   useEffect(() => {
     if (user?.uid === event.hostId) {
-      const currentUserPic = user?.photoURL || user?.profileImageUrl || userProfile?.photoURL || userProfile?.imageUrl || null;
+      const currentUserPic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null;
       if (currentUserPic && currentUserPic !== hostProfilePicture) {
         setHostProfilePicture(currentUserPic);
+        if (import.meta.env.DEV) {
+          console.log('[EVENT_CARD] ✅ Updated profile picture from userProfile:', {
+            hostId: event.hostId,
+            hasProfilePic: !!currentUserPic,
+          });
+        }
       }
     }
-  }, [event.hostId, user?.uid, user?.photoURL, user?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl, hostProfilePicture]);
+  }, [event.hostId, user?.uid, userProfile?.photoURL, userProfile?.imageUrl, user?.photoURL, user?.profileImageUrl, hostProfilePicture]);
   
   // Fetch host's overall rating from all their events
   React.useEffect(() => {

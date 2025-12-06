@@ -24,7 +24,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
     userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null
   );
   
-  // Fetch profile picture from Firestore (source of truth) and refresh periodically
+  // CRITICAL: Always fetch profile picture from Firestore (source of truth)
+  // This ensures profile pictures are synchronized across all views
   useEffect(() => {
     const fetchProfilePicture = async () => {
       if (!user?.uid) {
@@ -32,30 +33,38 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
         return;
       }
       
+      // ALWAYS fetch from Firestore to ensure we have the latest profile picture
+      // Firestore is the SINGLE SOURCE OF TRUTH for all profile data
       try {
-        // ALWAYS fetch from Firestore to ensure we have the latest profile picture
         const freshProfile = await getUserProfile(user.uid);
         if (freshProfile) {
           // Priority: photoURL > imageUrl (both from Firestore - always latest)
           const latestPic = freshProfile.photoURL || freshProfile.imageUrl || null;
           setProfilePicture(latestPic);
+          
+          if (import.meta.env.DEV) {
+            console.log('[PROFILE_PAGE] ✅ Fetched profile picture from Firestore:', {
+              userId: user.uid,
+              hasProfilePic: !!latestPic,
+            });
+          }
         } else {
-          // Fallback to user store if Firestore fetch fails
+          // Fallback to userProfile or user if Firestore fetch fails
           const fallbackPic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null;
           setProfilePicture(fallbackPic);
         }
       } catch (error) {
-        console.warn('[PROFILE_PAGE] Failed to fetch profile picture:', error);
-        // Fallback to user store on error
+        console.warn('[PROFILE_PAGE] ⚠️ Failed to fetch profile picture from Firestore:', error);
+        // Fallback to userProfile or user if Firestore fetch fails
         const fallbackPic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null;
         setProfilePicture(fallbackPic);
       }
     };
     
-    // Fetch immediately
+    // Fetch immediately on mount
     fetchProfilePicture();
     
-    // Refresh profile picture more frequently to catch updates immediately
+    // Refresh profile picture periodically to catch updates immediately
     // This ensures profile pictures are always synchronized when users update them
     const refreshInterval = setInterval(() => {
       fetchProfilePicture();
@@ -64,15 +73,22 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
     return () => {
       clearInterval(refreshInterval);
     };
-  }, [user?.uid, userProfile?.photoURL, userProfile?.imageUrl, user?.photoURL, user?.profileImageUrl]);
+  }, [user?.uid]);
   
-  // Also update immediately when userProfile or user changes
+  // Also update immediately when userProfile changes (instant sync)
+  // This provides instant updates when the user updates their own profile
   useEffect(() => {
     const latestPic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null;
     if (latestPic !== profilePicture) {
       setProfilePicture(latestPic);
+      if (import.meta.env.DEV && latestPic) {
+        console.log('[PROFILE_PAGE] ✅ Updated profile picture from userProfile:', {
+          userId: user?.uid,
+          hasProfilePic: !!latestPic,
+        });
+      }
     }
-  }, [userProfile?.photoURL, userProfile?.imageUrl, user?.photoURL, user?.profileImageUrl, profilePicture]);
+  }, [userProfile?.photoURL, userProfile?.imageUrl, user?.photoURL, user?.profileImageUrl, profilePicture, user?.uid]);
   
   const displayName = user?.displayName || user?.name || userName;
   const initials = displayName ? displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'P';
