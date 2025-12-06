@@ -55,16 +55,24 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
     // Fetch immediately
     fetchProfilePicture();
     
-    // Refresh profile picture every 5 seconds to catch updates
-    // This ensures profile picture updates are reflected immediately
+    // Refresh profile picture more frequently to catch updates immediately
+    // This ensures profile pictures are always synchronized when users update them
     const refreshInterval = setInterval(() => {
       fetchProfilePicture();
-    }, 5000); // Refresh every 5 seconds
+    }, 3000); // Refresh every 3 seconds for faster sync
     
     return () => {
       clearInterval(refreshInterval);
     };
   }, [user?.uid, userProfile?.photoURL, userProfile?.imageUrl, user?.photoURL, user?.profileImageUrl]);
+  
+  // Also update immediately when userProfile or user changes
+  useEffect(() => {
+    const latestPic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null;
+    if (latestPic !== profilePicture) {
+      setProfilePicture(latestPic);
+    }
+  }, [userProfile?.photoURL, userProfile?.imageUrl, user?.photoURL, user?.profileImageUrl, profilePicture]);
   
   const displayName = user?.displayName || user?.name || userName;
   const initials = displayName ? displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'P';

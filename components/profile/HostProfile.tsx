@@ -24,6 +24,7 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
   const [activeTab, setActiveTab] = useState<'events' | 'reviews'>('events');
   const [error, setError] = useState<string | null>(null);
   const currentUser = useUserStore((state) => state.getCurrentUser());
+  const userProfile = useUserStore((state) => state.userProfile);
   const isPoperaProfile = hostName === POPERA_HOST_NAME;
   
   // Get host ID from events (first event with this hostName)
@@ -74,12 +75,13 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
     
     fetchHostProfile();
     
-    // Refresh profile picture periodically to catch updates (like EventCard does)
+    // Refresh profile picture more frequently to catch updates immediately
+    // This ensures profile pictures are always synchronized when users update them
     let refreshInterval: NodeJS.Timeout | null = null;
     if (hostId && !isPoperaProfile) {
       refreshInterval = setInterval(() => {
         fetchHostProfile();
-      }, 5000); // Refresh every 5 seconds
+      }, 3000); // Refresh every 3 seconds for faster sync
     }
     
     return () => {
@@ -88,6 +90,16 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
       }
     };
   }, [hostId, isPoperaProfile]);
+  
+  // Also refresh when current user's profile picture changes (if viewing own profile)
+  useEffect(() => {
+    if (hostId && currentUser?.id === hostId && !isPoperaProfile) {
+      const currentUserPic = currentUser?.photoURL || currentUser?.profileImageUrl || userProfile?.photoURL || userProfile?.imageUrl || null;
+      if (currentUserPic && currentUserPic !== hostProfilePicture) {
+        setHostProfilePicture(currentUserPic);
+      }
+    }
+  }, [hostId, currentUser?.id, currentUser?.photoURL, currentUser?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl, hostProfilePicture, isPoperaProfile]);
   
   // Fetch reviews from Firestore (only accepted reviews for accurate count)
   useEffect(() => {

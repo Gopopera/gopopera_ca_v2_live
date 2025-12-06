@@ -53,7 +53,23 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   const isFakeEvent = event.isFakeEvent === true;
   const isDemo = event.isDemo === true || isFakeEvent; // Check both flags for compatibility
   const isHost = currentUser && currentUser.id === event.hostId;
+  // CRITICAL: Check RSVPs from current user - this updates when user reserves
   const hasReserved = currentUser ? currentUser.rsvps.includes(event.id) : false;
+  
+  // Debug logging for access control
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log('[GROUP_CHAT] Access check:', {
+        eventId: event.id,
+        userId: currentUser?.id,
+        isHost,
+        hasReserved,
+        isPoperaOwned,
+        isDemo,
+        rsvps: currentUser?.rsvps,
+      });
+    }
+  }, [event.id, currentUser?.id, isHost, hasReserved, isPoperaOwned, isDemo, currentUser?.rsvps]);
   
   // Determine view type
   // Official launch events require reservation for chat access (unlike other Popera events)
@@ -84,14 +100,34 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   const poll = getPollForEvent(event.id);
   
   // Subscribe to Firestore realtime chat updates
+  // CRITICAL: All participants (host and attendees) must subscribe to see all messages
   useEffect(() => {
+    // Subscribe if user has access (host or participant) and event is not demo
     if (canAccessChat && !isDemo && !isBanned) {
+      console.log('[GROUP_CHAT] Subscribing to chat:', {
+        eventId: event.id,
+        isHost,
+        hasReserved,
+        canAccessChat,
+        userId: currentUser?.id,
+      });
       subscribeToEventChat(event.id);
       return () => {
+        console.log('[GROUP_CHAT] Unsubscribing from chat:', event.id);
         unsubscribeFromEventChat(event.id);
       };
+    } else {
+      console.log('[GROUP_CHAT] Not subscribing to chat:', {
+        eventId: event.id,
+        canAccessChat,
+        isDemo,
+        isBanned,
+        isHost,
+        hasReserved,
+        userId: currentUser?.id,
+      });
     }
-  }, [event.id, canAccessChat, isDemo, isBanned, subscribeToEventChat, unsubscribeFromEventChat]);
+  }, [event.id, canAccessChat, isDemo, isBanned, subscribeToEventChat, unsubscribeFromEventChat, isHost, hasReserved, currentUser?.id]);
 
   // Check follow status
   useEffect(() => {
@@ -145,6 +181,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
 
     // Notify attendees and host of new message (non-blocking, fire-and-forget)
     // IMPORTANT: Host should ALWAYS be notified when attendees send messages
+    // All participants (attendees + host) should receive notifications
     import('../../utils/notificationHelpers').then(async ({ notifyAttendeesOfNewMessage }) => {
       const { getDocs, collection, query, where } = await import('firebase/firestore');
       const { getDbSafe } = await import('../../src/lib/firebase');
@@ -152,32 +189,46 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
       
       if (db && currentUser) {
         try {
-          // Get all RSVPs for this event
+          // Get all RSVPs for this event (only reserved status)
           const rsvpsRef = collection(db, 'reservations');
-          const rsvpsQuery = query(rsvpsRef, where('eventId', '==', event.id));
+          const rsvpsQuery = query(
+            rsvpsRef, 
+            where('eventId', '==', event.id),
+            where('status', '==', 'reserved')
+          );
           const rsvpsSnapshot = await getDocs(rsvpsQuery);
-          const attendeeIds = rsvpsSnapshot.docs.map(doc => doc.data().userId).filter(Boolean);
+          const attendeeIds = rsvpsSnapshot.docs
+            .map(doc => doc.data().userId)
+            .filter((userId): userId is string => Boolean(userId) && userId !== currentUser.id);
           
-          // ALWAYS include host when attendees send messages (host should be notified)
+          // CRITICAL: ALWAYS include host in notification recipients
+          // Host should receive notifications for ALL messages from attendees
           // If host sent the message, they'll be filtered out in notifyAttendeesOfNewMessage
-          if (event.hostId && !attendeeIds.includes(event.hostId)) {
-            attendeeIds.push(event.hostId);
-          }
+          const allRecipients = [...new Set([...attendeeIds, event.hostId].filter(Boolean))];
+
+          console.log('[GROUP_CHAT] Sending message notifications:', {
+            eventId: event.id,
+            senderId: currentUser.id,
+            senderName: currentUser.name,
+            recipientCount: allRecipients.length,
+            recipients: allRecipients,
+            includesHost: allRecipients.includes(event.hostId || ''),
+          });
 
           await notifyAttendeesOfNewMessage(
             event.id,
             event.title,
             currentUser.id,
-            currentUser.name,
+            currentUser.name || currentUser.displayName || 'Someone',
             messageText.slice(0, 100), // Snippet
-            attendeeIds
+            allRecipients
           );
         } catch (error) {
-          console.error('Error sending message notifications:', error);
+          console.error('[GROUP_CHAT] Error sending message notifications:', error);
         }
       }
     }).catch((error) => {
-      console.error('Error loading notification helpers for new message:', error);
+      console.error('[GROUP_CHAT] Error loading notification helpers for new message:', error);
     });
   };
   
@@ -197,11 +248,48 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
       }
       
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         const imageUrl = reader.result as string;
         // Send image as message with data URL (format: [Image:dataUrl:filename])
         // Message will be saved to Firestore and synced in real-time
-        addMessage(event.id, currentUser.id, currentUser.name || currentUser.displayName || 'User', `[Image:${imageUrl}:${file.name}]`, 'message', isHost);
+        await addMessage(event.id, currentUser.id, currentUser.name || currentUser.displayName || 'User', `[Image:${imageUrl}:${file.name}]`, 'message', isHost);
+        
+        // Notify attendees and host of new image message (same as text messages)
+        import('../../utils/notificationHelpers').then(async ({ notifyAttendeesOfNewMessage }) => {
+          const { getDocs, collection, query, where } = await import('firebase/firestore');
+          const { getDbSafe } = await import('../../src/lib/firebase');
+          const db = getDbSafe();
+          
+          if (db && currentUser) {
+            try {
+              const rsvpsRef = collection(db, 'reservations');
+              const rsvpsQuery = query(
+                rsvpsRef, 
+                where('eventId', '==', event.id),
+                where('status', '==', 'reserved')
+              );
+              const rsvpsSnapshot = await getDocs(rsvpsQuery);
+              const attendeeIds = rsvpsSnapshot.docs
+                .map(doc => doc.data().userId)
+                .filter((userId): userId is string => Boolean(userId) && userId !== currentUser.id);
+              
+              const allRecipients = [...new Set([...attendeeIds, event.hostId].filter(Boolean))];
+
+              await notifyAttendeesOfNewMessage(
+                event.id,
+                event.title,
+                currentUser.id,
+                currentUser.name || currentUser.displayName || 'Someone',
+                `[Image: ${file.name}]`,
+                allRecipients
+              );
+            } catch (error) {
+              console.error('[GROUP_CHAT] Error sending image message notifications:', error);
+            }
+          }
+        }).catch((error) => {
+          console.error('[GROUP_CHAT] Error loading notification helpers for image message:', error);
+        });
       };
       reader.readAsDataURL(file);
     }

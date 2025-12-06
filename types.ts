@@ -32,6 +32,7 @@ export interface Event {
   demoType?: string; // Type of demo event (e.g., "city-launch")
   isOfficialLaunch?: boolean; // True for official Popera launch events (fully functional)
   hostId?: string; // User ID of the host
+  hostPhotoURL?: string; // Host profile picture URL (for better performance and consistency)
   aboutEvent?: string; // "About this event" section
   whatToExpect?: string; // "What to expect" section
   isDraft?: boolean; // True for draft events (not published)

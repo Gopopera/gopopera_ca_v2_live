@@ -102,16 +102,29 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
     const eventsCol = collection(db, "events");
     const now = Date.now();
     
-    // Check if this is the user's first event (before creating)
+    // CRITICAL: Fetch latest host profile info to ensure profile picture and name are always up-to-date
+    // This ensures events always have the most current host information
+    let hostProfileData: { name?: string; displayName?: string; photoURL?: string; imageUrl?: string } | null = null;
     let isFirstEvent = false;
     try {
       const userProfile = await getUserProfile(eventData.hostId);
+      hostProfileData = userProfile;
       const hostedEvents = Array.isArray(userProfile?.hostedEvents) ? userProfile.hostedEvents : [];
       isFirstEvent = hostedEvents.length === 0;
     } catch (error) {
       // If we can't check, assume it's not the first event to avoid duplicate notifications
       console.warn('[CREATE_EVENT] Could not check if first event:', error);
     }
+    
+    // Use latest host profile data for hostName and hostPhotoURL
+    // Priority: hostProfileData (Firestore - always latest) > eventData (passed in)
+    const latestHostName = hostProfileData?.name || hostProfileData?.displayName || eventData.host || 'Unknown Host';
+    const latestHostPhotoURL = hostProfileData?.photoURL || hostProfileData?.imageUrl || eventData.hostPhotoURL || undefined;
+    
+    // Ensure hostName is never 'You' or empty
+    const finalHostName = (latestHostName && latestHostName !== 'You' && latestHostName.trim() !== '') 
+      ? latestHostName.trim() 
+      : 'Unknown Host';
     
     // Get Firebase app to verify project
     const app = (await import('../src/lib/firebase')).getAppSafe();
@@ -158,16 +171,13 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
       address: eventData.address || '',
       location: eventData.address ? `${eventData.address}, ${eventData.city}` : eventData.city,
       tags: Array.isArray(eventData.tags) ? eventData.tags : [],
-      // Ensure host name is never 'You' or empty - use actual name or fetch from profile
-      host: (eventData.host && eventData.host !== 'You' && eventData.host.trim() !== '') 
-        ? eventData.host.trim() 
-        : 'Unknown Host',
-      hostName: (eventData.host && eventData.host !== 'You' && eventData.host.trim() !== '') 
-        ? eventData.host.trim() 
-        : 'Unknown Host',
+      // CRITICAL: Always use latest host info from Firestore (fetched above)
+      // This ensures profile pictures and names are always synchronized
+      host: finalHostName,
+      hostName: finalHostName,
       hostId: eventData.hostId || '',
-      // Store host photo URL if available (for better performance)
-      hostPhotoURL: eventData.hostPhotoURL || undefined,
+      // Store latest host photo URL from Firestore (always up-to-date)
+      hostPhotoURL: latestHostPhotoURL,
       imageUrl: eventData.imageUrl || (eventData.imageUrls && eventData.imageUrls.length > 0 ? eventData.imageUrls[0] : ''),
       imageUrls: eventData.imageUrls || (eventData.imageUrl ? [eventData.imageUrl] : undefined),
       rating: eventData.rating || 0,
@@ -182,7 +192,8 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
       demoType: (eventData as any).demoType,
       managedBy: (eventData as any).managedBy,
       subtitle: (eventData as any).subtitle,
-      startDate: (eventData as any).startDate,
+      // startDate: prefer startDateTime if available, otherwise use startDate
+      startDate: (eventData as any).startDateTime || (eventData as any).startDate,
       endDate: (eventData as any).endDate,
       // CRITICAL: Default to public and joinable if not specified (unless draft)
       // Events are PUBLIC by default - only explicitly marked drafts are hidden
@@ -205,8 +216,6 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
       weeklyDayOfWeek: (eventData as any).weeklyDayOfWeek,
       monthlyDayOfMonth: (eventData as any).monthlyDayOfMonth,
       startDateTime: (eventData as any).startDateTime,
-      // Also set startDate from startDateTime if available
-      startDate: (eventData as any).startDateTime || (eventData as any).startDate,
     };
 
     // Validate and remove undefined values

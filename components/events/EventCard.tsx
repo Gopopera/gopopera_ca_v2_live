@@ -102,13 +102,13 @@ export const EventCard: React.FC<EventCardProps> = ({
     
     fetchHostProfile();
     
-    // If current user is the host, refresh profile picture every 5 seconds to catch updates
-    // This ensures profile picture updates are reflected immediately on event cards
+    // Refresh profile picture more frequently to catch updates immediately
+    // This ensures profile pictures are always synchronized across all views
     let refreshInterval: NodeJS.Timeout | null = null;
-    if (user?.uid === event.hostId) {
+    if (event.hostId) {
       refreshInterval = setInterval(() => {
         fetchHostProfile();
-      }, 5000); // Refresh every 5 seconds
+      }, 3000); // Refresh every 3 seconds for faster sync (all users, not just host)
     }
     
     return () => {
@@ -116,8 +116,17 @@ export const EventCard: React.FC<EventCardProps> = ({
         clearInterval(refreshInterval);
       }
     };
-  // Remove event.hostPhotoURL from dependency array - it does not exist on type Event
   }, [event.hostId, event.hostName, user?.uid, user?.photoURL, user?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl]);
+  
+  // Also update immediately when current user's profile picture changes (if viewing own events)
+  useEffect(() => {
+    if (user?.uid === event.hostId) {
+      const currentUserPic = user?.photoURL || user?.profileImageUrl || userProfile?.photoURL || userProfile?.imageUrl || null;
+      if (currentUserPic && currentUserPic !== hostProfilePicture) {
+        setHostProfilePicture(currentUserPic);
+      }
+    }
+  }, [event.hostId, user?.uid, user?.photoURL, user?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl, hostProfilePicture]);
   
   // Fetch host's overall rating from all their events
   React.useEffect(() => {
