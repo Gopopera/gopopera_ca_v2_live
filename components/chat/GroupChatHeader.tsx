@@ -71,13 +71,14 @@ export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({
     // Fetch immediately on mount
     fetchHostProfile();
     
-    // Refresh profile picture periodically to catch updates immediately
-    // This ensures profile pictures are always synchronized across all views for ALL users
+    // CRITICAL FIX: Refresh profile picture periodically to catch updates immediately
+    // This ensures profile pictures are always synchronized across all views for ALL users (host and attendees)
+    // Use shorter interval for better sync, especially for attendees viewing host profile
     let refreshInterval: NodeJS.Timeout | null = null;
     if (event.hostId) {
       refreshInterval = setInterval(() => {
         fetchHostProfile();
-      }, 3000); // Refresh every 3 seconds for faster sync (all users)
+      }, 2000); // Refresh every 2 seconds for faster sync (all users including attendees)
     }
     
     return () => {

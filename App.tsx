@@ -1311,6 +1311,29 @@ const AppContent: React.FC = () => {
           }
         }
         
+        // CRITICAL FIX: Handle CHAT view on page reload (mobile issue)
+        if (urlBasedState === ViewState.CHAT && pathname.startsWith('/event/') && pathname.includes('/chat')) {
+          const eventIdMatch = pathname.match(/^\/event\/([^/]+)\/chat/);
+          if (eventIdMatch) {
+            const eventId = eventIdMatch[1];
+            const event = allEvents.find(e => e.id === eventId);
+            if (event) {
+              console.log('[APP] ✅ Loading event for CHAT view on reload (popstate):', eventId);
+              setSelectedEvent(event);
+              setViewState(ViewState.CHAT);
+              window.history.replaceState({ viewState: ViewState.CHAT, eventId }, '', pathname);
+              return; // Early return to prevent fallback
+            } else {
+              // Event not found - might still be loading, wait for events to load
+              console.log('[APP] Event not found yet for CHAT, waiting for events to load:', eventId);
+              // Set viewState to CHAT anyway - the useEffect above will handle loading the event
+              setViewState(ViewState.CHAT);
+              window.history.replaceState({ viewState: ViewState.CHAT, eventId }, '', pathname);
+              return;
+            }
+          }
+        }
+        
         // For other viewStates, set normally
         setViewState(urlBasedState);
         // Ensure URL matches the viewState
@@ -1322,13 +1345,13 @@ const AppContent: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [viewState, setViewState, selectedEvent, allEvents]);
 
-  // Handle direct navigation to event URLs (e.g., shared links)
+  // Handle direct navigation to event URLs (e.g., shared links, page reload)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
     const pathname = window.location.pathname;
     
-    // Check if URL is an event detail page
+    // Check if URL is an event detail page (without /chat)
     if (pathname.startsWith('/event/') && !pathname.includes('/chat')) {
       const eventIdMatch = pathname.match(/^\/event\/([^/]+)/);
       if (eventIdMatch) {
@@ -1374,6 +1397,80 @@ const AppContent: React.FC = () => {
             setViewState(ViewState.FEED);
             window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
           }
+        }
+        // If events are still loading, this effect will run again when they finish
+      }
+    }
+    
+    // CRITICAL FIX: Handle CHAT view on page reload (mobile issue)
+    // When page reloads with /event/{eventId}/chat, we need to load the event
+    if (pathname.startsWith('/event/') && pathname.includes('/chat')) {
+      const eventIdMatch = pathname.match(/^\/event\/([^/]+)\/chat/);
+      if (eventIdMatch) {
+        const eventId = eventIdMatch[1];
+        
+        // If we already have this event selected and we're on CHAT view, no need to do anything
+        if (selectedEvent?.id === eventId && viewState === ViewState.CHAT) {
+          return;
+        }
+        
+        // Wait for events to load, then find the event
+        if (allEvents.length > 0) {
+          const event = allEvents.find(e => e.id === eventId);
+          if (event) {
+            // Found the event - set it and navigate to chat page
+            console.log('[APP] ✅ Loading event for CHAT view on reload:', eventId);
+            setSelectedEvent(event);
+            if (viewState !== ViewState.CHAT) {
+              setViewState(ViewState.CHAT);
+              window.history.replaceState({ viewState: ViewState.CHAT, eventId }, '', pathname);
+            }
+          } else {
+            // Event not found in loaded events - try to fetch from Firestore
+            console.warn('[APP] Event not found in loaded events for CHAT, trying Firestore:', eventId);
+            if (!isLoadingEvents) {
+              // Try to fetch event directly from Firestore
+              import('./firebase/db').then(({ getEventById }) => {
+                getEventById(eventId).then((event) => {
+                  if (event) {
+                    console.log('[APP] ✅ Found event in Firestore for CHAT view:', eventId);
+                    setSelectedEvent(event);
+                    setViewState(ViewState.CHAT);
+                    window.history.replaceState({ viewState: ViewState.CHAT, eventId }, '', pathname);
+                  } else {
+                    console.warn('[APP] Event not found in Firestore, falling back to FEED');
+                    setViewState(ViewState.FEED);
+                    window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
+                  }
+                }).catch((error) => {
+                  console.error('[APP] Error fetching event from Firestore:', error);
+                  setViewState(ViewState.FEED);
+                  window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
+                });
+              });
+            }
+          }
+        } else if (!isLoadingEvents) {
+          // Events have finished loading but none found - try Firestore
+          console.warn('[APP] Events loaded but event not found for CHAT, trying Firestore:', eventId);
+          import('./firebase/db').then(({ getEventById }) => {
+            getEventById(eventId).then((event) => {
+              if (event) {
+                console.log('[APP] ✅ Found event in Firestore for CHAT view:', eventId);
+                setSelectedEvent(event);
+                setViewState(ViewState.CHAT);
+                window.history.replaceState({ viewState: ViewState.CHAT, eventId }, '', pathname);
+              } else {
+                console.warn('[APP] Event not found in Firestore, falling back to FEED');
+                setViewState(ViewState.FEED);
+                window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
+              }
+            }).catch((error) => {
+              console.error('[APP] Error fetching event from Firestore:', error);
+              setViewState(ViewState.FEED);
+              window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
+            });
+          });
         }
         // If events are still loading, this effect will run again when they finish
       }

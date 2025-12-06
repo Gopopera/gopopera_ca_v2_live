@@ -163,6 +163,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
         canAccessChat,
         viewType,
         userId: currentUser?.id,
+        hostId: event.hostId,
         shouldSubscribe,
       });
       
@@ -170,27 +171,64 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
       // This ensures host sees all messages from the moment they open the chat
       subscribeToEventChat(event.id);
       
-      // Verify subscription is active after a short delay
-      setTimeout(() => {
-        const messages = getMessagesForEvent(event.id);
-        console.log('[GROUP_CHAT] 📨 Messages after subscription:', {
-          eventId: event.id,
-          messageCount: messages.length,
-          isHost,
-          messages: messages.map(m => ({ 
-            id: m.id, 
-            userId: m.userId,
-            userName: m.userName, 
-            isHost: m.isHost,
-            text: m.message.substring(0, 50) 
-          })),
-        });
-      }, 1000);
-      
-      return () => {
-        console.log('[GROUP_CHAT] Unsubscribing from chat:', event.id);
-        unsubscribeFromEventChat(event.id);
-      };
+      // CRITICAL: For hosts, verify subscription multiple times to catch any issues
+      if (isHost) {
+        const verifyInterval = setInterval(() => {
+          const messages = getMessagesForEvent(event.id);
+          // Access store directly to get raw Firestore messages for debugging
+          const chatStore = useChatStore.getState();
+          const firestoreMessages = chatStore.firestoreMessages[event.id] || [];
+          console.log('[GROUP_CHAT] 🔍 Host subscription verification:', {
+            eventId: event.id,
+            userId: currentUser?.id,
+            hostId: event.hostId,
+            messageCount: messages.length,
+            firestoreMessageCount: firestoreMessages.length,
+            messages: messages.map(m => ({ 
+              id: m.id, 
+              userId: m.userId,
+              userName: m.userName, 
+              isHost: m.isHost,
+              text: m.message.substring(0, 50) 
+            })),
+            firestoreMessages: firestoreMessages.map(m => ({ 
+              id: m.id, 
+              userId: m.userId, 
+              userName: m.userName,
+              isHost: m.isHost,
+              text: m.text?.substring(0, 50) 
+            })),
+          });
+        }, 3000); // Verify every 3 seconds for hosts
+        
+        // Cleanup verification interval
+        return () => {
+          clearInterval(verifyInterval);
+          console.log('[GROUP_CHAT] Unsubscribing from chat:', event.id);
+          unsubscribeFromEventChat(event.id);
+        };
+      } else {
+        // For attendees, just verify once after a delay
+        setTimeout(() => {
+          const messages = getMessagesForEvent(event.id);
+          console.log('[GROUP_CHAT] 📨 Messages after subscription (attendee):', {
+            eventId: event.id,
+            messageCount: messages.length,
+            messages: messages.map(m => ({ 
+              id: m.id, 
+              userId: m.userId,
+              userName: m.userName, 
+              isHost: m.isHost,
+              text: m.message.substring(0, 50) 
+            })),
+          });
+        }, 1000);
+        
+        return () => {
+          console.log('[GROUP_CHAT] Unsubscribing from chat:', event.id);
+          unsubscribeFromEventChat(event.id);
+        };
+      }
     } else {
       console.warn('[GROUP_CHAT] ⚠️ Not subscribing to chat:', {
         eventId: event.id,
@@ -201,10 +239,11 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
         hasReserved,
         viewType,
         userId: currentUser?.id,
+        hostId: event.hostId,
         shouldSubscribe,
       });
     }
-  }, [event.id, canAccessChat, isDemo, isBanned, subscribeToEventChat, unsubscribeFromEventChat, isHost, hasReserved, currentUser?.id, viewType, getMessagesForEvent]);
+  }, [event.id, event.hostId, canAccessChat, isDemo, isBanned, subscribeToEventChat, unsubscribeFromEventChat, isHost, hasReserved, currentUser?.id, viewType, getMessagesForEvent]);
 
   // Check follow status
   useEffect(() => {

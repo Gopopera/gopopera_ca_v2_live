@@ -104,15 +104,35 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       console.log(`[CHAT_STORE] 📨 Received ${firestoreMessages.length} messages for event ${eventId}`, {
         eventId,
         messageCount: firestoreMessages.length,
-        messages: firestoreMessages.map(m => ({ id: m.id, userId: m.userId, userName: m.userName, text: m.text?.substring(0, 50) })),
+        messages: firestoreMessages.map(m => ({ 
+          id: m.id, 
+          userId: m.userId, 
+          userName: m.userName, 
+          isHost: m.isHost,
+          text: m.text?.substring(0, 50),
+          createdAt: m.createdAt,
+        })),
+        // CRITICAL: Log all message details for debugging host visibility issue
+        allMessages: firestoreMessages,
       });
       
-      set((state) => ({
-        firestoreMessages: {
+      // CRITICAL: Ensure messages are properly stored
+      set((state) => {
+        const updatedMessages = {
           ...state.firestoreMessages,
           [eventId]: firestoreMessages,
-        },
-      }));
+        };
+        
+        console.log(`[CHAT_STORE] ✅ Updated firestoreMessages for ${eventId}:`, {
+          eventId,
+          messageCount: firestoreMessages.length,
+          storedCount: updatedMessages[eventId]?.length || 0,
+        });
+        
+        return {
+          firestoreMessages: updatedMessages,
+        };
+      });
     });
 
     set((state) => ({
