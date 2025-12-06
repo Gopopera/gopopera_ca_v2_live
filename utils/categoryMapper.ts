@@ -3,6 +3,9 @@
  * Maps stored values to display labels
  */
 
+import type { Language } from '../translations';
+import { translations } from '../translations';
+
 export type MainCategory = 
   | 'curatedSales' 
   | 'connectPromote' 
@@ -45,4 +48,33 @@ export function categoryMatches(eventCategory: string | undefined, filterCategor
   
   // Case-insensitive comparison
   return eventCategory.toLowerCase() === filterCategory.toLowerCase();
+}
+
+/**
+ * Translate category name to the specified language
+ * Maps English category names to their translated equivalents
+ */
+export function translateCategory(category: string, language: Language): string {
+  // Map English category names to translation keys
+  const categoryKeyMap: Record<string, keyof typeof translations.en.categories> = {
+    'All': 'all',
+    'Community': 'community',
+    'Music': 'music',
+    'Workshops': 'workshops',
+    'Workshop': 'workshop',
+    'Markets': 'markets',
+    'Sports': 'sports',
+    'Social': 'social',
+    'Shows': 'shows',
+    'Food & Drink': 'foodDrink',
+    'Wellness': 'wellness',
+  };
+
+  const translationKey = categoryKeyMap[category];
+  if (translationKey) {
+    return translations[language].categories[translationKey] || category;
+  }
+
+  // Fallback to original category if no translation found
+  return category;
 }
