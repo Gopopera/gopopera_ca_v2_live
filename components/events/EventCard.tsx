@@ -258,9 +258,9 @@ export const EventCard: React.FC<EventCardProps> = ({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-60" />
         
-        {/* Main Category Badge - Top Left matching Hero badge style (orange pill) */}
+        {/* Main Category Badge - Top Left matching new style (dark teal with light gray border) */}
         {/* Automatically handles backward compatibility with old category field */}
-        <div className="absolute top-4 left-4 inline-block py-1 sm:py-1.5 px-3.5 sm:px-4 rounded-full bg-[#e35e25]/90 border-2 border-[#e35e25] text-white text-[9px] sm:text-[10px] font-bold tracking-[0.2em] uppercase backdrop-blur-sm z-10 shadow-lg">
+        <div className="absolute top-4 left-4 inline-block py-1 sm:py-1.5 px-3.5 sm:px-4 rounded-full bg-[#1f4d52] border border-gray-300 text-[#e35e25] text-[9px] sm:text-[10px] font-bold tracking-[0.2em] uppercase z-10 shadow-lg">
           {getMainCategoryLabelFromEvent(event)}
         </div>
 
@@ -438,7 +438,7 @@ export const EventCard: React.FC<EventCardProps> = ({
           if (continuity.type === 'startingSoon') {
             return (
               <div className="mb-3">
-                <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#e35e25]/20 text-[#e35e25] border border-[#e35e25]/30 text-xs font-medium">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#1f4d52] text-[#e35e25] border border-gray-300 text-xs font-medium uppercase">
                   {continuity.text}
                 </span>
               </div>

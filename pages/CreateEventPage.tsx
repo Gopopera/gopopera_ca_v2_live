@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ViewState } from '../types';
-import { ChevronLeft, Upload, MapPin, Calendar, Clock, Plus, X, ArrowUp, ArrowDown, Sparkles } from 'lucide-react';
+import { ChevronLeft, Upload, MapPin, Calendar, Clock, X, ArrowUp, ArrowDown, Sparkles } from 'lucide-react';
 import { useEventStore } from '../stores/eventStore';
 import { useUserStore } from '../stores/userStore';
 import { HostPhoneVerificationModal } from '../components/auth/HostPhoneVerificationModal';
@@ -33,8 +33,6 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [category, setCategory] = useState<typeof CATEGORIES[number] | ''>('');
-  const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState('');
   const [imageUrl, setImageUrl] = useState(''); // Legacy single image (for preview)
   const [imageUrls, setImageUrls] = useState<string[]>([]); // Array of uploaded image URLs
   const [imageFiles, setImageFiles] = useState<File[]>([]); // Array of files to upload
@@ -54,6 +52,20 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
   const [groupSize, setGroupSize] = useState<{ min: number; max: number } | null>(null);
   const [repeatDay, setRepeatDay] = useState<string>('');
   const [repeatTime, setRepeatTime] = useState<string>('');
+  const [weeklyDayOfWeek, setWeeklyDayOfWeek] = useState<number | undefined>(undefined);
+  const [monthlyDayOfMonth, setMonthlyDayOfMonth] = useState<number | undefined>(undefined);
+
+  // Auto-calculate groupSize from attendeesCount
+  useEffect(() => {
+    if (attendeesCount > 0) {
+      // Calculate groupSize based on attendeesCount
+      // If attendeesCount is set, use it as both min and max
+      setGroupSize({ min: attendeesCount, max: attendeesCount });
+    } else {
+      // If attendeesCount is 0 or not set, clear groupSize
+      setGroupSize(null);
+    }
+  }, [attendeesCount]);
 
   // Check host phone verification status on mount
   // This determines if user can create events (phoneVerifiedForHosting must be true)
@@ -76,17 +88,6 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
     setShowHostVerificationModal(false);
     // User can now click Submit again and this time the gating will allow publishing
     // without reopening the modal (phoneVerifiedForHosting is now true)
-  };
-
-  const handleAddTag = () => {
-    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
-      setTags([...tags, tagInput.trim()]);
-      setTagInput('');
-    }
-  };
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -226,8 +227,15 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       return;
     }
     
-    // Validate required fields
-    if (!title || !description || !date || !time || !mainCategory || !sessionFrequency || !sessionMode || !groupSize || selectedVibes.length === 0) {
+    // Auto-calculate groupSize from attendeesCount if not already set
+    let finalGroupSize = groupSize;
+    if (!finalGroupSize && attendeesCount > 0) {
+      finalGroupSize = { min: attendeesCount, max: attendeesCount };
+    }
+
+    // Validate required fields (skip some validations for drafts)
+    const isDraft = saveAsDraft;
+    if (!title || !description || !date || !time || !mainCategory || !sessionFrequency || !sessionMode || (!isDraft && !finalGroupSize) || selectedVibes.length === 0) {
       const missingFields = [];
       if (!title) missingFields.push('Title');
       if (!description) missingFields.push('Description');
@@ -236,7 +244,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       if (!mainCategory) missingFields.push('Main Category');
       if (!sessionFrequency) missingFields.push('Session Frequency');
       if (!sessionMode) missingFields.push('Session Mode');
-      if (!groupSize) missingFields.push('Group Size');
+      if (!isDraft && !finalGroupSize) missingFields.push('Group Size (set Attendees Limit)');
       if (selectedVibes.length === 0) missingFields.push('Vibes (at least 1)');
       // City is required only for in-person sessions
       if (sessionMode === 'inPerson' && !city) {
@@ -253,20 +261,28 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       return;
     }
     
-    // Validate location for in-person sessions
-    if (sessionMode === 'inPerson' && (!city || (!address && !lat))) {
-      alert('In-person sessions require a city and address (or coordinates).');
-      return;
-    }
-    
-    // Validate repeat settings for weekly/monthly
-    if (sessionFrequency === 'weekly' && weeklyDayOfWeek === undefined) {
-      alert('Please select the day of week for weekly sessions.');
-      return;
-    }
-    if (sessionFrequency === 'monthly' && monthlyDayOfMonth === undefined) {
-      alert('Please select the day of month for monthly sessions.');
-      return;
+    // Validate repeat settings for weekly/monthly (only for non-drafts)
+    if (!isDraft) {
+      if (sessionFrequency === 'weekly' && weeklyDayOfWeek === undefined) {
+        // Auto-calculate from date if not set
+        if (date) {
+          const dateObj = new Date(date);
+          setWeeklyDayOfWeek(dateObj.getDay());
+        } else {
+          alert('Please select the day of week for weekly sessions.');
+          return;
+        }
+      }
+      if (sessionFrequency === 'monthly' && monthlyDayOfMonth === undefined) {
+        // Auto-calculate from date if not set
+        if (date) {
+          const dateObj = new Date(date);
+          setMonthlyDayOfMonth(dateObj.getDate());
+        } else {
+          alert('Please select the day of month for monthly sessions.');
+          return;
+        }
+      }
     }
 
     // Check if device is online before attempting Firestore write
@@ -558,13 +574,16 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       let calculatedRepeatTime: string | undefined;
       
       if (date && time && (sessionFrequency === 'weekly' || sessionFrequency === 'monthly')) {
-        const dateObj = new Date(date);
         const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         
         if (sessionFrequency === 'weekly') {
-          calculatedRepeatDay = daysOfWeek[dateObj.getDay()];
+          // Use state variable if set, otherwise calculate from date
+          const dayOfWeek = weeklyDayOfWeek !== undefined ? weeklyDayOfWeek : (date ? new Date(date).getDay() : 0);
+          calculatedRepeatDay = daysOfWeek[dayOfWeek];
         } else if (sessionFrequency === 'monthly') {
-          calculatedRepeatDay = dateObj.getDate().toString(); // Day of month (1-31)
+          // Use state variable if set, otherwise calculate from date
+          const dayOfMonth = monthlyDayOfMonth !== undefined ? monthlyDayOfMonth : (date ? new Date(date).getDate() : 1);
+          calculatedRepeatDay = dayOfMonth.toString(); // Day of month (1-31)
         }
         
         // Convert time to 24-hour format
@@ -622,7 +641,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         address,
         date,
         time,
-        tags,
+        tags: [], // Tags removed - using vibes instead
         host: hostName, // Always use actual name, never 'You'
         hostId: user?.uid || '',
         hostPhotoURL: hostPhotoURL, // Store host photo URL for consistency
@@ -648,14 +667,14 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         country: country, // Extract country from city
         mainCategory: mainCategory || undefined,
         vibes: selectedVibes.length > 0 ? selectedVibes : undefined,
-        groupSize: groupSize || undefined,
+        groupSize: finalGroupSize || undefined,
         startDateTime: startDateTime,
         repeatDay: calculatedRepeatDay,
         repeatTime: calculatedRepeatTime,
         circleContinuity: circleContinuity,
         // Keep old fields for backward compatibility
-        weeklyDayOfWeek: sessionFrequency === 'weekly' && calculatedRepeatDay ? ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(calculatedRepeatDay) : undefined,
-        monthlyDayOfMonth: sessionFrequency === 'monthly' && calculatedRepeatDay ? parseInt(calculatedRepeatDay) : undefined,
+        weeklyDayOfWeek: sessionFrequency === 'weekly' ? (weeklyDayOfWeek !== undefined ? weeklyDayOfWeek : (date ? new Date(date).getDay() : undefined)) : undefined,
+        monthlyDayOfMonth: sessionFrequency === 'monthly' ? (monthlyDayOfMonth !== undefined ? monthlyDayOfMonth : (date ? new Date(date).getDate() : undefined)) : undefined,
       } as any); // Type assertion needed for optional fields
       
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -689,7 +708,6 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       setDate('');
       setTime('');
       setCategory('');
-      setTags([]);
       setImageUrl('');
       setImageUrls([]);
       setImageFiles([]);
@@ -698,6 +716,15 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       setWhatToExpect('');
       setAttendeesCount(0);
       setPrice('Free');
+      setSessionFrequency('');
+      setSessionMode('');
+      setMainCategory('');
+      setSelectedVibes([]);
+      setGroupSize(null);
+      setWeeklyDayOfWeek(undefined);
+      setMonthlyDayOfMonth(undefined);
+      setRepeatDay('');
+      setRepeatTime('');
 
       // Redirect to feed - ensure proper navigation without 404 errors
       console.log('[CREATE_EVENT] Redirecting to feed...');
@@ -1166,54 +1193,6 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                 </>
               )}
             </div>
-          </div>
-
-          {/* Tags */}
-          <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 border border-gray-100 shadow-sm mb-6 sm:mb-8">
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 pl-1 mb-2">
-              Add Tags (for helping attendees search and find topics)
-            </label>
-            <div className="relative mb-4">
-              <input 
-                type="text" 
-                placeholder="Enter Your Tags Here" 
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddTag();
-                  }
-                }}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 sm:py-4 pl-4 pr-16 sm:pr-20 text-base focus:outline-none focus:border-[#15383c] transition-all" 
-              />
-              <button 
-                type="button"
-                onClick={handleAddTag}
-                className="absolute right-1.5 sm:right-2 top-1.5 sm:top-2 bottom-1.5 sm:bottom-2 bg-[#15383c] text-white px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-bold hover:bg-[#1f4d52] transition-colors touch-manipulation active:scale-95"
-              >
-                Add
-              </button>
-            </div>
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center gap-2 bg-[#15383c]/10 text-[#15383c] px-3 py-1.5 rounded-full text-sm font-medium"
-                  >
-                    {tag}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveTag(tag)}
-                      className="hover:text-red-500 transition-colors"
-                    >
-                      <X size={14} />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Additional Info */}
