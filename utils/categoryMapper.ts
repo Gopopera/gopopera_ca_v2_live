@@ -34,3 +34,15 @@ export function getMainCategoryLabel(mainCategory?: string | null): string {
 export function isValidMainCategory(category: string): category is MainCategory {
   return category in MAIN_CATEGORY_LABELS;
 }
+
+/**
+ * Check if an event category matches a filter category
+ * Used for filtering events by category
+ */
+export function categoryMatches(eventCategory: string | undefined, filterCategory: string): boolean {
+  if (!eventCategory || !filterCategory) return false;
+  if (filterCategory === 'All') return true;
+  
+  // Case-insensitive comparison
+  return eventCategory.toLowerCase() === filterCategory.toLowerCase();
+}
