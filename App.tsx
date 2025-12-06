@@ -363,9 +363,12 @@ const generateMockEvents = (): Event[] => [
 ];
 
 // Loading skeleton component
-const PageSkeleton: React.FC = () => (
+const PageSkeleton: React.FC<{ message?: string }> = ({ message }) => (
   <div className="min-h-screen flex items-center justify-center">
     <div className="animate-pulse space-y-4 w-full max-w-md px-4">
+      {message && (
+        <div className="text-center text-gray-600 mb-4">{message}</div>
+      )}
       <div className="h-8 bg-gray-200 rounded w-3/4"></div>
       <div className="h-4 bg-gray-200 rounded w-1/2"></div>
       <div className="h-4 bg-gray-200 rounded w-2/3"></div>
@@ -1569,15 +1572,37 @@ const AppContent: React.FC = () => {
     }
   };
 
-  if (viewState === ViewState.CHAT && selectedEvent) {
-    // Ensure user is logged in before showing chat
-    if (!authInitialized) return null;
+  if (viewState === ViewState.CHAT) {
+    console.log('[CHAT_RENDER_GATE]', {
+      viewState,
+      selectedEvent: selectedEvent?.id,
+      authInitialized,
+      user: user?.uid,
+    });
+
+    // If event is still loading, show a loader instead of returning null
+    if (!selectedEvent) {
+      return (
+        <PageSkeleton message="Loading event…" />
+      );
+    }
+
+    if (!authInitialized) {
+      console.warn('[CHAT_RENDER_GATE] BLOCKED: auth not initialized');
+      return <PageSkeleton message="Initializing…" />;
+    }
+
     if (!user) {
+      console.warn('[CHAT_RENDER_GATE] BLOCKED: user not logged in');
       useUserStore.getState().setRedirectAfterLogin(ViewState.CHAT);
       setViewState(ViewState.AUTH);
       return null;
     }
-    
+
+    console.log('[CHAT_RENDER_GATE] OK — rendering GroupChat:', {
+      eventId: selectedEvent.id,
+    });
+
     return (
       <React.Suspense fallback={<PageSkeleton />}>
         <GroupChat 
