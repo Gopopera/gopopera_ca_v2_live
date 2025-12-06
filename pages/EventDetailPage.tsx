@@ -314,21 +314,25 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           }
         } else {
           // If profile doesn't exist in Firestore, use event data as fallback
+          // CRITICAL: Use hostPhotoURL from event document as fallback (works when logged out)
           const fallbackName = eventHostName && eventHostName !== 'You' && eventHostName.trim() !== ''
             ? eventHostName 
             : 'Unknown Host';
+          // Use hostPhotoURL from event as fallback - this ensures profile pictures work when logged out
           setHostProfilePicture(eventHostPhotoURL || null);
           setDisplayHostName(fallbackName);
         }
       } catch (error: any) {
         // Handle permission errors gracefully
+        // CRITICAL: Use hostPhotoURL from event document as fallback (works when logged out)
         if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
           console.warn('[EVENT_DETAIL] Permission denied for host profile, using fallback');
         } else {
           console.error('[EVENT_DETAIL] Error fetching host profile:', error);
         }
         const fallbackName = eventHostName || 'Unknown Host';
-        setHostProfilePicture(null);
+        // Use hostPhotoURL from event as fallback - this ensures profile pictures work when logged out
+        setHostProfilePicture(eventHostPhotoURL || null);
         setDisplayHostName(fallbackName);
       }
     };

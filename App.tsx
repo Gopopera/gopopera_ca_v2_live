@@ -748,6 +748,59 @@ const AppContent: React.FC = () => {
     };
   }, [allEvents.length, user?.uid, updateEvent]); // Only depend on length and user, not the full array
 
+  // Real-time subscription for user RSVPs - keeps RSVPs in sync across devices
+  useEffect(() => {
+    if (!user?.uid) return;
+    
+    const userId = user.uid; // Capture userId to avoid closure issues
+    let unsubscribe: (() => void) | null = null;
+    
+    const setupRSVPSubscription = async () => {
+      try {
+        const { subscribeToUserRSVPs } = await import('./firebase/db');
+        
+        unsubscribe = subscribeToUserRSVPs(userId, (rsvpEventIds) => {
+          console.log('[RSVP_SYNC] RSVPs updated:', {
+            userId,
+            rsvpCount: rsvpEventIds.length,
+            rsvpEventIds,
+          });
+          
+          // Update userStore with latest RSVPs
+          const currentUser = useUserStore.getState().user;
+          if (currentUser && currentUser.uid === userId) {
+            // Only update if RSVPs have changed
+            const currentRSVPs = currentUser.rsvps || [];
+            const rsvpsChanged = 
+              currentRSVPs.length !== rsvpEventIds.length ||
+              !currentRSVPs.every(id => rsvpEventIds.includes(id));
+            
+            if (rsvpsChanged) {
+              console.log('[RSVP_SYNC] Updating user RSVPs in store:', {
+                old: currentRSVPs,
+                new: rsvpEventIds,
+              });
+              useUserStore.setState({
+                user: { ...currentUser, rsvps: rsvpEventIds },
+                currentUser: { ...currentUser, rsvps: rsvpEventIds },
+              });
+            }
+          }
+        });
+      } catch (error) {
+        console.error('[RSVP_SYNC] Error setting up RSVP subscription:', error);
+      }
+    };
+    
+    setupRSVPSubscription();
+    
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [user?.uid]);
+
   // Clean up favorites for ended events - runs periodically
   // IMPORTANT: Favorites persist until event ends or user unfavorites
   useEffect(() => {

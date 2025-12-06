@@ -696,6 +696,51 @@ export async function getReservationCountForEvent(eventId: string): Promise<numb
 }
 
 /**
+ * Subscribe to user RSVPs in real-time
+ * Returns unsubscribe function
+ */
+export function subscribeToUserRSVPs(
+  userId: string,
+  callback: (rsvpEventIds: string[]) => void
+): Unsubscribe {
+  const db = getDbSafe();
+  if (!db) {
+    callback([]);
+    return () => {};
+  }
+
+  try {
+    const reservationsCol = collection(db, "reservations");
+    const q = query(
+      reservationsCol,
+      where("userId", "==", userId),
+      where("status", "==", "reserved")
+    );
+    
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const rsvpEventIds = snapshot.docs
+          .map(doc => doc.data().eventId)
+          .filter(Boolean) as string[];
+        callback(rsvpEventIds);
+      },
+      (error) => {
+        console.error('[subscribeToUserRSVPs] Error:', error);
+        // On error, return empty array
+        callback([]);
+      }
+    );
+    
+    return unsubscribe;
+  } catch (error) {
+    console.error('[subscribeToUserRSVPs] Error setting up subscription:', error);
+    callback([]);
+    return () => {};
+  }
+}
+
+/**
  * Subscribe to reservation count in real-time for an event
  * Returns unsubscribe function
  */

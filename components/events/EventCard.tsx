@@ -94,20 +94,25 @@ export const EventCard: React.FC<EventCardProps> = ({
           }
         } else {
           // If profile doesn't exist in Firestore, use event data as fallback
-          // But clean up "You" and empty strings
+          // CRITICAL: Use hostPhotoURL from event document as fallback (works when logged out)
           const fallbackName = event.hostName && event.hostName !== 'You' && event.hostName.trim() !== ''
             ? event.hostName 
             : 'Unknown Host';
-          setHostProfilePicture(null);
+          // Use hostPhotoURL from event as fallback - this ensures profile pictures work when logged out
+          const fallbackPic = (event as any).hostPhotoURL || null;
+          setHostProfilePicture(fallbackPic);
           setDisplayHostName(fallbackName);
         }
       } catch (error) {
         // On error, use event data as fallback (but clean up invalid values)
+        // CRITICAL: Use hostPhotoURL from event document as fallback (works when logged out)
         console.warn('[EVENT_CARD] ⚠️ Failed to fetch host profile from Firestore:', error);
         const fallbackName = event.hostName && event.hostName !== 'You' && event.hostName.trim() !== ''
           ? event.hostName 
           : 'Unknown Host';
-        setHostProfilePicture(null);
+        // Use hostPhotoURL from event as fallback - this ensures profile pictures work when logged out
+        const fallbackPic = (event as any).hostPhotoURL || null;
+        setHostProfilePicture(fallbackPic);
         setDisplayHostName(fallbackName);
       }
     };
