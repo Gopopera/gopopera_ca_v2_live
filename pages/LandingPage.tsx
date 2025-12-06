@@ -487,7 +487,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             Stay Updated
           </h2>
           
-          <p className="text-base sm:text-lg md:text-xl text-gray-300 mb-8 sm:mb-10 md:mb-12 font-light max-w-2xl mx-auto leading-relaxed">
+          <p className="text-xs sm:text-sm text-gray-300 mb-8 sm:mb-10 md:mb-12 font-light max-w-2xl mx-auto leading-relaxed">
             Be part of Canada's first platform for Circles and real-life Sessions. <br className="hidden md:block" />
             Join the waitlist before launch on May 15th, 2026.
           </p>

@@ -6,7 +6,7 @@
 export const ALL_VIBES = [
   'Creative',
   'Movement',
-  'Social',
+  'Social Connection',
   'Wellness',
   'Spiritual',
   'Learning',
@@ -16,11 +16,11 @@ export const ALL_VIBES = [
   'Curious',
   'Purposeful',
   'Music',
-  'Sports',
   'Food & Drink',
   'Markets',
   'Hands-On',
   'Performances',
+  'Sports',
 ] as const;
 
 export type Vibe = typeof ALL_VIBES[number];

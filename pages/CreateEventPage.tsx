@@ -47,12 +47,13 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
   const [price, setPrice] = useState('Free');
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [sessionFrequency, setSessionFrequency] = useState<'weekly' | 'monthly' | 'one-time' | ''>('');
-  const [sessionMode, setSessionMode] = useState<'in-person' | 'remote' | ''>('');
-  const [mainCategory, setMainCategory] = useState<'curatedSales' | 'connectPromote' | 'mobilizeSupport' | 'learnAndGrow' | ''>('');
+  const [sessionFrequency, setSessionFrequency] = useState<'weekly' | 'monthly' | 'oneTime' | ''>('');
+  const [sessionMode, setSessionMode] = useState<'inPerson' | 'remote' | ''>('');
+  const [mainCategory, setMainCategory] = useState<'curatedSales' | 'connectPromote' | 'mobilizeSupport' | 'learnGrow' | ''>('');
   const [selectedVibes, setSelectedVibes] = useState<string[]>([]);
-  const [weeklyDayOfWeek, setWeeklyDayOfWeek] = useState<number | undefined>(undefined);
-  const [monthlyDayOfMonth, setMonthlyDayOfMonth] = useState<number | undefined>(undefined);
+  const [groupSize, setGroupSize] = useState<{ min: number; max: number } | null>(null);
+  const [repeatDay, setRepeatDay] = useState<string>('');
+  const [repeatTime, setRepeatTime] = useState<string>('');
 
   // Check host phone verification status on mount
   // This determines if user can create events (phoneVerifiedForHosting must be true)
@@ -226,16 +227,21 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
     }
     
     // Validate required fields
-    if (!title || !description || !city || !date || !time || !mainCategory || !sessionFrequency || !sessionMode) {
+    if (!title || !description || !date || !time || !mainCategory || !sessionFrequency || !sessionMode || !groupSize || selectedVibes.length === 0) {
       const missingFields = [];
       if (!title) missingFields.push('Title');
       if (!description) missingFields.push('Description');
-      if (!city) missingFields.push('City');
       if (!date) missingFields.push('Date');
       if (!time) missingFields.push('Time');
       if (!mainCategory) missingFields.push('Main Category');
       if (!sessionFrequency) missingFields.push('Session Frequency');
       if (!sessionMode) missingFields.push('Session Mode');
+      if (!groupSize) missingFields.push('Group Size');
+      if (selectedVibes.length === 0) missingFields.push('Vibes (at least 1)');
+      // City is required only for in-person sessions
+      if (sessionMode === 'inPerson' && !city) {
+        missingFields.push('City');
+      }
       alert(`Please fill in all required fields: ${missingFields.join(', ')}`);
       console.warn('[CREATE_EVENT] Missing required fields:', missingFields);
       return;
@@ -244,6 +250,12 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
     // Validate vibes selection (1-5)
     if (selectedVibes.length === 0 || selectedVibes.length > 5) {
       alert('Please select 1 to 5 vibes for your circle.');
+      return;
+    }
+    
+    // Validate location for in-person sessions
+    if (sessionMode === 'inPerson' && (!city || (!address && !lat))) {
+      alert('In-person sessions require a city and address (or coordinates).');
       return;
     }
     
@@ -541,17 +553,39 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       // Calculate startDateTime from date and time
       const startDateTime = date && time ? new Date(`${date}T${time}`).getTime() : undefined;
       
-      // Calculate weeklyDayOfWeek and monthlyDayOfMonth from date if not explicitly set
-      let calculatedWeeklyDayOfWeek = weeklyDayOfWeek;
-      let calculatedMonthlyDayOfMonth = monthlyDayOfMonth;
+      // Calculate repeatDay and repeatTime for weekly/monthly sessions
+      let calculatedRepeatDay: string | undefined;
+      let calculatedRepeatTime: string | undefined;
       
-      if (date) {
+      if (date && time && (sessionFrequency === 'weekly' || sessionFrequency === 'monthly')) {
         const dateObj = new Date(date);
-        if (sessionFrequency === 'weekly' && calculatedWeeklyDayOfWeek === undefined) {
-          calculatedWeeklyDayOfWeek = dateObj.getDay(); // 0 = Sunday, 6 = Saturday
+        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        
+        if (sessionFrequency === 'weekly') {
+          calculatedRepeatDay = daysOfWeek[dateObj.getDay()];
+        } else if (sessionFrequency === 'monthly') {
+          calculatedRepeatDay = dateObj.getDate().toString(); // Day of month (1-31)
         }
-        if (sessionFrequency === 'monthly' && calculatedMonthlyDayOfMonth === undefined) {
-          calculatedMonthlyDayOfMonth = dateObj.getDate(); // 1-31
+        
+        // Convert time to 24-hour format
+        const [hours, minutes] = time.split(':');
+        calculatedRepeatTime = `${hours}:${minutes}`;
+      }
+      
+      // Calculate circleContinuity (auto-generated)
+      let circleContinuity: 'startingSoon' | 'ongoing' = 'startingSoon';
+      if (startDateTime) {
+        const now = Date.now();
+        if (sessionFrequency === 'oneTime') {
+          circleContinuity = 'startingSoon';
+        } else if (sessionFrequency === 'weekly' || sessionFrequency === 'monthly') {
+          if (startDateTime > now) {
+            circleContinuity = 'startingSoon';
+          } else {
+            // If started and has open spots, it's ongoing
+            // We'll check capacity later, but for now assume ongoing if started
+            circleContinuity = 'ongoing';
+          }
         }
       }
       
@@ -614,9 +648,14 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         country: country, // Extract country from city
         mainCategory: mainCategory || undefined,
         vibes: selectedVibes.length > 0 ? selectedVibes : undefined,
+        groupSize: groupSize || undefined,
         startDateTime: startDateTime,
-        weeklyDayOfWeek: calculatedWeeklyDayOfWeek,
-        monthlyDayOfMonth: calculatedMonthlyDayOfMonth,
+        repeatDay: calculatedRepeatDay,
+        repeatTime: calculatedRepeatTime,
+        circleContinuity: circleContinuity,
+        // Keep old fields for backward compatibility
+        weeklyDayOfWeek: sessionFrequency === 'weekly' && calculatedRepeatDay ? ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(calculatedRepeatDay) : undefined,
+        monthlyDayOfMonth: sessionFrequency === 'monthly' && calculatedRepeatDay ? parseInt(calculatedRepeatDay) : undefined,
       } as any); // Type assertion needed for optional fields
       
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -756,7 +795,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                   <option value="curatedSales">Curated Sales</option>
                   <option value="connectPromote">Connect & Promote</option>
                   <option value="mobilizeSupport">Mobilize & Support</option>
-                  <option value="learnAndGrow">Learn & Grow</option>
+                  <option value="learnGrow">Learn & Grow</option>
                 </select>
               </div>
             </div>
@@ -945,11 +984,13 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                   <select 
                     value={sessionFrequency}
                     onChange={(e) => {
-                      const value = e.target.value as 'weekly' | 'monthly' | 'one-time' | '';
+                      const value = e.target.value as 'weekly' | 'monthly' | 'oneTime' | '';
                       setSessionFrequency(value);
                       // Reset repeat settings when frequency changes
-                      if (value !== 'weekly') setWeeklyDayOfWeek(undefined);
-                      if (value !== 'monthly') setMonthlyDayOfMonth(undefined);
+                      if (value !== 'weekly' && value !== 'monthly') {
+                        setRepeatDay('');
+                        setRepeatTime('');
+                      }
                     }}
                     required
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all appearance-none cursor-pointer"
@@ -957,7 +998,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                     <option value="">Select...</option>
                     <option value="weekly">Weekly</option>
                     <option value="monthly">Monthly</option>
-                    <option value="one-time">One-Time</option>
+                    <option value="oneTime">One-Time Session</option>
                   </select>
                 </div>
               </div>
@@ -969,13 +1010,13 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                 <div className="relative">
                   <select 
                     value={sessionMode}
-                    onChange={(e) => setSessionMode(e.target.value as 'in-person' | 'remote' | '')}
+                    onChange={(e) => setSessionMode(e.target.value as 'inPerson' | 'remote' | '')}
                     required
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all appearance-none cursor-pointer"
                   >
                     <option value="">Select...</option>
-                    <option value="in-person">In-Person</option>
-                    <option value="remote">Remote</option>
+                    <option value="inPerson">In-Person Session</option>
+                    <option value="remote">Remote Session</option>
                   </select>
                 </div>
               </div>

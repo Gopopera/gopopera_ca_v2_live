@@ -41,7 +41,7 @@ export interface Event {
   sessionMode?: string; // "in-person" | "remote"
   country?: string; // Country name (e.g., "Canada", "United States")
   // Circles + Sessions model fields
-  mainCategory?: string; // "curatedSales" | "connectPromote" | "mobilizeSupport" | "learnAndGrow"
+  mainCategory?: string; // "curatedSales" | "connectAndPromote" | "mobilizeAndSupport" | "learnAndGrow"
   durationWeeks?: number; // Duration in weeks for ongoing circles
   weeklyDayOfWeek?: number; // 0-6 for weekly sessions (0 = Sunday)
   monthlyDayOfMonth?: number; // 1-31 for monthly sessions

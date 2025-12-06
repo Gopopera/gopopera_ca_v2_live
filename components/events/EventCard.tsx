@@ -12,7 +12,7 @@ import {
   getSessionModeText,
   getAvailableSpots 
 } from '../../utils/eventHelpers';
-import { getMainCategoryLabel } from '../../utils/categoryMapper';
+import { getMainCategoryLabelFromEvent } from '../../utils/categoryMapper';
 
 interface EventCardProps {
   event: Event;
@@ -259,9 +259,9 @@ export const EventCard: React.FC<EventCardProps> = ({
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-60" />
         
         {/* Main Category Badge - Top Left matching Hero badge style (orange pill) */}
-        {/* Use mainCategory if available, otherwise fallback to category for backward compatibility */}
+        {/* Automatically handles backward compatibility with old category field */}
         <div className="absolute top-4 left-4 inline-block py-1 sm:py-1.5 px-3.5 sm:px-4 rounded-full bg-[#e35e25]/90 border-2 border-[#e35e25] text-white text-[9px] sm:text-[10px] font-bold tracking-[0.2em] uppercase backdrop-blur-sm z-10 shadow-lg">
-          {(event as any).mainCategory ? getMainCategoryLabel((event as any).mainCategory) : (event.category || 'Circle')}
+          {getMainCategoryLabelFromEvent(event)}
         </div>
 
         {/* Vibes Tags - Bottom-left overlay on hero image, above title area (off-white background, dark-green text) */}

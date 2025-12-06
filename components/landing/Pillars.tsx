@@ -129,19 +129,22 @@ export const Pillars: React.FC = () => {
               {/* Enhanced gradient for better text readability on desktop */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10 pointer-events-none"></div>
               
-              {/* Title Tag - Fixed position at same height for all cards */}
-              <div className="absolute top-6 sm:top-7 md:top-6 lg:top-8 xl:top-10 left-6 sm:left-7 md:left-6 lg:left-8 xl:left-10 z-30">
-                <h3 className="inline-block py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#e35e25]/95 border-2 border-[#e35e25] text-white text-[10px] sm:text-[11px] md:text-xs font-bold tracking-[0.2em] uppercase w-fit shadow-lg">
-                  {pillar.title}
-                </h3>
-              </div>
-              
-              {/* Content - Description at bottom */}
+              {/* Content - Tag and Description at bottom */}
               <div className="absolute inset-0 p-6 sm:p-7 md:p-6 lg:p-8 xl:p-10 flex flex-col justify-end z-20">
-                {/* Description - High contrast body text optimized for desktop readability */}
-                <p className="text-white text-sm sm:text-base md:text-sm lg:text-base xl:text-lg font-sans font-normal leading-relaxed mb-0 border-l-4 border-[#e35e25] pl-4 sm:pl-5 md:pl-4 lg:pl-5 xl:pl-6 drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] bg-black/40 backdrop-blur-md py-3 sm:py-4 md:py-3 lg:py-4 xl:py-5 pr-3 sm:pr-4 md:pr-3 lg:pr-4 xl:pr-5 rounded-r-xl">
-                  {pillar.description}
-                </p>
+                {/* Wrapper for tag and description to ensure consistent positioning */}
+                <div className="flex flex-col gap-3 sm:gap-3 md:gap-4">
+                  {/* Title Tag - Positioned directly above body text */}
+                  <div className="flex justify-start z-30">
+                    <h3 className="inline-block py-0.5 sm:py-1 md:py-1 px-2.5 sm:px-3 md:px-3.5 rounded-full bg-[#e35e25]/95 border-2 border-[#e35e25] text-white text-[9px] sm:text-[10px] md:text-[10px] font-bold tracking-[0.1em] uppercase whitespace-nowrap shadow-lg">
+                      {pillar.title}
+                    </h3>
+                  </div>
+                  
+                  {/* Description - Fixed height to ensure tag alignment */}
+                  <p className="text-white text-sm sm:text-base md:text-sm lg:text-base xl:text-lg font-sans font-normal leading-relaxed mb-0 border-l-4 border-[#e35e25] pl-4 sm:pl-5 md:pl-4 lg:pl-5 xl:pl-6 drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] bg-black/40 backdrop-blur-md py-3 sm:py-4 md:py-3 lg:py-4 xl:py-5 pr-3 sm:pr-4 md:pr-3 lg:pr-4 xl:pr-5 rounded-r-xl h-[80px] sm:h-[90px] md:h-[85px] lg:h-[90px] xl:h-[95px] flex items-center">
+                    {pillar.description}
+                  </p>
+                </div>
               </div>
             </div>
           ))}
