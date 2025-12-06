@@ -3,6 +3,7 @@
  * Handles in-app notifications, announcements, and polls
  */
 
+import { getAuthInstance } from '../src/lib/firebaseAuth';
 import { 
   collection, 
   doc, 
@@ -153,7 +154,6 @@ export function subscribeToUnreadNotificationCount(
 
   // Check if user is authenticated
   try {
-    const { getAuthInstance } = require('../src/lib/firebaseAuth');
     const auth = getAuthInstance();
     if (!auth?.currentUser) {
       callback(0);

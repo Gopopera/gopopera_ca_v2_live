@@ -151,14 +151,18 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
   useEffect(() => {
     if (!user?.uid) return;
     
-    const { subscribeToFollowersCount } = require('../firebase/follow');
-    const unsubscribe = subscribeToFollowersCount(user.uid, (count: number) => {
-      setStats(prev => ({ ...prev, followers: count }));
+    // Use dynamic import for ES module compatibility
+    import('../firebase/follow').then(({ subscribeToFollowersCount }) => {
+      const unsubscribe = subscribeToFollowersCount(user.uid, (count: number) => {
+        setStats(prev => ({ ...prev, followers: count }));
+      });
+      
+      return () => {
+        unsubscribe();
+      };
+    }).catch((error) => {
+      console.error('[PROFILE_PAGE] Error loading follow module:', error);
     });
-    
-    return () => {
-      unsubscribe();
-    };
   }, [user?.uid]);
   
   const settingsLinks = [

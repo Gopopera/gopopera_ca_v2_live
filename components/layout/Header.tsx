@@ -31,19 +31,28 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
 
   // Real-time subscription to unread notification count
   useEffect(() => {
-    if (user?.uid && isLoggedIn) {
-      // Use real-time subscription for instant updates
-      const { subscribeToUnreadNotificationCount } = require('../../firebase/notifications');
-      const unsubscribe = subscribeToUnreadNotificationCount(user.uid, (count) => {
+    if (!user?.uid || !isLoggedIn) {
+      setUnreadCount(0);
+      return;
+    }
+
+    // Use dynamic import for ES module compatibility
+    let unsubscribe: (() => void) | null = null;
+    
+    import('../../firebase/notifications').then(({ subscribeToUnreadNotificationCount }) => {
+      unsubscribe = subscribeToUnreadNotificationCount(user.uid, (count) => {
         setUnreadCount(count);
       });
-      
-      return () => {
-        unsubscribe();
-      };
-    } else {
+    }).catch((error) => {
+      console.error('[HEADER] Error loading notifications module:', error);
       setUnreadCount(0);
-    }
+    });
+    
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [user?.uid, isLoggedIn]);
 
   useEffect(() => {
