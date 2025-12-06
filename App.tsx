@@ -1284,8 +1284,55 @@ const AppContent: React.FC = () => {
         window.history.replaceState({ viewState: ViewState.AUTH }, '', '/auth');
       }
     }
+  }, [viewState, selectedEvent, selectedHost]);
 
-    // Handle browser back/forward buttons
+  // Router: Handle direct navigation and popstate events
+  // This ensures routes are detected on initial page load and browser navigation
+  useEffect(() => {
+    console.log('[ROUTER] Router mounted');
+
+    const handlePopState = () => {
+      const pathname = window.location.pathname;
+      console.log('[ROUTER] popstate triggered with pathname:', pathname);
+
+      // CHAT route
+      const chatMatch = pathname.match(/^\/event\/([^/]+)\/chat/);
+      if (chatMatch) {
+        const eventId = chatMatch[1];
+        console.log('[ROUTER] Chat route detected:', eventId);
+        // Find event in allEvents or wait for it to load
+        const event = allEvents.find(e => e.id === eventId);
+        if (event) {
+          console.log('[ROUTER] Event found, setting selectedEvent and viewState to CHAT');
+          setSelectedEvent(event);
+          setViewState(ViewState.CHAT);
+          window.history.replaceState({ viewState: ViewState.CHAT, eventId }, '', pathname);
+        } else {
+          console.log('[ROUTER] Event not found yet, setting viewState to CHAT:', eventId);
+          setViewState(ViewState.CHAT);
+          window.history.replaceState({ viewState: ViewState.CHAT, eventId }, '', pathname);
+        }
+        return;
+      }
+
+      // FEED route
+      if (pathname === '/' || pathname === '/explore') {
+        console.log('[ROUTER] Feed route detected');
+        setViewState(ViewState.FEED);
+        return;
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    handlePopState(); // run on first load
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [allEvents, setSelectedEvent, setViewState]); // Include deps so it re-runs when events load
+
+  // Handle browser back/forward buttons (existing complex handler)
+  useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
       if (event.state && event.state.viewState) {
         const targetView = event.state.viewState;
