@@ -1,5 +1,6 @@
 {
   "cleanUrls": true,
+  "trailingSlash": false,
   "outputDirectory": "dist",
   "buildCommand": "npm run vercel-build",
   "rewrites": [
