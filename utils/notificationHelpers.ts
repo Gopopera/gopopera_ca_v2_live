@@ -454,19 +454,20 @@ export async function notifyAttendeesOfNewMessage(
         console.log(`[NOTIFICATIONS] ⏭️ Email skipped for ${userId} (preference: email_opt_in=${preferences.email_opt_in})`);
       }
 
-      // SMS (optional, based on user preferences - usually disabled for messages to avoid spam)
-      // Uncomment if you want SMS notifications for messages:
-      // if (preferences.sms_opt_in && contactInfo.phone) {
-      //   try {
-      //     await sendSMSNotification({
-      //       to: contactInfo.phone,
-      //       message: `New message in ${eventTitle} from ${senderName}: ${messageSnippet}`,
-      //     });
-      //     console.log(`[NOTIFICATIONS] ✅ SMS notification sent to ${contactInfo.phone} for message in ${eventTitle}`);
-      //   } catch (error) {
-      //     console.error(`[NOTIFICATIONS] ❌ Error sending SMS to ${contactInfo.phone}:`, error);
-      //   }
-      // }
+      // SMS (optional, based on user preferences)
+      if (preferences.sms_opt_in && contactInfo.phone) {
+        try {
+          await sendSMSNotification({
+            to: contactInfo.phone,
+            message: `New message in ${eventTitle} from ${senderName}: ${messageSnippet}`,
+          });
+          console.log(`[NOTIFICATIONS] ✅ SMS notification sent to ${contactInfo.phone} for message in ${eventTitle}`);
+        } catch (error) {
+          console.error(`[NOTIFICATIONS] ❌ Error sending SMS to ${contactInfo.phone}:`, error);
+        }
+      } else if (contactInfo.phone) {
+        console.log(`[NOTIFICATIONS] ⏭️ SMS skipped for ${userId} (preference: sms_opt_in=${preferences.sms_opt_in})`);
+      }
     } catch (error) {
       console.error(`[NOTIFICATIONS] ❌ Error processing notification for user ${userId}:`, error);
       // Continue with other recipients even if one fails
