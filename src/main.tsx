@@ -15,7 +15,8 @@ function SafeShell() {
   return <App />;
 }
 
-console.log('[BOOT] main.tsx loading');
+// CACHE-BUSTING: Force module reload
+console.log('[BOOT] main.tsx loading', { buildId: 'debug123', timestamp: new Date().toISOString() });
 
 // Global error handler to catch unhandled promise rejections
 window.addEventListener('unhandledrejection', (event) => {

@@ -2,6 +2,9 @@ import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
+// CACHE-BUSTING: Force rebuild with unique build ID
+const BUILD_ID_FORCE = process.env.BUILD_ID_FORCE || process.env.VERCEL_DEPLOYMENT_ID || `build-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
@@ -81,9 +84,15 @@ export default defineConfig(({ mode }) => {
       },
       build: {
         sourcemap: false, // Disable source maps in production for smaller bundles
+        // CACHE-BUSTING: Force clean build without cache
+        emptyOutDir: true,
         rollupOptions: {
           external: ['@react-google-maps/api'], // Exclude Google Maps from bundle
           output: {
+            // CACHE-BUSTING: Use hash in filenames (Vite automatically adds content hash)
+            entryFileNames: `assets/[name]-[hash].js`,
+            chunkFileNames: `assets/[name]-[hash].js`,
+            assetFileNames: `assets/[name]-[hash].[ext]`,
             manualChunks: {
               'react-vendor': ['react', 'react-dom'],
               'firebase-vendor': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
