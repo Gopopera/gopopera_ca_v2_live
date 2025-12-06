@@ -83,16 +83,16 @@ export default defineConfig(({ mode }) => {
         }
       },
       build: {
+        outDir: 'dist',
         sourcemap: false, // Disable source maps in production for smaller bundles
         // CACHE-BUSTING: Force clean build without cache
         emptyOutDir: true,
         rollupOptions: {
           external: ['@react-google-maps/api'], // Exclude Google Maps from bundle
           output: {
-            // CACHE-BUSTING: Use hash in filenames (Vite automatically adds content hash)
-            entryFileNames: `assets/[name]-[hash].js`,
-            chunkFileNames: `assets/[name]-[hash].js`,
-            assetFileNames: `assets/[name]-[hash].[ext]`,
+            entryFileNames: `assets/[name].[hash].js`,
+            chunkFileNames: `assets/[name].[hash].js`,
+            assetFileNames: `assets/[name].[hash].[ext]`,
             manualChunks: {
               'react-vendor': ['react', 'react-dom'],
               'firebase-vendor': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
