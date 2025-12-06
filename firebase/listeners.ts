@@ -49,14 +49,45 @@ export function subscribeToChat(
     let q = query(messagesCol, orderBy("createdAt", "asc"));
 
     return onSnapshot(q, (snap) => {
+      // CRITICAL: Log raw Firestore documents before any processing
+      console.log(`[CHAT LISTENER FIRESTORE RAW] 📥 Received ${snap.docs.length} documents for event ${eventId}`);
+      snap.docs.forEach((doc) => {
+        const rawData = doc.data();
+        console.log(`[CHAT LISTENER FIRESTORE RAW] 📄 Document ${doc.id}:`, {
+          id: doc.id,
+          senderId: rawData.senderId,
+          userId: rawData.userId,
+          text: rawData.text?.substring(0, 50),
+          createdAt: rawData.createdAt,
+          createdAtType: typeof rawData.createdAt,
+          isHost: rawData.isHost,
+          type: rawData.type,
+          eventId: rawData.eventId,
+          fullData: rawData,
+        });
+      });
+      
       const msgs: FirestoreChatMessage[] = snap.docs.map((d) => {
         const data = d.data() as any;
-        return {
+        const processedMessage = {
           id: d.id,
           ...data,
           // Ensure createdAt is a number (Firestore timestamp or number)
           createdAt: data.createdAt?.toMillis?.() || data.createdAt || Date.now(),
         };
+        
+        // Log each processed message
+        console.log(`[CHAT LISTENER PROCESSED] 🔄 Processed message ${d.id}:`, {
+          id: processedMessage.id,
+          senderId: processedMessage.senderId,
+          userId: processedMessage.userId,
+          createdAt: processedMessage.createdAt,
+          createdAtType: typeof processedMessage.createdAt,
+          isHost: processedMessage.isHost,
+          text: processedMessage.text?.substring(0, 50),
+        });
+        
+        return processedMessage;
       });
       
       // Always sort client-side to ensure correct order (even with orderBy, this is safe)
@@ -68,6 +99,7 @@ export function subscribeToChat(
         useOrderBy,
         messages: msgs.map(m => ({ 
           id: m.id, 
+          senderId: m.senderId,  // ✅ Added senderId
           userId: m.userId, 
           userName: m.userName, 
           isHost: m.isHost,
@@ -100,6 +132,21 @@ export function subscribeToChat(
         useOrderBy = false;
         const fallbackQ = query(messagesCol);
         return onSnapshot(fallbackQ, (snap) => {
+          // Log raw documents in fallback query
+          console.log(`[CHAT LISTENER FIRESTORE RAW] 📥 Fallback query received ${snap.docs.length} documents for event ${eventId}`);
+          snap.docs.forEach((doc) => {
+            const rawData = doc.data();
+            console.log(`[CHAT LISTENER FIRESTORE RAW] 📄 Fallback document ${doc.id}:`, {
+              id: doc.id,
+              senderId: rawData.senderId,
+              userId: rawData.userId,
+              text: rawData.text?.substring(0, 50),
+              createdAt: rawData.createdAt,
+              isHost: rawData.isHost,
+              fullData: rawData,
+            });
+          });
+          
           const msgs: FirestoreChatMessage[] = snap.docs.map((d) => {
             const data = d.data() as any;
             return {
@@ -115,6 +162,7 @@ export function subscribeToChat(
             messageCount: msgs.length,
             messages: msgs.map(m => ({ 
               id: m.id, 
+              senderId: m.senderId,  // ✅ Added senderId
               userId: m.userId, 
               userName: m.userName, 
               isHost: m.isHost,
@@ -141,6 +189,21 @@ export function subscribeToChat(
         const messagesCol = collection(db, "events", eventId, "messages");
         const fallbackQ = query(messagesCol);
         return onSnapshot(fallbackQ, (snap) => {
+          // Log raw documents in setup fallback query
+          console.log(`[CHAT LISTENER FIRESTORE RAW] 📥 Setup fallback received ${snap.docs.length} documents for event ${eventId}`);
+          snap.docs.forEach((doc) => {
+            const rawData = doc.data();
+            console.log(`[CHAT LISTENER FIRESTORE RAW] 📄 Setup fallback document ${doc.id}:`, {
+              id: doc.id,
+              senderId: rawData.senderId,
+              userId: rawData.userId,
+              text: rawData.text?.substring(0, 50),
+              createdAt: rawData.createdAt,
+              isHost: rawData.isHost,
+              fullData: rawData,
+            });
+          });
+          
           const msgs: FirestoreChatMessage[] = snap.docs.map((d) => {
             const data = d.data() as any;
             return {
@@ -153,6 +216,12 @@ export function subscribeToChat(
           console.log(`[FIREBASE] 📨 Chat subscription (setup fallback) for ${eventId}:`, {
             eventId,
             messageCount: msgs.length,
+            messages: msgs.map(m => ({
+              id: m.id,
+              senderId: m.senderId,  // ✅ Added senderId
+              userId: m.userId,
+              isHost: m.isHost,
+            })),
           });
           cb(msgs);
         }, (fallbackError) => {

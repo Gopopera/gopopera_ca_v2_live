@@ -49,16 +49,69 @@ interface ChatStore {
 // REFACTORED: Map Firestore message to ChatMessage
 // Sender info (userName) is fetched from /users/{senderId} in real-time
 const mapFirestoreMessageToChatMessage = (msg: FirestoreChatMessage): ChatMessage => {
-  return {
+  // CRITICAL: Ensure we have a valid userId from either senderId or userId
+  const messageUserId = msg.senderId || msg.userId || '';
+  
+  // CRITICAL: Validate createdAt and handle edge cases
+  let timestamp: string;
+  try {
+    if (msg.createdAt) {
+      const date = typeof msg.createdAt === 'number' 
+        ? new Date(msg.createdAt) 
+        : new Date(msg.createdAt);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.warn(`[CHAT MAPPED MESSAGE] ⚠️ Invalid createdAt for message ${msg.id}, using current time:`, {
+          messageId: msg.id,
+          createdAt: msg.createdAt,
+          createdAtType: typeof msg.createdAt,
+        });
+        timestamp = new Date().toISOString();
+      } else {
+        timestamp = date.toISOString();
+      }
+    } else {
+      console.warn(`[CHAT MAPPED MESSAGE] ⚠️ Missing createdAt for message ${msg.id}, using current time:`, {
+        messageId: msg.id,
+      });
+      timestamp = new Date().toISOString();
+    }
+  } catch (error) {
+    console.error(`[CHAT MAPPED MESSAGE] ❌ Error parsing createdAt for message ${msg.id}:`, {
+      messageId: msg.id,
+      createdAt: msg.createdAt,
+      error,
+    });
+    timestamp = new Date().toISOString();
+  }
+  
+  const mappedMessage: ChatMessage = {
     id: msg.id,
     eventId: msg.eventId,
-    userId: msg.senderId || msg.userId || '', // Use senderId (standardized), fallback to userId (backward compatibility)
+    userId: messageUserId,
     userName: msg.userName || '', // Will be fetched from /users/{senderId} if empty
-    message: msg.text,
-    timestamp: new Date(msg.createdAt).toISOString(),
+    message: msg.text || '',
+    timestamp,
     type: msg.type || 'message',
     isHost: msg.isHost || false,
   };
+  
+  // Log each mapped message for debugging
+  console.log(`[CHAT MAPPED MESSAGE] ✅ Mapped message ${msg.id}:`, {
+    id: mappedMessage.id,
+    eventId: mappedMessage.eventId,
+    userId: mappedMessage.userId,
+    senderId: msg.senderId,  // Log original senderId
+    originalUserId: msg.userId,  // Log original userId
+    userName: mappedMessage.userName,
+    messageLength: mappedMessage.message.length,
+    timestamp: mappedMessage.timestamp,
+    type: mappedMessage.type,
+    isHost: mappedMessage.isHost,
+  });
+  
+  return mappedMessage;
 };
 
 export const useChatStore = create<ChatStore>((set, get) => ({
@@ -72,12 +125,48 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // CRITICAL: Save message to Firestore - real-time sync handles UI updates
     // Messages are constantly saved and synced across all devices via onSnapshot
     // Only host and attendees can send messages (enforced by GroupChat component)
+    
+    // CRITICAL: Validate inputs before attempting write
+    if (!eventId || !senderId || !message) {
+      console.error('[CHAT_STORE] ❌ Invalid message parameters:', {
+        eventId,
+        senderId,
+        hasMessage: !!message,
+        messageLength: message?.length || 0,
+        type,
+        isHost,
+      });
+      throw new Error('Invalid message parameters: eventId, senderId, and message are required');
+    }
+    
+    console.log('[CHAT_STORE] 📤 Calling addChatMessage:', {
+      eventId,
+      senderId,
+      messageLength: message.length,
+      type,
+      isHost,
+    });
+    
     try {
-      await addChatMessage(eventId, senderId, message, type, isHost);
+      const messageId = await addChatMessage(eventId, senderId, message, type, isHost);
+      console.log('[CHAT_STORE] ✅ Message added successfully:', {
+        messageId,
+        eventId,
+        senderId,
+      });
       // The realtime listener (onSnapshot) will update the messages automatically
       // This ensures messages are synced with past, current, and future content
-    } catch (error) {
-      console.error("[CHAT_STORE] Error adding message to Firestore:", error);
+    } catch (error: any) {
+      console.error("[CHAT_STORE] ❌ Error adding message to Firestore:", {
+        eventId,
+        senderId,
+        messageLength: message.length,
+        type,
+        isHost,
+        error: error.message,
+        code: error.code,
+        stack: error.stack,
+      });
       // Fallback to local state if Firestore fails (offline mode)
       // Note: userName will be fetched from /users/{senderId} when displaying
       const newMessage: ChatMessage = {
@@ -93,6 +182,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       set((state) => ({
         messages: [...state.messages, newMessage],
       }));
+      // Re-throw error so caller knows write failed
+      throw error;
     }
   },
 
@@ -110,6 +201,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         messageCount: firestoreMessages.length,
         messages: firestoreMessages.map(m => ({ 
           id: m.id, 
+          senderId: m.senderId,  // ✅ Added senderId
           userId: m.userId, 
           userName: m.userName, 
           isHost: m.isHost,
@@ -165,27 +257,58 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     // CRITICAL: Always prefer Firestore messages (real-time, most up-to-date)
     // NO FILTERING - All users (host and attendees) should see ALL messages
     const firestoreMsgs = get().firestoreMessages[eventId];
+    
+    console.log(`[CHAT_STORE] 🔍 getMessagesForEvent(${eventId}):`, {
+      eventId,
+      hasFirestoreMessages: !!firestoreMsgs,
+      firestoreMessageCount: firestoreMsgs?.length || 0,
+      rawFirestoreMessages: firestoreMsgs?.map(m => ({
+        id: m.id,
+        senderId: m.senderId,
+        userId: m.userId,
+        text: m.text?.substring(0, 50),
+        createdAt: m.createdAt,
+        isHost: m.isHost,
+      })) || [],
+    });
+    
     if (firestoreMsgs && firestoreMsgs.length > 0) {
-      const mappedMessages = firestoreMsgs.map(mapFirestoreMessageToChatMessage)
-        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      // Map all messages
+      const mappedMessages = firestoreMsgs.map(mapFirestoreMessageToChatMessage);
       
-      // Debug logging for host visibility
-      if (import.meta.env.DEV) {
-        console.log(`[CHAT_STORE] 📨 getMessagesForEvent(${eventId}):`, {
-          eventId,
-          messageCount: mappedMessages.length,
-          messages: mappedMessages.map(m => ({ 
-            id: m.id, 
-            userId: m.userId, 
-            userName: m.userName, 
-            isHost: m.isHost,
-            type: m.type,
-            text: m.message.substring(0, 50) 
-          })),
-        });
-      }
+      // Sort by timestamp
+      const sortedMessages = mappedMessages.sort((a, b) => {
+        const timeA = new Date(a.timestamp).getTime();
+        const timeB = new Date(b.timestamp).getTime();
+        
+        // Handle invalid dates
+        if (isNaN(timeA) || isNaN(timeB)) {
+          console.warn(`[CHAT_STORE] ⚠️ Invalid timestamp in sort:`, {
+            messageA: { id: a.id, timestamp: a.timestamp, timeA },
+            messageB: { id: b.id, timestamp: b.timestamp, timeB },
+          });
+          return 0;
+        }
+        
+        return timeA - timeB;
+      });
       
-      return mappedMessages;
+      // CRITICAL: Log final sorted messages before returning
+      console.log(`[CHAT_STORE] ✅ getMessagesForEvent(${eventId}) returning ${sortedMessages.length} messages:`, {
+        eventId,
+        messageCount: sortedMessages.length,
+        messages: sortedMessages.map(m => ({ 
+          id: m.id, 
+          userId: m.userId, 
+          userName: m.userName, 
+          isHost: m.isHost,
+          type: m.type,
+          timestamp: m.timestamp,
+          text: m.message.substring(0, 50) 
+        })),
+      });
+      
+      return sortedMessages;
     }
     
     // Fallback to local messages (only if Firestore subscription hasn't loaded yet)

@@ -965,13 +965,32 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
 
               <div className="max-w-3xl mx-auto w-full space-y-6 pb-4">
                 {/* Render actual messages from store */}
-                {messages.length === 0 ? (
-                  <div className="text-center py-12 text-gray-400">
-                    <MessageCircle size={48} className="mx-auto mb-4 opacity-50" />
-                    <p className="text-sm">No messages yet. Start the conversation!</p>
-                  </div>
-                ) : (
-                  messages.map((msg) => {
+                {(() => {
+                  // CRITICAL: Log messages right before rendering
+                  console.log(`[CHAT FEED] 🎨 Rendering ${messages.length} messages for event ${event.id}:`, {
+                    eventId: event.id,
+                    isHost,
+                    userId: currentUser?.id,
+                    hostId: event.hostId,
+                    messageCount: messages.length,
+                    messages: messages.map(m => ({
+                      id: m.id,
+                      userId: m.userId,
+                      userName: m.userName,
+                      isHost: m.isHost,
+                      type: m.type,
+                      timestamp: m.timestamp,
+                      text: m.message.substring(0, 50),
+                    })),
+                  });
+                  
+                  return messages.length === 0 ? (
+                    <div className="text-center py-12 text-gray-400">
+                      <MessageCircle size={48} className="mx-auto mb-4 opacity-50" />
+                      <p className="text-sm">No messages yet. Start the conversation!</p>
+                    </div>
+                  ) : (
+                    messages.map((msg) => {
                     const messageDate = new Date(msg.timestamp);
                     const timeString = messageDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
                     
@@ -1022,7 +1041,8 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                       </div>
                     );
                   })
-                )}
+                  );
+                })()}
 
                 {/* Render poll if exists */}
                 {poll && (

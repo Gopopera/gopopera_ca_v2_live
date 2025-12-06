@@ -1051,34 +1051,99 @@ export async function addChatMessage(
     throw new Error('Firestore not initialized');
   }
   
+  // CRITICAL: Validate senderId is provided and not empty
+  if (!senderId || typeof senderId !== 'string' || senderId.trim() === '') {
+    const error = new Error('senderId is required and must be a non-empty string');
+    console.error('[CHAT WRITE] ❌ Validation failed:', { eventId, senderId, text: text?.substring(0, 50) });
+    throw error;
+  }
+  
+  // CRITICAL: Ensure both senderId and userId are set (userId for Firestore rules backward compatibility)
+  // Both fields MUST be present for Firestore security rules to work
+  const userId = senderId; // Always set userId = senderId for backward compatibility
+  
+  // Log BEFORE write
+  console.log('[CHAT WRITE] 📤 Preparing to write message:', {
+    eventId,
+    senderId,
+    userId, // Explicitly log both
+    text: text?.substring(0, 100),
+    type,
+    isHost,
+    timestamp: new Date().toISOString(),
+  });
+  
   try {
     const messagesCol = collection(db, "events", eventId, "messages");
     const messageRaw: Omit<FirestoreChatMessage, 'id'> = {
       eventId,
-      senderId, // Standardized field
+      senderId, // Standardized field (primary)
+      userId,   // CRITICAL: Required for Firestore rules backward compatibility
       text: text || '',
       createdAt: Date.now(),
       type,
       isHost,
-      // Backward compatibility (will be removed after migration)
-      userId: senderId,
-      userName: undefined, // Will be fetched from /users/{senderId}
+      // userName is intentionally omitted - fetched from /users/{senderId} in real-time
     };
     
+    // CRITICAL: Include userId in required fields to ensure it's never removed
     // Validate and remove undefined values
     const message = validateFirestoreData(
       messageRaw,
-      ['eventId', 'senderId', 'text', 'createdAt', 'type', 'isHost'],
+      ['eventId', 'senderId', 'userId', 'text', 'createdAt', 'type', 'isHost'], // ✅ Added userId to required fields
       'addChatMessage'
     ) as Omit<FirestoreChatMessage, 'id'>;
     
     // Sanitize data to eliminate ALL undefined fields
     const sanitizedMessage = sanitizeFirestoreData(message);
     
+    // CRITICAL: Verify both senderId and userId are present after sanitization
+    if (!sanitizedMessage.senderId || !sanitizedMessage.userId) {
+      const error = new Error('Message missing required senderId or userId after sanitization');
+      console.error('[CHAT WRITE] ❌ Sanitization failed:', {
+        eventId,
+        senderId: sanitizedMessage.senderId,
+        userId: sanitizedMessage.userId,
+        sanitizedMessage,
+      });
+      throw error;
+    }
+    
+    // Log message data being written
+    console.log('[CHAT WRITE] 📝 Writing to Firestore:', {
+      eventId,
+      senderId: sanitizedMessage.senderId,
+      userId: sanitizedMessage.userId,
+      hasText: !!sanitizedMessage.text,
+      textLength: sanitizedMessage.text?.length || 0,
+      type: sanitizedMessage.type,
+      isHost: sanitizedMessage.isHost,
+    });
+    
     const docRef = await addDoc(messagesCol, sanitizedMessage);
+    
+    // Log AFTER successful write
+    console.log('[CHAT WRITE SUCCESS] ✅ Message written successfully:', {
+      messageId: docRef.id,
+      eventId,
+      senderId: sanitizedMessage.senderId,
+      userId: sanitizedMessage.userId,
+      path: `events/${eventId}/messages/${docRef.id}`,
+    });
+    
     return docRef.id;
   } catch (error: any) {
-    console.error('Firestore write failed:', { path: `events/${eventId}/messages`, error: error.message || 'Unknown error' });
+    // Log full error details
+    console.error('[CHAT WRITE] ❌ Firestore write failed:', {
+      path: `events/${eventId}/messages`,
+      eventId,
+      senderId,
+      userId,
+      error: error.message || 'Unknown error',
+      code: error.code,
+      stack: error.stack,
+      fullError: error,
+    });
     throw error;
   }
 }
