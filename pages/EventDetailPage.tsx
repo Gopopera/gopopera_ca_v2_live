@@ -13,6 +13,8 @@ import { ShareModal } from '../components/share/ShareModal';
 import { formatDate } from '../utils/dateFormatter';
 import { formatRating } from '../utils/formatRating';
 import { getUserProfile, getReservationCountForEvent, listHostReviews } from '../firebase/db';
+import { getMainCategoryLabelFromEvent } from '../utils/categoryMapper';
+import { getSessionFrequencyText, getSessionModeText } from '../utils/eventHelpers';
 
 interface EventDetailPageProps {
   event: Event;
@@ -819,7 +821,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         )}
          <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 md:p-8 lg:p-12 max-w-7xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6">
             <div className="text-white animate-fade-in-up">
-               <span className="inline-block px-3 sm:px-3.5 py-1 sm:py-1.5 bg-popera-orange rounded-full text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-wider mb-2 sm:mb-3 md:mb-4 shadow-lg">{event.category}</span>
+               <span className="inline-block px-3 sm:px-3.5 py-1 sm:py-1.5 bg-popera-orange rounded-full text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-wider mb-2 sm:mb-3 md:mb-4 shadow-lg">{getMainCategoryLabelFromEvent(event)}</span>
                <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-heading font-bold leading-tight mb-3 sm:mb-4 text-balance shadow-black drop-shadow-lg">{event.title}</h1>
                <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 md:gap-3 lg:gap-4 text-gray-200 text-xs sm:text-sm md:text-base font-medium">
                   <span className="flex items-center bg-white/10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg backdrop-blur-md border border-white/10"><Calendar size={14} className="sm:w-4 sm:h-4 mr-1.5 sm:mr-2 text-popera-orange shrink-0" /> <span className="truncate">{formatDate(event.date)} • {event.time}</span></span>
@@ -1183,18 +1185,18 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
          </div>
       </section>
 
-      {/* Tags Section - Only show if host created tags */}
-      {event.tags && event.tags.length > 0 && (
+      {/* Vibes/Tags Section - Show vibes if available, otherwise fallback to tags */}
+      {((event.vibes && event.vibes.length > 0) || (event.tags && event.tags.length > 0)) && (
         <section className="py-8 sm:py-10 md:py-12 bg-white">
           <div className="max-w-4xl mx-auto px-4 sm:px-6">
-            <h3 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">Tags</h3>
+            <h3 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">Vibes</h3>
             <div className="flex flex-wrap gap-2 sm:gap-3">
-              {event.tags.map((tag, index) => (
+              {(event.vibes && event.vibes.length > 0 ? event.vibes : event.tags || []).map((vibe, index) => (
                 <span
                   key={index}
                   className="px-4 py-2 bg-[#eef4f5] text-[#15383c] rounded-full text-sm sm:text-base font-medium border border-[#15383c]/10"
                 >
-                  {tag}
+                  {vibe}
                 </span>
               ))}
             </div>
