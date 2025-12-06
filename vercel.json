@@ -1,7 +1,8 @@
 {
-  "cleanUrls": true,
+  "buildCommand": "npm run vercel-build",
   "framework": "vite",
   "outputDirectory": "dist",
+  "cleanUrls": true,
   "rewrites": [
     {
       "source": "/(.*)",
