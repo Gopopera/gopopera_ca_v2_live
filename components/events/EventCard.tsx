@@ -264,13 +264,13 @@ export const EventCard: React.FC<EventCardProps> = ({
           {getMainCategoryLabelFromEvent(event)}
         </div>
 
-        {/* Vibes Tags - Bottom-left overlay on hero image, above title area (off-white background, dark-green text) */}
+        {/* Vibes Tags - Bottom right, aligned with Free tag */}
         {event.vibes && event.vibes.length > 0 && (
-          <div className="absolute bottom-20 left-4 right-4 z-20 flex flex-wrap gap-1.5">
+          <div className="absolute bottom-4 right-4 z-20 flex flex-wrap gap-1.5 justify-end">
             {event.vibes.slice(0, 3).map((vibe, index) => (
               <span 
                 key={index}
-                className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#f2f2f2]/90 backdrop-blur-sm text-[#15383c] text-[11px] font-medium"
+                className="inline-flex items-center px-2 py-0.5 rounded-full bg-white/95 backdrop-blur-sm border border-gray-300 text-[#15383c] text-[11px] font-medium shadow-sm"
               >
                 {vibe}
               </span>
