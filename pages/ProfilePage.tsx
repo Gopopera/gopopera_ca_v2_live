@@ -3,7 +3,7 @@ import { ViewState, Event } from '../types';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { useUserStore } from '../stores/userStore';
 import { useEventStore } from '../stores/eventStore';
-import { getReservationCountForEvent, listHostReviews } from '../firebase/db';
+import { getReservationCountForEvent, listHostReviews, getUserProfile } from '../firebase/db';
 import { getFollowingHosts, getHostFollowers } from '../firebase/follow';
 
 interface ProfilePageProps {
@@ -19,9 +19,53 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
   const [stats, setStats] = useState({ revenue: 30, hosted: 0, attendees: 0, following: 0, attended: 0, reviews: 0, followers: 0 });
   const [loading, setLoading] = useState(true);
   
-  // Get profile picture from multiple sources - always sync with latest
-  // Priority: userProfile (Firestore - most up-to-date) > user (Auth) > fallback
-  const profilePicture = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl;
+  // State for profile picture (synced from Firestore - always latest)
+  const [profilePicture, setProfilePicture] = useState<string | null>(
+    userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null
+  );
+  
+  // Fetch profile picture from Firestore (source of truth) and refresh periodically
+  useEffect(() => {
+    const fetchProfilePicture = async () => {
+      if (!user?.uid) {
+        setProfilePicture(null);
+        return;
+      }
+      
+      try {
+        // ALWAYS fetch from Firestore to ensure we have the latest profile picture
+        const freshProfile = await getUserProfile(user.uid);
+        if (freshProfile) {
+          // Priority: photoURL > imageUrl (both from Firestore - always latest)
+          const latestPic = freshProfile.photoURL || freshProfile.imageUrl || null;
+          setProfilePicture(latestPic);
+        } else {
+          // Fallback to user store if Firestore fetch fails
+          const fallbackPic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null;
+          setProfilePicture(fallbackPic);
+        }
+      } catch (error) {
+        console.warn('[PROFILE_PAGE] Failed to fetch profile picture:', error);
+        // Fallback to user store on error
+        const fallbackPic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null;
+        setProfilePicture(fallbackPic);
+      }
+    };
+    
+    // Fetch immediately
+    fetchProfilePicture();
+    
+    // Refresh profile picture every 5 seconds to catch updates
+    // This ensures profile picture updates are reflected immediately
+    const refreshInterval = setInterval(() => {
+      fetchProfilePicture();
+    }, 5000); // Refresh every 5 seconds
+    
+    return () => {
+      clearInterval(refreshInterval);
+    };
+  }, [user?.uid, userProfile?.photoURL, userProfile?.imageUrl, user?.photoURL, user?.profileImageUrl]);
+  
   const displayName = user?.displayName || user?.name || userName;
   const initials = displayName ? displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'P';
   
