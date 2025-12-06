@@ -814,8 +814,8 @@ export const FollowingPage: React.FC<SubPageProps & { onHostClick?: (hostName: s
 
       try {
         setLoading(true);
-        const { getFollowingHosts } = await import('../firebase/follow');
-        const { getUserProfile } = await import('../firebase/db');
+        const { getFollowingHosts } = await import('../../firebase/follow');
+        const { getUserProfile } = await import('../../firebase/db');
         const followingIds = await getFollowingHosts(user.uid);
         
         const followingProfiles = await Promise.all(
@@ -846,7 +846,7 @@ export const FollowingPage: React.FC<SubPageProps & { onHostClick?: (hostName: s
     if (!user?.uid) return;
     
     try {
-      const { unfollowHost } = await import('../firebase/follow');
+      const { unfollowHost } = await import('../../firebase/follow');
       await unfollowHost(user.uid, hostId);
       setFollowing(prev => prev.filter(f => f.id !== hostId));
     } catch (error) {
@@ -935,8 +935,8 @@ export const FollowersPage: React.FC<SubPageProps & { onHostClick?: (hostName: s
 
       try {
         setLoading(true);
-        const { getHostFollowers } = await import('../firebase/follow');
-        const { getUserProfile } = await import('../firebase/db');
+        const { getHostFollowers } = await import('../../firebase/follow');
+        const { getUserProfile } = await import('../../firebase/db');
         const followersIds = await getHostFollowers(user.uid);
         
         const followersProfiles = await Promise.all(
