@@ -45,7 +45,7 @@ export const translations = {
       mobilizeSupport: {
         category: 'GATHERINGS',
         title: 'Mobilize & Support',
-        description: 'Start Circles dedicated to causes or local impact, and bring people together through meaningful real-life Sessions and community action.',
+        description: 'Start Circles dedicated to causes or local impact, and bring people together through meaningful real-life Sessions.',
       },
       learningWorkshops: {
         category: 'LEARNING',
@@ -889,7 +889,7 @@ export const translations = {
       mobilizeSupport: {
         category: 'RASSEMBLEMENTS',
         title: 'Mobiliser et soutenir',
-        description: 'Démarrez des Cercles dédiés à des causes ou à un impact local, et rassemblez les gens à travers des Sessions en personne significatives et des actions communautaires.',
+        description: 'Démarrez des Cercles dédiés à des causes ou à un impact local, et rassemblez les gens à travers des Sessions en personne significatives.',
       },
       learningWorkshops: {
         category: 'APPRENTISSAGE',
