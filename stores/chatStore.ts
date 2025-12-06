@@ -35,7 +35,8 @@ interface ChatStore {
   polls: Poll[];
   firestoreMessages: Record<string, FirestoreChatMessage[]>; // eventId -> messages
   unsubscribeCallbacks: Record<string, () => void>; // eventId -> unsubscribe function
-  addMessage: (eventId: string, userId: string, userName: string, message: string, type?: ChatMessage['type'], isHost?: boolean) => Promise<void>;
+  // REFACTORED: Only senderId required - sender info fetched from /users/{senderId}
+  addMessage: (eventId: string, senderId: string, message: string, type?: ChatMessage['type'], isHost?: boolean) => Promise<void>;
   getMessagesForEvent: (eventId: string) => ChatMessage[];
   subscribeToEventChat: (eventId: string) => void;
   unsubscribeFromEventChat: (eventId: string) => void;
@@ -45,13 +46,14 @@ interface ChatStore {
   initializeEventChat: (eventId: string, hostName: string) => void;
 }
 
-// Helper to convert FirestoreChatMessage to ChatMessage
+// REFACTORED: Map Firestore message to ChatMessage
+// Sender info (userName) is fetched from /users/{senderId} in real-time
 const mapFirestoreMessageToChatMessage = (msg: FirestoreChatMessage): ChatMessage => {
   return {
     id: msg.id,
     eventId: msg.eventId,
-    userId: msg.userId,
-    userName: msg.userName,
+    userId: msg.senderId || msg.userId || '', // Use senderId (standardized), fallback to userId (backward compatibility)
+    userName: msg.userName || '', // Will be fetched from /users/{senderId} if empty
     message: msg.text,
     timestamp: new Date(msg.createdAt).toISOString(),
     type: msg.type || 'message',
@@ -65,22 +67,24 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   firestoreMessages: {},
   unsubscribeCallbacks: {},
 
-  addMessage: async (eventId, userId, userName, message, type = 'message', isHost = false) => {
+  // REFACTORED: Only senderId required - sender info fetched from /users/{senderId}
+  addMessage: async (eventId, senderId, message, type = 'message', isHost = false) => {
     // CRITICAL: Save message to Firestore - real-time sync handles UI updates
     // Messages are constantly saved and synced across all devices via onSnapshot
     // Only host and attendees can send messages (enforced by GroupChat component)
     try {
-      await addChatMessage(eventId, userId, userName, message, type, isHost);
+      await addChatMessage(eventId, senderId, message, type, isHost);
       // The realtime listener (onSnapshot) will update the messages automatically
       // This ensures messages are synced with past, current, and future content
     } catch (error) {
       console.error("[CHAT_STORE] Error adding message to Firestore:", error);
       // Fallback to local state if Firestore fails (offline mode)
+      // Note: userName will be fetched from /users/{senderId} when displaying
       const newMessage: ChatMessage = {
         id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         eventId,
-        userId,
-        userName,
+        userId: senderId,
+        userName: '', // Will be fetched from /users/{senderId}
         message,
         timestamp: new Date().toISOString(),
         type,

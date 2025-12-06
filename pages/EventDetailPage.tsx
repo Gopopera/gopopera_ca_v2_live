@@ -12,7 +12,8 @@ import { HostReviewsModal } from '../components/events/HostReviewsModal';
 import { ShareModal } from '../components/share/ShareModal';
 import { formatDate } from '../utils/dateFormatter';
 import { formatRating } from '../utils/formatRating';
-import { getUserProfile, getReservationCountForEvent, listHostReviews } from '../firebase/db';
+import { getReservationCountForEvent, listHostReviews, subscribeToReservationCount } from '../firebase/db';
+// REFACTORED: No longer using getUserProfile - using real-time subscriptions instead
 import { getMainCategoryLabelFromEvent } from '../utils/categoryMapper';
 import { getSessionFrequencyText, getSessionModeText } from '../utils/eventHelpers';
 
@@ -126,12 +127,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const eventIsPoperaOwned = stableValuesRef.current.isPoperaOwned;
   const eventIsOfficialLaunch = stableValuesRef.current.isOfficialLaunch;
   
-  // Store hostPhotoURL in ref to avoid direct event access
-  const eventHostPhotoURLRef = useRef<string | null>(null);
-  if (eventId !== lastEventIdRef.current || event?.hostPhotoURL !== eventHostPhotoURLRef.current) {
-    eventHostPhotoURLRef.current = event?.hostPhotoURL || null;
-  }
-  const eventHostPhotoURL = eventHostPhotoURLRef.current;
+  // REFACTORED: No longer using eventHostPhotoURL - fetch from /users/{hostId} in real-time
   
   // Get favorites directly from user store for reactive updates
   // This ensures the UI updates immediately when favorites change
@@ -172,10 +168,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     return rsvpsRef.current.includes(eventId);
   }, [eventId]); // Only depend on eventId - ref is updated separately
   
-  // State for host name (may need to be fetched if missing)
-  // Initialize with eventHostName but don't reset if event object changes but hostName stays same
-  // The fetchHostProfile useEffect will update this if needed, so we don't need a separate useEffect
-  const [displayHostName, setDisplayHostName] = useState<string>(() => eventHostName);
+  // REFACTORED: Initialize empty - will be populated by real-time subscription
+  const [displayHostName, setDisplayHostName] = useState<string>('');
   
   // Native event listener as backup (capture phase)
   // Use refs to avoid recreating the listener on every render
@@ -188,7 +182,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   displayHostNameRef.current = displayHostName;
   
   useEffect(() => {
-    const handleNativeClick = (e: Event) => {
+    const handleNativeClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (target.closest('[data-profile-button]')) {
         e.preventDefault();
@@ -278,106 +272,65 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     }
   }, [hostOverallRating, hostOverallReviewCount, eventRating, eventReviewCount]); // Use stable primitive values
   
-  // Fetch host profile picture and name - always fetch from Firestore for accuracy (works when not logged in)
-  // Also refresh periodically if current user is the host to catch profile picture updates
-  // CRITICAL: Use refs to track previous values and prevent infinite loops
-  // These refs MUST be declared at hook level, not inside useEffect
-  // CRITICAL: Always fetch host profile picture from Firestore (source of truth)
-  // This ensures profile pictures are synchronized across all views for ALL users
+  // REFACTORED: Real-time subscription to /users/{hostId} - single source of truth
+  // No polling, no fallbacks to stale event data - always fresh from Firestore
   useEffect(() => {
-    const fetchHostProfile = async () => {
-      if (!eventHostId) {
-        setHostProfilePicture(null);
-        setDisplayHostName('Unknown Host');
-        return;
-      }
-      
-      // ALWAYS fetch from Firestore to ensure we have the latest host information
-      // Firestore is the SINGLE SOURCE OF TRUTH for all profile data
-      try {
-        const hostProfile = await getUserProfile(eventHostId);
-        if (hostProfile) {
-          // Priority: photoURL > imageUrl (both from Firestore - always latest)
-          const profilePic = hostProfile.photoURL || hostProfile.imageUrl || null;
-          setHostProfilePicture(profilePic);
+    if (!eventHostId) {
+      setHostProfilePicture(null);
+      setDisplayHostName('Unknown Host');
+      return;
+    }
+    
+    if (import.meta.env.DEV) {
+      console.log('[EVENT_DETAIL] 📡 Subscribing to host profile:', { hostId: eventHostId });
+    }
+    
+    let unsubscribe: (() => void) | null = null;
+    
+    // Real-time subscription to host user document
+    import('../firebase/userSubscriptions').then(({ subscribeToUserProfile }) => {
+      unsubscribe = subscribeToUserProfile(eventHostId, (hostData) => {
+        if (hostData) {
+          setHostProfilePicture(hostData.photoURL || null);
+          setDisplayHostName(hostData.displayName || 'Unknown Host');
           
-          // Always use Firestore name as source of truth (most up-to-date)
-          const firestoreName = hostProfile.name || hostProfile.displayName;
-          if (firestoreName && firestoreName.trim() !== '' && firestoreName !== 'You') {
-            setDisplayHostName(firestoreName);
-          } else {
-            // Fallback to eventHostName only if Firestore doesn't have a valid name
-            const fallbackName = eventHostName && eventHostName !== 'You' && eventHostName !== 'Unknown Host' 
-              ? eventHostName 
-              : 'Unknown Host';
-            setDisplayHostName(fallbackName);
+          if (import.meta.env.DEV) {
+            console.log('[EVENT_DETAIL] ✅ Host profile updated:', {
+              hostId: eventHostId,
+              displayName: hostData.displayName,
+              hasPhoto: !!hostData.photoURL,
+            });
           }
         } else {
-          // If profile doesn't exist in Firestore, use event data as fallback
-          // CRITICAL: Use hostPhotoURL from event document as fallback (works when logged out)
-          const fallbackName = eventHostName && eventHostName !== 'You' && eventHostName.trim() !== ''
-            ? eventHostName 
-            : 'Unknown Host';
-          // Use hostPhotoURL from event as fallback - this ensures profile pictures work when logged out
-          setHostProfilePicture(eventHostPhotoURL || null);
-          setDisplayHostName(fallbackName);
+          setHostProfilePicture(null);
+          setDisplayHostName('Unknown Host');
         }
-      } catch (error: any) {
-        // Handle permission errors gracefully
-        // CRITICAL: Use hostPhotoURL from event document as fallback (works when logged out)
-        if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
-          console.warn('[EVENT_DETAIL] Permission denied for host profile, using fallback');
-        } else {
-          console.error('[EVENT_DETAIL] Error fetching host profile:', error);
-        }
-        const fallbackName = eventHostName || 'Unknown Host';
-        // Use hostPhotoURL from event as fallback - this ensures profile pictures work when logged out
-        setHostProfilePicture(eventHostPhotoURL || null);
-        setDisplayHostName(fallbackName);
-      }
-    };
-    
-    // Fetch immediately on mount
-    fetchHostProfile();
-    
-    // Refresh profile picture periodically to catch updates immediately
-    // This ensures profile pictures are always synchronized across all views for ALL users
-    let refreshInterval: NodeJS.Timeout | null = null;
-    if (eventHostId) {
-      refreshInterval = setInterval(() => {
-        fetchHostProfile();
-      }, 3000); // Refresh every 3 seconds for faster sync (all users)
-    }
+      });
+    }).catch((error) => {
+      console.error('[EVENT_DETAIL] ❌ Error loading user subscriptions:', error);
+      setHostProfilePicture(null);
+      setDisplayHostName('Unknown Host');
+    });
     
     return () => {
-      if (refreshInterval) {
-        clearInterval(refreshInterval);
+      if (unsubscribe) {
+        if (import.meta.env.DEV) {
+          console.log('[EVENT_DETAIL] 🧹 Unsubscribing from host profile:', { hostId: eventHostId });
+        }
+        unsubscribe();
       }
     };
-  }, [eventHostId, eventHostName]);
+  }, [eventHostId]);
   
-  // Also update immediately when userProfile changes (if viewing own events)
+  // REFACTORED: Real-time subscription to reservation count - computed from reservations
   useEffect(() => {
-    if (user?.uid === eventHostId) {
-      const currentUserPic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null;
-      if (currentUserPic && currentUserPic !== hostProfilePicture) {
-        setHostProfilePicture(currentUserPic);
-        if (import.meta.env.DEV) {
-          console.log('[EVENT_DETAIL] ✅ Updated profile picture from userProfile:', {
-            hostId: eventHostId,
-            hasProfilePic: !!currentUserPic,
-          });
-        }
-      }
-    }
-  }, [eventHostId, user?.uid, userProfile?.photoURL, userProfile?.imageUrl, user?.photoURL, user?.profileImageUrl, hostProfilePicture]);
-  
-  // Subscribe to real-time reservation count from Firestore
-  useEffect(() => {
-    // Always set initial count first
     if (!eventId || isDemo) {
-      setReservationCount(eventAttendeesCount);
+      setReservationCount(0);
       return () => {}; // No-op cleanup
+    }
+    
+    if (import.meta.env.DEV) {
+      console.log('[EVENT_DETAIL] 📡 Subscribing to reservation count:', { eventId });
     }
     
     // Use real-time subscription for instant updates
@@ -394,18 +347,20 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         }
       });
     }).catch((error) => {
-      console.error('[EVENT_DETAIL] Error loading reservation count subscription:', error);
-      // Fallback to eventAttendeesCount on error
-      setReservationCount(eventAttendeesCount);
+      console.error('[EVENT_DETAIL] ❌ Error loading reservation count subscription:', error);
+      setReservationCount(0);
     });
     
     // Always return cleanup function
     return () => {
       if (unsubscribe) {
+        if (import.meta.env.DEV) {
+          console.log('[EVENT_DETAIL] 🧹 Unsubscribing from reservation count:', { eventId });
+        }
         unsubscribe();
       }
     };
-  }, [eventId, eventAttendeesCount, isDemo]); // Use stable primitive values
+  }, [eventId, isDemo]);
 
   // Check if user is following the host
   useEffect(() => {
@@ -815,7 +770,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               <div className="flex gap-2 mt-2">
                 <div className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center">
                   <h4 className="text-base font-heading font-bold text-popera-teal">
-                    {reservationCount !== null ? reservationCount : (event.attendeesCount || 0)}
+                    {reservationCount}
                   </h4>
                   <p className="text-[8px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">Attending</p>
                 </div>
@@ -895,7 +850,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             <div className="flex gap-2 sm:gap-3">
               <div className="flex-1 bg-white p-2 sm:p-3 rounded-xl border border-gray-200 text-center">
                 <h4 className="text-base sm:text-lg font-heading font-bold text-popera-teal">
-                  {reservationCount !== null ? reservationCount : (event.attendeesCount || 0)}
+                  {reservationCount}
                 </h4>
                 <p className="text-[8px] sm:text-[10px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">Attending</p>
               </div>
@@ -1003,7 +958,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   onClick={handleShare}
                   aria-label="Share event"
                   className="w-full py-3.5 lg:py-4 bg-[#15383c] text-white rounded-full text-base lg:text-lg font-bold hover:bg-[#1f4d52] transition-colors shadow-md whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2 !opacity-100 !visible"
-                  style={{ backgroundColor: '#15383c', opacity: '1 !important', visibility: 'visible !important' }}
+                  style={{ backgroundColor: '#15383c', opacity: 1, visibility: 'visible' as const }}
                 >
                   <Share2 size={18} /> Share Event
                 </button>
@@ -1283,7 +1238,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       {event.hostId && (
         <HostReviewsModal
           hostId={event.hostId}
-          hostName={displayHostName || event.hostName || 'Unknown Host'}
+          hostName={displayHostName || 'Unknown Host'}
           hostRating={hostOverallRating}
           hostReviewCount={hostOverallReviewCount}
           isOpen={showHostReviewsModal}

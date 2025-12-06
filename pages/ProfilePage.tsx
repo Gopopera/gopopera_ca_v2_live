@@ -3,7 +3,8 @@ import { ViewState, Event } from '../types';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { useUserStore } from '../stores/userStore';
 import { useEventStore } from '../stores/eventStore';
-import { getReservationCountForEvent, listHostReviews, getUserProfile } from '../firebase/db';
+import { getReservationCountForEvent, listHostReviews } from '../firebase/db';
+// REFACTORED: No longer using getUserProfile - using real-time subscriptions instead
 import { getFollowingHosts, getHostFollowers } from '../firebase/follow';
 
 interface ProfilePageProps {
@@ -19,78 +20,57 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
   const [stats, setStats] = useState({ revenue: 30, hosted: 0, attendees: 0, following: 0, attended: 0, reviews: 0, followers: 0 });
   const [loading, setLoading] = useState(true);
   
-  // State for profile picture (synced from Firestore - always latest)
-  const [profilePicture, setProfilePicture] = useState<string | null>(
-    userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null
-  );
+  // REFACTORED: Real-time subscription to /users/{userId} - single source of truth
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string>(userName);
   
-  // CRITICAL: Always fetch profile picture from Firestore (source of truth)
-  // This ensures profile pictures are synchronized across all views
   useEffect(() => {
-    const fetchProfilePicture = async () => {
-      if (!user?.uid) {
-        setProfilePicture(null);
-        return;
-      }
-      
-      // ALWAYS fetch from Firestore to ensure we have the latest profile picture
-      // Firestore is the SINGLE SOURCE OF TRUTH for all profile data
-      try {
-        const freshProfile = await getUserProfile(user.uid);
-        if (freshProfile) {
-          // Priority: photoURL > imageUrl (both from Firestore - always latest)
-          const latestPic = freshProfile.photoURL || freshProfile.imageUrl || null;
-          setProfilePicture(latestPic);
+    if (!user?.uid) {
+      setProfilePicture(null);
+      setDisplayName(userName);
+      return;
+    }
+    
+    if (import.meta.env.DEV) {
+      console.log('[PROFILE_PAGE] 📡 Subscribing to user profile:', { userId: user.uid });
+    }
+    
+    let unsubscribe: (() => void) | null = null;
+    
+    // Real-time subscription to user document
+    import('../firebase/userSubscriptions').then(({ subscribeToUserProfile }) => {
+      unsubscribe = subscribeToUserProfile(user.uid, (userData) => {
+        if (userData) {
+          setProfilePicture(userData.photoURL || null);
+          setDisplayName(userData.displayName || userName);
           
           if (import.meta.env.DEV) {
-            console.log('[PROFILE_PAGE] ✅ Fetched profile picture from Firestore:', {
+            console.log('[PROFILE_PAGE] ✅ User profile updated:', {
               userId: user.uid,
-              hasProfilePic: !!latestPic,
+              displayName: userData.displayName,
+              hasPhoto: !!userData.photoURL,
             });
           }
         } else {
-          // Fallback to userProfile or user if Firestore fetch fails
-          const fallbackPic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null;
-          setProfilePicture(fallbackPic);
+          setProfilePicture(null);
+          setDisplayName(userName);
         }
-      } catch (error) {
-        console.warn('[PROFILE_PAGE] ⚠️ Failed to fetch profile picture from Firestore:', error);
-        // Fallback to userProfile or user if Firestore fetch fails
-        const fallbackPic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null;
-        setProfilePicture(fallbackPic);
-      }
-    };
-    
-    // Fetch immediately on mount
-    fetchProfilePicture();
-    
-    // Refresh profile picture periodically to catch updates immediately
-    // This ensures profile pictures are always synchronized when users update them
-    const refreshInterval = setInterval(() => {
-      fetchProfilePicture();
-    }, 3000); // Refresh every 3 seconds for faster sync
+      });
+    }).catch((error) => {
+      console.error('[PROFILE_PAGE] ❌ Error loading user subscriptions:', error);
+      setProfilePicture(null);
+      setDisplayName(userName);
+    });
     
     return () => {
-      clearInterval(refreshInterval);
-    };
-  }, [user?.uid]);
-  
-  // Also update immediately when userProfile changes (instant sync)
-  // This provides instant updates when the user updates their own profile
-  useEffect(() => {
-    const latestPic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null;
-    if (latestPic !== profilePicture) {
-      setProfilePicture(latestPic);
-      if (import.meta.env.DEV && latestPic) {
-        console.log('[PROFILE_PAGE] ✅ Updated profile picture from userProfile:', {
-          userId: user?.uid,
-          hasProfilePic: !!latestPic,
-        });
+      if (unsubscribe) {
+        if (import.meta.env.DEV) {
+          console.log('[PROFILE_PAGE] 🧹 Unsubscribing from user profile:', { userId: user.uid });
+        }
+        unsubscribe();
       }
-    }
-  }, [userProfile?.photoURL, userProfile?.imageUrl, user?.photoURL, user?.profileImageUrl, profilePicture, user?.uid]);
-  
-  const displayName = user?.displayName || user?.name || userName;
+    };
+  }, [user?.uid, userName]);
   const initials = displayName ? displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'P';
   
   // Calculate metrics - optimized with parallel queries and proper dependency tracking

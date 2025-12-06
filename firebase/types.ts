@@ -12,15 +12,20 @@ export interface FirestoreEvent {
   address: string;
   location: string;     // Combined city + address
   tags: string[];
-  host: string;
-  hostName: string;    // For backward compatibility
-  hostId: string;
-  hostPhotoURL?: string; // Host profile picture URL for better performance
+  hostId: string; // Single field - host data fetched from /users/{hostId} in real-time
+  // DEPRECATED FIELDS - kept for backward compatibility during migration
+  /** @deprecated Use hostId and fetch from /users/{hostId} instead */
+  host?: string;
+  /** @deprecated Use hostId and fetch from /users/{hostId} instead */
+  hostName?: string;
+  /** @deprecated Use hostId and fetch from /users/{hostId} instead */
+  hostPhotoURL?: string;
   imageUrl?: string;
   imageUrls?: string[]; // Array of image URLs (first one is the main photo)
   rating?: number;
   reviewCount?: number;
-  attendeesCount: number;
+  // REMOVED: attendeesCount - computed in real-time from reservations collection
+  // Use subscribeToReservationCount(eventId) for real-time updates
   createdAt: number;   // Timestamp
   updatedAt?: number;  // Timestamp
   // Map coordinates
@@ -60,46 +65,51 @@ export interface FirestoreEvent {
   startDateTime?: number; // Timestamp for session start (alternative to startDate)
 }
 
+// REFACTORED: Single source of truth for user data
+// All profile fields standardized to displayName and photoURL only
 export interface FirestoreUser {
   id: string;
   uid: string;
-  name: string;
   email: string;
-  imageUrl?: string;
-  displayName?: string;
-  photoURL?: string;
+  displayName: string; // Single field for user display name
+  photoURL?: string; // Single field for profile picture
+  bio?: string | null;
+  phoneVerified?: boolean;
+  username?: string | null;
+  createdAt: number;
+  updatedAt?: number;
+  
+  // Extended fields (kept for functionality)
   city?: string;
-  bio?: string;
-  fullName?: string; // Full name (separate from displayName/userName)
   preferences?: 'attend' | 'host' | 'both';
   favorites?: string[]; // Event IDs
   hostedEvents?: string[]; // Event IDs user has created
-  preferredCity?: string; // User's preferred city
-  phoneVerified?: boolean; // SMS verification status
-  phone_number?: string; // Verified phone number
-  phoneVerifiedForHosting?: boolean; // Host phone verification flag (one-time verification for event creation)
-  hostPhoneNumber?: string | null; // Phone number used for host verification
-  signupIntent?: 'attend' | 'host' | 'both'; // First-run signup intent
-  // Follow system
+  preferredCity?: string;
+  phone_number?: string;
+  phoneVerifiedForHosting?: boolean;
+  hostPhoneNumber?: string | null;
+  signupIntent?: 'attend' | 'host' | 'both';
   following?: string[]; // Host IDs user is following
   followers?: string[]; // User IDs following this host
-  // Notification preferences
   notification_settings?: {
     email_opt_in?: boolean;
     sms_opt_in?: boolean;
     notification_opt_in?: boolean;
   };
-  // Ban system
   bannedEvents?: string[]; // Event IDs user is banned from
-  // Demo host flag
-  isDemoHost?: boolean; // True for Popera demo host profile
-  isOfficialHost?: boolean; // Official Popera host flag
-  username?: string; // Username for the user
-  isVerified?: boolean; // Whether the account is verified
-  phone_verified?: boolean; // Multi-factor enrollment flag
-  createdAt: number;
-  updatedAt?: number | unknown;
-  isPoperaDemoHost?: boolean; // Specific flag for Popera demo host
+  isDemoHost?: boolean;
+  isOfficialHost?: boolean;
+  isVerified?: boolean;
+  isPoperaDemoHost?: boolean;
+  
+  // DEPRECATED FIELDS - kept for backward compatibility during migration
+  // These will be removed after migration is complete
+  /** @deprecated Use displayName instead */
+  name?: string;
+  /** @deprecated Use photoURL instead */
+  imageUrl?: string;
+  /** @deprecated Use phoneVerified instead */
+  phone_verified?: boolean;
 }
 
 export interface FirestoreReview {
@@ -135,15 +145,21 @@ export interface FirestoreExpulsion {
   expelledAt: number;
 }
 
+// REFACTORED: Messages only store senderId - sender info fetched from /users/{senderId}
 export interface FirestoreChatMessage {
   id: string;
   eventId: string;
-  userId: string;
-  userName: string;
+  senderId: string; // Renamed from userId for clarity - fetch sender info from /users/{senderId}
   text: string;
   createdAt: number;
   type?: 'message' | 'announcement' | 'poll' | 'system';
   isHost?: boolean;
+  
+  // DEPRECATED FIELDS - kept for backward compatibility during migration
+  /** @deprecated Use senderId instead */
+  userId?: string;
+  /** @deprecated Fetch from /users/{senderId} instead */
+  userName?: string;
 }
 
 export interface FirestoreHostProfile {

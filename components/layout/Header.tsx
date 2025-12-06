@@ -21,65 +21,60 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
   const { language, setLanguage, t } = useLanguage();
   const user = useUserStore((state) => state.user);
   const userProfile = useUserStore((state) => state.userProfile);
-  // State for profile picture (synced from Firestore - always latest)
-  const [userPhoto, setUserPhoto] = useState<string | null>(
-    userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null
-  );
-  // Get user initials for fallback
-  const userInitials = user?.displayName?.[0] || user?.name?.[0] || userProfile?.displayName?.[0] || userProfile?.name?.[0] || 'P';
+  // REFACTORED: Real-time subscription to /users/{userId} - single source of truth
+  const [userPhoto, setUserPhoto] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string>('');
   
-  // CRITICAL: Always fetch profile picture from Firestore (source of truth)
-  // This ensures profile pictures are synchronized across all views
   useEffect(() => {
-    const fetchProfilePicture = async () => {
-      if (!user?.uid) {
-        setUserPhoto(null);
-        return;
-      }
-      
-      // ALWAYS fetch from Firestore to ensure we have the latest profile picture
-      // Firestore is the SINGLE SOURCE OF TRUTH for all profile data
-      try {
-        const { getUserProfile } = await import('../../firebase/db');
-        const freshProfile = await getUserProfile(user.uid);
-        if (freshProfile) {
-          // Priority: photoURL > imageUrl (both from Firestore - always latest)
-          const latestPic = freshProfile.photoURL || freshProfile.imageUrl || null;
-          setUserPhoto(latestPic);
+    if (!user?.uid || !isLoggedIn) {
+      setUserPhoto(null);
+      setDisplayName('');
+      return;
+    }
+    
+    if (import.meta.env.DEV) {
+      console.log('[HEADER] 📡 Subscribing to user profile:', { userId: user.uid });
+    }
+    
+    let unsubscribe: (() => void) | null = null;
+    
+    // Real-time subscription to user document
+    import('../../firebase/userSubscriptions').then(({ subscribeToUserProfile }) => {
+      unsubscribe = subscribeToUserProfile(user.uid, (userData) => {
+        if (userData) {
+          setUserPhoto(userData.photoURL || null);
+          setDisplayName(userData.displayName || '');
+          
+          if (import.meta.env.DEV) {
+            console.log('[HEADER] ✅ User profile updated:', {
+              userId: user.uid,
+              displayName: userData.displayName,
+              hasPhoto: !!userData.photoURL,
+            });
+          }
         } else {
-          // Fallback to userProfile or user if Firestore fetch fails
-          const fallbackPic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null;
-          setUserPhoto(fallbackPic);
+          setUserPhoto(null);
+          setDisplayName('');
         }
-      } catch (error) {
-        console.warn('[HEADER] ⚠️ Failed to fetch profile picture from Firestore:', error);
-        // Fallback to userProfile or user if Firestore fetch fails
-        const fallbackPic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null;
-        setUserPhoto(fallbackPic);
-      }
-    };
-    
-    // Fetch immediately on mount
-    fetchProfilePicture();
-    
-    // Refresh profile picture periodically to catch updates immediately
-    // This ensures profile pictures are always synchronized when users update them
-    const refreshInterval = setInterval(() => {
-      fetchProfilePicture();
-    }, 3000); // Refresh every 3 seconds for faster sync
+      });
+    }).catch((error) => {
+      console.error('[HEADER] ❌ Error loading user subscriptions:', error);
+      setUserPhoto(null);
+      setDisplayName('');
+    });
     
     return () => {
-      clearInterval(refreshInterval);
+      if (unsubscribe) {
+        if (import.meta.env.DEV) {
+          console.log('[HEADER] 🧹 Unsubscribing from user profile:', { userId: user.uid });
+        }
+        unsubscribe();
+      }
     };
-  }, [user?.uid]);
+  }, [user?.uid, isLoggedIn]);
   
-  // Also update immediately when userProfile changes (instant sync)
-  useEffect(() => {
-    const latestPic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null;
-    if (latestPic !== userPhoto) {
-      setUserPhoto(latestPic);
-    }
-  }, [userProfile?.photoURL, userProfile?.imageUrl, user?.photoURL, user?.profileImageUrl, userPhoto]);
+  // Get user initials for fallback
+  const userInitials = displayName?.[0] || user?.displayName?.[0] || user?.name?.[0] || userProfile?.displayName?.[0] || userProfile?.name?.[0] || 'P';
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Real-time subscription to unread notification count

@@ -408,6 +408,14 @@ export async function notifyAttendeesOfNewMessage(
 
       // ALWAYS send in-app notification (cannot be disabled)
       try {
+        console.log('[NOTIFICATIONS] 📬 Creating message notification:', {
+          userId,
+          eventId,
+          senderId,
+          senderName,
+          messageSnippet: messageSnippet.substring(0, 50),
+          path: `users/${userId}/notifications`,
+        });
         await createNotification(userId, {
           userId,
           type: 'new-message',
@@ -416,8 +424,16 @@ export async function notifyAttendeesOfNewMessage(
           eventId,
         });
         console.log(`[NOTIFICATIONS] ✅ In-app notification sent to ${userId} for message in ${eventTitle}`);
-      } catch (error) {
-        console.error(`[NOTIFICATIONS] ❌ Error creating in-app notification for ${userId}:`, error);
+      } catch (error: any) {
+        console.error(`[NOTIFICATIONS] ❌ Error creating in-app notification for ${userId}:`, {
+          userId,
+          eventId,
+          senderId,
+          error: error?.message || error,
+          code: error?.code,
+          stack: error?.stack,
+          path: `users/${userId}/notifications`,
+        });
         // Continue with email/SMS even if in-app fails
       }
 
@@ -597,6 +613,13 @@ export async function notifyHostOfRSVP(
 
     // ALWAYS send in-app notification (cannot be disabled)
     try {
+      console.log('[NOTIFICATIONS] 📬 Creating RSVP notification:', {
+        hostId,
+        attendeeId,
+        eventId,
+        eventTitle,
+        attendeeName: attendeeInfo.name,
+      });
       await createNotification(hostId, {
         userId: hostId,
         type: 'new-rsvp',
@@ -604,10 +627,18 @@ export async function notifyHostOfRSVP(
         body: `${attendeeInfo.name || 'Someone'} RSVP'd to ${eventTitle}`,
         eventId,
       });
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error('Error creating RSVP notification:', error);
-      }
+      console.log('[NOTIFICATIONS] ✅ RSVP notification created successfully:', {
+        hostId,
+        eventId,
+      });
+    } catch (error: any) {
+      console.error('[NOTIFICATIONS] ❌ Error creating RSVP notification:', {
+        hostId,
+        eventId,
+        error: error?.message || error,
+        code: error?.code,
+        stack: error?.stack,
+      });
     }
 
     // Email notification
@@ -776,6 +807,12 @@ export async function notifyHostOfNewFollower(
 
     // ALWAYS send in-app notification (cannot be disabled)
     try {
+      console.log('[NOTIFICATIONS] 📬 Creating follower notification:', {
+        hostId,
+        followerId,
+        followerName: followerInfo.name,
+        path: `users/${hostId}/notifications`,
+      });
       await createNotification(hostId, {
         userId: hostId,
         type: 'new-follower',
@@ -783,10 +820,19 @@ export async function notifyHostOfNewFollower(
         body: `${followerInfo.name || 'Someone'} started following you`,
         hostId: hostId,
       });
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error('Error creating new follower notification:', error);
-      }
+      console.log('[NOTIFICATIONS] ✅ Follower notification created successfully:', {
+        hostId,
+        followerId,
+      });
+    } catch (error: any) {
+      console.error('[NOTIFICATIONS] ❌ Error creating follower notification:', {
+        hostId,
+        followerId,
+        error: error?.message || error,
+        code: error?.code,
+        stack: error?.stack,
+        path: `users/${hostId}/notifications`,
+      });
     }
 
     // Email (optional, host preference)

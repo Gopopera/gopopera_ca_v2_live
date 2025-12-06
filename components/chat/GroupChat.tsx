@@ -19,6 +19,49 @@ import { processRefundForRemovedUser } from '../../utils/refundHelper';
 import { expelUserFromEvent } from '../../firebase/db';
 import { followHost, unfollowHost, isFollowing } from '../../firebase/follow';
 
+// REFACTORED: Component to fetch sender info in real-time from /users/{senderId}
+// Memoized to prevent unnecessary re-renders when multiple messages from same sender
+const MessageSenderName: React.FC<{ userId: string; fallbackName: string; timeString: string }> = React.memo(({ userId, fallbackName, timeString }) => {
+  const [senderName, setSenderName] = React.useState<string>(fallbackName);
+  
+  React.useEffect(() => {
+    if (!userId) {
+      setSenderName(fallbackName);
+      return;
+    }
+    
+    let unsubscribe: (() => void) | null = null;
+    
+    // Real-time subscription to sender user document
+    import('../../firebase/userSubscriptions').then(({ subscribeToUserProfile }) => {
+      unsubscribe = subscribeToUserProfile(userId, (userData) => {
+        if (userData) {
+          setSenderName(userData.displayName || fallbackName);
+        } else {
+          setSenderName(fallbackName);
+        }
+      });
+    }).catch((error) => {
+      console.error('[MESSAGE_SENDER] ❌ Error loading user subscriptions:', error);
+      setSenderName(fallbackName);
+    });
+    
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [userId, fallbackName]);
+  
+  return (
+    <span className="text-[10px] text-gray-400">
+      {senderName} - {timeString}
+    </span>
+  );
+});
+
+MessageSenderName.displayName = 'MessageSenderName';
+
 interface GroupChatProps {
   event: Event;
   onClose: () => void;
@@ -102,134 +145,17 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   const messages = getMessagesForEvent(event.id);
   const poll = getPollForEvent(event.id);
   
-  // CRITICAL: Force subscription refresh when host opens chat
-  // Host should ALWAYS see all messages, so we ensure subscription is active immediately
+  // CRITICAL: Consolidated subscription logic for group conversation
+  // Host should ALWAYS see all messages, attendees see messages when they have access
+  // Single useEffect to prevent conflicts and ensure proper cleanup
   useEffect(() => {
-    if (isHost && !isDemo) {
-      // Force subscription for host - they should ALWAYS see all messages
-      console.log('[GROUP_CHAT] 🔄 Ensuring subscription for host (ALWAYS):', {
-        eventId: event.id,
-        userId: currentUser?.id,
-        hostId: event.hostId,
-      });
-      subscribeToEventChat(event.id);
-      
-      // Double-check messages are loaded
-      setTimeout(() => {
-        const messages = getMessagesForEvent(event.id);
-        console.log('[GROUP_CHAT] 🎯 Host message verification:', {
-          eventId: event.id,
-          messageCount: messages.length,
-          messages: messages.map(m => ({ 
-            id: m.id, 
-            userId: m.userId,
-            userName: m.userName, 
-            isHost: m.isHost,
-            text: m.message.substring(0, 50) 
-          })),
-        });
-      }, 500);
-    }
-  }, [isHost, event.id, event.hostId, isDemo, subscribeToEventChat, currentUser?.id, getMessagesForEvent]);
-  
-  // Debug: Log messages for host
-  useEffect(() => {
-    if (isHost) {
-      console.log('[GROUP_CHAT] 🎯 Host message check:', {
-        eventId: event.id,
-        messageCount: messages.length,
-        messages: messages.map(m => ({ id: m.id, userName: m.userName, isHost: m.isHost, text: m.message.substring(0, 50) })),
-        canAccessChat,
-        viewType,
-      });
-    }
-  }, [messages.length, isHost, event.id, canAccessChat, viewType, messages]);
-  
-  // Subscribe to Firestore realtime chat updates
-  // CRITICAL: All participants (host and attendees) must subscribe to see all messages
-  // Host should ALWAYS have access and see all messages - NO EXCEPTIONS (except demo events)
-  useEffect(() => {
-    // CRITICAL FIX: Host should ALWAYS subscribe to see all messages, regardless of other conditions
-    // Only exception: demo events (which are blocked for everyone)
+    // Determine if user should subscribe to chat
+    // Host always subscribes (except demo events), attendees need proper access
     const shouldSubscribe = isHost 
       ? !isDemo  // Host always subscribes unless it's a demo event
       : (canAccessChat && !isDemo && !isBanned); // Attendees need proper access
     
-    if (shouldSubscribe) {
-      console.log('[GROUP_CHAT] ✅ Subscribing to chat:', {
-        eventId: event.id,
-        isHost,
-        hasReserved,
-        canAccessChat,
-        viewType,
-        userId: currentUser?.id,
-        hostId: event.hostId,
-        shouldSubscribe,
-      });
-      
-      // CRITICAL: Force subscription immediately for host
-      // This ensures host sees all messages from the moment they open the chat
-      subscribeToEventChat(event.id);
-      
-      // CRITICAL: For hosts, verify subscription multiple times to catch any issues
-      if (isHost) {
-        const verifyInterval = setInterval(() => {
-          const messages = getMessagesForEvent(event.id);
-          // Access store directly to get raw Firestore messages for debugging
-          const chatStore = useChatStore.getState();
-          const firestoreMessages = chatStore.firestoreMessages[event.id] || [];
-          console.log('[GROUP_CHAT] 🔍 Host subscription verification:', {
-            eventId: event.id,
-            userId: currentUser?.id,
-            hostId: event.hostId,
-            messageCount: messages.length,
-            firestoreMessageCount: firestoreMessages.length,
-            messages: messages.map(m => ({ 
-              id: m.id, 
-              userId: m.userId,
-              userName: m.userName, 
-              isHost: m.isHost,
-              text: m.message.substring(0, 50) 
-            })),
-            firestoreMessages: firestoreMessages.map(m => ({ 
-              id: m.id, 
-              userId: m.userId, 
-              userName: m.userName,
-              isHost: m.isHost,
-              text: m.text?.substring(0, 50) 
-            })),
-          });
-        }, 3000); // Verify every 3 seconds for hosts
-        
-        // Cleanup verification interval
-        return () => {
-          clearInterval(verifyInterval);
-          console.log('[GROUP_CHAT] Unsubscribing from chat:', event.id);
-          unsubscribeFromEventChat(event.id);
-        };
-      } else {
-        // For attendees, just verify once after a delay
-        setTimeout(() => {
-          const messages = getMessagesForEvent(event.id);
-          console.log('[GROUP_CHAT] 📨 Messages after subscription (attendee):', {
-            eventId: event.id,
-            messageCount: messages.length,
-            messages: messages.map(m => ({ 
-              id: m.id, 
-              userId: m.userId,
-              userName: m.userName, 
-              isHost: m.isHost,
-              text: m.message.substring(0, 50) 
-            })),
-          });
-        }, 1000);
-        
-        return () => {
-          console.log('[GROUP_CHAT] Unsubscribing from chat:', event.id);
-          unsubscribeFromEventChat(event.id);
-        };
-      }
-    } else {
+    if (!shouldSubscribe) {
       console.warn('[GROUP_CHAT] ⚠️ Not subscribing to chat:', {
         eventId: event.id,
         canAccessChat,
@@ -240,10 +166,104 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
         viewType,
         userId: currentUser?.id,
         hostId: event.hostId,
-        shouldSubscribe,
+      });
+      return;
+    }
+    
+    // Log subscription start with full context
+    console.log('[GROUP_CHAT] ✅ Subscribing to chat:', {
+      eventId: event.id,
+      isHost,
+      hasReserved,
+      canAccessChat,
+      viewType,
+      userId: currentUser?.id,
+      hostId: event.hostId,
+      path: `events/${event.id}/messages`,
+    });
+    
+    // CRITICAL: Subscribe immediately - this establishes the Firestore listener
+    subscribeToEventChat(event.id);
+    
+    // For hosts: Add periodic verification to catch any subscription issues
+    let verifyInterval: NodeJS.Timeout | null = null;
+    if (isHost) {
+      verifyInterval = setInterval(() => {
+        const messages = getMessagesForEvent(event.id);
+        const chatStore = useChatStore.getState();
+        const firestoreMessages = chatStore.firestoreMessages[event.id] || [];
+        
+        console.log('[GROUP_CHAT] 🔍 Host subscription verification:', {
+          eventId: event.id,
+          userId: currentUser?.id,
+          hostId: event.hostId,
+          messageCount: messages.length,
+          firestoreMessageCount: firestoreMessages.length,
+          subscriptionActive: !!chatStore.unsubscribeCallbacks[event.id],
+          messages: messages.map(m => ({ 
+            id: m.id, 
+            userId: m.userId,
+            userName: m.userName, 
+            isHost: m.isHost,
+            text: m.message.substring(0, 50) 
+          })),
+          firestoreMessages: firestoreMessages.map(m => ({ 
+            id: m.id, 
+            userId: m.userId, 
+            userName: m.userName,
+            isHost: m.isHost,
+            text: m.text?.substring(0, 50) 
+          })),
+        });
+        
+        // If subscription appears broken, try to re-subscribe
+        if (!chatStore.unsubscribeCallbacks[event.id] && messages.length === 0 && firestoreMessages.length === 0) {
+          console.warn('[GROUP_CHAT] ⚠️ Subscription appears broken, attempting re-subscription');
+          subscribeToEventChat(event.id);
+        }
+      }, 3000); // Verify every 3 seconds for hosts
+    }
+    
+    // For attendees: Verify once after subscription
+    if (!isHost) {
+      setTimeout(() => {
+        const messages = getMessagesForEvent(event.id);
+        console.log('[GROUP_CHAT] 📨 Messages after subscription (attendee):', {
+          eventId: event.id,
+          messageCount: messages.length,
+          messages: messages.map(m => ({ 
+            id: m.id, 
+            userId: m.userId,
+            userName: m.userName, 
+            isHost: m.isHost,
+            text: m.message.substring(0, 50) 
+          })),
+        });
+      }, 1000);
+    }
+    
+    // Cleanup: Unsubscribe when component unmounts or dependencies change
+    return () => {
+      if (verifyInterval) {
+        clearInterval(verifyInterval);
+      }
+      console.log('[GROUP_CHAT] 🧹 Cleaning up subscription for event:', event.id);
+      unsubscribeFromEventChat(event.id);
+    };
+  }, [event.id, event.hostId, canAccessChat, isDemo, isBanned, subscribeToEventChat, unsubscribeFromEventChat, isHost, hasReserved, currentUser?.id, viewType, getMessagesForEvent]);
+  
+  // Debug: Log messages for host (separate effect for reactive logging)
+  useEffect(() => {
+    if (isHost && import.meta.env.DEV) {
+      console.log('[GROUP_CHAT] 🎯 Host message check:', {
+        eventId: event.id,
+        messageCount: messages.length,
+        messages: messages.map(m => ({ id: m.id, userName: m.userName, isHost: m.isHost, text: m.message.substring(0, 50) })),
+        canAccessChat,
+        viewType,
       });
     }
-  }, [event.id, event.hostId, canAccessChat, isDemo, isBanned, subscribeToEventChat, unsubscribeFromEventChat, isHost, hasReserved, currentUser?.id, viewType, getMessagesForEvent]);
+  }, [messages.length, isHost, event.id, canAccessChat, viewType]);
 
   // Check follow status
   useEffect(() => {
@@ -303,7 +323,8 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
       hostId: event.hostId,
       messagePreview: messageText.substring(0, 50),
     });
-    await addMessage(event.id, currentUser.id, currentUser.name, messageText, 'message', messageIsHost);
+    // REFACTORED: Only pass senderId - sender info fetched from /users/{senderId}
+    await addMessage(event.id, currentUser.id, messageText, 'message', messageIsHost);
     setMessage('');
 
     // Notify attendees and host of new message (non-blocking, fire-and-forget)
@@ -395,7 +416,8 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
         });
         // Send image as message with data URL (format: [Image:dataUrl:filename])
         // Message will be saved to Firestore and synced in real-time
-        await addMessage(event.id, currentUser.id, currentUser.name || currentUser.displayName || 'User', `[Image:${imageUrl}:${file.name}]`, 'message', messageIsHost);
+        // REFACTORED: Only pass senderId - sender info fetched from /users/{senderId}
+        await addMessage(event.id, currentUser.id, `[Image:${imageUrl}:${file.name}]`, 'message', messageIsHost);
         
         // Notify attendees and host of new image message (same as text messages)
         import('../../utils/notificationHelpers').then(async ({ notifyAttendeesOfNewMessage }) => {
@@ -736,7 +758,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
         <div className="px-6 sm:px-8 py-4 sm:py-6">
           <div className="bg-white/5 rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-white/10 backdrop-blur-sm">
             <div className="relative h-28 sm:h-32 rounded-lg sm:rounded-xl overflow-hidden mb-3 sm:mb-4">
-               <img src={event.imageUrl} alt={event.title} className="w-full h-full object-cover" />
+               <img src={event.imageUrls?.[0] || `https://picsum.photos/seed/${event.id}/800/600`} alt={event.title} className="w-full h-full object-cover" />
                <div className="absolute inset-0 bg-gradient-to-t from-[#15383c]/80 to-transparent"></div>
                <span className="absolute bottom-1.5 sm:bottom-2 left-1.5 sm:left-2 text-[10px] sm:text-xs font-bold bg-[#e35e25] text-white px-1.5 sm:px-2 py-0.5 rounded-full">
                  {event.category}
@@ -745,7 +767,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
             <h2 className="text-white font-heading font-bold text-base sm:text-lg leading-tight mb-1.5 sm:mb-2">
               {event.title}
             </h2>
-            <p className="text-gray-400 text-[10px] sm:text-xs">Hosted by {event.hostName}</p>
+            {/* REFACTORED: Host name fetched in real-time via GroupChatHeader */}
           </div>
         </div>
 
@@ -964,7 +986,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                               <h3 className="font-bold text-sm md:text-base">Host Announcement</h3>
                             </div>
                             <p className="text-gray-200 text-sm mb-4 leading-relaxed">{msg.message}</p>
-                            <span className="text-[10px] text-gray-400">{msg.userName} - {timeString}</span>
+                            <MessageSenderName userId={msg.userId} fallbackName={msg.userName} timeString={timeString} />
                           </div>
                         </div>
                       );
@@ -995,7 +1017,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                         </div>
                         <span className={`text-[10px] text-gray-400 ${msg.isHost ? 'mr-2' : 'ml-2'}`}>
                           {msg.isHost && <span className="font-bold text-[#e35e25]">Host </span>}
-                          {msg.userName} - {timeString}
+                          <MessageSenderName userId={msg.userId} fallbackName={msg.userName} timeString={timeString} />
                         </span>
                       </div>
                     );
@@ -1103,10 +1125,10 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
         onCreatePoll={async (question, options) => {
           try {
             // Create poll message in Firestore
+            // REFACTORED: Only pass senderId - sender info fetched from /users/{senderId}
             await addMessage(
               event.id,
               currentUser?.id || '',
-              currentUser?.name || 'Host',
               `Poll: ${question}`,
               'poll',
               true
@@ -1183,10 +1205,10 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
             });
             
             // Create announcement message in Firestore
+            // REFACTORED: Only pass senderId - sender info fetched from /users/{senderId}
             await addMessage(
               event.id,
               currentUser.id,
-              currentUser.name || currentUser.displayName || 'Host',
               `Announcement: ${title} - ${message}`,
               'announcement',
               true
@@ -1291,10 +1313,10 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
             // Also create a message in the chat to notify attendees
             const surveyText = `📋 Survey Created: ${questions.length} question(s)\n${questions.map((q, i) => `${i + 1}. ${q.question}${q.type === 'multiple' ? ` (Options: ${q.options?.join(', ')})` : ''}`).join('\n')}`;
             
+            // REFACTORED: Only pass senderId - sender info fetched from /users/{senderId}
             await addMessage(
               event.id,
               currentUser.id,
-              currentUser.name || currentUser.displayName || 'Host',
               surveyText,
               'system',
               true

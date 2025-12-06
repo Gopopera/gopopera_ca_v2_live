@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, ArrowLeft, UserPlus, UserCheck } from 'lucide-react';
 import { FAKE_HOSTS } from '@/data/fakeHosts';
 import { POPERA_HOST_NAME } from '@/stores/userStore';
-import { getUserProfile } from '../../firebase/db';
+// REFACTORED: No longer using getUserProfile - using real-time subscriptions instead
 import { Event } from '@/types';
 
 interface GroupChatHeaderProps {
@@ -29,76 +29,65 @@ export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({
   followLoading = false
 }) => {
   const [hostProfilePicture, setHostProfilePicture] = useState<string | null>(null);
-  const [displayHostName, setDisplayHostName] = useState<string>(event.hostName || '');
+  const [displayHostName, setDisplayHostName] = useState<string>('');
 
-  // CRITICAL: Always fetch host profile picture from Firestore (source of truth)
-  // This ensures profile pictures are synchronized across all views for ALL users
+  // REFACTORED: Real-time subscription to /users/{hostId} - single source of truth
+  // No polling, no fallbacks to stale event data - always fresh from Firestore
   useEffect(() => {
-    const fetchHostProfile = async () => {
-      if (!event.hostId) {
-        setHostProfilePicture(null);
-        setDisplayHostName(event.hostName || '');
-        return;
-      }
-      
-      // ALWAYS fetch from Firestore to ensure we have the latest host information
-      // Firestore is the SINGLE SOURCE OF TRUTH for all profile data
-      try {
-        const hostProfile = await getUserProfile(event.hostId);
-        if (hostProfile) {
-          // Priority: photoURL > imageUrl (both from Firestore - always latest)
-          const profilePic = hostProfile.photoURL || hostProfile.imageUrl || null;
-          setHostProfilePicture(profilePic);
-          
-          // Always use Firestore name as source of truth (most up-to-date)
-          const firestoreName = hostProfile.name || hostProfile.displayName;
-          if (firestoreName && firestoreName.trim() !== '' && firestoreName !== 'You') {
-            setDisplayHostName(firestoreName);
-          } else {
-            setDisplayHostName(event.hostName || '');
-          }
-        } else {
-          setHostProfilePicture(null);
-          setDisplayHostName(event.hostName || '');
-        }
-      } catch (error) {
-        console.warn('[GROUP_CHAT_HEADER] ⚠️ Failed to fetch host profile from Firestore:', error);
-        setHostProfilePicture(null);
-        setDisplayHostName(event.hostName || '');
-      }
-    };
-    
-    // Fetch immediately on mount
-    fetchHostProfile();
-    
-    // CRITICAL FIX: Refresh profile picture periodically to catch updates immediately
-    // This ensures profile pictures are always synchronized across all views for ALL users (host and attendees)
-    // Use shorter interval for better sync, especially for attendees viewing host profile
-    let refreshInterval: NodeJS.Timeout | null = null;
-    if (event.hostId) {
-      refreshInterval = setInterval(() => {
-        fetchHostProfile();
-      }, 2000); // Refresh every 2 seconds for faster sync (all users including attendees)
+    if (!event.hostId) {
+      setHostProfilePicture(null);
+      setDisplayHostName('Unknown Host');
+      return;
     }
     
-    return () => {
-      if (refreshInterval) {
-        clearInterval(refreshInterval);
-      }
-    };
-  }, [event.hostId, event.hostName]);
+    console.log('[GROUP_CHAT_HEADER] 📡 Subscribing to host profile:', { hostId: event.hostId });
+    
+    // Real-time subscription to host user document
+    import('../../firebase/userSubscriptions').then(({ subscribeToUserProfile }) => {
+      const unsubscribe = subscribeToUserProfile(event.hostId, (hostData) => {
+        if (hostData) {
+          setHostProfilePicture(hostData.photoURL || null);
+          setDisplayHostName(hostData.displayName || 'Unknown Host');
+          
+          console.log('[GROUP_CHAT_HEADER] ✅ Host profile updated:', {
+            hostId: event.hostId,
+            displayName: hostData.displayName,
+            hasPhoto: !!hostData.photoURL,
+          });
+        } else {
+          setHostProfilePicture(null);
+          setDisplayHostName('Unknown Host');
+        }
+      });
+      
+      return () => {
+        console.log('[GROUP_CHAT_HEADER] 🧹 Unsubscribing from host profile:', { hostId: event.hostId });
+        unsubscribe();
+      };
+    }).catch((error) => {
+      console.error('[GROUP_CHAT_HEADER] ❌ Error loading user subscriptions:', error);
+      setHostProfilePicture(null);
+      setDisplayHostName('Unknown Host');
+    });
+  }, [event.hostId]);
 
-  // Get host profile image with fallback
+  // Get host profile image - only from real-time subscription
   const getHostImage = () => {
     if (hostProfilePicture) return hostProfilePicture;
+    
+    // Fallback to fake hosts (for demo purposes only)
     if (event.hostId) {
       const fakeHost = FAKE_HOSTS.find(h => h.id === event.hostId);
       if (fakeHost) return fakeHost.profileImageUrl;
     }
-    if (event.hostName === POPERA_HOST_NAME) {
+    
+    // Fallback for Popera host
+    if (displayHostName === POPERA_HOST_NAME) {
       return 'https://i.pravatar.cc/150?img=1';
     }
-    return `https://picsum.photos/seed/${displayHostName || event.hostName}/100/100`;
+    
+    // Final fallback: placeholder
+    return `https://picsum.photos/seed/${displayHostName || 'user'}/100/100`;
   };
 
   if (isMobile) {
@@ -115,13 +104,13 @@ export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({
             </button>
           )}
           <button
-            onClick={() => onHostClick?.(displayHostName || event.hostName, event.hostId)}
+            onClick={() => onHostClick?.(displayHostName, event.hostId)}
             className="shrink-0 touch-manipulation active:scale-95 transition-transform"
-            aria-label={`View ${displayHostName || event.hostName}'s profile`}
+            aria-label={`View ${displayHostName}'s profile`}
           >
             <img
               src={getHostImage()}
-              alt={displayHostName || event.hostName}
+              alt={displayHostName}
               className="w-12 h-12 rounded-full object-cover border-2 border-[#15383c]/10 aspect-square hover:border-[#e35e25]/50 transition-colors cursor-pointer"
               style={{ aspectRatio: '1 / 1' }}
             />
@@ -130,7 +119,7 @@ export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({
             <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5 font-semibold">Group Conversation</p>
             <h2 className="font-heading font-bold text-base text-[#15383c] truncate mb-0.5">{event.title}</h2>
             <div className="flex items-center gap-2 mb-1">
-              <p className="text-xs text-gray-600 truncate">{displayHostName || event.hostName}</p>
+              <p className="text-xs text-gray-600 truncate">{displayHostName}</p>
               <span className="text-[10px] bg-[#e35e25]/10 text-[#e35e25] px-2 py-0.5 rounded-full font-bold uppercase">
                 Host
               </span>
@@ -196,7 +185,7 @@ export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({
         >
           <img
             src={getHostImage()}
-            alt={displayHostName || event.hostName}
+            alt={displayHostName}
             className="w-14 h-14 lg:w-16 lg:h-16 rounded-full object-cover border-2 border-[#15383c]/10 aspect-square hover:border-[#e35e25]/50 transition-colors cursor-pointer"
             style={{ aspectRatio: '1 / 1' }}
           />
@@ -205,7 +194,7 @@ export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({
           <p className="text-xs lg:text-sm text-gray-500 uppercase tracking-wider mb-1 font-semibold">Group Conversation</p>
           <h2 className="font-heading font-bold text-lg lg:text-xl text-[#15383c] mb-1.5 truncate">{event.title}</h2>
           <div className="flex items-center gap-3 mb-2">
-            <p className="text-sm lg:text-base text-gray-700 font-medium truncate">{displayHostName || event.hostName}</p>
+            <p className="text-sm lg:text-base text-gray-700 font-medium truncate">{displayHostName}</p>
             <span className="text-[10px] lg:text-xs bg-[#e35e25]/10 text-[#e35e25] px-2.5 py-1 rounded-full font-bold uppercase tracking-wide">
               Host
             </span>

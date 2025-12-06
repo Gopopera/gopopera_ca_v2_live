@@ -38,19 +38,14 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // REFACTORED: Use real-time subscriptions instead of polling
+  // Note: loadAttendees() still uses getDoc for one-time fetch, but we could enhance with subscriptions
   useEffect(() => {
     if (isOpen) {
       loadAttendees();
       
-      // Refresh attendees list periodically to catch profile picture updates
-      // This ensures profile pictures are always synchronized
-      const refreshInterval = setInterval(() => {
-        loadAttendees();
-      }, 3000); // Refresh every 3 seconds for faster sync
-      
-      return () => {
-        clearInterval(refreshInterval);
-      };
+      // REFACTORED: Removed polling - profile pictures update via real-time subscriptions in components
+      // If needed, we can add real-time subscriptions per attendee here
     }
   }, [isOpen, eventId]);
 
@@ -74,10 +69,11 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
         try {
           const hostDoc = await getDoc(doc(db, 'users', hostId));
           const hostData = hostDoc.data();
+          // REFACTORED: Use standardized fields only
           attendeeList.push({
             userId: hostId,
-            userName: hostData?.name || hostData?.displayName || 'Host',
-            userPhoto: hostData?.photoURL || hostData?.imageUrl,
+            userName: hostData?.displayName || hostData?.name || 'Host',
+            userPhoto: hostData?.photoURL || hostData?.imageUrl, // Backward compatibility
             isHost: true,
             hasRSVP: true,
             isBanned: false,
@@ -103,10 +99,11 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
           const bannedEvents = userData?.bannedEvents || [];
           const isBanned = bannedEvents.includes(eventId);
 
+          // REFACTORED: Use standardized fields only
           attendeeList.push({
             userId,
-            userName: userData?.name || userData?.displayName || 'User',
-            userPhoto: userData?.photoURL || userData?.imageUrl,
+            userName: userData?.displayName || userData?.name || 'User',
+            userPhoto: userData?.photoURL || userData?.imageUrl, // Backward compatibility
             isHost: false,
             hasRSVP: true,
             isBanned,

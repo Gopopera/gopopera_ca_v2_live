@@ -15,22 +15,10 @@ import { POPERA_EMAIL } from "../stores/userStore";
 
 // Helper to convert FirestoreEvent to Event (frontend type)
 // Exported for use in eventStore
+// REFACTORED: Map Firestore event to frontend Event type
+// Host data (hostName, hostPhotoURL) is fetched in real-time from /users/{hostId}
+// attendeesCount is computed in real-time from reservations
 export const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event => {
-  // Standardize all fields to ensure consistent format
-  // CRITICAL: hostName should never be empty or 'Unknown' - always prefer hostName over host
-  let hostName = firestoreEvent.hostName || firestoreEvent.host || '';
-  
-  // Clean up hostName - remove 'You' and ensure it's not empty
-  if (hostName === 'You' || hostName === '') {
-    hostName = firestoreEvent.host || '';
-  }
-  
-  // If still empty, we'll need to fetch from Firestore (handled in components)
-  // But for now, use a placeholder that components can detect and replace
-  if (!hostName || hostName === 'You') {
-    hostName = ''; // Empty string - components will fetch from Firestore using hostId
-  }
-  
   const standardizedEvent: Event = {
     id: firestoreEvent.id || '',
     title: firestoreEvent.title || '',
@@ -40,20 +28,22 @@ export const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event 
     date: firestoreEvent.date || '',
     time: firestoreEvent.time || '',
     tags: Array.isArray(firestoreEvent.tags) ? firestoreEvent.tags : [],
-    host: firestoreEvent.host || hostName || '',
-    hostName: hostName, // Will be enriched by components if empty
-    hostId: firestoreEvent.hostId || '',
+    hostId: firestoreEvent.hostId || '', // Primary field - fetch host data from /users/{hostId}
+    imageUrls: firestoreEvent.imageUrls || (firestoreEvent.imageUrl ? [firestoreEvent.imageUrl] : undefined),
+    // REMOVED: attendeesCount - computed in real-time from reservations
+    // Backward compatibility (will be removed after migration)
+    host: firestoreEvent.host || firestoreEvent.hostName || '',
+    hostName: firestoreEvent.hostName || firestoreEvent.host || '',
     hostPhotoURL: firestoreEvent.hostPhotoURL || undefined,
     imageUrl: firestoreEvent.imageUrl || (firestoreEvent.imageUrls && firestoreEvent.imageUrls.length > 0 ? firestoreEvent.imageUrls[0] : ''),
-    imageUrls: firestoreEvent.imageUrls || (firestoreEvent.imageUrl ? [firestoreEvent.imageUrl] : undefined),
-    attendeesCount: typeof firestoreEvent.attendeesCount === 'number' ? firestoreEvent.attendeesCount : 0,
+    attendeesCount: undefined, // Computed in real-time
     createdAt: firestoreEvent.createdAt ? (typeof firestoreEvent.createdAt === 'number' ? new Date(firestoreEvent.createdAt).toISOString() : new Date(firestoreEvent.createdAt).toISOString()) : new Date().toISOString(),
     location: firestoreEvent.location || `${firestoreEvent.address || ''}, ${firestoreEvent.city || ''}`.replace(/^,\s*/, '').replace(/,\s*$/, '') || firestoreEvent.city || '',
     category: (firestoreEvent.category as Event['category']) || 'Community',
     price: firestoreEvent.price || 'Free',
     rating: typeof firestoreEvent.rating === 'number' ? firestoreEvent.rating : 0,
     reviewCount: typeof firestoreEvent.reviewCount === 'number' ? firestoreEvent.reviewCount : 0,
-    attendees: typeof firestoreEvent.attendeesCount === 'number' ? firestoreEvent.attendeesCount : 0,
+    attendees: undefined, // Computed in real-time from reservations
     capacity: typeof firestoreEvent.capacity === 'number' ? firestoreEvent.capacity : undefined,
     lat: typeof firestoreEvent.lat === 'number' ? firestoreEvent.lat : undefined,
     lng: typeof firestoreEvent.lng === 'number' ? firestoreEvent.lng : undefined,
@@ -116,15 +106,9 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
       console.warn('[CREATE_EVENT] Could not check if first event:', error);
     }
     
-    // Use latest host profile data for hostName and hostPhotoURL
-    // Priority: hostProfileData (Firestore - always latest) > eventData (passed in)
-    const latestHostName = hostProfileData?.name || hostProfileData?.displayName || eventData.host || 'Unknown Host';
-    const latestHostPhotoURL = hostProfileData?.photoURL || hostProfileData?.imageUrl || eventData.hostPhotoURL || undefined;
-    
-    // Ensure hostName is never 'You' or empty
-    const finalHostName = (latestHostName && latestHostName !== 'You' && latestHostName.trim() !== '') 
-      ? latestHostName.trim() 
-      : 'Unknown Host';
+    // REFACTORED: Do not store hostName or hostPhotoURL in event
+    // Host data is fetched in real-time from /users/{hostId}
+    // Only store hostId - UI components fetch host info via real-time listener
     
     // Get Firebase app to verify project
     const app = (await import('../src/lib/firebase')).getAppSafe();
@@ -171,18 +155,17 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
       address: eventData.address || '',
       location: eventData.address ? `${eventData.address}, ${eventData.city}` : eventData.city,
       tags: Array.isArray(eventData.tags) ? eventData.tags : [],
-      // CRITICAL: Always use latest host info from Firestore (fetched above)
-      // This ensures profile pictures and names are always synchronized
-      host: finalHostName,
-      hostName: finalHostName,
+      // REFACTORED: Only store hostId - host data fetched in real-time from /users/{hostId}
       hostId: eventData.hostId || '',
-      // Store latest host photo URL from Firestore (always up-to-date)
-      hostPhotoURL: latestHostPhotoURL,
+      // Backward compatibility (will be removed after migration)
+      host: hostProfileData?.displayName || hostProfileData?.name || (eventData as any).host || 'Unknown Host',
+      hostName: hostProfileData?.displayName || hostProfileData?.name || (eventData as any).hostName || 'Unknown Host',
       imageUrl: eventData.imageUrl || (eventData.imageUrls && eventData.imageUrls.length > 0 ? eventData.imageUrls[0] : ''),
       imageUrls: eventData.imageUrls || (eventData.imageUrl ? [eventData.imageUrl] : undefined),
       rating: eventData.rating || 0,
       reviewCount: eventData.reviewCount || 0,
-      attendeesCount: eventData.attendeesCount || 0,
+      // REMOVED: attendeesCount - computed in real-time from reservations
+      // Use subscribeToReservationCount(eventId) for real-time updates
       createdAt: now,
       lat: eventData.lat,
       lng: eventData.lng,
@@ -402,7 +385,8 @@ export async function updateEvent(eventId: string, eventData: Partial<Omit<Event
     if (eventData.whatToExpect !== undefined) updateData.whatToExpect = eventData.whatToExpect;
     if (eventData.aboutEvent !== undefined) updateData.aboutEvent = eventData.aboutEvent;
     if (eventData.capacity !== undefined) updateData.capacity = eventData.capacity;
-    if (eventData.attendeesCount !== undefined) updateData.attendeesCount = eventData.attendeesCount;
+    // REMOVED: attendeesCount - computed in real-time from reservations
+    // if (eventData.attendeesCount !== undefined) updateData.attendeesCount = eventData.attendeesCount;
     if ((eventData as any).hostPhotoURL !== undefined) updateData.hostPhotoURL = (eventData as any).hostPhotoURL;
     if ((eventData as any).lat !== undefined) updateData.lat = (eventData as any).lat;
     if ((eventData as any).lng !== undefined) updateData.lng = (eventData as any).lng;
@@ -1049,10 +1033,10 @@ export async function getChatMessages(eventId: string): Promise<FirestoreChatMes
   }
 }
 
+// REFACTORED: Messages only store senderId - sender info fetched from /users/{senderId}
 export async function addChatMessage(
   eventId: string,
-  userId: string,
-  userName: string,
+  senderId: string, // Renamed from userId for clarity
   text: string,
   type: FirestoreChatMessage['type'] = 'message',
   isHost: boolean = false
@@ -1071,18 +1055,20 @@ export async function addChatMessage(
     const messagesCol = collection(db, "events", eventId, "messages");
     const messageRaw: Omit<FirestoreChatMessage, 'id'> = {
       eventId,
-      userId,
-      userName: userName || 'Anonymous',
+      senderId, // Standardized field
       text: text || '',
       createdAt: Date.now(),
       type,
       isHost,
+      // Backward compatibility (will be removed after migration)
+      userId: senderId,
+      userName: undefined, // Will be fetched from /users/{senderId}
     };
     
     // Validate and remove undefined values
     const message = validateFirestoreData(
       messageRaw,
-      ['eventId', 'userId', 'userName', 'text', 'createdAt', 'type', 'isHost'],
+      ['eventId', 'senderId', 'text', 'createdAt', 'type', 'isHost'],
       'addChatMessage'
     ) as Omit<FirestoreChatMessage, 'id'>;
     
@@ -1126,27 +1112,43 @@ export async function getUserProfile(uid: string): Promise<FirestoreUser | null>
     const snap = await getDoc(userRef);
     if (!snap.exists()) return null;
     const data = snap.data();
+    // REFACTORED: Single source of truth - use displayName and photoURL only
+    // Backward compatibility: fallback to deprecated fields during migration
     return {
       id: snap.id,
       uid: snap.id,
-      name: data.displayName || data.name || '',
       email: data.email || '',
-      imageUrl: data.photoURL || data.imageUrl,
-      displayName: data.displayName || data.name,
-      photoURL: data.photoURL || data.imageUrl,
+      displayName: data.displayName || data.name || '', // Standardized field
+      photoURL: data.photoURL || data.imageUrl || undefined, // Standardized field
+      bio: data.bio || null,
+      phoneVerified: data.phoneVerified || data.phone_verified || false,
+      username: data.username || null,
+      createdAt: data.createdAt || Date.now(),
+      updatedAt: data.updatedAt || undefined,
+      
+      // Extended fields
       city: data.city,
-      bio: data.bio,
       preferences: data.preferences,
       favorites: Array.isArray(data.favorites) ? data.favorites : [],
       hostedEvents: Array.isArray(data.hostedEvents) ? data.hostedEvents : [],
       preferredCity: data.preferredCity,
-      phoneVerified: data.phoneVerified || false,
+      phone_number: data.phone_number,
+      phoneVerifiedForHosting: data.phoneVerifiedForHosting,
+      hostPhoneNumber: data.hostPhoneNumber,
       signupIntent: data.signupIntent,
+      following: Array.isArray(data.following) ? data.following : [],
+      followers: Array.isArray(data.followers) ? data.followers : [],
+      notification_settings: data.notification_settings,
+      bannedEvents: Array.isArray(data.bannedEvents) ? data.bannedEvents : [],
       isDemoHost: data.isDemoHost || false,
-      username: data.username,
+      isOfficialHost: data.isOfficialHost || false,
       isVerified: data.isVerified || false,
-      createdAt: data.createdAt || Date.now(),
-      updatedAt: data.updatedAt,
+      isPoperaDemoHost: data.isPoperaDemoHost || false,
+      
+      // Backward compatibility (will be removed after migration)
+      name: data.displayName || data.name || '',
+      imageUrl: data.photoURL || data.imageUrl || undefined,
+      phone_verified: data.phoneVerified || data.phone_verified || false,
     };
   } catch (error: any) {
     // Don't log permission errors - they're expected and handled elsewhere
@@ -1180,16 +1182,32 @@ export async function createOrUpdateUserProfile(uid: string, userData: Partial<F
   
   try {
     const userRef = doc(db, "users", uid);
-    const userDataRaw: any = {
+    
+    // REFACTORED: Standardize to displayName and photoURL only
+    // Map deprecated fields to standardized fields
+    const standardizedData: any = {
       ...userData,
-      ...(userData && 'phone_verified' in userData ? { phone_verified: (userData as any).phone_verified, phoneVerified: (userData as any).phone_verified } : {}),
-      ...(userData && 'phoneVerified' in userData ? { phoneVerified: (userData as any).phoneVerified } : {}),
       uid,
       updatedAt: userData?.updatedAt ?? Date.now(),
     };
     
+    // Standardize name fields: use displayName, fallback to name
+    if (userData?.displayName || userData?.name) {
+      standardizedData.displayName = userData.displayName || userData.name;
+    }
+    
+    // Standardize photo fields: use photoURL, fallback to imageUrl
+    if (userData?.photoURL || (userData as any)?.imageUrl) {
+      standardizedData.photoURL = userData.photoURL || (userData as any).imageUrl;
+    }
+    
+    // Standardize phone verification: use phoneVerified, fallback to phone_verified
+    if (userData?.phoneVerified !== undefined || (userData as any)?.phone_verified !== undefined) {
+      standardizedData.phoneVerified = userData.phoneVerified ?? (userData as any).phone_verified ?? false;
+    }
+    
     // Remove undefined values (merge: true allows partial updates)
-    const cleanedUserData = removeUndefinedValues(userDataRaw);
+    const cleanedUserData = removeUndefinedValues(standardizedData);
     
     await setDoc(userRef, cleanedUserData, { merge: true });
   } catch (error: any) {

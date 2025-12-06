@@ -4,7 +4,8 @@ import { Event } from '@/types';
 import { formatDate } from '@/utils/dateFormatter';
 import { formatRating } from '@/utils/formatRating';
 import { useUserStore } from '@/stores/userStore';
-import { getUserProfile, listHostReviews } from '../../firebase/db';
+import { listHostReviews, subscribeToReservationCount } from '../../firebase/db';
+// REFACTORED: No longer using getUserProfile - using real-time subscriptions instead
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   getCircleContinuityText, 
@@ -13,6 +14,41 @@ import {
   getAvailableSpots 
 } from '../../utils/eventHelpers';
 import { getMainCategoryLabelFromEvent } from '../../utils/categoryMapper';
+
+// REFACTORED: Real-time attendees count component
+const EventAttendeesCount: React.FC<{ eventId: string; capacity?: number }> = ({ eventId, capacity }) => {
+  const [attendeesCount, setAttendeesCount] = React.useState<number>(0);
+  
+  React.useEffect(() => {
+    if (!eventId) return;
+    
+    console.log('[EVENT_CARD] 📡 Subscribing to reservation count:', { eventId });
+    
+    const unsubscribe = subscribeToReservationCount(eventId, (count) => {
+      setAttendeesCount(count);
+      console.log('[EVENT_CARD] ✅ Reservation count updated:', { eventId, count });
+    });
+    
+    return () => {
+      console.log('[EVENT_CARD] 🧹 Unsubscribing from reservation count:', { eventId });
+      unsubscribe();
+    };
+  }, [eventId]);
+  
+  const capacityNum = typeof capacity === 'number' ? capacity : null;
+  const availableSpots = capacityNum ? capacityNum - attendeesCount : null;
+  
+  return (
+    <div className="flex items-center text-gray-600 text-sm">
+      <Users size={16} className="sm:w-4 sm:h-4 mr-2 text-popera-orange shrink-0" />
+      <span className="truncate leading-relaxed">
+        {!capacityNum
+          ? `${attendeesCount} joined`
+          : `${attendeesCount}/${capacityNum} joined — ${availableSpots ?? 0} spot${availableSpots !== 1 ? 's' : ''} left`}
+      </span>
+    </div>
+  );
+};
 
 interface EventCardProps {
   event: Event;
@@ -45,114 +81,61 @@ export const EventCard: React.FC<EventCardProps> = ({
   const [hostProfilePicture, setHostProfilePicture] = React.useState<string | null>(null);
   
   // State for host name (may need to be fetched if missing)
-  const [displayHostName, setDisplayHostName] = React.useState<string>(event.hostName || '');
+  const [displayHostName, setDisplayHostName] = React.useState<string>('');
   
   // State for host's overall rating (from all their events)
   const [hostOverallRating, setHostOverallRating] = React.useState<number | null>(null);
   const [hostOverallReviewCount, setHostOverallReviewCount] = React.useState<number>(0);
   
-  // CRITICAL: Always fetch host profile picture from Firestore (source of truth)
-  // This ensures profile pictures are synchronized across all views for ALL users
+  // REFACTORED: Real-time subscription to /users/{hostId} - single source of truth
+  // No polling, no fallbacks to stale event data - always fresh from Firestore
   React.useEffect(() => {
-    const fetchHostProfile = async () => {
-      if (!event.hostId) {
-        setHostProfilePicture(null);
-        setDisplayHostName('Unknown Host');
-        return;
-      }
-      
-      // ALWAYS fetch from Firestore to ensure we have the latest host information
-      // This prevents stale/cached data from showing wrong names or pictures
-      // Firestore is the SINGLE SOURCE OF TRUTH for all profile data
-      try {
-        const hostProfile = await getUserProfile(event.hostId);
-        if (hostProfile) {
-          // Priority: photoURL > imageUrl (both from Firestore - always latest)
-          const profilePic = hostProfile.photoURL || hostProfile.imageUrl || null;
-          setHostProfilePicture(profilePic);
-          
-          // Always use Firestore name as source of truth (most up-to-date)
-          const firestoreName = hostProfile.name || hostProfile.displayName;
-          let finalHostName: string;
-          if (firestoreName && firestoreName.trim() !== '' && firestoreName !== 'You') {
-            finalHostName = firestoreName;
-            setDisplayHostName(finalHostName);
-          } else {
-            // Fallback to event.hostName only if Firestore doesn't have a valid name
-            finalHostName = event.hostName && event.hostName !== 'You' && event.hostName !== 'Unknown Host' 
-              ? event.hostName 
-              : 'Unknown Host';
-            setDisplayHostName(finalHostName);
-          }
+    if (!event.hostId) {
+      setHostProfilePicture(null);
+      setDisplayHostName('Unknown Host');
+      return;
+    }
+    
+    if (import.meta.env.DEV) {
+      console.log('[EVENT_CARD] 📡 Subscribing to host profile:', { hostId: event.hostId });
+    }
+    
+    let unsubscribe: (() => void) | null = null;
+    
+    // Real-time subscription to host user document
+    import('../../firebase/userSubscriptions').then(({ subscribeToUserProfile }) => {
+      unsubscribe = subscribeToUserProfile(event.hostId, (hostData) => {
+        if (hostData) {
+          setHostProfilePicture(hostData.photoURL || null);
+          setDisplayHostName(hostData.displayName || 'Unknown Host');
           
           if (import.meta.env.DEV) {
-            console.log('[EVENT_CARD] ✅ Fetched host profile from Firestore:', {
+            console.log('[EVENT_CARD] ✅ Host profile updated:', {
               hostId: event.hostId,
-              hostName: finalHostName,
-              hasProfilePic: !!profilePic,
+              displayName: hostData.displayName,
+              hasPhoto: !!hostData.photoURL,
             });
           }
         } else {
-          // If profile doesn't exist in Firestore, use event data as fallback
-          // CRITICAL: Use hostPhotoURL from event document as fallback (works when logged out)
-          const fallbackName = event.hostName && event.hostName !== 'You' && event.hostName.trim() !== ''
-            ? event.hostName 
-            : 'Unknown Host';
-          // Use hostPhotoURL from event as fallback - this ensures profile pictures work when logged out
-          const fallbackPic = (event as any).hostPhotoURL || null;
-          setHostProfilePicture(fallbackPic);
-          setDisplayHostName(fallbackName);
+          setHostProfilePicture(null);
+          setDisplayHostName('Unknown Host');
         }
-      } catch (error) {
-        // On error, use event data as fallback (but clean up invalid values)
-        // CRITICAL: Use hostPhotoURL from event document as fallback (works when logged out)
-        console.warn('[EVENT_CARD] ⚠️ Failed to fetch host profile from Firestore:', error);
-        const fallbackName = event.hostName && event.hostName !== 'You' && event.hostName.trim() !== ''
-          ? event.hostName 
-          : 'Unknown Host';
-        // Use hostPhotoURL from event as fallback - this ensures profile pictures work when logged out
-        const fallbackPic = (event as any).hostPhotoURL || null;
-        setHostProfilePicture(fallbackPic);
-        setDisplayHostName(fallbackName);
-      }
-    };
-    
-    // Fetch immediately on mount
-    fetchHostProfile();
-    
-    // Refresh profile picture periodically to catch updates immediately
-    // This ensures profile pictures are always synchronized across all views for ALL users
-    // Works for all users, not just the current user viewing their own events
-    let refreshInterval: NodeJS.Timeout | null = null;
-    if (event.hostId) {
-      refreshInterval = setInterval(() => {
-        fetchHostProfile();
-      }, 3000); // Refresh every 3 seconds for faster sync (all users)
-    }
+      });
+    }).catch((error) => {
+      console.error('[EVENT_CARD] ❌ Error loading user subscriptions:', error);
+      setHostProfilePicture(null);
+      setDisplayHostName('Unknown Host');
+    });
     
     return () => {
-      if (refreshInterval) {
-        clearInterval(refreshInterval);
+      if (unsubscribe) {
+        if (import.meta.env.DEV) {
+          console.log('[EVENT_CARD] 🧹 Unsubscribing from host profile:', { hostId: event.hostId });
+        }
+        unsubscribe();
       }
     };
-  }, [event.hostId, event.hostName]);
-  
-  // Also update immediately when userProfile changes (if viewing own events)
-  // This provides instant updates when the current user updates their own profile
-  useEffect(() => {
-    if (user?.uid === event.hostId) {
-      const currentUserPic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null;
-      if (currentUserPic && currentUserPic !== hostProfilePicture) {
-        setHostProfilePicture(currentUserPic);
-        if (import.meta.env.DEV) {
-          console.log('[EVENT_CARD] ✅ Updated profile picture from userProfile:', {
-            hostId: event.hostId,
-            hasProfilePic: !!currentUserPic,
-          });
-        }
-      }
-    }
-  }, [event.hostId, user?.uid, userProfile?.photoURL, userProfile?.imageUrl, user?.photoURL, user?.profileImageUrl, hostProfilePicture]);
+  }, [event.hostId]);
   
   // Fetch host's overall rating from all their events
   React.useEffect(() => {
@@ -494,23 +477,7 @@ export const EventCard: React.FC<EventCardProps> = ({
         {/* Engagement Indicators - Improved hierarchy: Capacity → Date + Time → Location */}
         <div className="mt-auto space-y-2">
           {/* Member Count & Spots Available - Human-friendly format */}
-          <div className="flex items-center text-gray-600 text-sm">
-            <Users size={16} className="sm:w-4 sm:h-4 mr-2 text-popera-orange shrink-0" />
-            <span className="truncate leading-relaxed">
-              {(() => {
-                const joinedCount = event.attendeesCount ?? 0;
-                const capacity = event.capacity ?? 'Unlimited';
-                const availableSpots = getAvailableSpots(event);
-                
-                if (capacity === 'Unlimited') {
-                  return `${joinedCount} joined`;
-                }
-                
-                const spotsLeft = availableSpots !== null ? availableSpots : 0;
-                return `${joinedCount}/${capacity} joined — ${spotsLeft} spot${spotsLeft !== 1 ? 's' : ''} left`;
-              })()}
-            </span>
-          </div>
+          <EventAttendeesCount eventId={event.id} capacity={event.capacity} />
           
           {/* Date & Time */}
           <div className="flex items-center text-gray-600 text-sm">

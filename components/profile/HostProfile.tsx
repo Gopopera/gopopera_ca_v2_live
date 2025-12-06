@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ArrowLeft, MapPin, Star, Users, Instagram, Twitter, Globe, MessageCircle, Check } from 'lucide-react';
+import { ArrowLeft, MapPin, Star, Users, Instagram, Twitter, Globe, Check } from 'lucide-react';
 import { Event } from '@/types';
 import { EventCard } from '../events/EventCard';
 import { useProfileStore } from '@/stores/profileStore';
@@ -27,8 +27,9 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
   const userProfile = useUserStore((state) => state.userProfile);
   const isPoperaProfile = hostName === POPERA_HOST_NAME;
   
-  // Get host ID from events (first event with this hostName)
-  const hostEvent = allEvents.find(e => e.hostName === hostName);
+  // REFACTORED: Get host ID from events (first event with this hostName or hostId)
+  // Note: hostName prop is still used for backward compatibility, but we prefer hostId
+  const hostEvent = allEvents.find(e => e.hostId && (e.hostName === hostName || e.host === hostName));
   const hostId = hostEvent?.hostId || (isPoperaProfile ? POPERA_HOST_ID : null);
   
   // Safe fallback if hostName is missing
@@ -52,73 +53,50 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
   
   // CRITICAL: Always fetch host profile picture from Firestore (source of truth)
   // This ensures profile pictures are synchronized across all views for ALL users
+  // REFACTORED: Real-time subscription to /users/{hostId} - single source of truth
   useEffect(() => {
-    const fetchHostProfile = async () => {
-      if (!hostId || isPoperaProfile) {
-        setHostProfilePicture(null);
-        return;
-      }
-      
-      // ALWAYS fetch from Firestore to ensure we have the latest profile picture
-      // Firestore is the SINGLE SOURCE OF TRUTH for all profile data
-      try {
-        const hostProfile = await getUserProfile(hostId);
-        if (hostProfile) {
-          // Priority: photoURL > imageUrl (both from Firestore - always latest)
-          const profilePic = hostProfile.photoURL || hostProfile.imageUrl || null;
-          setHostProfilePicture(profilePic);
+    if (!hostId || isPoperaProfile) {
+      setHostProfilePicture(null);
+      return;
+    }
+    
+    if (import.meta.env.DEV) {
+      console.log('[HOST_PROFILE] 📡 Subscribing to host profile:', { hostId });
+    }
+    
+    let unsubscribe: (() => void) | null = null;
+    
+    // Real-time subscription to host user document
+    import('../../firebase/userSubscriptions').then(({ subscribeToUserProfile }) => {
+      unsubscribe = subscribeToUserProfile(hostId, (hostData) => {
+        if (hostData) {
+          setHostProfilePicture(hostData.photoURL || null);
           
           if (import.meta.env.DEV) {
-            console.log('[HOST_PROFILE] ✅ Fetched host profile from Firestore:', {
+            console.log('[HOST_PROFILE] ✅ Host profile updated:', {
               hostId,
-              hasProfilePic: !!profilePic,
+              displayName: hostData.displayName,
+              hasPhoto: !!hostData.photoURL,
             });
           }
         } else {
           setHostProfilePicture(null);
         }
-      } catch (error) {
-        console.error('[HOST_PROFILE] ⚠️ Error fetching host profile from Firestore:', error);
-        setHostProfilePicture(null);
-      }
-    };
-    
-    // Fetch immediately on mount
-    fetchHostProfile();
-    
-    // Refresh profile picture periodically to catch updates immediately
-    // This ensures profile pictures are always synchronized when users update them
-    // Works for ALL users, not just the current user viewing their own profile
-    let refreshInterval: NodeJS.Timeout | null = null;
-    if (hostId && !isPoperaProfile) {
-      refreshInterval = setInterval(() => {
-        fetchHostProfile();
-      }, 3000); // Refresh every 3 seconds for faster sync (all users)
-    }
+      });
+    }).catch((error) => {
+      console.error('[HOST_PROFILE] ❌ Error loading user subscriptions:', error);
+      setHostProfilePicture(null);
+    });
     
     return () => {
-      if (refreshInterval) {
-        clearInterval(refreshInterval);
+      if (unsubscribe) {
+        if (import.meta.env.DEV) {
+          console.log('[HOST_PROFILE] 🧹 Unsubscribing from host profile:', { hostId });
+        }
+        unsubscribe();
       }
     };
   }, [hostId, isPoperaProfile]);
-  
-  // Also update immediately when userProfile changes (if viewing own profile)
-  // This provides instant updates when the current user updates their own profile
-  useEffect(() => {
-    if (hostId && currentUser?.id === hostId && !isPoperaProfile) {
-      const currentUserPic = userProfile?.photoURL || userProfile?.imageUrl || currentUser?.photoURL || currentUser?.profileImageUrl || null;
-      if (currentUserPic && currentUserPic !== hostProfilePicture) {
-        setHostProfilePicture(currentUserPic);
-        if (import.meta.env.DEV) {
-          console.log('[HOST_PROFILE] ✅ Updated profile picture from userProfile:', {
-            hostId,
-            hasProfilePic: !!currentUserPic,
-          });
-        }
-      }
-    }
-  }, [hostId, currentUser?.id, userProfile?.photoURL, userProfile?.imageUrl, currentUser?.photoURL, currentUser?.profileImageUrl, hostProfilePicture, isPoperaProfile]);
   
   // Fetch reviews from Firestore (only accepted reviews for accurate count)
   useEffect(() => {
@@ -321,9 +299,7 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
                        >
                          {isUpdatingFollow ? '...' : (isFollowingState ? 'Following' : 'Follow')}
                        </button>
-                       <button className="p-2.5 rounded-full border border-gray-200 text-gray-400 hover:text-popera-teal hover:border-popera-teal transition-all">
-                         <MessageCircle size={20} />
-                       </button>
+                       {/* Conversation icon removed - not needed on host profile page */}
                      </div>
                    )}
                 </div>

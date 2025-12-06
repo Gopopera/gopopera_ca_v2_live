@@ -7,11 +7,20 @@ export interface Event {
   date: string;
   time: string;
   tags: string[];
-  host: string;
-  hostName: string; // Keep for backward compatibility
-  imageUrl: string; // Main image (first in imageUrls array, kept for backward compatibility)
+  hostId: string; // Single field - host data fetched from /users/{hostId} in real-time
   imageUrls?: string[]; // Array of image URLs (first one is the main photo)
-  attendeesCount: number;
+  // REMOVED: attendeesCount - computed in real-time from reservations
+  // DEPRECATED FIELDS - kept for backward compatibility during migration
+  /** @deprecated Use hostId and fetch from /users/{hostId} instead */
+  host?: string;
+  /** @deprecated Use hostId and fetch from /users/{hostId} instead */
+  hostName?: string;
+  /** @deprecated Use hostId and fetch from /users/{hostId} instead */
+  hostPhotoURL?: string;
+  /** @deprecated Use imageUrls[0] instead */
+  imageUrl?: string;
+  /** @deprecated Computed from reservations in real-time */
+  attendeesCount?: number;
   createdAt: string; // ISO date string
   // Map coordinates (optional)
   lat?: number;
