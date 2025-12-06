@@ -3,6 +3,7 @@ import { ViewState, Event } from '../types';
 import { ChevronLeft, ChevronRight, MapPin, Clock, Calendar as CalendarIcon } from 'lucide-react';
 import { useUserStore } from '../stores/userStore';
 import { formatDate } from '../utils/dateFormatter';
+import { getMainCategoryLabelFromEvent } from '../utils/categoryMapper';
 
 interface MyCalendarPageProps {
   setViewState: (view: ViewState) => void;
@@ -41,7 +42,7 @@ const MinimizedEventCard: React.FC<{ event: Event; onClick: () => void }> = ({ e
             {event.title}
           </h3>
           <span className="text-xs font-bold text-[#e35e25] bg-[#e35e25]/10 px-2 py-0.5 rounded-full flex-shrink-0">
-            {event.category}
+            {getMainCategoryLabelFromEvent(event)}
           </span>
         </div>
         <div className="flex items-center gap-3 text-xs text-gray-600 mb-1">

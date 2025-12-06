@@ -3,6 +3,7 @@ import { Event, ViewState } from '../types';
 import { ChevronLeft, Share2, Calendar, Clock, MapPin, Download, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { formatDate } from '../utils/dateFormatter';
+import { getMainCategoryLabelFromEvent } from '../utils/categoryMapper';
 
 interface ReservationConfirmationPageProps {
   event: Event;
@@ -351,10 +352,10 @@ export const ReservationConfirmationPage: React.FC<ReservationConfirmationPagePr
               </div>
 
               {/* Category or Price */}
-              {event.category ? (
+              {getMainCategoryLabelFromEvent(event) ? (
                 <div>
                   <p className="text-xs text-gray-500 mb-1 font-medium">Category</p>
-                  <p className="text-sm font-semibold text-[#15383c] capitalize">{event.category}</p>
+                  <p className="text-sm font-semibold text-[#15383c] capitalize">{getMainCategoryLabelFromEvent(event)}</p>
                 </div>
               ) : event.price && event.price !== 'Free' ? (
                 <div>
@@ -366,7 +367,7 @@ export const ReservationConfirmationPage: React.FC<ReservationConfirmationPagePr
           </div>
 
           {/* Total Cost / Price Section (if not shown above) */}
-          {event.price && event.price !== 'Free' && event.category && (
+          {event.price && event.price !== 'Free' && getMainCategoryLabelFromEvent(event) && (
             <div className="mb-4 pb-4 border-b border-gray-100">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-gray-600 font-medium">Total:</p>
