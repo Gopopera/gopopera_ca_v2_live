@@ -950,8 +950,8 @@ const AppContent: React.FC = () => {
 
   const handleEventClick = (event: Event) => {
     setSelectedEvent(event);
-    // Use replaceState to avoid creating problematic history entries
-    window.history.replaceState({ viewState: ViewState.DETAIL, eventId: event.id }, '', `/event/${event.id}`);
+    // Use pushState to create history entry for back button navigation
+    window.history.pushState({ viewState: ViewState.DETAIL, eventId: event.id }, '', `/event/${event.id}`);
     setViewState(ViewState.DETAIL);
     window.scrollTo(0, 0);
   };
@@ -984,6 +984,8 @@ const AppContent: React.FC = () => {
     if (hasRSVPed || isHost) {
       // User can access chat - open directly
       setSelectedEvent(event);
+      const chatUrl = `/event/${event.id}/chat`;
+      window.history.pushState({ viewState: ViewState.CHAT, eventId: event.id }, '', chatUrl);
       setViewState(ViewState.CHAT);
     } else {
       // Show modal to prompt RSVP
@@ -1007,9 +1009,9 @@ const AppContent: React.FC = () => {
   const handleHostClick = (hostName: string) => {
     setSelectedHost(hostName);
     setViewState(ViewState.HOST_PROFILE);
-    // Update URL to prevent viewState from being reset by URL sync
+    // Use pushState to create history entry for back button navigation
     const hostProfileUrl = `/host/${encodeURIComponent(hostName)}`;
-    window.history.replaceState({ viewState: ViewState.HOST_PROFILE, hostName }, '', hostProfileUrl);
+    window.history.pushState({ viewState: ViewState.HOST_PROFILE, hostName }, '', hostProfileUrl);
     window.scrollTo(0, 0);
   };
 

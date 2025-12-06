@@ -92,17 +92,17 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
     // If navigating from DETAIL view, ensure we have proper state for the target view
     try {
       setViewState(view);
-      // Update browser history safely
+      // Use pushState to create history entries for back button navigation
       if (view === ViewState.FEED) {
-        window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
+        window.history.pushState({ viewState: ViewState.FEED }, '', '/explore');
       } else if (view === ViewState.LANDING) {
-        window.history.replaceState({ viewState: ViewState.LANDING }, '', '/');
+        window.history.pushState({ viewState: ViewState.LANDING }, '', '/');
       } else if (view === ViewState.AUTH) {
-        window.history.replaceState({ viewState: ViewState.AUTH }, '', '/auth');
+        window.history.pushState({ viewState: ViewState.AUTH }, '', '/auth');
         window.scrollTo(0, 0);
       } else if (view === ViewState.PROFILE || view === ViewState.MY_POPS || view === ViewState.FAVORITES) {
         // These views don't require additional state, safe to navigate
-        window.history.replaceState({ viewState: view }, '', `/${view.toLowerCase()}`);
+        window.history.pushState({ viewState: view }, '', `/${view.toLowerCase()}`);
       }
       window.scrollTo({ top: 0, behavior: 'instant' });
       setMobileMenuOpen(false);
@@ -110,7 +110,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
       console.error('[HEADER] Navigation error:', error);
       // Fallback to safe view
       setViewState(ViewState.FEED);
-      window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
+      window.history.pushState({ viewState: ViewState.FEED }, '', '/explore');
       setMobileMenuOpen(false);
     }
   };
