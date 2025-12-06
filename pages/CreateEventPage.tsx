@@ -7,6 +7,7 @@ import { HostPhoneVerificationModal } from '../components/auth/HostPhoneVerifica
 import { uploadImage } from '../firebase/storage';
 import { processImageForUpload } from '../utils/imageProcessing';
 import { geocodeAddress } from '../utils/geocoding';
+import { ALL_VIBES } from '../utils/vibes';
 
 interface CreateEventPageProps {
   setViewState: (view: ViewState) => void;
@@ -46,8 +47,12 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
   const [price, setPrice] = useState('Free');
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [sessionFrequency, setSessionFrequency] = useState<'Weekly' | 'Monthly' | 'One-Time' | ''>('');
-  const [sessionMode, setSessionMode] = useState<'In-Person' | 'Remote' | ''>('');
+  const [sessionFrequency, setSessionFrequency] = useState<'weekly' | 'monthly' | 'one-time' | ''>('');
+  const [sessionMode, setSessionMode] = useState<'in-person' | 'remote' | ''>('');
+  const [mainCategory, setMainCategory] = useState<'curatedSales' | 'connectPromote' | 'mobilizeSupport' | 'learnAndGrow' | ''>('');
+  const [selectedVibes, setSelectedVibes] = useState<string[]>([]);
+  const [weeklyDayOfWeek, setWeeklyDayOfWeek] = useState<number | undefined>(undefined);
+  const [monthlyDayOfMonth, setMonthlyDayOfMonth] = useState<number | undefined>(undefined);
 
   // Check host phone verification status on mount
   // This determines if user can create events (phoneVerifiedForHosting must be true)
@@ -221,18 +226,34 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
     }
     
     // Validate required fields
-    if (!title || !description || !city || !date || !time || !category || !sessionFrequency || !sessionMode) {
+    if (!title || !description || !city || !date || !time || !mainCategory || !sessionFrequency || !sessionMode) {
       const missingFields = [];
       if (!title) missingFields.push('Title');
       if (!description) missingFields.push('Description');
       if (!city) missingFields.push('City');
       if (!date) missingFields.push('Date');
       if (!time) missingFields.push('Time');
-      if (!category) missingFields.push('Category');
+      if (!mainCategory) missingFields.push('Main Category');
       if (!sessionFrequency) missingFields.push('Session Frequency');
       if (!sessionMode) missingFields.push('Session Mode');
       alert(`Please fill in all required fields: ${missingFields.join(', ')}`);
       console.warn('[CREATE_EVENT] Missing required fields:', missingFields);
+      return;
+    }
+    
+    // Validate vibes selection (1-5)
+    if (selectedVibes.length === 0 || selectedVibes.length > 5) {
+      alert('Please select 1 to 5 vibes for your circle.');
+      return;
+    }
+    
+    // Validate repeat settings for weekly/monthly
+    if (sessionFrequency === 'weekly' && weeklyDayOfWeek === undefined) {
+      alert('Please select the day of week for weekly sessions.');
+      return;
+    }
+    if (sessionFrequency === 'monthly' && monthlyDayOfMonth === undefined) {
+      alert('Please select the day of month for monthly sessions.');
       return;
     }
 
@@ -517,6 +538,23 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         country = 'United States';
       }
       
+      // Calculate startDateTime from date and time
+      const startDateTime = date && time ? new Date(`${date}T${time}`).getTime() : undefined;
+      
+      // Calculate weeklyDayOfWeek and monthlyDayOfMonth from date if not explicitly set
+      let calculatedWeeklyDayOfWeek = weeklyDayOfWeek;
+      let calculatedMonthlyDayOfMonth = monthlyDayOfMonth;
+      
+      if (date) {
+        const dateObj = new Date(date);
+        if (sessionFrequency === 'weekly' && calculatedWeeklyDayOfWeek === undefined) {
+          calculatedWeeklyDayOfWeek = dateObj.getDay(); // 0 = Sunday, 6 = Saturday
+        }
+        if (sessionFrequency === 'monthly' && calculatedMonthlyDayOfMonth === undefined) {
+          calculatedMonthlyDayOfMonth = dateObj.getDate(); // 1-31
+        }
+      }
+      
       // Validate hostName - should never be empty or 'You'
       if (!hostName || hostName === 'You' || hostName.trim() === '') {
         console.error('[CREATE_EVENT] ❌ Invalid hostName:', hostName);
@@ -558,7 +596,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         imageUrls: finalImageUrls.length > 0 ? finalImageUrls : undefined, // Array of all images
         whatToExpect: whatToExpect || undefined,
         attendeesCount,
-        category: category as typeof CATEGORIES[number],
+        category: (category || 'Community') as typeof CATEGORIES[number], // Keep for backward compatibility, default to Community
         price,
         rating: 0,
         reviewCount: 0,
@@ -574,6 +612,11 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         sessionFrequency: sessionFrequency || undefined,
         sessionMode: sessionMode || undefined,
         country: country, // Extract country from city
+        mainCategory: mainCategory || undefined,
+        vibes: selectedVibes.length > 0 ? selectedVibes : undefined,
+        startDateTime: startDateTime,
+        weeklyDayOfWeek: calculatedWeeklyDayOfWeek,
+        monthlyDayOfMonth: calculatedMonthlyDayOfMonth,
       } as any); // Type assertion needed for optional fields
       
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -700,20 +743,68 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
 
             <div className="space-y-2">
               <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
-                Pop-Up Type <span className="text-red-500">*</span>
+                Main Category <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <select 
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value as typeof CATEGORIES[number])}
+                  value={mainCategory}
+                  onChange={(e) => setMainCategory(e.target.value as typeof mainCategory)}
                   required
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all appearance-none cursor-pointer"
                 >
                   <option value="">Select...</option>
-                  {CATEGORIES.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
+                  <option value="curatedSales">Curated Sales</option>
+                  <option value="connectPromote">Connect & Promote</option>
+                  <option value="mobilizeSupport">Mobilize & Support</option>
+                  <option value="learnAndGrow">Learn & Grow</option>
                 </select>
+              </div>
+            </div>
+            
+            {/* Vibes / Subcategories - Multi-select */}
+            <div className="space-y-2">
+              <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
+                Vibes <span className="text-red-500">*</span> <span className="text-gray-400 font-normal text-xs">(Select 1-5)</span>
+              </label>
+              <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl min-h-[60px]">
+                {selectedVibes.length === 0 ? (
+                  <span className="text-gray-400 text-sm">No vibes selected</span>
+                ) : (
+                  selectedVibes.map((vibe) => (
+                    <span
+                      key={vibe}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#15383c] text-white text-sm font-medium"
+                    >
+                      {vibe}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedVibes(selectedVibes.filter(v => v !== vibe))}
+                        className="ml-1 hover:text-red-200"
+                      >
+                        <X size={14} />
+                      </button>
+                    </span>
+                  ))
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {ALL_VIBES.filter(vibe => !selectedVibes.includes(vibe)).map((vibe) => (
+                  <button
+                    key={vibe}
+                    type="button"
+                    onClick={() => {
+                      if (selectedVibes.length < 5) {
+                        setSelectedVibes([...selectedVibes, vibe]);
+                      } else {
+                        alert('You can select up to 5 vibes.');
+                      }
+                    }}
+                    disabled={selectedVibes.length >= 5}
+                    className="px-3 py-1.5 rounded-full bg-white border border-gray-300 text-gray-700 text-sm font-medium hover:border-[#15383c] hover:text-[#15383c] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {vibe}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -853,14 +944,20 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                 <div className="relative">
                   <select 
                     value={sessionFrequency}
-                    onChange={(e) => setSessionFrequency(e.target.value as 'Weekly' | 'Monthly' | 'One-Time' | '')}
+                    onChange={(e) => {
+                      const value = e.target.value as 'weekly' | 'monthly' | 'one-time' | '';
+                      setSessionFrequency(value);
+                      // Reset repeat settings when frequency changes
+                      if (value !== 'weekly') setWeeklyDayOfWeek(undefined);
+                      if (value !== 'monthly') setMonthlyDayOfMonth(undefined);
+                    }}
                     required
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all appearance-none cursor-pointer"
                   >
                     <option value="">Select...</option>
-                    <option value="Weekly">Weekly</option>
-                    <option value="Monthly">Monthly</option>
-                    <option value="One-Time">One-Time Session</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="one-time">One-Time</option>
                   </select>
                 </div>
               </div>
@@ -872,17 +969,77 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                 <div className="relative">
                   <select 
                     value={sessionMode}
-                    onChange={(e) => setSessionMode(e.target.value as 'In-Person' | 'Remote' | '')}
+                    onChange={(e) => setSessionMode(e.target.value as 'in-person' | 'remote' | '')}
                     required
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all appearance-none cursor-pointer"
                   >
                     <option value="">Select...</option>
-                    <option value="In-Person">In-Person</option>
-                    <option value="Remote">Remote Session</option>
+                    <option value="in-person">In-Person</option>
+                    <option value="remote">Remote</option>
                   </select>
                 </div>
               </div>
             </div>
+            
+            {/* Repeat Controls for Weekly Sessions */}
+            {sessionFrequency === 'weekly' && date && time && (
+              <div className="space-y-2 p-4 bg-[#eef4f5] rounded-xl border border-[#15383c]/10">
+                <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
+                  Weekly Repeat Schedule
+                </label>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-sm text-gray-600">Repeats every</span>
+                  <select
+                    value={weeklyDayOfWeek !== undefined ? weeklyDayOfWeek : (date ? new Date(date).getDay() : 0)}
+                    onChange={(e) => setWeeklyDayOfWeek(parseInt(e.target.value))}
+                    className="bg-white border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-[#15383c]"
+                  >
+                    <option value="0">Sunday</option>
+                    <option value="1">Monday</option>
+                    <option value="2">Tuesday</option>
+                    <option value="3">Wednesday</option>
+                    <option value="4">Thursday</option>
+                    <option value="5">Friday</option>
+                    <option value="6">Saturday</option>
+                  </select>
+                  <span className="text-sm text-gray-600">at</span>
+                  <input
+                    type="time"
+                    value={time}
+                    readOnly
+                    className="bg-white border border-gray-200 rounded-lg py-2 px-3 text-sm"
+                  />
+                </div>
+              </div>
+            )}
+            
+            {/* Repeat Controls for Monthly Sessions */}
+            {sessionFrequency === 'monthly' && date && time && (
+              <div className="space-y-2 p-4 bg-[#eef4f5] rounded-xl border border-[#15383c]/10">
+                <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
+                  Monthly Repeat Schedule
+                </label>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-sm text-gray-600">Repeats every</span>
+                  <select
+                    value={monthlyDayOfMonth !== undefined ? monthlyDayOfMonth : (date ? new Date(date).getDate() : 1)}
+                    onChange={(e) => setMonthlyDayOfMonth(parseInt(e.target.value))}
+                    className="bg-white border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-[#15383c]"
+                  >
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                      <option key={day} value={day}>{day}</option>
+                    ))}
+                  </select>
+                  <span className="text-sm text-gray-600">of the month at</span>
+                  <input
+                    type="time"
+                    value={time}
+                    readOnly
+                    className="bg-white border border-gray-200 rounded-lg py-2 px-3 text-sm"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Image Upload - Multiple Images */}

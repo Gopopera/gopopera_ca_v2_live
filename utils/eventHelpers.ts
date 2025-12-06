@@ -48,19 +48,25 @@ export function getCircleContinuity(event: Event): 'ongoing' | 'startingSoon' | 
 /**
  * Get circle continuity display text
  * Returns formatted text for "Starting Soon" or "Ongoing — X Weeks"
+ * Uses durationWeeks if available, otherwise calculates from startDate
  */
 export function getCircleContinuityText(event: Event): { text: string; type: 'startingSoon' | 'ongoing' } | null {
   const continuity = getCircleContinuity(event);
   
   if (continuity === 'ongoing') {
-    // Calculate weeks since start
+    // Use durationWeeks if available, otherwise calculate from startDate
+    const durationWeeks = (event as any).durationWeeks;
     let weeks = 0;
-    if (event.startDate) {
+    
+    if (typeof durationWeeks === 'number' && durationWeeks > 0) {
+      weeks = durationWeeks;
+    } else if (event.startDate) {
       const start = new Date(event.startDate);
       const now = new Date();
       const diffTime = Math.abs(now.getTime() - start.getTime());
       weeks = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 7));
     }
+    
     const text = weeks > 0 ? `Ongoing — ${weeks} Week${weeks !== 1 ? 's' : ''}` : 'Ongoing';
     return { text, type: 'ongoing' };
   } else if (continuity === 'startingSoon') {

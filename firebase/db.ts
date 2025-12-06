@@ -70,6 +70,12 @@ export const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event 
     sessionFrequency: firestoreEvent.sessionFrequency || undefined,
     sessionMode: firestoreEvent.sessionMode || undefined,
     country: firestoreEvent.country || undefined,
+    // Circles + Sessions model fields
+    mainCategory: firestoreEvent.mainCategory || undefined,
+    durationWeeks: typeof firestoreEvent.durationWeeks === 'number' ? firestoreEvent.durationWeeks : undefined,
+    weeklyDayOfWeek: typeof firestoreEvent.weeklyDayOfWeek === 'number' ? firestoreEvent.weeklyDayOfWeek : undefined,
+    monthlyDayOfMonth: typeof firestoreEvent.monthlyDayOfMonth === 'number' ? firestoreEvent.monthlyDayOfMonth : undefined,
+    startDateTime: typeof firestoreEvent.startDateTime === 'number' ? firestoreEvent.startDateTime : undefined,
   };
   
   return standardizedEvent;
@@ -189,6 +195,18 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
       whatToExpect: eventData.whatToExpect,
       capacity: eventData.capacity,
       hostPhoneNumber: (eventData as any).hostPhoneNumber, // Host phone number from user profile
+      // Circles + Sessions model fields
+      mainCategory: (eventData as any).mainCategory,
+      vibes: (eventData as any).vibes,
+      sessionFrequency: (eventData as any).sessionFrequency,
+      sessionMode: (eventData as any).sessionMode,
+      country: (eventData as any).country,
+      durationWeeks: (eventData as any).durationWeeks,
+      weeklyDayOfWeek: (eventData as any).weeklyDayOfWeek,
+      monthlyDayOfMonth: (eventData as any).monthlyDayOfMonth,
+      startDateTime: (eventData as any).startDateTime,
+      // Also set startDate from startDateTime if available
+      startDate: (eventData as any).startDateTime || (eventData as any).startDate,
     };
 
     // Validate and remove undefined values

@@ -37,9 +37,15 @@ export interface Event {
   isDraft?: boolean; // True for draft events (not published)
   // New fields for event cards and filtering
   vibes?: string[]; // Array of vibe tags (e.g., ["Creative", "Social", "Wellness"])
-  sessionFrequency?: string; // "Weekly" | "Monthly" | "One-Time"
-  sessionMode?: string; // "In-Person" | "Remote"
+  sessionFrequency?: string; // "weekly" | "monthly" | "one-time"
+  sessionMode?: string; // "in-person" | "remote"
   country?: string; // Country name (e.g., "Canada", "United States")
+  // Circles + Sessions model fields
+  mainCategory?: string; // "curatedSales" | "connectPromote" | "mobilizeSupport" | "learnAndGrow"
+  durationWeeks?: number; // Duration in weeks for ongoing circles
+  weeklyDayOfWeek?: number; // 0-6 for weekly sessions (0 = Sunday)
+  monthlyDayOfMonth?: number; // 1-31 for monthly sessions
+  startDateTime?: number; // Timestamp for session start (alternative to startDate)
 }
 
 export enum ViewState {

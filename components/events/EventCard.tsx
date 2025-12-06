@@ -12,6 +12,7 @@ import {
   getSessionModeText,
   getAvailableSpots 
 } from '../../utils/eventHelpers';
+import { getMainCategoryLabel } from '../../utils/categoryMapper';
 
 interface EventCardProps {
   event: Event;
@@ -257,18 +258,19 @@ export const EventCard: React.FC<EventCardProps> = ({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-60" />
         
-        {/* Category Badge - Top Left matching Hero badge style */}
-        <div className="absolute top-4 left-4 inline-block py-1 sm:py-1.5 px-3.5 sm:px-4 rounded-full bg-white/5 border border-white/10 text-[#e35e25] text-[9px] sm:text-[10px] font-bold tracking-[0.2em] uppercase backdrop-blur-sm z-10">
-          {event.category}
+        {/* Main Category Badge - Top Left matching Hero badge style (orange pill) */}
+        {/* Use mainCategory if available, otherwise fallback to category for backward compatibility */}
+        <div className="absolute top-4 left-4 inline-block py-1 sm:py-1.5 px-3.5 sm:px-4 rounded-full bg-[#e35e25]/90 border-2 border-[#e35e25] text-white text-[9px] sm:text-[10px] font-bold tracking-[0.2em] uppercase backdrop-blur-sm z-10 shadow-lg">
+          {(event as any).mainCategory ? getMainCategoryLabel((event as any).mainCategory) : (event.category || 'Circle')}
         </div>
 
-        {/* Vibes Tags - Bottom-left overlay on hero image, above title area */}
+        {/* Vibes Tags - Bottom-left overlay on hero image, above title area (off-white background, dark-green text) */}
         {event.vibes && event.vibes.length > 0 && (
           <div className="absolute bottom-20 left-4 right-4 z-20 flex flex-wrap gap-1.5">
             {event.vibes.slice(0, 3).map((vibe, index) => (
               <span 
                 key={index}
-                className="inline-flex items-center px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-sm text-white text-[11px] font-medium uppercase tracking-wide"
+                className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#f2f2f2]/90 backdrop-blur-sm text-[#15383c] text-[11px] font-medium"
               >
                 {vibe}
               </span>
@@ -455,7 +457,7 @@ export const EventCard: React.FC<EventCardProps> = ({
 
         {/* Engagement Indicators - Improved hierarchy: Capacity → Date + Time → Location */}
         <div className="mt-auto space-y-2">
-          {/* Member Count & Spots Available - Improved format */}
+          {/* Member Count & Spots Available - Human-friendly format */}
           <div className="flex items-center text-gray-600 text-sm">
             <Users size={16} className="sm:w-4 sm:h-4 mr-2 text-popera-orange shrink-0" />
             <span className="truncate leading-relaxed">
@@ -465,11 +467,11 @@ export const EventCard: React.FC<EventCardProps> = ({
                 const availableSpots = getAvailableSpots(event);
                 
                 if (capacity === 'Unlimited') {
-                  return `${joinedCount} members joined`;
+                  return `${joinedCount} joined`;
                 }
                 
                 const spotsLeft = availableSpots !== null ? availableSpots : 0;
-                return `${joinedCount} of ${capacity} members joined • ${spotsLeft} spot${spotsLeft !== 1 ? 's' : ''} left`;
+                return `${joinedCount}/${capacity} joined — ${spotsLeft} spot${spotsLeft !== 1 ? 's' : ''} left`;
               })()}
             </span>
           </div>
@@ -480,15 +482,15 @@ export const EventCard: React.FC<EventCardProps> = ({
             <span className="truncate leading-relaxed">{formatDate(event.date)} • {event.time}</span>
           </div>
           
-          {/* Location */}
+          {/* Location - City, Country/Province format */}
           <div className="flex items-center text-gray-600 text-sm min-w-0">
             <MapPin size={16} className="sm:w-4 sm:h-4 mr-2 text-popera-orange shrink-0" />
             <div className="flex items-center min-w-0 flex-1 gap-1.5">
               <span className="font-bold text-popera-teal shrink-0 whitespace-nowrap">{event.city}</span>
-              {event.address && event.address.trim() !== event.city && (
+              {event.country && (
                 <>
-                  <span className="text-gray-600 shrink-0">—</span>
-                  <span className="truncate text-gray-600 leading-relaxed">{event.address}</span>
+                  <span className="text-gray-600 shrink-0">,</span>
+                  <span className="text-gray-600 shrink-0">{event.country}</span>
                 </>
               )}
             </div>

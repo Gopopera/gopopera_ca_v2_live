@@ -49,7 +49,7 @@ export const translations = {
       },
       learningWorkshops: {
         category: 'LEARNING',
-        title: 'Learn & Grow Together',
+        title: 'Learn & Grow',
         description: 'Host workshops, classes, and skill-building Sessions. From drawing and cooking to tech meetups, inside a Circle designed for growth.',
       },
     },
@@ -893,7 +893,7 @@ export const translations = {
       },
       learningWorkshops: {
         category: 'APPRENTISSAGE',
-        title: 'Apprendre et grandir ensemble',
+        title: 'Apprendre et grandir',
         description: 'Organisez des ateliers, des cours et des Sessions de développement des compétences. Du dessin et de la cuisine aux rencontres technologiques, dans un Cercle conçu pour la croissance.',
       },
     },
