@@ -269,7 +269,6 @@ export const useUserStore = create<UserStore>()(
                   }
                   const isOnLanding = typeof window !== 'undefined' && window.location.pathname === '/';
                   set({ _redirectHandled: true, _justLoggedInFromRedirect: isOnLanding, authInitialized: true, isAuthReady: true });
-                  redirectUserProcessed = true;
                 } else {
                   console.log('[AUTH] ⚠️ getRedirectResult() returned null (normal on mobile) - onAuthStateChanged will handle it');
                 }
@@ -674,6 +673,26 @@ export const useUserStore = create<UserStore>()(
           const currentUser = get().user;
           if (currentUser && currentUser.uid === userId) {
             set({ user: { ...currentUser, favorites: updatedFavorites }, currentUser: { ...currentUser, favorites: updatedFavorites } });
+          }
+          
+          // Notify host of new favorite (non-blocking, fire-and-forget)
+          try {
+            const { getEventById } = await import('../firebase/db');
+            const event = await getEventById(eventId);
+            if (event?.hostId && event.hostId !== userId) {
+              // Only notify if favoriter is not the host themselves
+              const { notifyHostOfNewFavorite } = await import('../utils/notificationHelpers');
+              notifyHostOfNewFavorite(event.hostId, userId, eventId, event.title || 'Event').catch((error) => {
+                if (import.meta.env.DEV) {
+                  console.error('Error notifying host of new favorite:', error);
+                }
+              });
+            }
+          } catch (error) {
+            // Don't fail favorite if notification fails
+            if (import.meta.env.DEV) {
+              console.error('Error setting up favorite notification:', error);
+            }
           }
         } catch (error) {
           console.error("Add favorite error:", error);

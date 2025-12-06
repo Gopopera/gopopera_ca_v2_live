@@ -160,7 +160,7 @@ export interface FirestoreHostProfile {
 export interface FirestoreNotification {
   id: string;
   userId: string;
-  type: 'new-event' | 'new-rsvp' | 'announcement' | 'poll' | 'new-message' | 'followed-host-event' | 'new-follower' | 'event-getting-full' | 'event-trending' | 'follow-host-suggestion';
+  type: 'new-event' | 'new-rsvp' | 'announcement' | 'poll' | 'new-message' | 'followed-host-event' | 'new-follower' | 'new-favorite' | 'event-getting-full' | 'event-trending' | 'follow-host-suggestion';
   title: string;
   body: string;
   timestamp: number; // serverTimestamp

@@ -85,7 +85,7 @@ async function getUserContactInfo(userId: string): Promise<{ email?: string; pho
 export async function sendComprehensiveNotification(
   userId: string,
   notification: {
-    type: 'new-event' | 'new-rsvp' | 'announcement' | 'poll' | 'new-message' | 'followed-host-event' | 'new-follower' | 'event-getting-full' | 'event-trending' | 'follow-host-suggestion';
+    type: 'new-event' | 'new-rsvp' | 'announcement' | 'poll' | 'new-message' | 'followed-host-event' | 'new-follower' | 'new-favorite' | 'event-getting-full' | 'event-trending' | 'follow-host-suggestion';
     title: string;
     body: string;
     eventId?: string;
@@ -97,16 +97,16 @@ export async function sendComprehensiveNotification(
   const preferences = await getUserNotificationPreferences(userId);
   const contactInfo = await getUserContactInfo(userId);
 
-  // Always create in-app notification if enabled
-  if (preferences.notification_opt_in !== false) {
-    try {
-      await createNotification(userId, {
-        ...notification,
-        userId: userId,
-      });
-    } catch (error) {
-      console.error('Error creating in-app notification:', error);
-    }
+  // ALWAYS create in-app notification (cannot be disabled for better UX)
+  // In-app notifications are essential for user engagement and should always be sent
+  try {
+    await createNotification(userId, {
+      ...notification,
+      userId: userId,
+    });
+  } catch (error) {
+    console.error('Error creating in-app notification:', error);
+    // Don't throw - continue with email/SMS even if in-app fails
   }
 
   // Send email if enabled
@@ -166,8 +166,8 @@ export async function notifyFollowersOfNewEvent(
     const contactInfo = await getUserContactInfo(followerId);
     const preferences = await getUserNotificationPreferences(followerId);
 
-    // In-app notification
-    if (preferences.notification_opt_in !== false) {
+    // ALWAYS send in-app notification (cannot be disabled)
+    try {
       await createNotification(followerId, {
         userId: followerId,
         type: 'followed-host-event',
@@ -176,6 +176,11 @@ export async function notifyFollowersOfNewEvent(
         eventId,
         hostId,
       });
+    } catch (error) {
+      // Don't throw - continue with email/SMS
+      if (import.meta.env.DEV) {
+        console.error('Error creating follow event notification:', error);
+      }
     }
 
     // Email
@@ -248,8 +253,8 @@ export async function notifyAttendeesOfAnnouncement(
     const contactInfo = await getUserContactInfo(userId);
     const preferences = await getUserNotificationPreferences(userId);
 
-    // In-app notification
-    if (preferences.notification_opt_in !== false) {
+    // ALWAYS send in-app notification (cannot be disabled)
+    try {
       await createNotification(userId, {
         userId,
         type: 'announcement',
@@ -257,6 +262,10 @@ export async function notifyAttendeesOfAnnouncement(
         body: announcementMessage,
         eventId,
       });
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error creating announcement notification:', error);
+      }
     }
 
     // Email
@@ -324,8 +333,8 @@ export async function notifyAttendeesOfPoll(
     const contactInfo = await getUserContactInfo(userId);
     const preferences = await getUserNotificationPreferences(userId);
 
-    // In-app notification
-    if (preferences.notification_opt_in !== false) {
+    // ALWAYS send in-app notification (cannot be disabled)
+    try {
       await createNotification(userId, {
         userId,
         type: 'poll',
@@ -333,6 +342,10 @@ export async function notifyAttendeesOfPoll(
         body: pollMessage,
         eventId,
       });
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error creating poll notification:', error);
+      }
     }
 
     // Email
@@ -461,20 +474,18 @@ export async function notifyUserOfReservationConfirmation(
     const orderId = `#${reservationId.substring(0, 10).toUpperCase()}`;
     const eventUrl = `${BASE_URL}/event/${eventId}`;
 
-    // In-app notification
-    if (preferences.notification_opt_in !== false) {
-      try {
-        await createNotification(userId, {
-          userId,
-          type: 'new-rsvp',
-          title: 'Reservation Confirmed! 🎉',
-          body: `Your reservation for ${eventTitle} has been confirmed`,
-          eventId,
-        });
-      } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Error creating reservation confirmation notification:', error);
-        }
+    // ALWAYS send in-app notification (cannot be disabled)
+    try {
+      await createNotification(userId, {
+        userId,
+        type: 'new-rsvp',
+        title: 'Reservation Confirmed! 🎉',
+        body: `Your reservation for ${eventTitle} has been confirmed`,
+        eventId,
+      });
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error creating reservation confirmation notification:', error);
       }
     }
 
@@ -560,20 +571,18 @@ export async function notifyHostOfRSVP(
     const attendeeInfo = await getUserContactInfo(attendeeId);
     const preferences = await getUserNotificationPreferences(hostId);
 
-    // In-app notification
-    if (preferences.notification_opt_in !== false) {
-      try {
-        await createNotification(hostId, {
-          userId: hostId,
-          type: 'new-rsvp',
-          title: 'New RSVP',
-          body: `${attendeeInfo.name || 'Someone'} RSVP'd to ${eventTitle}`,
-          eventId,
-        });
-      } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Error creating RSVP notification:', error);
-        }
+    // ALWAYS send in-app notification (cannot be disabled)
+    try {
+      await createNotification(hostId, {
+        userId: hostId,
+        type: 'new-rsvp',
+        title: 'New RSVP',
+        body: `${attendeeInfo.name || 'Someone'} RSVP'd to ${eventTitle}`,
+        eventId,
+      });
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error creating RSVP notification:', error);
       }
     }
 
@@ -653,20 +662,18 @@ export async function notifyUserOfFirstEvent(
     const preferences = await getUserNotificationPreferences(userId);
     const eventUrl = `${BASE_URL}/event/${eventId}`;
 
-    // In-app notification
-    if (preferences.notification_opt_in !== false) {
-      try {
-        await createNotification(userId, {
-          userId,
-          type: 'new-event',
-          title: 'Welcome to Popera! 🎉',
-          body: `Your first event "${eventTitle}" has been created successfully`,
-          eventId,
-        });
-      } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Error creating first event notification:', error);
-        }
+    // ALWAYS send in-app notification (cannot be disabled)
+    try {
+      await createNotification(userId, {
+        userId,
+        type: 'new-event',
+        title: 'Welcome to Popera! 🎉',
+        body: `Your first event "${eventTitle}" has been created successfully`,
+        eventId,
+      });
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error creating first event notification:', error);
       }
     }
 
@@ -743,20 +750,18 @@ export async function notifyHostOfNewFollower(
     const followerInfo = await getUserContactInfo(followerId);
     const preferences = await getUserNotificationPreferences(hostId);
 
-    // In-app notification
-    if (preferences.notification_opt_in !== false) {
-      try {
-        await createNotification(hostId, {
-          userId: hostId,
-          type: 'new-follower',
-          title: 'New Follower',
-          body: `${followerInfo.name || 'Someone'} started following you`,
-          hostId: hostId,
-        });
-      } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Error creating new follower notification:', error);
-        }
+    // ALWAYS send in-app notification (cannot be disabled)
+    try {
+      await createNotification(hostId, {
+        userId: hostId,
+        type: 'new-follower',
+        title: 'New Follower',
+        body: `${followerInfo.name || 'Someone'} started following you`,
+        hostId: hostId,
+      });
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error creating new follower notification:', error);
       }
     }
 
@@ -817,6 +822,96 @@ export async function notifyHostOfNewFollower(
 }
 
 /**
+ * Notify host when someone favorites their event
+ */
+export async function notifyHostOfNewFavorite(
+  hostId: string,
+  favoriterId: string,
+  eventId: string,
+  eventTitle: string
+): Promise<void> {
+  try {
+    const hostInfo = await getUserContactInfo(hostId);
+    const favoriterInfo = await getUserContactInfo(favoriterId);
+    const preferences = await getUserNotificationPreferences(hostId);
+
+    // ALWAYS send in-app notification (cannot be disabled)
+    try {
+      await createNotification(hostId, {
+        userId: hostId,
+        type: 'new-favorite',
+        title: 'New Favorite',
+        body: `${favoriterInfo.name || 'Someone'} favorited your event "${eventTitle}"`,
+        eventId,
+      });
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error creating new favorite notification:', error);
+      }
+    }
+
+    // Email notification (based on preferences)
+    if (preferences.email_opt_in && hostInfo.email) {
+      try {
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #15383c;">Someone Favorited Your Event</h2>
+            <p>Hello ${hostInfo.name || 'there'},</p>
+            <div style="background-color: #f8fafb; padding: 16px; border-radius: 8px; margin: 20px 0;">
+              <p style="margin: 0; color: #333; line-height: 1.6;">
+                <strong>${favoriterInfo.name || 'Someone'}</strong> favorited your event <strong>"${eventTitle}"</strong>!
+              </p>
+            </div>
+            <p style="color: #666; font-size: 14px; margin-top: 20px;">
+              Keep creating amazing events to engage your community!
+            </p>
+            <div style="margin: 20px 0;">
+              <a href="${BASE_URL}/event/${eventId}" style="display: inline-block; background-color: #e35e25; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">View Event</a>
+            </div>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #666; font-size: 12px;">
+              Popera Team<br>
+              <a href="mailto:support@gopopera.ca" style="color: #e35e25;">support@gopopera.ca</a>
+            </p>
+          </div>
+        `;
+        await sendEmail({
+          to: hostInfo.email,
+          subject: `Someone favorited your event: ${eventTitle}`,
+          html: emailHtml,
+          templateName: 'new-favorite',
+          eventId,
+          notificationType: 'favorite_event',
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('Error sending new favorite email:', error);
+        }
+      }
+    }
+
+    // SMS notification (based on preferences)
+    if (preferences.sms_opt_in && hostInfo.phone) {
+      try {
+        await sendSMSNotification({
+          to: hostInfo.phone,
+          message: `⭐ ${favoriterInfo.name || 'Someone'} favorited your event "${eventTitle}" on Popera!`,
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('Error sending new favorite SMS:', error);
+        }
+      }
+    }
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error notifying host of new favorite:', error);
+    }
+    // Don't throw - favorite should succeed even if notification fails
+  }
+}
+
+/**
  * Notify users who favorited an event that it's getting full
  */
 export async function notifyUsersEventGettingFull(
@@ -831,20 +926,18 @@ export async function notifyUsersEventGettingFull(
     const contactInfo = await getUserContactInfo(userId);
     const preferences = await getUserNotificationPreferences(userId);
 
-    // In-app notification
-    if (preferences.notification_opt_in !== false) {
-      try {
-        await createNotification(userId, {
-          userId,
-          type: 'event-getting-full',
-          title: 'Event Getting Full!',
-          body: `${eventTitle} is ${capacityPercentage}% full - Reserve your spot now!`,
-          eventId,
-        });
-      } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Error creating event getting full notification:', error);
-        }
+    // ALWAYS send in-app notification (cannot be disabled)
+    try {
+      await createNotification(userId, {
+        userId,
+        type: 'event-getting-full',
+        title: 'Event Getting Full!',
+        body: `${eventTitle} is ${capacityPercentage}% full - Reserve your spot now!`,
+        eventId,
+      });
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error creating event getting full notification:', error);
       }
     }
 
@@ -918,20 +1011,18 @@ export async function notifyHostEventTrending(
     const hostInfo = await getUserContactInfo(hostId);
     const preferences = await getUserNotificationPreferences(hostId);
 
-    // In-app notification
-    if (preferences.notification_opt_in !== false) {
-      try {
-        await createNotification(hostId, {
-          userId: hostId,
-          type: 'event-trending',
-          title: 'Your Event is Trending! 🔥',
-          body: `${eventTitle} is getting lots of attention: ${trendingReason}`,
-          eventId,
-        });
-      } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Error creating event trending notification:', error);
-        }
+    // ALWAYS send in-app notification (cannot be disabled)
+    try {
+      await createNotification(hostId, {
+        userId: hostId,
+        type: 'event-trending',
+        title: 'Your Event is Trending! 🔥',
+        body: `${eventTitle} is getting lots of attention: ${trendingReason}`,
+        eventId,
+      });
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error creating event trending notification:', error);
       }
     }
 
@@ -1019,21 +1110,19 @@ export async function suggestFollowingHost(
       return; // Don't send suggestion if already following
     }
 
-    // In-app notification
-    if (preferences.notification_opt_in !== false) {
-      try {
-        await createNotification(attendeeId, {
-          userId: attendeeId,
-          type: 'follow-host-suggestion',
-          title: 'Follow the Host',
-          body: `Follow ${hostInfo.name || 'the host'} to get notified about their next pop-up!`,
-          eventId,
-          hostId,
-        });
-      } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Error creating follow host suggestion notification:', error);
-        }
+    // ALWAYS send in-app notification (cannot be disabled)
+    try {
+      await createNotification(attendeeId, {
+        userId: attendeeId,
+        type: 'follow-host-suggestion',
+        title: 'Follow the Host',
+        body: `Follow ${hostInfo.name || 'the host'} to get notified about their next pop-up!`,
+        eventId,
+        hostId,
+      });
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error creating follow host suggestion notification:', error);
       }
     }
 
