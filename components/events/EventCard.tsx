@@ -258,9 +258,9 @@ export const EventCard: React.FC<EventCardProps> = ({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-60" />
         
-        {/* Main Category Badge - Top Left matching new style (dark teal with light gray border) */}
+        {/* Main Category Badge - Top Left with white transparent circular background and orange text */}
         {/* Automatically handles backward compatibility with old category field */}
-        <div className="absolute top-4 left-4 inline-block py-1 sm:py-1.5 px-3.5 sm:px-4 rounded-full bg-[#1f4d52] border border-gray-300 text-[#e35e25] text-[9px] sm:text-[10px] font-bold tracking-[0.2em] uppercase z-10 shadow-lg">
+        <div className="absolute top-4 left-4 inline-flex items-center justify-center py-1.5 sm:py-2 px-3 sm:px-4 rounded-full bg-white/80 backdrop-blur-sm text-[#e35e25] text-[9px] sm:text-[10px] font-bold tracking-[0.2em] uppercase z-10 shadow-lg">
           {getMainCategoryLabelFromEvent(event)}
         </div>
 
