@@ -1031,10 +1031,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               </h3>
               <div className="space-y-4 text-gray-700 text-sm sm:text-base leading-relaxed">
                 <p>
-                  <strong className="text-[#15383c]">Cancellation Policy:</strong> Attendees may cancel their reservation up to 48 hours before the event for a full refund. Cancellations made 24-48 hours before the event are eligible for a partial refund (typically 50%). No refunds are provided for cancellations made less than 24 hours before the event or for no-shows.
+                  <strong className="text-[#15383c]">Cancellation Policy:</strong> Full refund 48+ hours before, 50% refund 24-48 hours before, no refund within 24 hours or no-shows.
                 </p>
                 <p>
-                  <strong className="text-[#15383c]">Expulsion Policy:</strong> Hosts reserve the right to expel attendees who violate event rules, engage in abusive behavior, spam, impersonate others, ignore moderator warnings, or break event chat rules. Expelled attendees will not receive refunds and may be banned from future events.
+                  <strong className="text-[#15383c]">Expulsion Policy:</strong> Hosts may expel rule-violating attendees without refunds; repeat offenders may be banned.
                 </p>
                 <p className="text-gray-500 text-xs sm:text-sm italic">
                   For complete policy details, please review our <button onClick={() => setViewState(ViewState.CANCELLATION)} className="text-[#e35e25] hover:underline font-medium">Cancellation Policy</button> page.
