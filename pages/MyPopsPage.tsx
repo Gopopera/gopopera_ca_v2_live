@@ -1,8 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ViewState, Event } from '../types';
 import { ChevronLeft, Calendar, MapPin, Clock, Star, MessageCircle, Edit } from 'lucide-react';
 import { useUserStore } from '../stores/userStore';
 import { getUserProfile } from '../firebase/db';
+import { getDbSafe } from '../src/lib/firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { mapFirestoreEventToEvent } from '../firebase/db';
+import type { FirestoreEvent } from '../firebase/types';
 
 interface MyPopsPageProps {
   setViewState: (view: ViewState) => void;
@@ -91,6 +95,55 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
   }, [events, user]);
 
   // Filter events by hosting vs attending vs draft vs past
+  // Load draft events separately from Firestore (they're filtered out from main event store)
+  const [draftEventsFromFirestore, setDraftEventsFromFirestore] = useState<Event[]>([]);
+  const [draftsLoading, setDraftsLoading] = useState(false);
+
+  useEffect(() => {
+    const loadDraftEvents = async () => {
+      if (!user?.uid) {
+        setDraftEventsFromFirestore([]);
+        return;
+      }
+
+      setDraftsLoading(true);
+      try {
+        const db = getDbSafe();
+        if (!db) {
+          setDraftEventsFromFirestore([]);
+          return;
+        }
+
+        // Query for draft events where user is the host
+        const eventsCol = collection(db, 'events');
+        const q = query(
+          eventsCol,
+          where('hostId', '==', user.uid),
+          where('isDraft', '==', true)
+        );
+        const snapshot = await getDocs(q);
+        
+        const drafts: Event[] = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          const firestoreEvent: FirestoreEvent = {
+            id: doc.id,
+            ...(data as Omit<FirestoreEvent, 'id'>),
+          };
+          return mapFirestoreEventToEvent(firestoreEvent);
+        });
+
+        setDraftEventsFromFirestore(drafts);
+      } catch (error) {
+        console.error('[MY_POPS] Error loading draft events:', error);
+        setDraftEventsFromFirestore([]);
+      } finally {
+        setDraftsLoading(false);
+      }
+    };
+
+    loadDraftEvents();
+  }, [user?.uid]);
+
   const { hostingEvents, attendingEvents, draftEvents, pastEvents } = useMemo(() => {
     if (!user) {
       return { hostingEvents: [], attendingEvents: [], draftEvents: [], pastEvents: [] };
@@ -104,8 +157,14 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
       user.rsvps?.includes(event.id) && !isEventPast(event)
     );
 
-    const drafts = events.filter(event => 
+    // Combine draft events from main events array with drafts loaded from Firestore
+    const draftsFromMain = events.filter(event => 
       (event.hostId === user.uid || user.hostedEvents?.includes(event.id)) && event.isDraft === true
+    );
+    // Merge and deduplicate by event ID
+    const allDrafts = [...draftsFromMain, ...draftEventsFromFirestore];
+    const uniqueDrafts = allDrafts.filter((event, index, self) => 
+      index === self.findIndex(e => e.id === event.id)
     );
 
     const past = events.filter(event => {
@@ -114,8 +173,8 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
       return (isHosted || isAttending) && isEventPast(event) && !event.isDraft;
     });
 
-    return { hostingEvents: hosting, attendingEvents: attending, draftEvents: drafts, pastEvents: past };
-  }, [events, user]);
+    return { hostingEvents: hosting, attendingEvents: attending, draftEvents: uniqueDrafts, pastEvents: past };
+  }, [events, user, draftEventsFromFirestore]);
 
   const currentEvents = 
     activeTab === 'hosting' ? hostingEvents :

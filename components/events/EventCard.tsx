@@ -86,7 +86,7 @@ export const EventCard: React.FC<EventCardProps> = ({
           const fallbackName = event.hostName && event.hostName !== 'You' && event.hostName.trim() !== ''
             ? event.hostName 
             : 'Unknown Host';
-          setHostProfilePicture(event.hostPhotoURL || null);
+          setHostProfilePicture(null);
           setDisplayHostName(fallbackName);
         }
       } catch (error) {
@@ -95,7 +95,7 @@ export const EventCard: React.FC<EventCardProps> = ({
         const fallbackName = event.hostName && event.hostName !== 'You' && event.hostName.trim() !== ''
           ? event.hostName 
           : 'Unknown Host';
-        setHostProfilePicture(event.hostPhotoURL || null);
+        setHostProfilePicture(null);
         setDisplayHostName(fallbackName);
       }
     };
@@ -116,7 +116,8 @@ export const EventCard: React.FC<EventCardProps> = ({
         clearInterval(refreshInterval);
       }
     };
-  }, [event.hostId, event.hostName, event.hostPhotoURL, user?.uid, user?.photoURL, user?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl]);
+  // Remove event.hostPhotoURL from dependency array - it does not exist on type Event
+  }, [event.hostId, event.hostName, user?.uid, user?.photoURL, user?.profileImageUrl, userProfile?.photoURL, userProfile?.imageUrl]);
   
   // Fetch host's overall rating from all their events
   React.useEffect(() => {
@@ -247,7 +248,7 @@ export const EventCard: React.FC<EventCardProps> = ({
           style={{ userSelect: 'none', WebkitUserSelect: 'none', pointerEvents: 'auto' }}
           loading="lazy"
           decoding="async"
-          fetchpriority="low"
+          fetchPriority="low"
           draggable={false}
           onError={(e) => {
             const target = e.target as HTMLImageElement;
