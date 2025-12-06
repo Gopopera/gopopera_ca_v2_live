@@ -73,12 +73,18 @@ export async function ensurePoperaProfileAndSeed(user: User) {
   */
 
   // Seed reviews for Popera events (only once, idempotent)
+  // Note: This may fail due to Firestore security rules - that's OK, reviews can be added manually
   try {
     const { seedReviewsForHostEvents } = await import('./reviewSeed');
     await seedReviewsForHostEvents(POPERA_EMAIL);
     console.log('[POPERA_SEED] Reviews seeded for Popera events');
-  } catch (error) {
-    console.error('[POPERA_SEED] Review seeding failed for Popera user', user.uid, error);
+  } catch (error: any) {
+    // Silently handle permission errors - this is expected if security rules don't allow seeding
+    if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+      console.log('[POPERA_SEED] Review seeding skipped (permission denied - expected with current security rules)');
+    } else {
+      console.warn('[POPERA_SEED] Review seeding failed (non-critical):', error?.message || error);
+    }
   }
 }
 

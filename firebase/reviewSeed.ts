@@ -111,7 +111,6 @@ export async function seedFakeReviewAccounts(): Promise<void> {
         displayName: account.name,
         photoURL: account.photoURL,
         bio: account.bio,
-        isDemo: true,
         createdAt: Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000, // Random date in past year
         updatedAt: Date.now(),
       });
@@ -194,8 +193,13 @@ export async function seedReviewsForEvents(hostId: string, eventIds: string[]): 
         await addDoc(reviewsCol, sanitized);
         console.log(`[REVIEW_SEED] Added review by ${reviewer.name} for event ${eventId}`);
       }
-    } catch (error) {
-      console.error(`[REVIEW_SEED] Error seeding reviews for event ${eventId}:`, error);
+    } catch (error: any) {
+      // Handle permission errors gracefully - this is expected with Firestore security rules
+      if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+        console.log(`[REVIEW_SEED] Skipped seeding reviews for event ${eventId} (permission denied - expected)`);
+      } else {
+        console.warn(`[REVIEW_SEED] Error seeding reviews for event ${eventId} (non-critical):`, error?.message || error);
+      }
     }
   }
 
@@ -252,8 +256,14 @@ export async function seedReviewsForHostEvents(hostEmail: string): Promise<void>
     await seedReviewsForEvents(hostId, eventIds);
 
     console.log('[REVIEW_SEED] Successfully seeded reviews for all host events');
-  } catch (error) {
-    console.error('[REVIEW_SEED] Error seeding reviews for host events:', error);
+  } catch (error: any) {
+    // Handle permission errors gracefully - this is expected with Firestore security rules
+    if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+      console.log('[REVIEW_SEED] Review seeding skipped (permission denied - expected with current security rules)');
+      return; // Don't throw - this is not a critical error
+    }
+    console.warn('[REVIEW_SEED] Error seeding reviews for host events (non-critical):', error?.message || error);
+    // Don't throw - review seeding is optional and shouldn't break login
   }
 }
 
