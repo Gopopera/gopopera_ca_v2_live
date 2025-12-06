@@ -38,7 +38,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
     let unsubscribe: (() => void) | null = null;
     
     // Real-time subscription to user document
-    import('../firebase/userSubscriptions').then(({ subscribeToUserProfile }) => {
+    import('../../firebase/userSubscriptions').then(({ subscribeToUserProfile }) => {
       unsubscribe = subscribeToUserProfile(user.uid, (userData) => {
         if (userData) {
           setProfilePicture(userData.photoURL || null);
@@ -150,7 +150,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
     const unsubscribes: (() => void)[] = [];
     
     // Subscribe to followers count (real-time)
-    import('../firebase/follow').then(({ subscribeToFollowersCount, subscribeToFollowingCount }) => {
+    import('../../firebase/follow').then(({ subscribeToFollowersCount, subscribeToFollowingCount }) => {
       const unsubscribeFollowers = subscribeToFollowersCount(user.uid, (count: number) => {
         setStats(prev => ({ ...prev, followers: count }));
       });
@@ -166,7 +166,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
     });
     
     // Subscribe to hosted events count (real-time)
-    import('../firebase/db').then(({ 
+    import('../../firebase/db').then(({ 
       subscribeToHostedEventsCount, 
       subscribeToAttendedEventsCount,
       subscribeToTotalAttendeesCount,

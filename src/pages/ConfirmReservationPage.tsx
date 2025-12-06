@@ -82,7 +82,7 @@ export const ConfirmReservationPage: React.FC<ConfirmReservationPageProps> = ({
 
     // Validate capacity if event has a limit
     if (event.capacity) {
-      const { getReservationCountForEvent } = await import('../firebase/db');
+      const { getReservationCountForEvent } = await import('../../firebase/db');
       try {
         const currentReservations = await getReservationCountForEvent(event.id);
         if (currentReservations + attendeeCount > event.capacity) {

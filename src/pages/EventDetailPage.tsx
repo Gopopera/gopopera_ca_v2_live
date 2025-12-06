@@ -288,7 +288,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     let unsubscribe: (() => void) | null = null;
     
     // Real-time subscription to host user document
-    import('../firebase/userSubscriptions').then(({ subscribeToUserProfile }) => {
+    import('../../firebase/userSubscriptions').then(({ subscribeToUserProfile }) => {
       unsubscribe = subscribeToUserProfile(eventHostId, (hostData) => {
         if (hostData) {
           setHostProfilePicture(hostData.photoURL || null);
@@ -336,7 +336,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     // Use real-time subscription for instant updates
     let unsubscribe: (() => void) | null = null;
     
-    import('../firebase/db').then(({ subscribeToReservationCount }) => {
+    import('../../firebase/db').then(({ subscribeToReservationCount }) => {
       unsubscribe = subscribeToReservationCount(eventId, (count: number) => {
         setReservationCount(count);
         if (import.meta.env.DEV) {
