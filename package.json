@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build --force",
-    "build:clean": "rm -rf dist && vite build --force",
+    "build": "vite build",
+    "build:clean": "rm -rf dist && vite build",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
