@@ -132,7 +132,11 @@ async function migrateEvents() {
       }
       
       if (!data.sessionFrequency) {
-        updates.sessionFrequency = 'Flexible'; // Default value
+        updates.sessionFrequency = 'one-time'; // Default value (Flexible is no longer supported)
+        needsUpdate = true;
+      } else if (data.sessionFrequency.toLowerCase() === 'flexible') {
+        // Migrate old "flexible" values to "one-time"
+        updates.sessionFrequency = 'one-time';
         needsUpdate = true;
       }
       

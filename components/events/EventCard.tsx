@@ -353,7 +353,7 @@ export const EventCard: React.FC<EventCardProps> = ({
         {/* Session Metadata Block - Session Frequency & Mode Tags */}
         <div className="mb-3">
           <div className="flex flex-wrap items-center gap-2">
-            {event.sessionFrequency && (
+            {event.sessionFrequency && getSessionFrequencyText(event.sessionFrequency) && (
               <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#15383c]/5 text-[#15383c] border border-[#15383c]/10 text-xs font-medium">
                 {getSessionFrequencyText(event.sessionFrequency)}
               </span>

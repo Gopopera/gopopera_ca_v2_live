@@ -79,12 +79,18 @@ export function getCircleContinuityText(event: Event): { text: string; type: 'st
 /**
  * Get session frequency display text
  * Maps: weekly → 'Weekly Session', monthly → 'Monthly Session', one-time → 'One-Time Session'
+ * Filters out "flexible" - returns empty string if frequency is flexible or unknown
  */
 export function getSessionFrequencyText(frequency?: string): string {
   if (!frequency) return '';
   
   // Normalize to lowercase for comparison
-  const normalized = frequency.toLowerCase();
+  const normalized = frequency.toLowerCase().trim();
+  
+  // Filter out "flexible" - it's no longer a valid option
+  if (normalized === 'flexible') {
+    return '';
+  }
   
   const frequencyMap: Record<string, string> = {
     'weekly': 'Weekly Session',
@@ -93,7 +99,7 @@ export function getSessionFrequencyText(frequency?: string): string {
     'onetime': 'One-Time Session',
   };
   
-  return frequencyMap[normalized] || frequency;
+  return frequencyMap[normalized] || '';
 }
 
 /**
