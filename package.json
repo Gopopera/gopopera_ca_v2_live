@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "vercel-build": "rm -rf node_modules/.vite && rm -rf dist && vite build",
     "build:clean": "rm -rf dist && vite build",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
