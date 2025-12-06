@@ -7,7 +7,7 @@ import { getDbSafe } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, limit } from 'firebase/firestore';
 
 const IS_DEV = import.meta.env.DEV;
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/server';
 
 // Log API configuration
 if (typeof window !== 'undefined') {
