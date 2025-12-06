@@ -99,35 +99,74 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   const messages = getMessagesForEvent(event.id);
   const poll = getPollForEvent(event.id);
   
+  // Force subscription refresh when host opens chat
+  useEffect(() => {
+    if (isHost && canAccessChat && !isDemo && !isBanned) {
+      // Ensure subscription is active for host
+      console.log('[GROUP_CHAT] 🔄 Ensuring subscription for host:', event.id);
+      subscribeToEventChat(event.id);
+    }
+  }, [isHost, event.id, canAccessChat, isDemo, isBanned, subscribeToEventChat]);
+  
+  // Debug: Log messages for host
+  useEffect(() => {
+    if (isHost) {
+      console.log('[GROUP_CHAT] 🎯 Host message check:', {
+        eventId: event.id,
+        messageCount: messages.length,
+        messages: messages.map(m => ({ id: m.id, userName: m.userName, isHost: m.isHost, text: m.message.substring(0, 50) })),
+        canAccessChat,
+        viewType,
+      });
+    }
+  }, [messages.length, isHost, event.id, canAccessChat, viewType, messages]);
+  
   // Subscribe to Firestore realtime chat updates
   // CRITICAL: All participants (host and attendees) must subscribe to see all messages
+  // Host should ALWAYS have access and see all messages
   useEffect(() => {
     // Subscribe if user has access (host or participant) and event is not demo
     if (canAccessChat && !isDemo && !isBanned) {
-      console.log('[GROUP_CHAT] Subscribing to chat:', {
+      console.log('[GROUP_CHAT] ✅ Subscribing to chat:', {
         eventId: event.id,
         isHost,
         hasReserved,
         canAccessChat,
+        viewType,
         userId: currentUser?.id,
       });
+      
+      // Ensure subscription happens
       subscribeToEventChat(event.id);
+      
+      // Verify subscription is active after a short delay
+      setTimeout(() => {
+        const messages = getMessagesForEvent(event.id);
+        console.log('[GROUP_CHAT] 📨 Messages after subscription:', {
+          eventId: event.id,
+          messageCount: messages.length,
+          isHost,
+          messages: messages.map(m => ({ id: m.id, userName: m.userName, text: m.message.substring(0, 50) })),
+        });
+      }, 1000);
+      
       return () => {
         console.log('[GROUP_CHAT] Unsubscribing from chat:', event.id);
         unsubscribeFromEventChat(event.id);
       };
     } else {
-      console.log('[GROUP_CHAT] Not subscribing to chat:', {
+      console.warn('[GROUP_CHAT] ⚠️ Not subscribing to chat:', {
         eventId: event.id,
         canAccessChat,
         isDemo,
         isBanned,
         isHost,
         hasReserved,
+        viewType,
         userId: currentUser?.id,
       });
     }
-  }, [event.id, canAccessChat, isDemo, isBanned, subscribeToEventChat, unsubscribeFromEventChat, isHost, hasReserved, currentUser?.id]);
+  }, [event.id, canAccessChat, isDemo, isBanned, subscribeToEventChat, unsubscribeFromEventChat, isHost, hasReserved, currentUser?.id, viewType, getMessagesForEvent]);
 
   // Check follow status
   useEffect(() => {

@@ -101,6 +101,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
     // Subscribe to Firestore realtime updates
     const unsubscribe = subscribeToChat(eventId, (firestoreMessages: FirestoreChatMessage[]) => {
+      console.log(`[CHAT_STORE] 📨 Received ${firestoreMessages.length} messages for event ${eventId}`, {
+        eventId,
+        messageCount: firestoreMessages.length,
+        messages: firestoreMessages.map(m => ({ id: m.id, userId: m.userId, userName: m.userName, text: m.text?.substring(0, 50) })),
+      });
+      
       set((state) => ({
         firestoreMessages: {
           ...state.firestoreMessages,
@@ -115,6 +121,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         [eventId]: unsubscribe,
       },
     }));
+    
+    console.log(`[CHAT_STORE] ✅ Subscribed to chat for event ${eventId}`);
   },
 
   unsubscribeFromEventChat: (eventId: string) => {
