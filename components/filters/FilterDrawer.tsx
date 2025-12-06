@@ -21,20 +21,74 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
     circleContinuity: true,
   });
 
+  // Comprehensive list of Canadian cities
+  const CANADIAN_CITIES = [
+    'Montreal, CA',
+    'Toronto, CA',
+    'Vancouver, CA',
+    'Ottawa, CA',
+    'Quebec City, CA',
+    'Calgary, CA',
+    'Edmonton, CA',
+    'Winnipeg, CA',
+    'Hamilton, CA',
+    'Kitchener, CA',
+    'London, CA',
+    'Victoria, CA',
+    'Halifax, CA',
+    'Oshawa, CA',
+    'Windsor, CA',
+    'Saskatoon, CA',
+    'Regina, CA',
+    'Sherbrooke, CA',
+    'St. John\'s, CA',
+    'Barrie, CA',
+    'Kelowna, CA',
+    'Abbotsford, CA',
+    'Sudbury, CA',
+    'Kingston, CA',
+    'Saguenay, CA',
+    'Trois-Rivières, CA',
+    'Guelph, CA',
+    'Cambridge, CA',
+    'Thunder Bay, CA',
+    'Gatineau, CA',
+    'Saint John, CA',
+    'Moncton, CA',
+    'Brantford, CA',
+    'Saint-Jérôme, CA',
+    'Peterborough, CA',
+    'Nanaimo, CA',
+    'Red Deer, CA',
+    'Lethbridge, CA',
+    'Kamloops, CA',
+    'Whitehorse, CA',
+    'Yellowknife, CA',
+    'Iqaluit, CA',
+  ];
+
   // Get unique countries and cities from events
   const countries = React.useMemo(() => {
     const countrySet = new Set<string>();
     events.forEach(event => {
       if (event.country) countrySet.add(event.country);
     });
+    // Always include Canada if we have Canadian cities
+    if (CANADIAN_CITIES.length > 0) {
+      countrySet.add('Canada');
+    }
     return Array.from(countrySet).sort();
   }, [events]);
 
   const cities = React.useMemo(() => {
+    // If Canada is selected, show all Canadian cities
+    if (filters.country === 'Canada') {
+      return CANADIAN_CITIES.sort();
+    }
+    
+    // Otherwise, show cities from events that match the selected country
     const citySet = new Set<string>();
     events.forEach(event => {
-      if (event.city) citySet.add(event.city);
-      // Also check if country filter is set, only show cities from that country
       if (filters.country && event.country === filters.country && event.city) {
         citySet.add(event.city);
       } else if (!filters.country && event.city) {
@@ -260,7 +314,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
             
             {expandedSections.sessionFrequency && (
               <div className="space-y-2">
-                {['Weekly', 'Monthly', 'One-Time', 'Flexible'].map(frequency => (
+                {['Weekly', 'Monthly', 'One-Time'].map(frequency => (
                   <button
                     key={frequency}
                     onClick={() => handleSessionFrequencyToggle(frequency)}

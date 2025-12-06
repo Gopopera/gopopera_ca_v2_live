@@ -47,8 +47,9 @@ export function getCircleContinuity(event: Event): 'ongoing' | 'startingSoon' | 
 
 /**
  * Get circle continuity display text
+ * Returns formatted text for "Starting Soon" or "Ongoing — X Weeks"
  */
-export function getCircleContinuityText(event: Event): string | null {
+export function getCircleContinuityText(event: Event): { text: string; type: 'startingSoon' | 'ongoing' } | null {
   const continuity = getCircleContinuity(event);
   
   if (continuity === 'ongoing') {
@@ -60,9 +61,10 @@ export function getCircleContinuityText(event: Event): string | null {
       const diffTime = Math.abs(now.getTime() - start.getTime());
       weeks = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 7));
     }
-    return weeks > 0 ? `Ongoing (${weeks} week${weeks !== 1 ? 's' : ''})` : 'Ongoing';
+    const text = weeks > 0 ? `Ongoing — ${weeks} Week${weeks !== 1 ? 's' : ''}` : 'Ongoing';
+    return { text, type: 'ongoing' };
   } else if (continuity === 'startingSoon') {
-    return 'Starting Soon';
+    return { text: 'Starting Soon', type: 'startingSoon' };
   }
   
   return null;
@@ -70,31 +72,41 @@ export function getCircleContinuityText(event: Event): string | null {
 
 /**
  * Get session frequency display text
+ * Maps: weekly → 'Weekly Session', monthly → 'Monthly Session', one-time → 'One-Time Session', flexible → 'Flexible Schedule'
  */
 export function getSessionFrequencyText(frequency?: string): string {
   if (!frequency) return '';
   
+  // Normalize to lowercase for comparison
+  const normalized = frequency.toLowerCase();
+  
   const frequencyMap: Record<string, string> = {
-    'Weekly': 'Weekly',
-    'Monthly': 'Monthly',
-    'One-Time': 'One-Time Session',
-    'Flexible': 'Flexible',
+    'weekly': 'Weekly Session',
+    'monthly': 'Monthly Session',
+    'one-time': 'One-Time Session',
+    'onetime': 'One-Time Session',
+    'flexible': 'Flexible Schedule',
   };
   
-  return frequencyMap[frequency] || frequency;
+  return frequencyMap[normalized] || frequency;
 }
 
 /**
  * Get session mode display text
+ * Maps: In-Person → 'In-Person Session', Remote → 'Remote Session'
  */
 export function getSessionModeText(mode?: string): string {
   if (!mode) return '';
   
+  // Normalize for comparison
+  const normalized = mode.toLowerCase();
+  
   const modeMap: Record<string, string> = {
-    'In-Person': 'In-Person',
-    'Remote': 'Remote',
+    'in-person': 'In-Person Session',
+    'inperson': 'In-Person Session',
+    'remote': 'Remote Session',
   };
   
-  return modeMap[mode] || mode;
+  return modeMap[normalized] || mode;
 }
 

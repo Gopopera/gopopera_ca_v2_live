@@ -46,6 +46,8 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
   const [price, setPrice] = useState('Free');
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sessionFrequency, setSessionFrequency] = useState<'Weekly' | 'Monthly' | 'One-Time' | ''>('');
+  const [sessionMode, setSessionMode] = useState<'In-Person' | 'Remote' | ''>('');
 
   // Check host phone verification status on mount
   // This determines if user can create events (phoneVerifiedForHosting must be true)
@@ -219,7 +221,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
     }
     
     // Validate required fields
-    if (!title || !description || !city || !date || !time || !category) {
+    if (!title || !description || !city || !date || !time || !category || !sessionFrequency || !sessionMode) {
       const missingFields = [];
       if (!title) missingFields.push('Title');
       if (!description) missingFields.push('Description');
@@ -227,6 +229,8 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       if (!date) missingFields.push('Date');
       if (!time) missingFields.push('Time');
       if (!category) missingFields.push('Category');
+      if (!sessionFrequency) missingFields.push('Session Frequency');
+      if (!sessionMode) missingFields.push('Session Mode');
       alert(`Please fill in all required fields: ${missingFields.join(', ')}`);
       console.warn('[CREATE_EVENT] Missing required fields:', missingFields);
       return;
@@ -505,6 +509,14 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       // Get host profile picture URL (for better performance and consistency)
       const hostPhotoURL = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || undefined;
       
+      // Extract country from city (e.g., "Montreal, CA" → "Canada")
+      let country: string | undefined;
+      if (city.includes(', CA')) {
+        country = 'Canada';
+      } else if (city.includes(', US')) {
+        country = 'United States';
+      }
+      
       // Validate hostName - should never be empty or 'You'
       if (!hostName || hostName === 'You' || hostName.trim() === '') {
         console.error('[CREATE_EVENT] ❌ Invalid hostName:', hostName);
@@ -559,6 +571,9 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         lat, // Add geocoded coordinates
         lng, // Add geocoded coordinates
         hostPhoneNumber: hostPhoneNumber || undefined, // Add host phone number to event
+        sessionFrequency: sessionFrequency || undefined,
+        sessionMode: sessionMode || undefined,
+        country: country, // Extract country from city
       } as any); // Type assertion needed for optional fields
       
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -821,6 +836,50 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                     required
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 sm:py-3.5 md:py-4 pl-12 pr-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all" 
                   />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Session Details */}
+          <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 lg:p-10 border border-gray-100 shadow-sm mb-6 sm:mb-8 space-y-4 sm:space-y-5 md:space-y-6">
+            <h3 className="text-base sm:text-lg font-medium text-[#15383c] mb-4">Session Details</h3>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+              <div className="space-y-2">
+                <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
+                  Session Frequency <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <select 
+                    value={sessionFrequency}
+                    onChange={(e) => setSessionFrequency(e.target.value as 'Weekly' | 'Monthly' | 'One-Time' | '')}
+                    required
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="">Select...</option>
+                    <option value="Weekly">Weekly</option>
+                    <option value="Monthly">Monthly</option>
+                    <option value="One-Time">One-Time Session</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
+                  Session Mode <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <select 
+                    value={sessionMode}
+                    onChange={(e) => setSessionMode(e.target.value as 'In-Person' | 'Remote' | '')}
+                    required
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="">Select...</option>
+                    <option value="In-Person">In-Person</option>
+                    <option value="Remote">Remote Session</option>
+                  </select>
                 </div>
               </div>
             </div>

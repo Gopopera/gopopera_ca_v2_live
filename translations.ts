@@ -35,22 +35,22 @@ export const translations = {
       curatedSales: {
         category: 'SHOPPING',
         title: 'Curated Sales',
-        description: 'Host curated selling Sessions, manage buyers, and bring your community together with small-group drops.',
+        description: 'Host curated selling Sessions, manage buyers, and bring your community together with small-group drops and exclusive offers.',
       },
       connectPromote: {
         category: 'EXPERIENCES',
         title: 'Connect & Promote',
-        description: 'Create Circles around your craft, passion, or skill and host Sessions that turn followers into long-term relationships.',
+        description: 'Create Circles around your craft, passion, or skill and host Sessions that turn followers into meaningful long-term relationships.',
       },
       mobilizeSupport: {
         category: 'GATHERINGS',
         title: 'Mobilize & Support',
-        description: 'Start Circles dedicated to causes or local impact, and bring people together through meaningful real-life Sessions.',
+        description: 'Start Circles dedicated to causes or local impact, and bring people together through meaningful real-life Sessions and community action.',
       },
       learningWorkshops: {
         category: 'LEARNING',
         title: 'Learn & Grow Together',
-        description: 'Host workshops, classes, and skill-building Sessions. From drawing and cooking to tech meetups and wellness practices, inside a Circle designed for growth.',
+        description: 'Host workshops, classes, and skill-building Sessions. From drawing and cooking to tech meetups, inside a Circle designed for growth.',
       },
     },
     // Landing Page
@@ -879,22 +879,22 @@ export const translations = {
       curatedSales: {
         category: 'ACHATS',
         title: 'Ventes sélectionnées',
-        description: 'Organisez des Sessions de vente sélectionnées, gérez les acheteurs et rassemblez votre communauté avec des ventes en petits groupes.',
+        description: 'Organisez des Sessions de vente sélectionnées, gérez les acheteurs et rassemblez votre communauté avec des ventes en petits groupes et des offres exclusives.',
       },
       connectPromote: {
         category: 'EXPÉRIENCES',
         title: 'Connecter et promouvoir',
-        description: 'Créez des Cercles autour de votre art, de votre passion ou de votre compétence et organisez des Sessions qui transforment les abonnés en relations à long terme.',
+        description: 'Créez des Cercles autour de votre art, de votre passion ou de votre compétence et organisez des Sessions qui transforment les abonnés en relations significatives à long terme.',
       },
       mobilizeSupport: {
         category: 'RASSEMBLEMENTS',
         title: 'Mobiliser et soutenir',
-        description: 'Démarrez des Cercles dédiés à des causes ou à un impact local, et rassemblez les gens à travers des Sessions en personne significatives.',
+        description: 'Démarrez des Cercles dédiés à des causes ou à un impact local, et rassemblez les gens à travers des Sessions en personne significatives et des actions communautaires.',
       },
       learningWorkshops: {
         category: 'APPRENTISSAGE',
         title: 'Apprendre et grandir ensemble',
-        description: 'Organisez des ateliers, des cours et des Sessions de développement des compétences. Du dessin et de la cuisine aux rencontres technologiques et aux pratiques de bien-être, dans un Cercle conçu pour la croissance.',
+        description: 'Organisez des ateliers, des cours et des Sessions de développement des compétences. Du dessin et de la cuisine aux rencontres technologiques, dans un Cercle conçu pour la croissance.',
       },
     },
     // Landing Page

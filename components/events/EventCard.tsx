@@ -6,7 +6,6 @@ import { formatRating } from '@/utils/formatRating';
 import { useUserStore } from '@/stores/userStore';
 import { getUserProfile, listHostReviews } from '../../firebase/db';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { VibePillList } from './VibePill';
 import { 
   getCircleContinuityText, 
   getSessionFrequencyText, 
@@ -263,8 +262,22 @@ export const EventCard: React.FC<EventCardProps> = ({
           {event.category}
         </div>
 
+        {/* Vibes Tags - Bottom-left overlay on hero image, above title area */}
+        {event.vibes && event.vibes.length > 0 && (
+          <div className="absolute bottom-20 left-4 right-4 z-20 flex flex-wrap gap-1.5">
+            {event.vibes.slice(0, 3).map((vibe, index) => (
+              <span 
+                key={index}
+                className="inline-flex items-center px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-sm text-white text-[11px] font-medium uppercase tracking-wide"
+              >
+                {vibe}
+              </span>
+            ))}
+          </div>
+        )}
+
         {/* Price Badge */}
-        <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-popera-teal shadow-sm">
+        <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-popera-teal shadow-sm z-10">
           {event.price}
         </div>
 
@@ -335,22 +348,20 @@ export const EventCard: React.FC<EventCardProps> = ({
 
       {/* Content */}
       <div className="p-5 lg:p-6 flex flex-col flex-grow min-h-0">
-        {/* Top Tags Section - Session Frequency, Session Mode, Vibes */}
-        <div className="mb-3 space-y-2">
-          {/* Session Frequency & Mode Tags - Always show with defaults */}
+        {/* Session Metadata Block - Session Frequency & Mode Tags */}
+        <div className="mb-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#15383c]/5 text-[#15383c] border border-[#15383c]/10 text-xs font-medium">
-              {getSessionFrequencyText(event.sessionFrequency || 'Flexible')}
-            </span>
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#15383c]/5 text-[#15383c] border border-[#15383c]/10 text-xs font-medium">
-              {getSessionModeText(event.sessionMode || 'In-Person')}
-            </span>
+            {event.sessionFrequency && (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#15383c]/5 text-[#15383c] border border-[#15383c]/10 text-xs font-medium">
+                {getSessionFrequencyText(event.sessionFrequency)}
+              </span>
+            )}
+            {event.sessionMode && (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#15383c]/5 text-[#15383c] border border-[#15383c]/10 text-xs font-medium">
+                {getSessionModeText(event.sessionMode)}
+              </span>
+            )}
           </div>
-          
-          {/* Vibes Tags */}
-          {event.vibes && event.vibes.length > 0 && (
-            <VibePillList vibes={event.vibes} maxVisible={4} size="sm" />
-          )}
         </div>
 
         {/* Title & Host Section */}
@@ -417,28 +428,48 @@ export const EventCard: React.FC<EventCardProps> = ({
           </p>
         )}
 
-        {/* Circle Continuity Indicator */}
-        {getCircleContinuityText(event) && (
-          <div className="mb-3">
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#e35e25]/10 text-[#e35e25] border border-[#e35e25]/20 text-xs font-medium">
-              {getCircleContinuityText(event)}
-            </span>
-          </div>
-        )}
+        {/* Circle Continuity Indicator - Starting Soon or Ongoing */}
+        {(() => {
+          const continuity = getCircleContinuityText(event);
+          if (!continuity) return null;
+          
+          if (continuity.type === 'startingSoon') {
+            return (
+              <div className="mb-3">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#e35e25]/20 text-[#e35e25] border border-[#e35e25]/30 text-xs font-medium">
+                  {continuity.text}
+                </span>
+              </div>
+            );
+          } else if (continuity.type === 'ongoing') {
+            return (
+              <div className="mb-3">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-green-100/15 text-[#15383c] border border-green-200/30 text-xs font-medium">
+                  {continuity.text}
+                </span>
+              </div>
+            );
+          }
+          return null;
+        })()}
 
-        {/* Engagement Indicators */}
+        {/* Engagement Indicators - Improved hierarchy: Capacity → Date + Time → Location */}
         <div className="mt-auto space-y-2">
-          {/* Member Count & Spots Available */}
+          {/* Member Count & Spots Available - Improved format */}
           <div className="flex items-center text-gray-600 text-sm">
             <Users size={16} className="sm:w-4 sm:h-4 mr-2 text-popera-orange shrink-0" />
             <span className="truncate leading-relaxed">
-              {event.attendeesCount ?? 0} / {event.capacity ?? 'Unlimited'} Members Joined
               {(() => {
+                const joinedCount = event.attendeesCount ?? 0;
+                const capacity = event.capacity ?? 'Unlimited';
                 const availableSpots = getAvailableSpots(event);
-                if (availableSpots !== null && availableSpots > 0) {
-                  return ` · ${availableSpots} Spot${availableSpots !== 1 ? 's' : ''} Available`;
+                
+                if (capacity === 'Unlimited') {
+                  return `👥 ${joinedCount} members joined`;
                 }
-                return null;
+                
+                const spotsLeft = availableSpots !== null ? availableSpots : 0;
+                return `👥 ${joinedCount} of ${capacity} members joined • ${spotsLeft} spot${spotsLeft !== 1 ? 's' : ''} left`;
               })()}
             </span>
           </div>

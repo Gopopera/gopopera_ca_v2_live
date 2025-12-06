@@ -37,7 +37,7 @@ export interface Event {
   isDraft?: boolean; // True for draft events (not published)
   // New fields for event cards and filtering
   vibes?: string[]; // Array of vibe tags (e.g., ["Creative", "Social", "Wellness"])
-  sessionFrequency?: string; // "Weekly" | "Monthly" | "One-Time" | "Flexible"
+  sessionFrequency?: string; // "Weekly" | "Monthly" | "One-Time"
   sessionMode?: string; // "In-Person" | "Remote"
   country?: string; // Country name (e.g., "Canada", "United States")
 }
