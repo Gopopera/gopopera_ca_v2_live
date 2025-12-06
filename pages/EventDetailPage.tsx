@@ -772,7 +772,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-[#15383c] via-[#15383c]/40 to-transparent opacity-90 pointer-events-none" />
         
-        {/* Favorite Button - Top Right on Image */}
+        {/* Favorite Button - Top Right on Image (positioned below header) */}
         {onToggleFavorite && (
           <button
             onClick={(e) => {
@@ -796,7 +796,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               e.preventDefault();
             }}
             type="button"
-            className={`absolute top-4 right-4 w-11 h-11 sm:w-12 sm:h-12 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg hover:scale-105 active:scale-[0.92] transition-all touch-manipulation border border-white/50 z-50 pointer-events-auto ${
+            className={`absolute top-4 lg:top-20 right-4 w-11 h-11 sm:w-12 sm:h-12 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg hover:scale-105 active:scale-[0.92] transition-all touch-manipulation border border-white/50 z-50 pointer-events-auto ${
               isFavorite ? 'text-[#e35e25]' : 'text-white'
             }`}
             style={{ pointerEvents: 'auto', WebkitTapHighlightColor: 'transparent' }}
