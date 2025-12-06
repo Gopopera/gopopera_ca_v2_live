@@ -30,8 +30,8 @@ interface UserNotificationPreferences {
 async function getUserNotificationPreferences(userId: string): Promise<UserNotificationPreferences> {
   const db = getDbSafe();
   if (!db) {
-    // Default to opt-in if no DB
-    return { email_opt_in: true, sms_opt_in: false, notification_opt_in: true };
+    // Default to opt-in if no DB (all enabled by default)
+    return { email_opt_in: true, sms_opt_in: true, notification_opt_in: true };
   }
 
   try {
@@ -42,18 +42,18 @@ async function getUserNotificationPreferences(userId: string): Promise<UserNotif
     // Check both notification_settings and notificationPreferences (backward compatibility)
     const settings = data?.notification_settings || data?.notificationPreferences || {};
     
-    // Default to opt-in if preference doesn't exist (backward compatible)
+    // Default to opt-in if preference doesn't exist (backward compatible, all enabled by default)
     return {
       email_opt_in: settings.email_opt_in !== undefined ? settings.email_opt_in : (settings.email !== undefined ? settings.email : true),
-      sms_opt_in: settings.sms_opt_in !== undefined ? settings.sms_opt_in : (settings.sms !== undefined ? settings.sms : false),
+      sms_opt_in: settings.sms_opt_in !== undefined ? settings.sms_opt_in : (settings.sms !== undefined ? settings.sms : true),
       notification_opt_in: settings.notification_opt_in !== undefined ? settings.notification_opt_in : true,
     };
   } catch (error) {
     if (import.meta.env.DEV) {
       console.error('Error fetching notification preferences:', error);
     }
-    // Default to opt-in on error
-    return { email_opt_in: true, sms_opt_in: false, notification_opt_in: true };
+    // Default to opt-in on error (all enabled by default)
+    return { email_opt_in: true, sms_opt_in: true, notification_opt_in: true };
   }
 }
 
@@ -100,7 +100,10 @@ export async function sendComprehensiveNotification(
   // Always create in-app notification if enabled
   if (preferences.notification_opt_in !== false) {
     try {
-      await createNotification(userId, notification);
+      await createNotification(userId, {
+        ...notification,
+        userId: userId,
+      });
     } catch (error) {
       console.error('Error creating in-app notification:', error);
     }
@@ -580,6 +583,7 @@ export async function notifyHostOfRSVP(
         const emailHtml = RSVPHostNotificationTemplate({
           hostName: hostInfo.name || 'Host',
           attendeeName: attendeeInfo.name || 'Someone',
+          attendeeEmail: attendeeInfo.email || '',
           eventTitle,
           eventUrl: `${BASE_URL}/event/${eventId}`,
         });
@@ -747,7 +751,7 @@ export async function notifyHostOfNewFollower(
           type: 'new-follower',
           title: 'New Follower',
           body: `${followerInfo.name || 'Someone'} started following you`,
-          hostId,
+          hostId: hostId,
         });
       } catch (error) {
         if (import.meta.env.DEV) {
@@ -791,7 +795,19 @@ export async function notifyHostOfNewFollower(
       }
     }
 
-    // SMS disabled (social, not urgent)
+    // SMS notification
+    if (preferences.sms_opt_in && hostInfo.phone) {
+      try {
+        await sendSMSNotification({
+          to: hostInfo.phone,
+          message: `🎉 New follower! ${followerInfo.name || 'Someone'} started following you on Popera.`,
+        });
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('Error sending new follower SMS:', error);
+        }
+      }
+    }
   } catch (error) {
     if (import.meta.env.DEV) {
       console.error('Error notifying host of new follower:', error);

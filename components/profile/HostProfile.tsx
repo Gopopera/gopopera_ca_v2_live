@@ -7,7 +7,7 @@ import { useUserStore, POPERA_HOST_ID, POPERA_HOST_NAME } from '@/stores/userSto
 import { PoperaProfilePicture } from './PoperaProfilePicture';
 import { formatDate } from '@/utils/dateFormatter';
 import { formatRating } from '@/utils/formatRating';
-import { listHostReviews } from '@/firebase/db';
+import { listHostReviews, getUserProfile } from '@/firebase/db';
 import { FirestoreReview } from '@/firebase/types';
 
 interface HostProfileProps {
@@ -42,9 +42,52 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
   const [firestoreReviews, setFirestoreReviews] = useState<FirestoreReview[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   
+  // State for host profile picture (synced from Firestore)
+  const [hostProfilePicture, setHostProfilePicture] = useState<string | null>(null);
+  
   // Get real data from profile store - call hooks unconditionally, then use conditionally
   const isFollowing = hostId ? profileStore.isFollowing(currentUser?.id || '', hostId) : false;
   const followersCount = hostId ? profileStore.getFollowersCount(hostId) : 0;
+  
+  // Fetch host profile picture from Firestore (synced with event cards)
+  useEffect(() => {
+    const fetchHostProfile = async () => {
+      if (!hostId || isPoperaProfile) {
+        setHostProfilePicture(null);
+        return;
+      }
+      
+      try {
+        const hostProfile = await getUserProfile(hostId);
+        if (hostProfile) {
+          // Priority: photoURL > imageUrl (both from Firestore - always latest)
+          const profilePic = hostProfile.photoURL || hostProfile.imageUrl || null;
+          setHostProfilePicture(profilePic);
+        } else {
+          setHostProfilePicture(null);
+        }
+      } catch (error) {
+        console.error('[HOST_PROFILE] Error fetching host profile:', error);
+        setHostProfilePicture(null);
+      }
+    };
+    
+    fetchHostProfile();
+    
+    // Refresh profile picture periodically to catch updates (like EventCard does)
+    let refreshInterval: NodeJS.Timeout | null = null;
+    if (hostId && !isPoperaProfile) {
+      refreshInterval = setInterval(() => {
+        fetchHostProfile();
+      }, 5000); // Refresh every 5 seconds
+    }
+    
+    return () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    };
+  }, [hostId, isPoperaProfile]);
   
   // Fetch reviews from Firestore (only accepted reviews for accurate count)
   useEffect(() => {
@@ -207,15 +250,22 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
                 ) : (
                   <>
                     <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gray-200 p-1 ring-4 ring-white shadow-lg">
-                      <img 
-                        src={`https://picsum.photos/seed/${displayName}/200/200`} 
-                        alt={displayName} 
-                        className="w-full h-full rounded-full object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2U1ZTdlYiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iNDAiIGZpbGw9IiM5Y2EzYWYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5IPC90ZXh0Pjwvc3ZnPg==';
-                        }}
-                      />
+                      {hostProfilePicture ? (
+                        <img 
+                          src={hostProfilePicture} 
+                          alt={displayName} 
+                          className="w-full h-full rounded-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            // Fallback to placeholder if image fails to load
+                            target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2U1ZTdlYiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iNDAiIGZpbGw9IiM5Y2EzYWYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5IPC90ZXh0Pjwvc3ZnPg==';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-2xl font-bold">
+                          {displayName?.[0] || 'H'}
+                        </div>
+                      )}
                     </div>
                     <div className="absolute bottom-1 right-1 w-8 h-8 bg-popera-orange text-white rounded-full flex items-center justify-center ring-4 ring-white">
                       <Check size={16} strokeWidth={3} />
