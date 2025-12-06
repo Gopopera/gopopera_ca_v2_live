@@ -438,7 +438,7 @@ export const EventCard: React.FC<EventCardProps> = ({
           if (continuity.type === 'startingSoon') {
             return (
               <div className="mb-3">
-                <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#1f4d52] text-[#e35e25] border border-gray-300 text-xs font-medium uppercase">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-white/80 backdrop-blur-sm text-[#e35e25] text-xs font-medium uppercase shadow-lg">
                   {continuity.text}
                 </span>
               </div>
