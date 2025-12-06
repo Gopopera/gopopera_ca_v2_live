@@ -295,20 +295,6 @@ export const EventCard: React.FC<EventCardProps> = ({
           {getMainCategoryLabelFromEvent(event)}
         </div>
 
-        {/* Vibes Tags - Bottom right, aligned with Free tag */}
-        {event.vibes && event.vibes.length > 0 && (
-          <div className="absolute bottom-4 right-4 z-20 flex flex-wrap gap-1.5 justify-end">
-            {event.vibes.slice(0, 3).map((vibe, index) => (
-              <span 
-                key={index}
-                className="inline-flex items-center px-2 py-0.5 rounded-full bg-white/95 backdrop-blur-sm border border-gray-300 text-[#15383c] text-[11px] font-medium shadow-sm"
-              >
-                {vibe}
-              </span>
-            ))}
-          </div>
-        )}
-
         {/* Price Badge */}
         <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-popera-teal shadow-sm z-10">
           {event.price}
@@ -395,6 +381,20 @@ export const EventCard: React.FC<EventCardProps> = ({
               </span>
             )}
           </div>
+          
+          {/* Vibes Tags - Below session info */}
+          {event.vibes && event.vibes.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              {event.vibes.slice(0, 3).map((vibe, index) => (
+                <span 
+                  key={index}
+                  className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#15383c]/5 text-[#15383c] border border-[#15383c]/10 text-xs font-medium"
+                >
+                  {vibe}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Title & Host Section */}
