@@ -138,6 +138,21 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
     
     calculateMetrics();
   }, [user?.uid, allEvents.length, user?.rsvps?.length]); // Use length to avoid unnecessary recalculations
+  
+  // Subscribe to real-time followers count updates
+  useEffect(() => {
+    if (!user?.uid) return;
+    
+    const { subscribeToFollowersCount } = require('../firebase/follow');
+    const unsubscribe = subscribeToFollowersCount(user.uid, (count: number) => {
+      setStats(prev => ({ ...prev, followers: count }));
+    });
+    
+    return () => {
+      unsubscribe();
+    };
+  }, [user?.uid]);
+  
   const settingsLinks = [
     { label: 'My Pop-ups', action: () => setViewState(ViewState.MY_POPS) },
     { label: 'Basic Details', action: () => setViewState(ViewState.PROFILE_BASIC) },

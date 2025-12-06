@@ -3,7 +3,7 @@
  * Handles following/followers relationships
  */
 
-import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, getDocs, collection, query, where } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, getDocs, collection, query, where, onSnapshot, type Unsubscribe } from 'firebase/firestore';
 import { getDbSafe } from '../src/lib/firebase';
 
 /**
@@ -128,6 +128,40 @@ export async function getHostFollowers(hostId: string): Promise<string[]> {
   } catch (error) {
     console.error('Error fetching host followers:', error);
     return [];
+  }
+}
+
+/**
+ * Subscribe to followers count in real-time
+ */
+export function subscribeToFollowersCount(
+  hostId: string,
+  callback: (count: number) => void
+): Unsubscribe {
+  const db = getDbSafe();
+  if (!db) {
+    callback(0);
+    return () => {};
+  }
+
+  try {
+    const hostRef = doc(db, 'users', hostId);
+    
+    return onSnapshot(
+      hostRef,
+      (snapshot) => {
+        const followers = snapshot.data()?.followers || [];
+        callback(Array.isArray(followers) ? followers.length : 0);
+      },
+      (error) => {
+        console.error('Error in followers count subscription:', error);
+        callback(0);
+      }
+    );
+  } catch (error) {
+    console.error('Error setting up followers count subscription:', error);
+    callback(0);
+    return () => {};
   }
 }
 

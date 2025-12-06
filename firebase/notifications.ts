@@ -17,7 +17,9 @@ import {
   Timestamp,
   getDoc,
   setDoc,
-  increment
+  increment,
+  onSnapshot,
+  type Unsubscribe
 } from 'firebase/firestore';
 import { getDbSafe } from '../src/lib/firebase';
 import type { FirestoreNotification, FirestoreAnnouncement, FirestorePollVote } from './types';
@@ -133,6 +135,62 @@ export async function getUnreadNotificationCount(userId: string): Promise<number
     // Only log non-permission errors for debugging
     console.warn('Error counting unread notifications:', error);
     return 0;
+  }
+}
+
+/**
+ * Subscribe to unread notification count in real-time
+ */
+export function subscribeToUnreadNotificationCount(
+  userId: string,
+  callback: (count: number) => void
+): Unsubscribe {
+  const db = getDbSafe();
+  if (!db) {
+    callback(0);
+    return () => {};
+  }
+
+  // Check if user is authenticated
+  try {
+    const { getAuthInstance } = require('../src/lib/firebaseAuth');
+    const auth = getAuthInstance();
+    if (!auth?.currentUser) {
+      callback(0);
+      return () => {};
+    }
+  } catch {
+    callback(0);
+    return () => {};
+  }
+
+  try {
+    const notificationsRef = collection(db, 'notifications', userId, 'items');
+    const q = query(
+      notificationsRef,
+      where('read', '==', false),
+      limit(100) // Cap at 100 for performance
+    );
+
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        callback(snapshot.size);
+      },
+      (error: any) => {
+        // Silently handle permission errors
+        if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+          callback(0);
+          return;
+        }
+        console.warn('Error in unread notification count subscription:', error);
+        callback(0);
+      }
+    );
+  } catch (error: any) {
+    console.warn('Error setting up unread notification count subscription:', error);
+    callback(0);
+    return () => {};
   }
 }
 

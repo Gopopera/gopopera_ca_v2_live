@@ -29,22 +29,18 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
   const userInitials = user?.displayName?.[0] || user?.name?.[0] || userProfile?.displayName?.[0] || userProfile?.name?.[0] || 'P';
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Load unread notification count
+  // Real-time subscription to unread notification count
   useEffect(() => {
     if (user?.uid && isLoggedIn) {
-      const loadUnreadCount = async () => {
-        try {
-          const count = await getUnreadNotificationCount(user.uid);
-          setUnreadCount(count);
-        } catch (error) {
-          // Silently handle errors - permission errors are expected
-          setUnreadCount(0);
-        }
+      // Use real-time subscription for instant updates
+      const { subscribeToUnreadNotificationCount } = require('../../firebase/notifications');
+      const unsubscribe = subscribeToUnreadNotificationCount(user.uid, (count) => {
+        setUnreadCount(count);
+      });
+      
+      return () => {
+        unsubscribe();
       };
-      loadUnreadCount();
-      // Refresh every 30 seconds
-      const interval = setInterval(loadUnreadCount, 30000);
-      return () => clearInterval(interval);
     } else {
       setUnreadCount(0);
     }
@@ -240,10 +236,13 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
           {/* Desktop Menu Toggle - Right Side */}
           <button 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className={`${isLandingAtTop ? 'text-white' : 'text-popera-teal'} w-10 h-10 flex items-center justify-center hover:bg-white/10 transition-colors rounded-full`}
+            className={`${isLandingAtTop ? 'text-white' : 'text-popera-teal'} w-10 h-10 flex items-center justify-center hover:bg-white/10 transition-colors rounded-full relative`}
             aria-label="Toggle menu"
           >
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-[#e35e25] rounded-full border-2 border-white"></span>
+            )}
           </button>
         </div>
 
@@ -291,10 +290,13 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
           
           <button 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className={`${isLandingAtTop && !mobileMenuOpen ? 'text-white' : 'text-popera-teal'} w-11 h-11 flex items-center justify-center active:scale-[0.95] touch-manipulation rounded-full hover:bg-white/10 transition-colors`}
+            className={`${isLandingAtTop && !mobileMenuOpen ? 'text-white' : 'text-popera-teal'} w-11 h-11 flex items-center justify-center active:scale-[0.95] touch-manipulation rounded-full hover:bg-white/10 transition-colors relative`}
             aria-label="Toggle menu"
           >
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-[#e35e25] rounded-full border-2 border-white"></span>
+            )}
           </button>
         </div>
       </div>

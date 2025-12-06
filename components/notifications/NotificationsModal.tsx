@@ -36,9 +36,59 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
   const [markingAllRead, setMarkingAllRead] = useState(false);
 
   useEffect(() => {
-    if (isOpen && user?.uid) {
-      loadNotifications();
-    }
+    if (!isOpen || !user?.uid) return;
+    
+    // Load initial notifications
+    loadNotifications();
+    
+    // Subscribe to real-time notification updates
+    let unsubscribe: (() => void) | null = null;
+    
+    const setupRealtimeSubscription = async () => {
+      try {
+        const { getDbSafe } = await import('../../src/lib/firebase');
+        const { collection, query, orderBy, limit, onSnapshot } = await import('firebase/firestore');
+        
+        const db = getDbSafe();
+        if (!db) {
+          console.warn('[NOTIFICATIONS] Firestore not available for real-time subscription');
+          return;
+        }
+        
+        const notificationsRef = collection(db, 'notifications', user.uid, 'items');
+        const q = query(notificationsRef, orderBy('timestamp', 'desc'), limit(50));
+        
+        unsubscribe = onSnapshot(
+          q,
+          (snapshot) => {
+            const notifs = snapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+              timestamp: doc.data().timestamp?.toMillis?.() || doc.data().timestamp || Date.now(),
+            })) as FirestoreNotification[];
+            setNotifications(notifs);
+            setLoading(false);
+          },
+          (error) => {
+            console.error('Error in notification subscription:', error);
+            // Fallback to manual load
+            loadNotifications();
+          }
+        );
+      } catch (error) {
+        console.error('Error setting up real-time notification subscription:', error);
+        // Fallback to manual load
+        loadNotifications();
+      }
+    };
+    
+    setupRealtimeSubscription();
+    
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [isOpen, user?.uid]);
 
   const loadNotifications = async () => {
