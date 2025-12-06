@@ -55,7 +55,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
           return;
         }
         
-        const notificationsRef = collection(db, 'notifications', user.uid, 'items');
+        const notificationsRef = collection(db, 'users', user.uid, 'notifications');
         const q = query(notificationsRef, orderBy('timestamp', 'desc'), limit(50));
         
         unsubscribe = onSnapshot(

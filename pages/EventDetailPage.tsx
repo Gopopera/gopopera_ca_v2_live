@@ -282,32 +282,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   // Also refresh periodically if current user is the host to catch profile picture updates
   // CRITICAL: Use refs to track previous values and prevent infinite loops
   // These refs MUST be declared at hook level, not inside useEffect
-  const prevHostIdRef = useRef<string>('');
-  const prevHostNameRef = useRef<string>('');
-  const isFetchingRef = useRef<boolean>(false);
-  const lastFetchTimeRef = useRef<number>(0);
-  
+  // CRITICAL: Always fetch host profile picture from Firestore (source of truth)
+  // This ensures profile pictures are synchronized across all views for ALL users
   useEffect(() => {
-    // CRITICAL: Only fetch if hostId actually changed, not just reference
-    // Also add a debounce to prevent rapid successive calls
-    const now = Date.now();
-    if (eventHostId === prevHostIdRef.current && eventHostName === prevHostNameRef.current) {
-      // Check if we recently fetched (within last 100ms) to prevent rapid calls
-      if (now - lastFetchTimeRef.current < 100) {
-        return; // Too soon, skip fetch
-      }
-    }
-    
-    // Update refs immediately to prevent duplicate fetches
-    prevHostIdRef.current = eventHostId;
-    prevHostNameRef.current = eventHostName;
-    lastFetchTimeRef.current = now;
-    
-    // Prevent concurrent fetches
-    if (isFetchingRef.current) {
-      return;
-    }
-    
     const fetchHostProfile = async () => {
       if (!eventHostId) {
         setHostProfilePicture(null);
@@ -315,103 +292,81 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         return;
       }
       
-      isFetchingRef.current = true;
-      
+      // ALWAYS fetch from Firestore to ensure we have the latest host information
+      // Firestore is the SINGLE SOURCE OF TRUTH for all profile data
       try {
-        // ALWAYS fetch from Firestore to ensure we have the latest host information
         const hostProfile = await getUserProfile(eventHostId);
-        
         if (hostProfile) {
           // Priority: photoURL > imageUrl (both from Firestore - always latest)
           const profilePic = hostProfile.photoURL || hostProfile.imageUrl || null;
-          // Only update if actually changed
-          setHostProfilePicture(prev => {
-            if (prev === profilePic) return prev;
-            return profilePic;
-          });
+          setHostProfilePicture(profilePic);
           
           // Always use Firestore name as source of truth (most up-to-date)
           const firestoreName = hostProfile.name || hostProfile.displayName;
           if (firestoreName && firestoreName.trim() !== '' && firestoreName !== 'You') {
-            // Only update if actually changed
-            setDisplayHostName(prev => {
-              if (prev === firestoreName) return prev;
-              return firestoreName;
-            });
+            setDisplayHostName(firestoreName);
           } else {
             // Fallback to eventHostName only if Firestore doesn't have a valid name
             const fallbackName = eventHostName && eventHostName !== 'You' && eventHostName !== 'Unknown Host' 
               ? eventHostName 
               : 'Unknown Host';
-            // Only update if actually changed
-            setDisplayHostName(prev => {
-              if (prev === fallbackName) return prev;
-              return fallbackName;
-            });
+            setDisplayHostName(fallbackName);
           }
         } else {
           // If profile doesn't exist in Firestore, use event data as fallback
           const fallbackName = eventHostName && eventHostName !== 'You' && eventHostName.trim() !== ''
             ? eventHostName 
             : 'Unknown Host';
-          setHostProfilePicture(prev => {
-            const newPic = eventHostPhotoURL || null;
-            if (prev === newPic) return prev;
-            return newPic;
-          });
-          // Only update if actually changed
-          setDisplayHostName(prev => {
-            if (prev === fallbackName) return prev;
-            return fallbackName;
-          });
+          setHostProfilePicture(eventHostPhotoURL || null);
+          setDisplayHostName(fallbackName);
         }
       } catch (error: any) {
-        // Handle permission errors gracefully - don't spam console
+        // Handle permission errors gracefully
         if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
           console.warn('[EVENT_DETAIL] Permission denied for host profile, using fallback');
         } else {
-          console.error('Error fetching host profile:', error);
+          console.error('[EVENT_DETAIL] Error fetching host profile:', error);
         }
         const fallbackName = eventHostName || 'Unknown Host';
-        setHostProfilePicture(prev => {
-          if (prev === null) return prev;
-          return null;
-        });
-        // Only update if actually changed
-        setDisplayHostName(prev => {
-          if (prev === fallbackName) return prev;
-          return fallbackName;
-        });
-      } finally {
-        isFetchingRef.current = false;
+        setHostProfilePicture(null);
+        setDisplayHostName(fallbackName);
       }
     };
     
+    // Fetch immediately on mount
     fetchHostProfile();
     
-    // If current user is the host, refresh profile picture every 5 seconds to catch updates
-    // This ensures profile picture updates are reflected immediately
-    // CRITICAL: Capture user?.uid at effect time to avoid dependency issues
+    // Refresh profile picture periodically to catch updates immediately
+    // This ensures profile pictures are always synchronized across all views for ALL users
     let refreshInterval: NodeJS.Timeout | null = null;
-    const currentUserId = user?.uid;
-    if (currentUserId && currentUserId === eventHostId) {
+    if (eventHostId) {
       refreshInterval = setInterval(() => {
-        // Double-check we're still the host and not already fetching
-        if (!isFetchingRef.current) {
-          fetchHostProfile();
-        }
-      }, 5000); // Refresh every 5 seconds
+        fetchHostProfile();
+      }, 3000); // Refresh every 3 seconds for faster sync (all users)
     }
     
     return () => {
       if (refreshInterval) {
         clearInterval(refreshInterval);
       }
-      isFetchingRef.current = false;
     };
-    // CRITICAL: Only depend on stable memoized values
-    // user?.uid is captured in the closure, not in dependencies to avoid infinite loops
-  }, [eventHostId, eventHostName]); // Remove user?.uid from deps - use captured value in interval check
+  }, [eventHostId, eventHostName]);
+  
+  // Also update immediately when userProfile changes (if viewing own events)
+  useEffect(() => {
+    if (user?.uid === eventHostId) {
+      const currentUserPic = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null;
+      if (currentUserPic && currentUserPic !== hostProfilePicture) {
+        setHostProfilePicture(currentUserPic);
+        if (import.meta.env.DEV) {
+          console.log('[EVENT_DETAIL] ✅ Updated profile picture from userProfile:', {
+            hostId: eventHostId,
+            hasProfilePic: !!currentUserPic,
+          });
+        }
+      }
+    }
+  }, [eventHostId, user?.uid, userProfile?.photoURL, userProfile?.imageUrl, user?.photoURL, user?.profileImageUrl, hostProfilePicture]);
   
   // Subscribe to real-time reservation count from Firestore
   useEffect(() => {

@@ -35,7 +35,8 @@ export async function createNotification(
   const db = getDbSafe();
   if (!db) throw new Error('Database not available');
 
-  const notificationsRef = collection(db, 'notifications', userId, 'items');
+  // Use subcollection under user document: users/{userId}/notifications
+  const notificationsRef = collection(db, 'users', userId, 'notifications');
   const docRef = await addDoc(notificationsRef, {
     ...notification,
     timestamp: serverTimestamp(),
@@ -57,7 +58,7 @@ export async function getUserNotifications(
   if (!db) return [];
 
   try {
-    const notificationsRef = collection(db, 'notifications', userId, 'items');
+    const notificationsRef = collection(db, 'users', userId, 'notifications');
     const q = query(
       notificationsRef,
       orderBy('timestamp', 'desc'),
@@ -86,7 +87,7 @@ export async function markNotificationAsRead(
   const db = getDbSafe();
   if (!db) return;
 
-  const notificationRef = doc(db, 'notifications', userId, 'items', notificationId);
+  const notificationRef = doc(db, 'users', userId, 'notifications', notificationId);
   await updateDoc(notificationRef, { read: true });
 }
 
@@ -120,7 +121,7 @@ export async function getUnreadNotificationCount(userId: string): Promise<number
   }
 
   try {
-    const notificationsRef = collection(db, 'notifications', userId, 'items');
+    const notificationsRef = collection(db, 'users', userId, 'notifications');
     const q = query(
       notificationsRef,
       where('read', '==', false),
@@ -165,7 +166,7 @@ export function subscribeToUnreadNotificationCount(
   }
 
   try {
-    const notificationsRef = collection(db, 'notifications', userId, 'items');
+    const notificationsRef = collection(db, 'users', userId, 'notifications');
     const q = query(
       notificationsRef,
       where('read', '==', false),

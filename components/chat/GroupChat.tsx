@@ -1069,16 +1069,42 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
         isOpen={showCreateAnnouncementModal}
         onClose={() => setShowCreateAnnouncementModal(false)}
         onCreateAnnouncement={async (title, message) => {
+          if (!currentUser?.id) {
+            console.error('[GROUP_CHAT] Cannot create announcement: currentUser is null');
+            alert('You must be logged in to create announcements.');
+            return;
+          }
+          
+          if (!isHost) {
+            console.error('[GROUP_CHAT] Cannot create announcement: user is not the host', {
+              userId: currentUser.id,
+              hostId: event.hostId,
+              isHost,
+            });
+            alert('Only the host can create announcements.');
+            return;
+          }
+          
           try {
+            console.log('[GROUP_CHAT] Creating announcement:', {
+              eventId: event.id,
+              userId: currentUser.id,
+              userName: currentUser.name,
+              title,
+              message,
+            });
+            
             // Create announcement message in Firestore
             await addMessage(
               event.id,
-              currentUser?.id || '',
-              currentUser?.name || 'Host',
+              currentUser.id,
+              currentUser.name || currentUser.displayName || 'Host',
               `Announcement: ${title} - ${message}`,
               'announcement',
               true
             );
+            
+            console.log('[GROUP_CHAT] ✅ Announcement created successfully');
             
             // Notify attendees of new announcement (non-blocking)
             import('../../utils/notificationHelpers').then(async ({ notifyAttendeesOfAnnouncement }) => {
@@ -1099,6 +1125,11 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                     attendeeIds.push(event.hostId);
                   }
                   
+                  console.log('[GROUP_CHAT] Notifying attendees of announcement:', {
+                    eventId: event.id,
+                    attendeeCount: attendeeIds.length,
+                  });
+                  
                   if (attendeeIds.length > 0) {
                     await notifyAttendeesOfAnnouncement(
                       event.id,
@@ -1107,16 +1138,17 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                       event.title || 'Event',
                       attendeeIds
                     );
+                    console.log('[GROUP_CHAT] ✅ Announcement notifications sent');
                   }
                 }
               } catch (error) {
-                console.error('Error notifying attendees of announcement:', error);
+                console.error('[GROUP_CHAT] ❌ Error notifying attendees of announcement:', error);
               }
             }).catch((error) => {
-              console.error('Error loading notification helpers for announcement:', error);
+              console.error('[GROUP_CHAT] ❌ Error loading notification helpers for announcement:', error);
             });
           } catch (error) {
-            console.error('Error creating announcement:', error);
+            console.error('[GROUP_CHAT] ❌ Error creating announcement:', error);
             alert('Failed to create announcement. Please try again.');
           }
         }}
