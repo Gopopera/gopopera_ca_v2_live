@@ -1,16 +1,13 @@
 /**
  * SMS Notifications Helper
- * Uses Twilio API (mock until production)
+ * Uses Vercel serverless function to send SMS via Twilio (server-side)
  */
 
 import { getDbSafe } from '../src/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
-const TWILIO_ACCOUNT_SID = import.meta.env.VITE_TWILIO_ACCOUNT_SID;
-const TWILIO_AUTH_TOKEN = import.meta.env.VITE_TWILIO_AUTH_TOKEN;
-const TWILIO_PHONE_NUMBER = import.meta.env.VITE_TWILIO_PHONE_NUMBER;
-const TWILIO_API_URL = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
 const IS_DEV = import.meta.env.DEV;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/server';
 
 interface SMSOptions {
   to: string; // Phone number with country code (e.g., +1234567890)
@@ -51,114 +48,90 @@ async function logSMSToFirestore(log: {
 }
 
 /**
- * Send SMS notification using Twilio API (mock until production)
+ * Send SMS notification via serverless function (Twilio on server-side)
  * Logs all attempts to Firestore sms_logs collection
  */
 export async function sendSMSNotification(options: SMSOptions): Promise<boolean> {
   const logId = `sms_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   
-  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
-    if (IS_DEV) {
-      console.warn('[SMS] Twilio not configured. SMS notifications disabled.');
-    }
-    
-    // Log skipped SMS
-    logSMSToFirestore({
-      id: logId,
-      to: options.to,
-      message: options.message,
-      status: 'skipped',
-      error: 'Twilio not configured',
-      timestamp: Date.now(),
-    }).catch(() => {});
-    
-    return false;
-  }
-
-  try {
-    // Mock SMS sending for now (until production Twilio setup)
-    // In production, uncomment the actual Twilio API call below
-    
-    if (IS_DEV) {
-      console.log('[SMS] Mock SMS send:', { to: options.to, message: options.message.substring(0, 50) + '...' });
-    }
-    
-    // Log successful mock send
-    logSMSToFirestore({
-      id: logId,
-      to: options.to,
-      message: options.message,
-      status: 'sent',
-      messageId: `mock_${logId}`,
-      timestamp: Date.now(),
-    }).catch(() => {});
-    
-    return true;
-    
-    /* Production Twilio API call (uncomment when ready):
-    const formData = new URLSearchParams();
-    formData.append('From', TWILIO_PHONE_NUMBER);
-    formData.append('To', options.to);
-    formData.append('Body', options.message);
-
-    const response = await fetch(TWILIO_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`)}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: formData.toString(),
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      const success = data.sid ? true : false;
-      
-      // Log success
-      logSMSToFirestore({
-        id: logId,
-        to: options.to,
-        message: options.message,
-        status: 'sent',
-        messageId: data.sid,
-        timestamp: Date.now(),
-      }).catch(() => {});
-      
-      return success;
-    } else {
-      const error = await response.text();
-      if (IS_DEV) {
-        console.error('[SMS] Twilio API error:', error);
-      }
-      
-      // Log failure
-      logSMSToFirestore({
-        id: logId,
-        to: options.to,
-        message: options.message,
-        status: 'failed',
-        error: error.substring(0, 200),
-        timestamp: Date.now(),
-      }).catch(() => {});
-      
-      return false;
-    }
-    */
-  } catch (error: any) {
-    if (IS_DEV) {
-      console.error('[SMS] Error sending SMS:', error);
-    }
-    
-    // Log error
+  // Validate phone number format (E.164 format)
+  const cleanPhone = options.to.replace(/\s/g, '');
+  if (!/^\+?[1-9]\d{1,14}$/.test(cleanPhone)) {
+    console.error('[SMS] Invalid phone number format:', options.to);
     logSMSToFirestore({
       id: logId,
       to: options.to,
       message: options.message,
       status: 'failed',
-      error: error.message || 'Unknown error',
+      error: 'Invalid phone number format. Use E.164 format (e.g., +1234567890)',
       timestamp: Date.now(),
     }).catch(() => {});
+    return false;
+  }
+
+  try {
+    if (IS_DEV) {
+      console.log('[SMS] Sending SMS via serverless function:', { 
+        to: cleanPhone, 
+        messageLength: options.message.length 
+      });
+    }
+
+    // Send SMS via Vercel serverless function (server-side)
+    const response = await fetch(`${API_BASE_URL}/send-sms`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: cleanPhone,
+        message: options.message,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.error || 'SMS send failed');
+    }
+
+    if (IS_DEV) {
+      console.log('[SMS] ✅ SMS sent successfully:', { messageId: result.messageId, to: cleanPhone });
+    }
+
+    // Log success to Firestore (non-blocking)
+    logSMSToFirestore({
+      id: logId,
+      to: options.to,
+      message: options.message,
+      status: 'sent',
+      messageId: result.messageId,
+      timestamp: Date.now(),
+    }).catch(() => {});
+
+    return true;
+  } catch (error: any) {
+    const errorMessage = error.message || 'Unknown error';
     
+    if (IS_DEV) {
+      console.error('[SMS] ❌ Error sending SMS:', error);
+    }
+    
+    // Log error to Firestore (non-blocking)
+    logSMSToFirestore({
+      id: logId,
+      to: options.to,
+      message: options.message,
+      status: 'failed',
+      error: errorMessage,
+      timestamp: Date.now(),
+    }).catch(() => {});
+
     return false;
   }
 }

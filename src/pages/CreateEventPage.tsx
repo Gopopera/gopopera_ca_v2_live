@@ -205,20 +205,17 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       category
     });
     
-    // TEMPORARILY DISABLED: Phone verification gating
-    // TODO: Re-enable phone verification once SMS delivery issues are resolved
-    // Gate: Check if user has verified phone for hosting
-    // Refresh profile first to ensure we have latest data
-    // await refreshUserProfile();
-    // const freshProfile = useUserStore.getState().userProfile;
+    // Phone verification gating: Check if user has verified phone for hosting
+    await refreshUserProfile();
+    const freshProfile = useUserStore.getState().userProfile;
     
     // Use OR logic: userProfile.phoneVerifiedForHosting OR user.phone_verified (backward compatibility)
-    // const isHostPhoneVerified = !!(freshProfile?.phoneVerifiedForHosting || user?.phone_verified);
+    const isHostPhoneVerified = !!(freshProfile?.phoneVerifiedForHosting || user?.phone_verified);
     
-    // if (!isHostPhoneVerified) {
-    //   setShowHostVerificationModal(true);
-    //   return;
-    // }
+    if (!isHostPhoneVerified) {
+      setShowHostVerificationModal(true);
+      return;
+    }
     
     // Check if user is logged in
     if (!user?.uid) {

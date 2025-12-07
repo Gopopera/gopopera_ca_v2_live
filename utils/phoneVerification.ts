@@ -1,0 +1,185 @@
+/**
+ * Phone Verification Helper using Twilio SMS
+ * Simple client-side implementation with Firestore for code storage
+ */
+
+import { getDbSafe } from '../src/lib/firebase';
+import { collection, doc, setDoc, getDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { sendSMSNotification } from './smsNotifications';
+
+const IS_DEV = import.meta.env.DEV;
+
+/**
+ * Generate a 6-digit verification code
+ */
+function generateVerificationCode(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+/**
+ * Format phone number to E.164 format
+ */
+export function formatPhoneNumber(phone: string): string {
+  const digitsOnly = phone.replace(/\D/g, '');
+  
+  if (phone.startsWith('+')) {
+    return '+' + phone.replace(/\D/g, '');
+  } else if (digitsOnly.length === 10) {
+    return `+1${digitsOnly}`;
+  } else if (digitsOnly.length === 11 && digitsOnly.startsWith('1')) {
+    return `+${digitsOnly}`;
+  }
+  
+  return phone; // Return as-is if format is unclear
+}
+
+/**
+ * Validate phone number format (E.164)
+ */
+export function validatePhoneNumber(phone: string): boolean {
+  const cleanPhone = phone.replace(/\s/g, '');
+  return /^\+?[1-9]\d{1,14}$/.test(cleanPhone);
+}
+
+/**
+ * Send verification code to phone number
+ * Generates code, stores in Firestore, and sends SMS via Twilio
+ */
+export async function sendVerificationCode(
+  userId: string,
+  phoneNumber: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const db = getDbSafe();
+    if (!db) {
+      return { success: false, error: 'Database not available' };
+    }
+
+    // Format and validate phone number
+    const formattedPhone = formatPhoneNumber(phoneNumber);
+    if (!validatePhoneNumber(formattedPhone)) {
+      return { success: false, error: 'Invalid phone number format. Use E.164 format (e.g., +1234567890)' };
+    }
+
+    // Generate verification code
+    const code = generateVerificationCode();
+    const expiresAt = Date.now() + (10 * 60 * 1000); // 10 minutes from now
+
+    // Store code in Firestore
+    const codeDocRef = doc(db, 'phone_verification_codes', userId);
+    await setDoc(codeDocRef, {
+      code,
+      phoneNumber: formattedPhone,
+      userId,
+      expiresAt,
+      createdAt: serverTimestamp(),
+      attempts: 0,
+    });
+
+    if (IS_DEV) {
+      console.log('[PHONE_VERIFY] Verification code stored:', { userId, phoneNumber: formattedPhone });
+    }
+
+    // Send SMS via existing Twilio SMS function
+    const message = `Your Popera verification code is: ${code}. Valid for 10 minutes.`;
+    const smsSent = await sendSMSNotification({
+      to: formattedPhone,
+      message,
+    });
+
+    if (!smsSent) {
+      // SMS failed but code is stored - user can request new one if needed
+      if (IS_DEV) {
+        console.warn('[PHONE_VERIFY] SMS send failed but code is stored');
+      }
+      return { success: false, error: 'Failed to send SMS. Please try again.' };
+    }
+
+    if (IS_DEV) {
+      console.log('[PHONE_VERIFY] ✅ Verification code sent successfully');
+    }
+
+    return { success: true };
+
+  } catch (error: any) {
+    console.error('[PHONE_VERIFY] Error sending verification code:', error);
+    return { success: false, error: error.message || 'Failed to send verification code' };
+  }
+}
+
+/**
+ * Verify code entered by user
+ * Checks code against Firestore and marks user as verified if valid
+ */
+export async function verifyPhoneCode(
+  userId: string,
+  phoneNumber: string,
+  code: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const db = getDbSafe();
+    if (!db) {
+      return { success: false, error: 'Database not available' };
+    }
+
+    const formattedPhone = formatPhoneNumber(phoneNumber);
+
+    // Get verification code from Firestore
+    const codeDocRef = doc(db, 'phone_verification_codes', userId);
+    const codeDoc = await getDoc(codeDocRef);
+
+    if (!codeDoc.exists()) {
+      return { success: false, error: 'Verification code not found. Please request a new code.' };
+    }
+
+    const codeData = codeDoc.data();
+
+    // Check if code is expired
+    if (Date.now() > codeData.expiresAt) {
+      // Delete expired code
+      await deleteDoc(codeDocRef);
+      return { success: false, error: 'Verification code expired. Please request a new code.' };
+    }
+
+    // Check phone number matches
+    if (codeData.phoneNumber !== formattedPhone) {
+      return { success: false, error: 'Phone number mismatch. Please use the same number you verified.' };
+    }
+
+    // Check code
+    if (codeData.code !== code) {
+      // Increment attempts
+      const attempts = (codeData.attempts || 0) + 1;
+      await setDoc(codeDocRef, { attempts }, { merge: true });
+
+      if (attempts >= 5) {
+        // Too many attempts - delete code
+        await deleteDoc(codeDocRef);
+        return { success: false, error: 'Too many failed attempts. Please request a new code.' };
+      }
+
+      return { success: false, error: 'Invalid verification code. Please try again.' };
+    }
+
+    // Code is valid! Update user profile
+    const userDocRef = doc(db, 'users', userId);
+    await setDoc(userDocRef, {
+      phoneVerifiedForHosting: true,
+      hostPhoneNumber: formattedPhone,
+    }, { merge: true });
+
+    // Delete verification code after successful verification
+    await deleteDoc(codeDocRef);
+
+    if (IS_DEV) {
+      console.log('[PHONE_VERIFY] ✅ Phone verified successfully:', { userId, phoneNumber: formattedPhone });
+    }
+
+    return { success: true };
+
+  } catch (error: any) {
+    console.error('[PHONE_VERIFY] Error verifying code:', error);
+    return { success: false, error: error.message || 'Failed to verify code' };
+  }
+}
+
