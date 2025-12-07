@@ -882,6 +882,22 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           <div>
             <h2 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-popera-teal mb-3 sm:mb-4 md:mb-6 flex items-center gap-2 sm:gap-3">{t('event.aboutEvent')}</h2>
             <div className="prose prose-lg text-gray-600 leading-relaxed font-light text-sm sm:text-base md:text-base"><p>{event.description || "Join us for an incredible experience..."}</p></div>
+            
+            {/* Vibes - Subtle display after description */}
+            {event.vibes && event.vibes.length > 0 && (
+              <div className="mt-4 sm:mt-5 pt-4 sm:pt-5 border-t border-gray-100">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+                  {event.vibes.map((vibe, index) => (
+                    <span
+                      key={index}
+                      className="inline-flex items-center px-3 py-1.5 rounded-full bg-gray-50 text-gray-600 border border-gray-200 text-xs sm:text-sm font-medium hover:border-[#e35e25]/30 hover:text-[#e35e25] transition-colors"
+                    >
+                      {vibe}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {event.whatToExpect && (
@@ -1077,24 +1093,6 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
          </div>
       </section>
 
-      {/* Vibes/Tags Section - Show vibes if available, otherwise fallback to tags */}
-      {((event.vibes && event.vibes.length > 0) || (event.tags && event.tags.length > 0)) && (
-        <section className="py-8 sm:py-10 md:py-12 bg-white">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6">
-            <h3 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">Vibes</h3>
-            <div className="flex flex-wrap gap-2 sm:gap-3">
-              {(event.vibes && event.vibes.length > 0 ? event.vibes : event.tags || []).map((vibe, index) => (
-                <span
-                  key={index}
-                  className="px-4 py-2 bg-[#eef4f5] text-[#15383c] rounded-full text-sm sm:text-base font-medium border border-[#15383c]/10"
-                >
-                  {vibe}
-                </span>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
 
 
       <section className="bg-[#15383c] py-6 sm:py-8 md:py-12 lg:py-16 relative overflow-hidden">

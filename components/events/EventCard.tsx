@@ -304,7 +304,7 @@ export const EventCard: React.FC<EventCardProps> = ({
 
         {/* ACTION BUTTONS - Enhanced with better visual design */}
         <div className="absolute top-3 sm:top-4 right-3 sm:right-4 flex items-center gap-2 sm:gap-2.5 z-30 pointer-events-auto">
-           {/* FEATURE: Favorite Heart - Enhanced */}
+           {/* FEATURE: Favorite Heart - Enhanced with brand colors */}
            {onToggleFavorite && (
              <button
                onClick={handleFavoriteClick}
@@ -314,8 +314,10 @@ export const EventCard: React.FC<EventCardProps> = ({
                  e.stopPropagation();
                  e.preventDefault();
                }}
-               className={`w-11 h-11 sm:w-12 sm:h-12 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center transition-all shadow-xl hover:shadow-2xl hover:scale-110 active:scale-95 touch-manipulation border-2 shrink-0 pointer-events-auto z-30 ${
-                 isFavorite ? 'border-[#e35e25]/30' : 'border-white/50'
+               className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all shadow-lg hover:shadow-xl hover:scale-110 active:scale-95 touch-manipulation border-2 shrink-0 pointer-events-auto z-30 backdrop-blur-md ${
+                 isFavorite 
+                   ? 'bg-[#e35e25] border-[#e35e25] shadow-orange-900/20' 
+                   : 'bg-[#15383c]/80 border-[#15383c]/40 hover:bg-[#15383c] hover:border-[#15383c]'
                }`}
                aria-label="Toggle Favorite"
                type="button"
@@ -323,13 +325,17 @@ export const EventCard: React.FC<EventCardProps> = ({
              >
                <Heart 
                  size={22} 
-                 className={`sm:w-6 sm:h-6 transition-all ${isFavorite ? 'fill-[#e35e25] text-[#e35e25] scale-110' : 'text-[#15383c] hover:text-[#e35e25]'}`}
+                 className={`sm:w-6 sm:h-6 transition-all ${
+                   isFavorite 
+                     ? 'fill-white text-white scale-110' 
+                     : 'fill-[#15383c] text-white hover:fill-white'
+                 }`}
                  strokeWidth={2.5}
                />
              </button>
            )}
 
-           {/* FEATURE: Conversation Icon - Enhanced */}
+           {/* FEATURE: Conversation Icon - Enhanced with brand colors */}
            <button
              onClick={(e) => {
                e.stopPropagation();
@@ -344,7 +350,7 @@ export const EventCard: React.FC<EventCardProps> = ({
              onTouchStart={(e) => {
                e.stopPropagation();
              }}
-             className="w-11 h-11 sm:w-12 sm:h-12 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center text-[#15383c] hover:bg-[#e35e25] hover:text-white transition-all shadow-xl hover:shadow-2xl hover:scale-110 active:scale-95 touch-manipulation border-2 border-white/50 shrink-0 pointer-events-auto z-30"
+             className="w-11 h-11 sm:w-12 sm:h-12 bg-[#15383c]/80 border-2 border-[#15383c]/40 rounded-full flex items-center justify-center text-white hover:bg-[#e35e25] hover:border-[#e35e25] transition-all shadow-lg hover:shadow-xl hover:scale-110 active:scale-95 touch-manipulation shrink-0 pointer-events-auto z-30 backdrop-blur-md"
              aria-label="Join Event Chat"
              type="button"
              style={{ pointerEvents: 'auto', WebkitTapHighlightColor: 'transparent' }}
@@ -370,20 +376,6 @@ export const EventCard: React.FC<EventCardProps> = ({
               </span>
             )}
           </div>
-          
-          {/* Vibes Tags - Enhanced design */}
-          {event.vibes && event.vibes.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 mt-2.5">
-              {event.vibes.slice(0, 3).map((vibe, index) => (
-                <span 
-                  key={index}
-                  className="inline-flex items-center px-3 py-1 rounded-full bg-[#15383c]/5 text-[#15383c] border border-[#15383c]/10 text-xs font-medium"
-                >
-                  {vibe}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Title & Host Section - Enhanced */}
