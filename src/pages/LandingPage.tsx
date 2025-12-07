@@ -7,6 +7,8 @@ import { ChatMockupSection } from '../../components/landing/ChatMockupSection';
 import { CityInput } from '../../components/layout/CityInput';
 import { FilterDrawer } from '../../components/filters/FilterDrawer';
 import { CategoryIconButton } from '../../components/filters/CategoryIconButton';
+import { VibeIconButton } from '../../components/filters/VibeIconButton';
+import { ALL_VIBES } from '../../utils/vibes';
 import { Event, ViewState } from '../../types';
 import { ArrowRight, Sparkles, Check, ChevronDown, Search, MapPin, PlusCircle, CheckCircle2, ChevronRight, ChevronLeft, Filter } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -50,7 +52,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const city = useSelectedCity();
   const setCity = useSetCity();
   const location = city;
-  const { filters, isFilterDrawerOpen, setFilterDrawerOpen, getActiveFilterCount } = useFilterStore();
+  const { filters, isFilterDrawerOpen, setFilterDrawerOpen, getActiveFilterCount, setFilter } = useFilterStore();
   
   // Category keys (English) for internal logic
   const categoryKeys = [
@@ -225,7 +227,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
              {/* Horizontal Categories with Icons and Filter Button */}
              <div className="flex items-center gap-3">
                <div className="relative z-10 flex-1">
-                 <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4 scroll-pr-20 md:scroll-pr-4">
+                 <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4 scroll-pr-32 md:scroll-pr-4">
                     {categories.map((cat, index) => (
                       <CategoryIconButton
                         key={cat}
@@ -252,6 +254,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                    </span>
                  )}
                </button>
+             </div>
+             
+             {/* Vibes Section - Scrollable Icons */}
+             <div className="mt-4">
+               <h3 className="text-sm font-semibold text-gray-600 mb-3">Filter by Vibes</h3>
+               <div className="relative z-10">
+                 <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4 scroll-pr-32 md:scroll-pr-4">
+                   {ALL_VIBES.map(vibe => (
+                     <VibeIconButton
+                       key={vibe}
+                       vibe={vibe}
+                       isActive={filters.vibes.includes(vibe)}
+                       onClick={() => {
+                         const currentVibes = filters.vibes;
+                         if (currentVibes.includes(vibe)) {
+                           setFilter('vibes', currentVibes.filter(v => v !== vibe));
+                         } else {
+                           setFilter('vibes', [...currentVibes, vibe]);
+                         }
+                       }}
+                     />
+                   ))}
+                 </div>
+                 <div className="absolute right-0 top-0 bottom-2 w-6 sm:w-8 bg-gradient-to-l from-[#FAFAFA] to-transparent pointer-events-none md:hidden"></div>
+               </div>
              </div>
           </div>
         </div>

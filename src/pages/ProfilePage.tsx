@@ -6,6 +6,7 @@ import { useEventStore } from '../../stores/eventStore';
 import { getReservationCountForEvent, listHostReviews } from '../../firebase/db';
 // REFACTORED: No longer using getUserProfile - using real-time subscriptions instead
 import { getFollowingHosts, getHostFollowers } from '../../firebase/follow';
+import { subscribeToUserProfile } from '../../firebase/userSubscriptions';
 
 interface ProfilePageProps {
   setViewState: (view: ViewState) => void;
@@ -38,7 +39,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
     let unsubscribe: (() => void) | null = null;
     
     // Real-time subscription to user document
-    import('../../firebase/userSubscriptions').then(({ subscribeToUserProfile }) => {
+    try {
       unsubscribe = subscribeToUserProfile(user.uid, (userData) => {
         if (userData) {
           setProfilePicture(userData.photoURL || null);
@@ -56,11 +57,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
           setDisplayName(userName);
         }
       });
-    }).catch((error) => {
+    } catch (error) {
       console.error('[PROFILE_PAGE] ❌ Error loading user subscriptions:', error);
       setProfilePicture(null);
       setDisplayName(userName);
-    });
+    }
     
     return () => {
       if (unsubscribe) {
