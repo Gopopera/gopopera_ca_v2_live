@@ -225,7 +225,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
              {/* Horizontal Categories with Icons and Filter Button */}
              <div className="flex items-center gap-3">
                <div className="relative z-10 flex-1">
-                 <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4">
+                 <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4 scroll-pr-20 md:scroll-pr-4">
                     {categories.map((cat, index) => (
                       <CategoryIconButton
                         key={cat}
