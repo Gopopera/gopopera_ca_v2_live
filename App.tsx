@@ -39,7 +39,6 @@ import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import { CityInput } from './components/layout/CityInput';
 import { FilterDrawer } from './components/filters/FilterDrawer';
-import { CategoryIconButton } from './components/filters/CategoryIconButton';
 import { VibeIconButton } from './components/filters/VibeIconButton';
 import { ALL_VIBES } from './utils/vibes';
 // Route-level code splitting for performance
@@ -453,7 +452,6 @@ const AppContent: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [reviewEvent, setReviewEvent] = useState<Event | null>(null); 
   const [selectedHost, setSelectedHost] = useState<string | null>(null); 
-  const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const setCity = useSetCity();
   const location = city;
@@ -948,18 +946,10 @@ const AppContent: React.FC = () => {
     };
   }, [user?.uid, user?.rsvps, allEvents.length]);
 
-  // Filter events based on search, location, category, and tags
+  // Filter events based on search, location, and vibes
   // Apply all filters in sequence for proper combined filtering
-  // Filters work together: Category + City + Search all apply simultaneously
+  // Filters work together: Vibes + City + Search all apply simultaneously
   let filteredEvents = allEvents;
-  
-  // Apply category filter first (e.g., "Sports", "Community")
-  // Uses category mapper to handle plural/singular variations (e.g., "Markets" -> "Market")
-  if (activeCategory !== 'All') {
-    filteredEvents = filteredEvents.filter(event => 
-      categoryMatches(event.category, activeCategory)
-    );
-  }
   
   // Apply city filter - match by city slug or city name
   // "Canada" shows all events (no filter)
@@ -979,7 +969,7 @@ const AppContent: React.FC = () => {
   }
   
   // Apply search filter last (text search in titles, descriptions, tags, hostName, aboutEvent, whatToExpect)
-  // This ensures search works with category and city filters
+  // This ensures search works with vibes and city filters
   if (searchQuery.trim()) {
     const query = searchQuery.toLowerCase().trim();
     filteredEvents = filteredEvents.filter(event => 
@@ -1007,9 +997,6 @@ const AppContent: React.FC = () => {
   // Get events grouped by city
   const eventsByCity = getEventsByCity();
 
-  const categories = [
-    'All', 'Community', 'Music', 'Workshops', 'Markets', 'Sports', 'Social', 'Shows', 'Food & Drink', 'Wellness'
-  ];
 
 
   const handleEventClick = (event: Event) => {
@@ -1963,23 +1950,9 @@ const AppContent: React.FC = () => {
                         </div>
                      </div>
 
-                     {/* Horizontal Categories with Icons and Filter Button - Matching Landing Page */}
-                     <div className="flex items-center gap-3">
-                       <div className="relative z-10 flex-1">
-                         <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4 scroll-pr-32 md:scroll-pr-4">
-                            {categories.map(cat => (
-                              <CategoryIconButton
-                                key={cat}
-                                category={cat}
-                                isActive={activeCategory === cat}
-                                onClick={() => setActiveCategory(cat)}
-                              />
-                            ))}
-                         </div>
-                         <div className="absolute right-0 top-0 bottom-2 w-6 sm:w-8 bg-gradient-to-l from-[#FAFAFA] to-transparent pointer-events-none md:hidden"></div>
-                       </div>
-                       
-                       {/* Filter Button - Matching Landing Page */}
+                     {/* Filter Button and Vibes Section */}
+                     <div className="flex items-center justify-between gap-3 mb-4">
+                       <div className="flex-1"></div> {/* Spacer */}
                        <button
                          onClick={() => setFilterDrawerOpen(true)}
                          className="flex items-center gap-2 px-4 py-2.5 rounded-full border-2 border-[#15383c] text-[#15383c] font-medium hover:bg-[#15383c] hover:text-white transition-colors flex-shrink-0 touch-manipulation active:scale-[0.95] min-h-[40px] sm:min-h-0"
@@ -1995,7 +1968,7 @@ const AppContent: React.FC = () => {
                      </div>
                      
                      {/* Vibes Section - Scrollable Icons */}
-                     <div className="mt-4">
+                     <div>
                        <h3 className="text-sm font-semibold text-gray-600 mb-3">Filter by Vibes</h3>
                        <div className="relative z-10">
                          <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4 scroll-pr-32 md:scroll-pr-4">

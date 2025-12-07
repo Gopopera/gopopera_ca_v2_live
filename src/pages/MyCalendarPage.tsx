@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ViewState, Event } from '../../types';
-import { ChevronLeft, ChevronRight, MapPin, Clock, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, Clock, Calendar as CalendarIcon, X } from 'lucide-react';
 import { useUserStore } from '../../stores/userStore';
 import { formatDate } from '../../utils/dateFormatter';
 import { getMainCategoryLabelFromEvent } from '../../utils/categoryMapper';
@@ -187,41 +187,44 @@ export const MyCalendarPage: React.FC<MyCalendarPageProps> = ({ setViewState, ev
   return (
     <div className="min-h-screen bg-[#f8fafb] pt-24 pb-20 font-sans">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        {/* Header */}
+        {/* Header - Enhanced */}
         <div className="flex items-center justify-between mb-6 sm:mb-8">
           <div className="flex items-center">
             <button 
               onClick={() => setViewState(ViewState.MY_POPS)} 
-              className="mr-3 sm:mr-4 w-9 h-9 sm:w-10 sm:h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-[#15383c] hover:bg-gray-50 transition-colors touch-manipulation active:scale-95"
+              className="mr-3 sm:mr-4 w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-[#15383c] hover:bg-gray-50 transition-colors touch-manipulation active:scale-95 shadow-sm"
             >
               <ChevronLeft size={18} className="sm:w-5 sm:h-5" />
             </button>
-            <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c]">Your Calendar</h1>
+            <div>
+              <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c]">Your Calendar</h1>
+              <p className="text-sm text-gray-500 mt-1">View all your events in one place</p>
+            </div>
           </div>
           <button
             onClick={goToToday}
-            className="px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-[#15383c] hover:bg-gray-50 transition-colors"
+            className="px-4 sm:px-5 py-2 sm:py-2.5 bg-[#e35e25] text-white rounded-full text-sm font-medium hover:bg-[#cf4d1d] transition-colors shadow-md shadow-orange-900/20 touch-manipulation active:scale-95"
           >
             Today
           </button>
         </div>
 
-        {/* Calendar */}
-        <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden mb-6">
-          {/* Month Header */}
-          <div className="p-5 sm:p-6 md:p-8 flex items-center justify-between border-b border-gray-100">
+        {/* Calendar - Enhanced */}
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-md border border-gray-100 overflow-hidden mb-6">
+          {/* Month Header - Enhanced */}
+          <div className="p-5 sm:p-6 md:p-8 flex items-center justify-between border-b border-gray-100 bg-gradient-to-r from-[#e35e25]/5 to-transparent">
             <button
               onClick={goToPreviousMonth}
-              className="w-10 h-10 rounded-full hover:bg-gray-50 flex items-center justify-center transition-colors"
+              className="w-10 h-10 rounded-full hover:bg-[#e35e25]/10 flex items-center justify-center transition-colors touch-manipulation active:scale-95"
             >
               <ChevronLeft size={20} className="text-[#15383c]" />
             </button>
-            <h2 className="text-xl sm:text-2xl font-heading font-bold text-[#e35e25] tracking-wide">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#e35e25] tracking-wide">
               {monthNames[month]} <span className="text-[#15383c]">{year}</span>
             </h2>
             <button
               onClick={goToNextMonth}
-              className="w-10 h-10 rounded-full hover:bg-gray-50 flex items-center justify-center transition-colors"
+              className="w-10 h-10 rounded-full hover:bg-[#e35e25]/10 flex items-center justify-center transition-colors touch-manipulation active:scale-95"
             >
               <ChevronRight size={20} className="text-[#15383c]" />
             </button>
@@ -229,10 +232,10 @@ export const MyCalendarPage: React.FC<MyCalendarPageProps> = ({ setViewState, ev
 
           {/* Calendar Grid */}
           <div className="p-4 sm:p-6">
-            {/* Day Headers */}
-            <div className="grid grid-cols-7 gap-2 mb-2">
+            {/* Day Headers - Enhanced */}
+            <div className="grid grid-cols-7 gap-2 mb-3">
               {dayNames.map(day => (
-                <div key={day} className="text-center text-xs sm:text-sm font-medium text-gray-500 py-2">
+                <div key={day} className="text-center text-xs sm:text-sm font-bold text-gray-600 py-2 uppercase tracking-wide">
                   {day}
                 </div>
               ))}
@@ -257,21 +260,21 @@ export const MyCalendarPage: React.FC<MyCalendarPageProps> = ({ setViewState, ev
                     }}
                     disabled={isEmpty}
                     className={`
-                      aspect-square rounded-lg transition-all touch-manipulation
+                      aspect-square rounded-xl transition-all touch-manipulation border-2
                       ${isEmpty 
-                        ? 'cursor-default' 
-                        : 'cursor-pointer hover:bg-gray-50 active:scale-95'
+                        ? 'cursor-default border-transparent' 
+                        : 'cursor-pointer border-transparent hover:border-[#e35e25]/30 hover:bg-gray-50 active:scale-95'
                       }
                       ${isToday 
-                        ? 'ring-2 ring-[#e35e25] ring-offset-1' 
+                        ? 'ring-2 ring-[#e35e25] ring-offset-2 border-[#e35e25]' 
                         : ''
                       }
                       ${isSelected 
-                        ? 'bg-[#e35e25] text-white' 
+                        ? 'bg-[#e35e25] text-white border-[#e35e25] shadow-md' 
                         : 'bg-white text-[#15383c]'
                       }
-                      ${!isEmpty && day.hasEvents && !isSelected
-                        ? 'bg-[#e35e25]/10 border border-[#e35e25]/20'
+                      ${!isEmpty && day.hasEvents && !isSelected && !isToday
+                        ? 'bg-[#e35e25]/10 border-[#e35e25]/30'
                         : ''
                       }
                     `}
@@ -301,13 +304,26 @@ export const MyCalendarPage: React.FC<MyCalendarPageProps> = ({ setViewState, ev
           </div>
         </div>
 
-        {/* Selected Date Events Panel */}
+        {/* Selected Date Events Panel - Enhanced */}
         {selectedDate && selectedDateEvents.length > 0 && (
-          <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-5 sm:p-6 border-b border-gray-100">
-              <h3 className="text-lg sm:text-xl font-heading font-bold text-[#15383c]">
-                {formatDate(selectedDate)} • {selectedDateEvents.length} {selectedDateEvents.length === 1 ? 'Event' : 'Events'}
-              </h3>
+          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-md border border-gray-100 overflow-hidden">
+            <div className="p-5 sm:p-6 border-b border-gray-100 bg-gradient-to-r from-[#e35e25]/5 to-transparent">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg sm:text-xl font-heading font-bold text-[#15383c]">
+                    {formatDate(selectedDate)}
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {selectedDateEvents.length} {selectedDateEvents.length === 1 ? 'Event' : 'Events'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedDate(null)}
+                  className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
+                >
+                  <X size={16} className="text-gray-400" />
+                </button>
+              </div>
             </div>
             <div className="p-5 sm:p-6 space-y-3 max-h-[400px] overflow-y-auto">
               {selectedDateEvents.map(event => (
@@ -321,17 +337,19 @@ export const MyCalendarPage: React.FC<MyCalendarPageProps> = ({ setViewState, ev
           </div>
         )}
 
-        {/* Empty State */}
+        {/* Empty State - Enhanced */}
         {userEvents.length === 0 && (
-          <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-sm border border-gray-100 p-12 text-center">
-            <CalendarIcon size={48} className="mx-auto text-gray-300 mb-4" />
-            <h3 className="text-xl font-bold text-[#15383c] mb-2">No events scheduled</h3>
-            <p className="text-gray-500 text-sm mb-6">
+          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-md border border-gray-100 p-12 text-center">
+            <div className="w-20 h-20 bg-[#e35e25]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CalendarIcon size={40} className="text-[#e35e25]" />
+            </div>
+            <h3 className="text-xl sm:text-2xl font-heading font-bold text-[#15383c] mb-2">No events scheduled</h3>
+            <p className="text-gray-500 text-sm sm:text-base mb-6 max-w-md mx-auto">
               Start hosting or RSVP to events to see them on your calendar
             </p>
             <button
               onClick={() => setViewState(ViewState.CREATE_EVENT)}
-              className="px-6 py-3 bg-[#e35e25] text-white rounded-full font-medium hover:bg-[#cf4d1d] transition-colors"
+              className="px-6 py-3 bg-[#e35e25] text-white rounded-full font-medium hover:bg-[#cf4d1d] transition-colors shadow-md shadow-orange-900/20 touch-manipulation active:scale-95"
             >
               Create Your First Event
             </button>

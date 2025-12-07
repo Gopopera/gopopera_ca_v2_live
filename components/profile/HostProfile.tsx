@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ArrowLeft, MapPin, Star, Users, Instagram, Twitter, Globe, Check } from 'lucide-react';
+import { ArrowLeft, MapPin, Star, Users, Instagram, Twitter, Globe, Check, Calendar } from 'lucide-react';
 import { Event } from '@/types';
 import { EventCard } from '../events/EventCard';
 import { useProfileStore } from '@/stores/profileStore';
@@ -277,156 +277,233 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20 pb-12">
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto">
-           <div className="px-6 py-6"><button onClick={onBack} className="flex items-center text-gray-500 hover:text-popera-teal transition-colors font-medium"><ArrowLeft size={20} className="mr-2" /> Back</button></div>
-           <div className="px-6 pb-10 flex flex-col md:flex-row items-start md:items-center gap-8">
-             <div className="relative">
-                {isPoperaProfile ? (
-                  <PoperaProfilePicture size="md" className="md:w-32 md:h-32" />
-                ) : (
-                  <>
-                    <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gray-200 p-1 ring-4 ring-white shadow-lg">
-                      {hostProfilePicture ? (
-                        <img 
-                          src={hostProfilePicture} 
-                          alt={displayName} 
-                          className="w-full h-full rounded-full object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            // Fallback to placeholder if image fails to load
-                            target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2U1ZTdlYiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iNDAiIGZpbGw9IiM5Y2EzYWYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5IPC90ZXh0Pjwvc3ZnPg==';
-                          }}
-                        />
-                      ) : (
-                        <div className="w-full h-full rounded-full bg-gray-100 flex items-center justify-center text-gray-400 text-2xl font-bold">
-                          {displayName?.[0] || 'H'}
-                        </div>
-                      )}
-                    </div>
-                    <div className="absolute bottom-1 right-1 w-8 h-8 bg-popera-orange text-white rounded-full flex items-center justify-center ring-4 ring-white">
-                      <Check size={16} strokeWidth={3} />
-                    </div>
-                  </>
-                )}
-             </div>
-             <div className="flex-1">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                   <div>
-                     <h1 className="text-3xl md:text-4xl font-heading font-bold text-popera-teal mb-1">{displayName}</h1>
-                     <p className="text-gray-500 flex items-center text-sm">
-                       <MapPin size={14} className="mr-1 text-popera-orange" /> {primaryCity}
-                     </p>
-                   </div>
-                   {isLoggedIn && currentUser?.id !== hostId && (
-                     <div className="flex items-center gap-3">
-                       <button 
-                         onClick={handleFollowToggle}
-                         disabled={isUpdatingFollow}
-                         className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed ${isFollowingState ? 'bg-gray-100 text-popera-teal border border-gray-200' : 'bg-popera-orange text-white hover:bg-[#cf4d1d] shadow-orange-900/20'}`}
-                       >
-                         {isUpdatingFollow ? '...' : (isFollowingState ? 'Following' : 'Follow')}
-                       </button>
-                       {/* Conversation icon removed - not needed on host profile page */}
-                     </div>
-                   )}
-                </div>
-                <p className="text-gray-600 max-w-2xl leading-relaxed text-sm md:text-base mb-6">{bio}</p>
-                <div className="flex flex-wrap gap-6 md:gap-10 border-t border-gray-100 pt-6">
-                   <div className="flex items-center gap-2">
-                     <Users size={18} className="text-gray-400" />
-                     <span className="font-bold text-popera-teal text-lg">{followersCount.toLocaleString()}</span>
-                     <span className="text-xs text-gray-500 uppercase tracking-wide font-medium">Followers</span>
-                   </div>
-                   {reviewCount > 0 && (
-                     <div className="flex items-center gap-2">
-                       <Star size={18} className="text-popera-orange" fill="currentColor" />
-                       <span className="font-bold text-popera-teal text-lg">{formatRating(averageRating)}</span>
-                       <span className="text-xs text-gray-500 uppercase tracking-wide font-medium">({reviewCount} {reviewCount === 1 ? 'Review' : 'Reviews'})</span>
-                     </div>
-                   )}
-                </div>
-             </div>
-           </div>
+    <div className="min-h-screen bg-[#f8fafb] pt-20 pb-12 font-sans">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+        {/* Back Button */}
+        <div className="mb-4 sm:mb-6">
+          <button 
+            onClick={onBack} 
+            className="flex items-center text-gray-400 hover:text-[#15383c] transition-colors font-medium text-sm sm:text-base touch-manipulation active:scale-95"
+          >
+            <ArrowLeft size={18} className="sm:w-5 sm:h-5 mr-1" /> Back
+          </button>
         </div>
-      </div>
-      <div className="max-w-5xl mx-auto px-6 py-10">
-        <div className="flex gap-8 border-b border-gray-200 mb-10">
-           <button onClick={() => setActiveTab('events')} className={`pb-4 text-sm font-bold uppercase tracking-wider border-b-2 transition-colors ${activeTab === 'events' ? 'border-[#e35e25] text-[#e35e25]' : 'border-transparent text-gray-400 hover:text-[#15383c]'}`}>
-             Events ({hostEvents.length})
-           </button>
-           <button onClick={() => setActiveTab('reviews')} className={`pb-4 text-sm font-bold uppercase tracking-wider border-b-2 transition-colors ${activeTab === 'reviews' ? 'border-[#e35e25] text-[#e35e25]' : 'border-transparent text-gray-400 hover:text-[#15383c]'}`}>
-             Reviews ({reviewCount})
-           </button>
+
+        {/* Profile Banner with Profile Picture */}
+        <div className="relative mb-6 sm:mb-8">
+          {/* Banner Image */}
+          <div className="h-32 sm:h-40 md:h-48 bg-gradient-to-br from-[#e35e25] to-[#15383c] rounded-2xl sm:rounded-3xl overflow-hidden relative">
+            <div className="absolute inset-0 bg-black/10"></div>
+          </div>
+          
+          {/* Profile Picture - Centered on Banner */}
+          <div className="absolute -bottom-12 sm:-bottom-16 left-1/2 transform -translate-x-1/2">
+            {isPoperaProfile ? (
+              <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32">
+                <PoperaProfilePicture size="md" className="w-full h-full rounded-2xl sm:rounded-3xl shadow-xl shadow-orange-900/30 border-4 border-white" />
+              </div>
+            ) : (
+              <div className="relative">
+                <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 bg-[#e35e25] rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-xl shadow-orange-900/30 border-4 border-white overflow-hidden">
+                  {hostProfilePicture ? (
+                    <img 
+                      src={hostProfilePicture} 
+                      alt={displayName} 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent) {
+                          const fallback = document.createElement('span');
+                          fallback.className = 'font-heading font-bold text-white text-2xl sm:text-3xl md:text-4xl';
+                          fallback.textContent = displayName?.[0] || 'H';
+                          parent.appendChild(fallback);
+                        }
+                      }}
+                    />
+                  ) : (
+                    <span className="font-heading font-bold text-white text-2xl sm:text-3xl md:text-4xl">
+                      {displayName?.[0] || 'H'}
+                    </span>
+                  )}
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-8 h-8 sm:w-10 sm:h-10 bg-[#e35e25] text-white rounded-full flex items-center justify-center ring-4 ring-white shadow-lg">
+                  <Check size={16} className="sm:w-5 sm:h-5" strokeWidth={3} />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Profile Info Section */}
+        <div className="mt-16 sm:mt-20 md:mt-24 mb-6 sm:mb-8 text-center">
+          <h1 className="font-heading font-bold text-2xl sm:text-3xl md:text-4xl text-[#15383c] mb-2">
+            {displayName.toUpperCase()}
+          </h1>
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <MapPin size={16} className="text-[#e35e25]" />
+            <span className="text-gray-500 text-sm sm:text-base">{primaryCity}</span>
+          </div>
+          
+          {/* Bio Section */}
+          {bio && (
+            <p className="text-gray-600 text-sm sm:text-base max-w-2xl mx-auto mb-4 leading-relaxed">
+              {bio}
+            </p>
+          )}
+
+          {/* Follow Button */}
+          {isLoggedIn && currentUser?.id !== hostId && (
+            <button 
+              onClick={handleFollowToggle}
+              disabled={isUpdatingFollow}
+              className={`px-6 sm:px-8 py-2.5 sm:py-3 rounded-full font-bold text-sm sm:text-base transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation active:scale-95 ${
+                isFollowingState 
+                  ? 'bg-white text-[#15383c] border-2 border-gray-200 hover:bg-gray-50' 
+                  : 'bg-[#e35e25] text-white hover:bg-[#cf4d1d] shadow-orange-900/20'
+              }`}
+            >
+              {isUpdatingFollow ? '...' : (isFollowingState ? 'Following' : 'Follow')}
+            </button>
+          )}
+        </div>
+
+        {/* Stats Section */}
+        <div className="grid grid-cols-2 gap-4 sm:gap-5 mb-6 sm:mb-8">
+          <div className="bg-white p-4 sm:p-5 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex items-center gap-3">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#e35e25]/10 rounded-full flex items-center justify-center">
+              <Users size={18} className="sm:w-5 sm:h-5 text-[#e35e25]" />
+            </div>
+            <div className="text-left flex-1">
+              <div className="text-xl sm:text-2xl font-heading font-bold text-[#15383c]">{followersCount.toLocaleString()}</div>
+              <div className="text-xs sm:text-sm text-gray-500">Followers</div>
+            </div>
+          </div>
+          
+          {reviewCount > 0 && (
+            <div className="bg-white p-4 sm:p-5 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex items-center gap-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#e35e25]/10 rounded-full flex items-center justify-center">
+                <Star size={18} className="sm:w-5 sm:h-5 text-[#e35e25] fill-[#e35e25]" />
+              </div>
+              <div className="text-left flex-1">
+                <div className="text-xl sm:text-2xl font-heading font-bold text-[#15383c]">{formatRating(averageRating)}</div>
+                <div className="text-xs sm:text-sm text-gray-500">{reviewCount} {reviewCount === 1 ? 'Review' : 'Reviews'}</div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Tabs - Enhanced */}
+        <div className="mb-6 sm:mb-8">
+          <div className="flex gap-2 sm:gap-3 border-b border-gray-200">
+            <button 
+              onClick={() => setActiveTab('events')} 
+              className={`pb-3 sm:pb-4 px-4 sm:px-5 text-sm sm:text-base font-bold uppercase tracking-wider border-b-2 transition-colors touch-manipulation active:scale-95 ${
+                activeTab === 'events' 
+                  ? 'border-[#e35e25] text-[#e35e25]' 
+                  : 'border-transparent text-gray-400 hover:text-[#15383c]'
+              }`}
+            >
+              Events ({hostEvents.length})
+            </button>
+            <button 
+              onClick={() => setActiveTab('reviews')} 
+              className={`pb-3 sm:pb-4 px-4 sm:px-5 text-sm sm:text-base font-bold uppercase tracking-wider border-b-2 transition-colors touch-manipulation active:scale-95 ${
+                activeTab === 'reviews' 
+                  ? 'border-[#e35e25] text-[#e35e25]' 
+                  : 'border-transparent text-gray-400 hover:text-[#15383c]'
+              }`}
+            >
+              Reviews ({reviewCount})
+            </button>
+          </div>
         </div>
         {activeTab === 'events' ? (
-           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8 justify-items-center max-w-6xl mx-auto px-4 md:px-6 lg:px-8">
-             {hostEvents.map(event => (
-               <div key={event.id} className="w-full h-auto">
-                 <EventCard 
-                   event={event} 
-                   onClick={onEventClick} 
-                   onChatClick={() => {}} 
-                   onReviewsClick={() => {}} 
-                   isLoggedIn={isLoggedIn} 
-                   isFavorite={favorites.includes(event.id)} 
-                   onToggleFavorite={onToggleFavorite} 
-                 />
-               </div>
-             ))}
-             {hostEvents.length === 0 && (
-               <div className="col-span-full py-20 text-center text-gray-400">
-                 <p>No upcoming events listed.</p>
-               </div>
-             )}
-           </div>
-        ) : (
-           <div className="max-w-2xl space-y-6">
-              {reviewsLoading ? (
-                <div className="text-center py-20 text-gray-400">
-                  <p>Loading reviews...</p>
+          <div>
+            {hostEvents.length === 0 ? (
+              <div className="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-gray-100 p-12 text-center">
+                <div className="w-20 h-20 bg-[#e35e25]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Calendar size={40} className="text-[#e35e25]" />
                 </div>
-              ) : reviews.length > 0 ? (
-                reviews.map((review) => {
+                <h3 className="text-xl sm:text-2xl font-heading font-bold text-[#15383c] mb-2">No upcoming events</h3>
+                <p className="text-gray-500 text-sm sm:text-base">This host hasn't listed any upcoming events yet.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                {hostEvents.map(event => (
+                  <div key={event.id} className="w-full h-auto">
+                    <EventCard 
+                      event={event} 
+                      onClick={onEventClick} 
+                      onChatClick={() => {}} 
+                      onReviewsClick={() => {}} 
+                      isLoggedIn={isLoggedIn} 
+                      isFavorite={favorites.includes(event.id)} 
+                      onToggleFavorite={onToggleFavorite} 
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="max-w-2xl mx-auto">
+            {reviewsLoading ? (
+              <div className="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-gray-100 p-12 text-center">
+                <div className="animate-pulse space-y-4">
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
+                </div>
+              </div>
+            ) : reviews.length > 0 ? (
+              <div className="space-y-4 sm:space-y-6">
+                {reviews.map((review) => {
                   const createdAt = typeof review.createdAt === 'number' 
                     ? review.createdAt 
                     : (review.createdAt as any)?.toMillis?.() || Date.now();
+                  // Convert timestamp to ISO string for formatDate
+                  const dateString = new Date(createdAt).toISOString();
                   return (
-                    <div key={review.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                       <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gray-100 rounded-full overflow-hidden">
-                              <img src={`https://picsum.photos/seed/${review.userName}/50/50`} alt={review.userName} />
-                            </div>
-                            <div>
-                              <h4 className="text-sm font-bold text-[#15383c]">{review.userName}</h4>
-                              <span className="text-xs text-gray-400">{formatDate(createdAt)}</span>
-                            </div>
+                    <div key={review.id} className="bg-white p-5 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-gradient-to-br from-[#e35e25] to-[#15383c] rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md">
+                            {review.userName?.[0] || 'U'}
                           </div>
-                          <div className="flex text-[#e35e25]">
-                            {[...Array(5)].map((_, starI) => (
-                              <Star 
-                                key={starI} 
-                                size={14} 
-                                fill={starI < review.rating ? "currentColor" : "none"} 
-                                className={starI < review.rating ? "" : "text-gray-300"}
-                              />
-                            ))}
+                          <div>
+                            <h4 className="text-sm sm:text-base font-bold text-[#15383c]">{review.userName}</h4>
+                            <span className="text-xs text-gray-400">{formatDate(dateString)}</span>
                           </div>
-                       </div>
-                       {review.comment && (
-                         <p className="text-gray-600 text-sm leading-relaxed">"{review.comment}"</p>
-                       )}
+                        </div>
+                        <div className="flex text-[#e35e25]">
+                          {[...Array(5)].map((_, starI) => (
+                            <Star 
+                              key={starI} 
+                              size={16} 
+                              fill={starI < review.rating ? "currentColor" : "none"} 
+                              className={starI < review.rating ? "" : "text-gray-300"}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      {review.comment && (
+                        <p className="text-gray-600 text-sm sm:text-base leading-relaxed">"{review.comment}"</p>
+                      )}
                     </div>
                   );
-                })
-              ) : (
-                <div className="text-center py-20 text-gray-400">
-                  <p>No reviews yet.</p>
+                })}
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-gray-100 p-12 text-center">
+                <div className="w-20 h-20 bg-[#e35e25]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Star size={40} className="text-[#e35e25]" />
                 </div>
-              )}
-           </div>
+                <h3 className="text-xl sm:text-2xl font-heading font-bold text-[#15383c] mb-2">No reviews yet</h3>
+                <p className="text-gray-500 text-sm sm:text-base">This host hasn't received any reviews yet.</p>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

@@ -179,39 +179,43 @@ export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
   };
 
   return (
-    <div className="min-h-screen bg-white pt-20 sm:pt-24 pb-8 sm:pb-12 font-sans">
+    <div className="min-h-screen bg-[#f8fafb] pt-20 sm:pt-24 pb-8 sm:pb-12 font-sans">
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between mb-6 sm:mb-8 border-b border-gray-100 pb-4 sm:pb-6">
-           <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c]">{t('profile.basicDetails')}</h1>
+        <div className="flex items-center justify-between mb-6 sm:mb-8">
+           <div>
+             <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c] mb-2">{t('profile.basicDetails')}</h1>
+             <p className="text-sm text-gray-500">Update your profile information</p>
+           </div>
            <button 
              onClick={() => setViewState(ViewState.PROFILE)}
-             className="w-9 h-9 sm:w-10 sm:h-10 bg-[#15383c] rounded-lg flex items-center justify-center text-white hover:opacity-90 transition-opacity touch-manipulation active:scale-95 shrink-0"
+             className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-[#15383c] hover:bg-gray-50 transition-colors touch-manipulation active:scale-95 shrink-0 shadow-sm"
            >
              <X size={18} className="sm:w-5 sm:h-5" />
            </button>
         </div>
-        <div className="space-y-5 sm:space-y-6">
-           {/* Profile Picture Upload */}
-           <div className="space-y-2">
-              <label className="block text-xs sm:text-sm font-light text-gray-600 pl-1">{t('profile.profilePicture')}</label>
-              <div className="flex items-center gap-4">
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-md border border-gray-100 p-6 sm:p-8">
+        <div className="space-y-6 sm:space-y-8">
+           {/* Profile Picture Upload - Enhanced */}
+           <div className="space-y-3">
+              <label className="block text-sm font-semibold text-[#15383c]">{t('profile.profilePicture')}</label>
+              <div className="flex items-center gap-6">
                 <div className="relative">
-                  <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gray-200 overflow-hidden ring-2 ring-gray-200">
+                  <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#e35e25] to-[#15383c] overflow-hidden ring-4 ring-white shadow-xl">
                     {profileImage ? (
                       <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 text-2xl font-bold">
+                      <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white text-3xl sm:text-4xl font-bold">
                         {userName?.[0] || user?.displayName?.[0] || user?.name?.[0] || 'U'}
                       </div>
                     )}
                   </div>
                   {uploading && (
-                    <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-                      <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <div className="absolute inset-0 bg-black/60 rounded-2xl sm:rounded-3xl flex items-center justify-center backdrop-blur-sm">
+                      <div className="w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
                     </div>
                   )}
                 </div>
-                <div>
+                <div className="flex-1">
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -222,67 +226,81 @@ export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
                   />
                   <label
                     htmlFor="profile-picture-input"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#15383c] text-white rounded-full text-sm font-medium hover:bg-[#1f4d52] transition-colors cursor-pointer touch-manipulation active:scale-95"
+                    className="inline-flex items-center gap-2.5 px-5 py-3 bg-[#e35e25] text-white rounded-xl text-sm font-bold hover:bg-[#cf4d1d] transition-colors cursor-pointer touch-manipulation active:scale-95 shadow-md shadow-orange-900/20"
                   >
-                    <Camera size={16} />
+                    <Camera size={18} />
                     {uploading ? t('profile.uploading') : t('profile.changePhoto')}
                   </label>
+                  <p className="text-xs text-gray-500 mt-2">JPG, PNG up to 5MB</p>
                 </div>
               </div>
            </div>
-           {/* User Name (Publicly shown) - Editable */}
+           {/* User Name (Publicly shown) - Enhanced */}
            <div className="space-y-2">
-              <label className="block text-xs sm:text-sm font-light text-gray-600 pl-1">{t('profile.userName')} <span className="text-gray-400 font-normal text-[10px]">({t('profile.userNameDescription')})</span></label>
+              <label className="block text-sm font-semibold text-[#15383c]">{t('profile.userName')}</label>
+              <p className="text-xs text-gray-500 mb-3">{t('profile.userNameDescription')}</p>
               <input 
                 type="text" 
                 value={userName}
                 onChange={(e) => setUserName(e.target.value)}
                 placeholder={t('profile.userName')}
-                className="w-full bg-white border border-gray-200 rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all" 
+                className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl py-3.5 sm:py-4 px-5 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#e35e25] focus:bg-white focus:ring-2 focus:ring-[#e35e25]/10 transition-all" 
               />
            </div>
-           {/* Full Name - Not auto-filled */}
+           {/* Full Name - Enhanced */}
            <div className="space-y-2">
-              <label className="block text-xs sm:text-sm font-light text-gray-600 pl-1">{t('profile.fullName')}</label>
+              <label className="block text-sm font-semibold text-[#15383c]">{t('profile.fullName')}</label>
               <input 
                 type="text" 
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder={t('profile.fullName')}
-                className="w-full bg-white border border-gray-200 rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all" 
+                className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl py-3.5 sm:py-4 px-5 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#e35e25] focus:bg-white focus:ring-2 focus:ring-[#e35e25]/10 transition-all" 
               />
            </div>
-           {/* Phone Number - Not auto-filled */}
+           {/* Phone Number - Enhanced */}
            <div className="space-y-2">
-              <label className="block text-xs sm:text-sm font-light text-gray-600 pl-1">{t('profile.phoneNumber')} <span className="text-gray-400 font-normal">({t('profile.phoneNumberDescription')})</span></label>
+              <label className="block text-sm font-semibold text-[#15383c]">{t('profile.phoneNumber')}</label>
+              <p className="text-xs text-gray-500 mb-3">{t('profile.phoneNumberDescription')}</p>
               <input 
                 type="tel" 
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 placeholder={t('profile.phoneNumber')}
-                className="w-full bg-white border border-gray-200 rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all" 
+                className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl py-3.5 sm:py-4 px-5 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#e35e25] focus:bg-white focus:ring-2 focus:ring-[#e35e25]/10 transition-all" 
               />
            </div>
-           {/* Bio - Not auto-filled */}
+           {/* Bio - Enhanced */}
            <div className="space-y-2">
-              <label className="block text-xs sm:text-sm font-light text-gray-600 pl-1">{t('profile.bio')}</label>
+              <label className="block text-sm font-semibold text-[#15383c]">{t('profile.bio')}</label>
               <textarea 
-                rows={4} 
+                rows={5} 
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
                 placeholder={t('profile.bio')}
-                className="w-full bg-white border border-gray-200 rounded-2xl sm:rounded-3xl py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all resize-none" 
+                className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl py-3.5 sm:py-4 px-5 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#e35e25] focus:bg-white focus:ring-2 focus:ring-[#e35e25]/10 transition-all resize-none" 
               />
            </div>
-           <div className="pt-6 sm:pt-8">
+           <div className="pt-4">
              <button 
                onClick={handleSave}
                disabled={saving}
-               className="w-full py-3.5 sm:py-4 bg-[#15383c] text-white font-bold rounded-xl sm:rounded-2xl hover:bg-[#1f4d52] transition-colors shadow-lg touch-manipulation active:scale-95 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+               className="w-full py-4 bg-[#e35e25] text-white font-bold rounded-xl hover:bg-[#cf4d1d] transition-colors shadow-lg shadow-orange-900/20 touch-manipulation active:scale-95 text-base disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
              >
-               {saving ? t('profile.uploading') : t('profile.saveChanges')}
+               {saving ? (
+                 <>
+                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                   {t('profile.uploading')}
+                 </>
+               ) : (
+                 <>
+                   <CheckCircle2 size={20} />
+                   {t('profile.saveChanges')}
+                 </>
+               )}
              </button>
            </div>
+        </div>
         </div>
       </div>
     </div>
@@ -351,32 +369,46 @@ export const NotificationSettingsPage: React.FC<SubPageProps> = ({ setViewState 
   };
 
   const ToggleItem = ({ label, description, isOn, onToggle }: any) => (
-    <div className="flex items-center justify-between py-4 sm:py-5 md:py-6 border-b border-gray-100 last:border-0">
-       <div className="pr-3 sm:pr-4 min-w-0 flex-1">
-          <h3 className="font-bold text-[#15383c] text-base sm:text-lg mb-1">{label}</h3>
-          <p className="text-gray-500 font-light text-xs sm:text-sm">{description}</p>
+    <div className="flex items-center justify-between py-5 sm:py-6 px-5 sm:px-6 hover:bg-gray-50 transition-colors">
+       <div className="pr-4 min-w-0 flex-1">
+          <h3 className="font-bold text-[#15383c] text-base sm:text-lg mb-1.5">{label}</h3>
+          <p className="text-gray-500 text-sm leading-relaxed">{description}</p>
        </div>
-       <button onClick={onToggle} className={`w-12 h-7 sm:w-14 sm:h-8 rounded-full p-1 transition-colors duration-300 shrink-0 relative touch-manipulation active:scale-95 ${isOn ? 'bg-[#e35e25]' : 'bg-[#15383c]'}`}>
-          <div className={`w-5 h-5 sm:w-6 sm:h-6 bg-white rounded-full shadow-sm transform transition-transform duration-300 ${isOn ? 'translate-x-5 sm:translate-x-6' : 'translate-x-0'}`} />
+       <button 
+         onClick={onToggle} 
+         className={`w-14 h-8 rounded-full p-1 transition-all duration-300 shrink-0 relative touch-manipulation active:scale-95 shadow-inner ${
+           isOn 
+             ? 'bg-[#e35e25] shadow-orange-900/30' 
+             : 'bg-gray-300'
+         }`}
+       >
+          <div className={`w-6 h-6 bg-white rounded-full shadow-lg transform transition-transform duration-300 ${
+            isOn ? 'translate-x-6' : 'translate-x-0'
+          }`} />
        </button>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-white pt-20 sm:pt-24 pb-8 sm:pb-12 font-sans">
+    <div className="min-h-screen bg-[#f8fafb] pt-20 sm:pt-24 pb-8 sm:pb-12 font-sans">
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between mb-6 sm:mb-8 border-b border-gray-100 pb-4 sm:pb-6">
-           <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c]">Notification Preferences</h1>
-           <button onClick={() => setViewState(ViewState.PROFILE)} className="w-9 h-9 sm:w-10 sm:h-10 bg-[#15383c] rounded-lg flex items-center justify-center text-white hover:opacity-90 transition-opacity touch-manipulation active:scale-95 shrink-0">
+        <div className="flex items-center justify-between mb-6 sm:mb-8">
+           <div>
+             <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c] mb-2">Notification Preferences</h1>
+             <p className="text-sm text-gray-500">Manage how you receive notifications</p>
+           </div>
+           <button onClick={() => setViewState(ViewState.PROFILE)} className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-[#15383c] hover:bg-gray-50 transition-colors touch-manipulation active:scale-95 shrink-0 shadow-sm">
              <X size={18} className="sm:w-5 sm:h-5" />
            </button>
         </div>
         {saved && (
-          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-            Settings saved!
+          <div className="mb-6 p-4 bg-green-50 border-2 border-green-200 rounded-xl text-sm text-green-700 flex items-center gap-2 animate-fade-in">
+            <CheckCircle2 size={20} className="text-green-600" />
+            Settings saved successfully!
           </div>
         )}
-        <div className="space-y-1 sm:space-y-2">
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-md border border-gray-100 overflow-hidden">
+        <div className="divide-y divide-gray-100">
            <ToggleItem 
              label="In-App Notifications" 
              description="Receive notifications in the app" 
@@ -396,6 +428,7 @@ export const NotificationSettingsPage: React.FC<SubPageProps> = ({ setViewState 
              onToggle={() => handleToggle('sms_opt_in')} 
            />
         </div>
+        </div>
       </div>
     </div>
   );
@@ -404,41 +437,88 @@ export const NotificationSettingsPage: React.FC<SubPageProps> = ({ setViewState 
 // --- Privacy Settings Page ---
 export const PrivacySettingsPage: React.FC<SubPageProps> = ({ setViewState }) => {
   return (
-    <div className="min-h-screen bg-white pt-20 sm:pt-24 pb-8 sm:pb-12 font-sans">
-      <div className="max-w-4xl mx-auto px-6">
-        <div className="flex items-center justify-between mb-8 border-b border-gray-100 pb-6">
-           <h1 className="font-heading font-bold text-3xl text-[#15383c]">Privacy Settings</h1>
-           <button onClick={() => setViewState(ViewState.PROFILE)} className="w-10 h-10 bg-[#15383c] rounded-lg flex items-center justify-center text-white hover:opacity-90 transition-opacity">
-             <X size={20} />
+    <div className="min-h-screen bg-[#f8fafb] pt-20 sm:pt-24 pb-8 sm:pb-12 font-sans">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between mb-6 sm:mb-8">
+           <div>
+             <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c] mb-2">Privacy Settings</h1>
+             <p className="text-sm text-gray-500">Control your privacy and visibility</p>
+           </div>
+           <button onClick={() => setViewState(ViewState.PROFILE)} className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-[#15383c] hover:bg-gray-50 transition-colors touch-manipulation active:scale-95 shadow-sm">
+             <X size={18} className="sm:w-5 sm:h-5" />
            </button>
         </div>
-        <div className="mb-12">
-           <h2 className="font-heading font-bold text-2xl text-[#15383c] mb-6">Attendee Reservation</h2>
-           <div className="space-y-6">
-              <label className="flex items-start gap-4 cursor-pointer group">
-                 <div className="relative pt-1"><input type="checkbox" className="w-6 h-6 border-2 border-gray-200 rounded-md appearance-none checked:bg-[#15383c] checked:border-[#15383c] transition-all cursor-pointer" /></div>
-                 <span className="text-gray-600 group-hover:text-[#15383c] transition-colors font-light">Show my full name and photo on my public profile</span>
+        
+        {/* Attendee Reservation Section */}
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-md border border-gray-100 p-6 sm:p-8 mb-6">
+           <h2 className="font-heading font-bold text-xl sm:text-2xl text-[#15383c] mb-6">Profile Visibility</h2>
+           <div className="space-y-4">
+              <label className="flex items-start gap-4 cursor-pointer group p-4 rounded-xl hover:bg-gray-50 transition-colors">
+                 <div className="relative pt-1">
+                   <input 
+                     type="checkbox" 
+                     className="w-5 h-5 border-2 border-gray-300 rounded-md appearance-none checked:bg-[#e35e25] checked:border-[#e35e25] transition-all cursor-pointer focus:ring-2 focus:ring-[#e35e25]/20" 
+                   />
+                 </div>
+                 <div className="flex-1">
+                   <span className="text-[#15383c] font-medium block group-hover:text-[#e35e25] transition-colors">Show my full name and photo on my public profile</span>
+                   <span className="text-gray-500 text-sm mt-1">Make your profile visible to other users</span>
+                 </div>
               </label>
-              <label className="flex items-start gap-4 cursor-pointer group">
-                 <div className="relative pt-1"><input type="checkbox" className="w-6 h-6 border-2 border-gray-200 rounded-md appearance-none checked:bg-[#15383c] checked:border-[#15383c] transition-all cursor-pointer" /></div>
-                 <span className="text-gray-600 group-hover:text-[#15383c] transition-colors font-light">Hide my profile from search results</span>
+              <label className="flex items-start gap-4 cursor-pointer group p-4 rounded-xl hover:bg-gray-50 transition-colors">
+                 <div className="relative pt-1">
+                   <input 
+                     type="checkbox" 
+                     className="w-5 h-5 border-2 border-gray-300 rounded-md appearance-none checked:bg-[#e35e25] checked:border-[#e35e25] transition-all cursor-pointer focus:ring-2 focus:ring-[#e35e25]/20" 
+                   />
+                 </div>
+                 <div className="flex-1">
+                   <span className="text-[#15383c] font-medium block group-hover:text-[#e35e25] transition-colors">Hide my profile from search results</span>
+                   <span className="text-gray-500 text-sm mt-1">Your profile won't appear in search</span>
+                 </div>
               </label>
-              <label className="flex items-start gap-4 cursor-pointer group">
-                 <div className="relative pt-1"><input type="checkbox" className="w-6 h-6 border-2 border-gray-200 rounded-md appearance-none checked:bg-[#15383c] checked:border-[#15383c] transition-all cursor-pointer" /></div>
-                 <span className="text-gray-600 group-hover:text-[#15383c] transition-colors font-light">Only show my profile to people I've interacted with</span>
+              <label className="flex items-start gap-4 cursor-pointer group p-4 rounded-xl hover:bg-gray-50 transition-colors">
+                 <div className="relative pt-1">
+                   <input 
+                     type="checkbox" 
+                     className="w-5 h-5 border-2 border-gray-300 rounded-md appearance-none checked:bg-[#e35e25] checked:border-[#e35e25] transition-all cursor-pointer focus:ring-2 focus:ring-[#e35e25]/20" 
+                   />
+                 </div>
+                 <div className="flex-1">
+                   <span className="text-[#15383c] font-medium block group-hover:text-[#e35e25] transition-colors">Only show my profile to people I've interacted with</span>
+                   <span className="text-gray-500 text-sm mt-1">Limit profile visibility to connections</span>
+                 </div>
               </label>
            </div>
         </div>
-        <div>
-           <h2 className="font-heading font-bold text-2xl text-[#15383c] mb-6">Activity Visibility</h2>
-           <div className="space-y-6">
-              <label className="flex items-start gap-4 cursor-pointer group">
-                 <div className="relative pt-1"><input type="checkbox" className="w-6 h-6 border-2 border-gray-200 rounded-md appearance-none checked:bg-[#15383c] checked:border-[#15383c] transition-all cursor-pointer" /></div>
-                 <span className="text-gray-600 group-hover:text-[#15383c] transition-colors font-light">Show events I'm attending on my profile</span>
+        
+        {/* Activity Visibility Section */}
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-md border border-gray-100 p-6 sm:p-8">
+           <h2 className="font-heading font-bold text-xl sm:text-2xl text-[#15383c] mb-6">Activity Visibility</h2>
+           <div className="space-y-4">
+              <label className="flex items-start gap-4 cursor-pointer group p-4 rounded-xl hover:bg-gray-50 transition-colors">
+                 <div className="relative pt-1">
+                   <input 
+                     type="checkbox" 
+                     className="w-5 h-5 border-2 border-gray-300 rounded-md appearance-none checked:bg-[#e35e25] checked:border-[#e35e25] transition-all cursor-pointer focus:ring-2 focus:ring-[#e35e25]/20" 
+                   />
+                 </div>
+                 <div className="flex-1">
+                   <span className="text-[#15383c] font-medium block group-hover:text-[#e35e25] transition-colors">Show events I'm attending on my profile</span>
+                   <span className="text-gray-500 text-sm mt-1">Display your event activity publicly</span>
+                 </div>
               </label>
-              <label className="flex items-start gap-4 cursor-pointer group">
-                 <div className="relative pt-1"><input type="checkbox" className="w-6 h-6 border-2 border-gray-200 rounded-md appearance-none checked:bg-[#15383c] checked:border-[#15383c] transition-all cursor-pointer" /></div>
-                 <span className="text-gray-600 group-hover:text-[#15383c] transition-colors font-light">Keep my event activity private</span>
+              <label className="flex items-start gap-4 cursor-pointer group p-4 rounded-xl hover:bg-gray-50 transition-colors">
+                 <div className="relative pt-1">
+                   <input 
+                     type="checkbox" 
+                     className="w-5 h-5 border-2 border-gray-300 rounded-md appearance-none checked:bg-[#e35e25] checked:border-[#e35e25] transition-all cursor-pointer focus:ring-2 focus:ring-[#e35e25]/20" 
+                   />
+                 </div>
+                 <div className="flex-1">
+                   <span className="text-[#15383c] font-medium block group-hover:text-[#e35e25] transition-colors">Keep my event activity private</span>
+                   <span className="text-gray-500 text-sm mt-1">Hide your event participation from others</span>
+                 </div>
               </label>
            </div>
         </div>
@@ -450,21 +530,24 @@ export const PrivacySettingsPage: React.FC<SubPageProps> = ({ setViewState }) =>
 // --- Stripe Settings Page ---
 export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => {
   return (
-    <div className="min-h-screen bg-white pt-20 sm:pt-24 pb-8 sm:pb-12 font-sans">
-      <div className="max-w-4xl mx-auto px-6">
-        <div className="flex items-center justify-between mb-8 border-b border-gray-100 pb-6">
-           <h1 className="font-heading font-bold text-3xl text-[#15383c]">Stripe Payout Settings</h1>
-           <button onClick={() => setViewState(ViewState.PROFILE)} className="w-10 h-10 bg-[#15383c] rounded-lg flex items-center justify-center text-white hover:opacity-90 transition-opacity">
-             <X size={20} />
+    <div className="min-h-screen bg-[#f8fafb] pt-20 sm:pt-24 pb-8 sm:pb-12 font-sans">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between mb-6 sm:mb-8">
+           <div>
+             <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c] mb-2">Stripe Payout Settings</h1>
+             <p className="text-sm text-gray-500">Manage your payment and payout preferences</p>
+           </div>
+           <button onClick={() => setViewState(ViewState.PROFILE)} className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-[#15383c] hover:bg-gray-50 transition-colors touch-manipulation active:scale-95 shadow-sm">
+             <X size={18} className="sm:w-5 sm:h-5" />
            </button>
         </div>
-        <div className="bg-gray-50 rounded-3xl p-8 border border-gray-100 text-center py-16">
-           <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm text-[#635bff]">
-             <DollarSign size={40} />
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-md border border-gray-100 p-8 sm:p-12 text-center">
+           <div className="w-24 h-24 bg-gradient-to-br from-[#635bff] to-[#544dc9] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+             <DollarSign size={48} className="text-white" />
            </div>
-           <h2 className="text-2xl font-heading font-bold text-[#15383c] mb-4">Get Paid with Stripe</h2>
-           <p className="text-gray-500 max-w-lg mx-auto mb-8">To receive payouts from your events, you need to connect a Stripe account. It's secure, fast, and trusted by millions.</p>
-           <button className="px-8 py-4 bg-[#635bff] text-white font-bold rounded-full hover:bg-[#544dc9] transition-colors flex items-center gap-2 mx-auto shadow-lg shadow-indigo-200">
+           <h2 className="text-2xl sm:text-3xl font-heading font-bold text-[#15383c] mb-4">Get Paid with Stripe</h2>
+           <p className="text-gray-600 max-w-lg mx-auto mb-8 text-base leading-relaxed">To receive payouts from your events, you need to connect a Stripe account. It's secure, fast, and trusted by millions.</p>
+           <button className="px-8 py-4 bg-[#635bff] text-white font-bold rounded-xl hover:bg-[#544dc9] transition-all flex items-center gap-2 mx-auto shadow-lg shadow-indigo-900/20 hover:shadow-xl hover:-translate-y-0.5 touch-manipulation active:scale-95">
              Connect Stripe Account <ArrowRight size={20} />
            </button>
         </div>
@@ -662,31 +745,42 @@ export const MyReviewsPage: React.FC<SubPageProps & { onHostClick?: (hostName: s
 
   return (
     <div className="min-h-screen bg-[#f8fafb] pt-24 pb-20 font-sans">
-      <div className="max-w-4xl mx-auto px-6">
-        <div className="flex items-center justify-between mb-8">
-           <h1 className="font-heading font-bold text-3xl text-[#15383c]">My Reviews</h1>
+      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between mb-6 sm:mb-8">
+           <div>
+             <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c] mb-2">My Reviews</h1>
+             <p className="text-sm text-gray-500">Manage reviews from your events</p>
+           </div>
            <button 
              onClick={() => setViewState(ViewState.PROFILE)}
-             className="w-10 h-10 bg-[#15383c] rounded-lg flex items-center justify-center text-white hover:opacity-90 transition-opacity shadow-sm"
+             className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-[#15383c] hover:bg-gray-50 transition-colors touch-manipulation active:scale-95 shadow-sm"
            >
-             <X size={20} />
+             <X size={18} className="sm:w-5 sm:h-5" />
            </button>
         </div>
 
         {loading ? (
-          <div className="text-center py-12 text-gray-500">Loading reviews...</div>
+          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-md border border-gray-100 p-12 text-center">
+            <div className="animate-pulse space-y-4">
+              <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
+            </div>
+          </div>
         ) : reviews.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <p className="text-lg mb-2">No reviews yet</p>
-            <p className="text-sm">Reviews from your events will appear here.</p>
+          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-md border border-gray-100 p-12 text-center">
+            <div className="w-20 h-20 bg-[#e35e25]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Star size={40} className="text-[#e35e25]" />
+            </div>
+            <h3 className="text-xl sm:text-2xl font-heading font-bold text-[#15383c] mb-2">No reviews yet</h3>
+            <p className="text-gray-500 text-sm sm:text-base">Reviews from your events will appear here.</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 sm:space-y-5">
              {reviews.map((review) => (
-               <div key={review.id} className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 transition-transform hover:scale-[1.01] duration-300">
+               <div key={review.id} className="bg-white p-5 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl shadow-md border border-gray-100 hover:shadow-lg transition-all">
                   <div className="flex gap-4 mb-4">
                      <div 
-                       className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 shrink-0 ring-2 ring-white shadow-sm cursor-pointer hover:ring-[#e35e25] transition-all"
+                       className="w-14 h-14 rounded-full overflow-hidden bg-gradient-to-br from-[#e35e25] to-[#15383c] shrink-0 ring-2 ring-white shadow-md cursor-pointer hover:ring-[#e35e25] transition-all"
                        onClick={() => handleReviewerClick(review.userId, review.name)}
                      >
                         <img 
@@ -700,18 +794,26 @@ export const MyReviewsPage: React.FC<SubPageProps & { onHostClick?: (hostName: s
                         />
                      </div>
                      <div className="flex-1">
-                        <div className="flex justify-between items-start">
+                        <div className="flex justify-between items-start mb-2">
                             <h3 
-                              className="font-bold text-[#15383c] text-lg leading-tight cursor-pointer hover:text-[#e35e25] transition-colors"
+                              className="font-bold text-[#15383c] text-base sm:text-lg leading-tight cursor-pointer hover:text-[#e35e25] transition-colors"
                               onClick={() => handleReviewerClick(review.userId, review.name)}
                             >
                               {review.name}
                             </h3>
-                            <span className="text-xs text-gray-400 mt-1">{review.date}</span>
+                            <span className="text-xs text-gray-400">{review.date}</span>
                         </div>
-                        <div className="flex items-center gap-2 mt-1">
-                           <Star size={16} className="fill-[#e35e25] text-[#e35e25]" />
-                           <span className="text-sm font-bold text-[#15383c]">{review.rating}</span>
+                        <div className="flex items-center gap-2">
+                           <div className="flex items-center">
+                             {[...Array(5)].map((_, i) => (
+                               <Star 
+                                 key={i}
+                                 size={16} 
+                                 className={i < review.rating ? 'fill-[#e35e25] text-[#e35e25]' : 'text-gray-300'} 
+                               />
+                             ))}
+                           </div>
+                           <span className="text-sm font-bold text-[#15383c]">{review.rating}/5</span>
                         </div>
                      </div>
                   </div>
@@ -725,38 +827,39 @@ export const MyReviewsPage: React.FC<SubPageProps & { onHostClick?: (hostName: s
                       <span className="text-sm font-medium text-[#15383c]">{review.eventName}</span>
                   </div>
                   
-                  {/* Accept/Contest Actions - Only show for pending reviews */}
+                  {/* Accept/Contest Actions - Enhanced */}
                   {review.status === 'pending' && (
-                    <div className="pt-4 border-t border-gray-50 flex gap-3">
+                    <div className="pt-4 border-t border-gray-100 flex gap-3">
                       <button
                         onClick={() => handleAcceptReview(review.id)}
-                        className="flex-1 px-4 py-2 bg-[#15383c] text-white rounded-full text-sm font-medium hover:bg-[#1f4d52] transition-colors"
+                        className="flex-1 px-5 py-2.5 bg-[#15383c] text-white rounded-xl text-sm font-bold hover:bg-[#1f4d52] transition-colors shadow-md touch-manipulation active:scale-95"
                       >
-                        Accept
+                        Accept Review
                       </button>
                       <button
                         onClick={() => setContestingReviewId(review.id)}
-                        className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors"
+                        className="flex-1 px-5 py-2.5 bg-white border-2 border-gray-200 text-[#15383c] rounded-xl text-sm font-bold hover:border-[#e35e25] hover:text-[#e35e25] transition-colors touch-manipulation active:scale-95"
                       >
                         Contest
                       </button>
                     </div>
                   )}
                   
-                  {/* Contest Form */}
+                  {/* Contest Form - Enhanced */}
                   {contestingReviewId === review.id && (
-                    <div className="pt-4 border-t border-gray-50 mt-4">
+                    <div className="pt-4 border-t border-gray-100 mt-4 bg-gray-50 rounded-xl p-4">
+                      <label className="block text-sm font-semibold text-[#15383c] mb-2">Contest Reason</label>
                       <textarea
                         value={contestMessage}
                         onChange={(e) => setContestMessage(e.target.value)}
                         placeholder="Please explain why you're contesting this review..."
-                        className="w-full p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#15383c] mb-3"
+                        className="w-full p-3 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#e35e25] focus:ring-2 focus:ring-[#e35e25]/10 mb-3 bg-white"
                         rows={4}
                       />
                       <div className="flex gap-3">
                         <button
                           onClick={() => handleContestReview(review.id)}
-                          className="flex-1 px-4 py-2 bg-[#e35e25] text-white rounded-full text-sm font-medium hover:bg-[#cf4d1d] transition-colors"
+                          className="flex-1 px-5 py-2.5 bg-[#e35e25] text-white rounded-xl text-sm font-bold hover:bg-[#cf4d1d] transition-colors shadow-md touch-manipulation active:scale-95"
                         >
                           Submit Contest
                         </button>
@@ -765,7 +868,7 @@ export const MyReviewsPage: React.FC<SubPageProps & { onHostClick?: (hostName: s
                             setContestingReviewId(null);
                             setContestMessage('');
                           }}
-                          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors"
+                          className="px-5 py-2.5 bg-white border-2 border-gray-200 text-gray-700 rounded-xl text-sm font-bold hover:bg-gray-50 transition-colors touch-manipulation active:scale-95"
                         >
                           Cancel
                         </button>
@@ -773,19 +876,19 @@ export const MyReviewsPage: React.FC<SubPageProps & { onHostClick?: (hostName: s
                     </div>
                   )}
                   
-                  {/* Status Badge */}
+                  {/* Status Badge - Enhanced */}
                   {review.status === 'accepted' && (
-                    <div className="pt-4 border-t border-gray-50">
-                      <span className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium">
-                        <CheckCircle2 size={14} />
+                    <div className="pt-4 border-t border-gray-100">
+                      <span className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-full text-xs font-bold border border-green-200">
+                        <CheckCircle2 size={16} />
                         Accepted
                       </span>
                     </div>
                   )}
                   
                   {review.status === 'contested' && (
-                    <div className="pt-4 border-t border-gray-50">
-                      <span className="inline-flex items-center gap-2 px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-xs font-medium">
+                    <div className="pt-4 border-t border-gray-100">
+                      <span className="inline-flex items-center gap-2 px-4 py-2 bg-orange-50 text-orange-700 rounded-full text-xs font-bold border border-orange-200">
                         Under Review
                       </span>
                     </div>

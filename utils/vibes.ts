@@ -1,13 +1,14 @@
 /**
  * Vibes constants and utilities
- * All available vibe tags for events
+ * Unified list combining subcategories and attribute vibes
+ * All vibes are treated equally for filtering and event creation
  */
 
 export const ALL_VIBES = [
+  // Attribute Vibes (atmosphere/style)
   'Creative',
   'Movement',
   'Social Connection',
-  'Wellness',
   'Spiritual',
   'Learning',
   'Resilience',
@@ -15,12 +16,19 @@ export const ALL_VIBES = [
   'Outdoors',
   'Curious',
   'Purposeful',
+  'Hands-On',
+  'Performances',
+  
+  // Subcategory Vibes (activity types - blended with attributes)
   'Music',
   'Food & Drink',
   'Markets',
-  'Hands-On',
-  'Performances',
   'Sports',
+  'Wellness',
+  'Community',
+  'Workshops',
+  'Social',
+  'Shows',
 ] as const;
 
 export type Vibe = typeof ALL_VIBES[number];

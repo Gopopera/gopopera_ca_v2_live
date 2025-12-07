@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ViewState } from '../../types';
+import { ViewState } from '../../../types';
 import { X, DollarSign, ArrowRight } from 'lucide-react';
 
 interface StripeSettingsPageProps {

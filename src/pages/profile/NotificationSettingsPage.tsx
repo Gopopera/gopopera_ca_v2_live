@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ViewState } from '../../types';
+import { ViewState } from '../../../types';
 import { X } from 'lucide-react';
 import { useUserStore } from '../../stores/userStore';
 import { getUserProfile, createOrUpdateUserProfile } from '../../firebase/db';

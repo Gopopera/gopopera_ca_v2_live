@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ViewState, Event } from '../../types';
-import { ChevronRight, ChevronLeft } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Calendar, Users, Star, Heart, Settings } from 'lucide-react';
 import { useUserStore } from '../../stores/userStore';
 import { useEventStore } from '../../stores/eventStore';
 import { getReservationCountForEvent, listHostReviews } from '../../firebase/db';
 // REFACTORED: No longer using getUserProfile - using real-time subscriptions instead
 import { getFollowingHosts, getHostFollowers } from '../../firebase/follow';
 import { subscribeToUserProfile } from '../../firebase/userSubscriptions';
+import { EventCard } from '../../components/events/EventCard';
 
 interface ProfilePageProps {
   setViewState: (view: ViewState) => void;
@@ -223,114 +224,280 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
     };
   }, [user?.uid]);
   
+  // Get user's hosted events for preview
+  const hostedEvents = useMemo(() => {
+    if (!user?.uid) return [];
+    return allEvents
+      .filter(e => e.hostId === user.uid && e.isDraft !== true)
+      .slice(0, 6); // Show up to 6 events
+  }, [allEvents, user?.uid]);
+
+  // Get user's bio from profile
+  const userBio = userProfile?.bio || '';
+
   const settingsLinks = [
-    { label: 'My Pop-ups', action: () => setViewState(ViewState.MY_POPS) },
-    { label: 'Basic Details', action: () => setViewState(ViewState.PROFILE_BASIC) },
-    { label: 'Notification Preferences', action: () => setViewState(ViewState.PROFILE_NOTIFICATIONS) },
-    { label: 'Privacy Settings', action: () => setViewState(ViewState.PROFILE_PRIVACY) },
-    { label: 'Get Help', action: () => setViewState(ViewState.HELP) },
-    { label: 'Stripe Payout Settings', action: () => setViewState(ViewState.PROFILE_STRIPE) },
-    { label: 'Reviews', action: () => setViewState(ViewState.PROFILE_REVIEWS) },
-    { label: 'Logout', action: onLogout, isLogout: true },
+    { label: 'My Pop-ups', action: () => setViewState(ViewState.MY_POPS), icon: Calendar },
+    { label: 'Basic Details', action: () => setViewState(ViewState.PROFILE_BASIC), icon: Users },
+    { label: 'Notification Preferences', action: () => setViewState(ViewState.PROFILE_NOTIFICATIONS), icon: Settings },
+    { label: 'Privacy Settings', action: () => setViewState(ViewState.PROFILE_PRIVACY), icon: Settings },
+    { label: 'Get Help', action: () => setViewState(ViewState.HELP), icon: Settings },
+    { label: 'Stripe Payout Settings', action: () => setViewState(ViewState.PROFILE_STRIPE), icon: Settings },
+    { label: 'Reviews', action: () => setViewState(ViewState.PROFILE_REVIEWS), icon: Star },
+    { label: 'Logout', action: onLogout, isLogout: true, icon: Settings },
   ];
+
   return (
     <div className="min-h-screen bg-[#f8fafb] pt-20 sm:pt-24 md:pt-28 pb-12 sm:pb-16 md:pb-20 font-sans">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-4 sm:mb-6"><button onClick={() => setViewState(ViewState.FEED)} className="flex items-center text-gray-400 hover:text-[#15383c] transition-colors font-medium text-sm sm:text-base touch-manipulation active:scale-95"><ChevronLeft size={18} className="sm:w-5 sm:h-5 mr-1" /> Back</button></div>
-        <h1 className="font-heading font-bold text-2xl sm:text-3xl md:text-4xl text-[#15383c] mb-6 sm:mb-8">Profile</h1>
-        <div className="flex flex-col md:flex-row items-start md:items-center gap-4 sm:gap-5 md:gap-6 mb-6 sm:mb-8">
-           <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-[#e35e25] rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-lg shadow-orange-900/20 shrink-0 overflow-hidden">
-             {profilePicture ? (
-               <img 
-                 src={profilePicture} 
-                 alt={displayName}
-                 className="w-full h-full object-cover"
-                 onError={(e) => {
-                   const target = e.target as HTMLImageElement;
-                   target.style.display = 'none';
-                   const parent = target.parentElement;
-                   if (parent) {
-                     const fallback = document.createElement('span');
-                     fallback.className = 'font-heading font-bold text-white text-3xl sm:text-4xl md:text-5xl';
-                     fallback.textContent = initials;
-                     parent.appendChild(fallback);
-                   }
-                 }}
-               />
-             ) : (
-               <span className="font-heading font-bold text-white text-3xl sm:text-4xl md:text-5xl">{initials}</span>
-             )}
-           </div>
-           <div className="flex-1 min-w-0"><p className="text-[#15383c] font-medium text-base sm:text-lg md:text-xl truncate">@{userName.toLowerCase().replace(/\s/g, '') || 'user'}</p><p className="text-gray-500 text-xs sm:text-sm md:text-base mb-3">Member since Nov '23</p><button onClick={() => setViewState(ViewState.PROFILE_BASIC)} className="px-5 sm:px-6 md:px-7 py-1.5 sm:py-2 rounded-full border border-gray-200 text-xs sm:text-sm md:text-base font-medium text-gray-600 hover:bg-white hover:border-[#15383c] hover:text-[#15383c] transition-all bg-white shadow-sm touch-manipulation active:scale-95">Edit</button></div>
+        {/* Back Button */}
+        <div className="mb-4 sm:mb-6">
+          <button 
+            onClick={() => setViewState(ViewState.FEED)} 
+            className="flex items-center text-gray-400 hover:text-[#15383c] transition-colors font-medium text-sm sm:text-base touch-manipulation active:scale-95"
+          >
+            <ChevronLeft size={18} className="sm:w-5 sm:h-5 mr-1" /> Back
+          </button>
         </div>
-        {/* Total Revenue Card */}
-        <div className="bg-white p-5 sm:p-6 md:p-7 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center mb-6 sm:mb-8 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setViewState(ViewState.PROFILE_STRIPE)}>
-          <span className="text-gray-500 font-medium text-sm sm:text-base md:text-lg">Total Revenue</span>
-          <div className="flex items-center gap-2">
-            <span className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c]">${stats.revenue}</span>
-            <ChevronRight size={20} className="text-gray-400" />
+
+        {/* Profile Banner with Profile Picture */}
+        <div className="relative mb-6 sm:mb-8">
+          {/* Banner Image */}
+          <div className="h-32 sm:h-40 md:h-48 bg-gradient-to-br from-[#e35e25] to-[#15383c] rounded-2xl sm:rounded-3xl overflow-hidden relative">
+            <div className="absolute inset-0 bg-black/10"></div>
+            {/* Optional: Add banner image upload later */}
+          </div>
+          
+          {/* Profile Picture - Centered on Banner */}
+          <div className="absolute -bottom-12 sm:-bottom-16 left-1/2 transform -translate-x-1/2">
+            <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 bg-[#e35e25] rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-xl shadow-orange-900/30 border-4 border-white overflow-hidden">
+              {profilePicture ? (
+                <img 
+                  src={profilePicture} 
+                  alt={displayName}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const parent = target.parentElement;
+                    if (parent) {
+                      const fallback = document.createElement('span');
+                      fallback.className = 'font-heading font-bold text-white text-2xl sm:text-3xl md:text-4xl';
+                      fallback.textContent = initials;
+                      parent.appendChild(fallback);
+                    }
+                  }}
+                />
+              ) : (
+                <span className="font-heading font-bold text-white text-2xl sm:text-3xl md:text-4xl">{initials}</span>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Profile Info Section */}
+        <div className="mt-16 sm:mt-20 md:mt-24 mb-6 sm:mb-8 text-center">
+          <h1 className="font-heading font-bold text-2xl sm:text-3xl md:text-4xl text-[#15383c] mb-2">
+            {displayName.toUpperCase()}
+          </h1>
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <Star size={16} className="text-[#e35e25] fill-[#e35e25]" />
+            <span className="text-gray-500 text-sm">Member since Nov '23</span>
+          </div>
+          
+          {/* Bio Section */}
+          {userBio && (
+            <p className="text-gray-600 text-sm sm:text-base max-w-2xl mx-auto mb-4 leading-relaxed">
+              {userBio}
+            </p>
+          )}
+          
+          <button 
+            onClick={() => setViewState(ViewState.PROFILE_BASIC)} 
+            className="px-5 sm:px-6 md:px-7 py-1.5 sm:py-2 rounded-full border border-gray-200 text-xs sm:text-sm md:text-base font-medium text-gray-600 hover:bg-white hover:border-[#15383c] hover:text-[#15383c] transition-all bg-white shadow-sm touch-manipulation active:scale-95"
+          >
+            Edit Profile
+          </button>
+        </div>
+
+        {/* Social Stats - Friends & Events */}
+        <div className="grid grid-cols-2 gap-4 sm:gap-5 mb-6 sm:mb-8">
+          <button
+            onClick={() => setViewState(ViewState.PROFILE_FOLLOWING)}
+            className="bg-white p-4 sm:p-5 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 hover:bg-gray-50 transition-colors flex items-center gap-3 cursor-pointer touch-manipulation active:scale-95"
+          >
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#e35e25]/10 rounded-full flex items-center justify-center">
+              <Users size={18} className="sm:w-5 sm:h-5 text-[#e35e25]" />
+            </div>
+            <div className="text-left flex-1">
+              <div className="text-xl sm:text-2xl font-heading font-bold text-[#15383c]">{loading ? '...' : stats.following}</div>
+              <div className="text-xs sm:text-sm text-gray-500">Following</div>
+            </div>
+            <ChevronRight size={16} className="text-gray-400" />
+          </button>
+          
+          <button
+            onClick={() => setViewState(ViewState.MY_POPS)}
+            className="bg-white p-4 sm:p-5 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 hover:bg-gray-50 transition-colors flex items-center gap-3 cursor-pointer touch-manipulation active:scale-95"
+          >
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#e35e25]/10 rounded-full flex items-center justify-center">
+              <Calendar size={18} className="sm:w-5 sm:h-5 text-[#e35e25]" />
+            </div>
+            <div className="text-left flex-1">
+              <div className="text-xl sm:text-2xl font-heading font-bold text-[#15383c]">{loading ? '...' : stats.hosted}</div>
+              <div className="text-xs sm:text-sm text-gray-500">Events</div>
+            </div>
+            <ChevronRight size={16} className="text-gray-400" />
+          </button>
+        </div>
+
+        {/* Total Revenue Card */}
+        <div 
+          className="bg-white p-5 sm:p-6 md:p-7 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center mb-6 sm:mb-8 cursor-pointer hover:bg-gray-50 transition-colors touch-manipulation active:scale-95" 
+          onClick={() => setViewState(ViewState.PROFILE_STRIPE)}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#e35e25]/10 rounded-full flex items-center justify-center">
+              <span className="text-[#e35e25] font-bold text-lg">$</span>
+            </div>
+            <div>
+              <span className="text-gray-500 font-medium text-sm sm:text-base md:text-lg block">Total Revenue</span>
+              <span className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c]">${stats.revenue}</span>
+            </div>
+          </div>
+          <ChevronRight size={20} className="text-gray-400" />
+        </div>
         
-        {/* Metrics Grid */}
+        {/* Metrics Grid - Enhanced Design */}
         <div className="mb-8 sm:mb-10">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-5">
             {/* Events Hosted */}
-            <div className="bg-white p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
+            <div className="bg-white p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-[#e35e25]/10 rounded-full flex items-center justify-center mb-2 sm:mb-3">
+                <Calendar size={20} className="sm:w-6 sm:h-6 text-[#e35e25]" />
+              </div>
               <span className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-1">{loading ? '...' : stats.hosted}</span>
               <span className="text-[9px] sm:text-[10px] md:text-xs text-gray-400 uppercase tracking-wide">Events Hosted</span>
             </div>
             
-            {/* Attendees (accumulated) */}
-            <div className="bg-white p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
+            {/* Attendees */}
+            <div className="bg-white p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-[#e35e25]/10 rounded-full flex items-center justify-center mb-2 sm:mb-3">
+                <Users size={20} className="sm:w-6 sm:h-6 text-[#e35e25]" />
+              </div>
               <span className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-1">{loading ? '...' : stats.attendees}</span>
               <span className="text-[9px] sm:text-[10px] md:text-xs text-gray-400 uppercase tracking-wide">Attendees</span>
             </div>
             
-            {/* Following - Clickable */}
-            <div 
-              className="bg-white p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-50 transition-colors"
-              onClick={() => setViewState(ViewState.PROFILE_FOLLOWING)}
-            >
-              <span className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-1">{loading ? '...' : stats.following}</span>
-              <div className="flex items-center gap-1">
-                <span className="text-[9px] sm:text-[10px] md:text-xs text-gray-400 uppercase tracking-wide">Following</span>
-                <ChevronRight size={12} className="text-gray-400" />
-              </div>
-            </div>
-            
             {/* Events Attended */}
-            <div className="bg-white p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
+            <div className="bg-white p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center hover:shadow-md transition-shadow">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-[#e35e25]/10 rounded-full flex items-center justify-center mb-2 sm:mb-3">
+                <Calendar size={20} className="sm:w-6 sm:h-6 text-[#e35e25]" />
+              </div>
               <span className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-1">{loading ? '...' : stats.attended}</span>
-              <span className="text-[9px] sm:text-[10px] md:text-xs text-gray-400 uppercase tracking-wide">Events Attended</span>
+              <span className="text-[9px] sm:text-[10px] md:text-xs text-gray-400 uppercase tracking-wide">Attended</span>
             </div>
             
             {/* Reviews - Clickable */}
             <div 
-              className="bg-white p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-50 transition-colors"
+              className="bg-white p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-50 hover:shadow-md transition-all touch-manipulation active:scale-95"
               onClick={() => setViewState(ViewState.PROFILE_REVIEWS)}
             >
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-[#e35e25]/10 rounded-full flex items-center justify-center mb-2 sm:mb-3">
+                <Star size={20} className="sm:w-6 sm:h-6 text-[#e35e25] fill-[#e35e25]" />
+              </div>
               <span className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-1">{loading ? '...' : stats.reviews}</span>
               <div className="flex items-center gap-1">
                 <span className="text-[9px] sm:text-[10px] md:text-xs text-gray-400 uppercase tracking-wide">Reviews</span>
-                <ChevronRight size={12} className="text-gray-400" />
+                <ChevronRight size={10} className="text-gray-400" />
               </div>
             </div>
             
             {/* Followers - Clickable */}
             <div 
-              className="bg-white p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-50 transition-colors"
+              className="bg-white p-5 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-50 hover:shadow-md transition-all touch-manipulation active:scale-95"
               onClick={() => setViewState(ViewState.PROFILE_FOLLOWERS)}
             >
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-[#e35e25]/10 rounded-full flex items-center justify-center mb-2 sm:mb-3">
+                <Users size={20} className="sm:w-6 sm:h-6 text-[#e35e25]" />
+              </div>
               <span className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-1">{loading ? '...' : stats.followers}</span>
               <div className="flex items-center gap-1">
                 <span className="text-[9px] sm:text-[10px] md:text-xs text-gray-400 uppercase tracking-wide">Followers</span>
-                <ChevronRight size={12} className="text-gray-400" />
+                <ChevronRight size={10} className="text-gray-400" />
               </div>
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-gray-100 overflow-hidden">{settingsLinks.map((item, idx) => (<button key={idx} onClick={item.action} className={`w-full flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors text-left touch-manipulation active:scale-95 ${item.isLogout ? 'text-gray-500 hover:text-red-500' : 'text-[#15383c]'}`}><span className={`text-sm sm:text-base md:text-lg ${item.isLogout ? '' : 'font-light'}`}>{item.label}</span><div className="flex items-center gap-3 shrink-0"><ChevronRight size={16} className="sm:w-[18px] sm:h-[18px] md:w-5 md:h-5 text-gray-400" /></div></button>))}</div>
+
+        {/* Events Section */}
+        {hostedEvents.length > 0 && (
+          <div className="mb-8 sm:mb-10">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h2 className="font-heading font-bold text-lg sm:text-xl md:text-2xl text-[#15383c]">
+                {stats.hosted} EVENTS
+              </h2>
+              <button
+                onClick={() => setViewState(ViewState.MY_POPS)}
+                className="text-sm sm:text-base text-gray-600 hover:text-[#15383c] font-medium transition-colors flex items-center gap-1"
+              >
+                SEE ALL
+                <ChevronRight size={16} />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+              {hostedEvents.slice(0, 6).map(event => {
+                const eventImage = event.imageUrls?.[0] || event.imageUrl || `https://picsum.photos/seed/${event.id}/400/300`;
+                return (
+                  <div
+                    key={event.id}
+                    onClick={() => setViewState(ViewState.MY_POPS)}
+                    className="aspect-square rounded-xl sm:rounded-2xl overflow-hidden bg-gray-100 cursor-pointer group hover:scale-105 transition-transform duration-200 touch-manipulation active:scale-95"
+                  >
+                    <img
+                      src={eventImage}
+                      alt={event.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = `https://picsum.photos/seed/${event.id}/400/300`;
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Settings Menu - Enhanced */}
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+          {settingsLinks.map((item, idx) => {
+            const Icon = item.icon || Settings;
+            return (
+              <button
+                key={idx}
+                onClick={item.action}
+                className={`w-full flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors text-left touch-manipulation active:scale-95 ${
+                  item.isLogout ? 'text-gray-500 hover:text-red-500' : 'text-[#15383c]'
+                }`}
+              >
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center ${
+                    item.isLogout ? 'bg-gray-100' : 'bg-[#e35e25]/10'
+                  }`}>
+                    <Icon size={16} className={`sm:w-5 sm:h-5 ${
+                      item.isLogout ? 'text-gray-500' : 'text-[#e35e25]'
+                    }`} />
+                  </div>
+                  <span className={`text-sm sm:text-base md:text-lg ${item.isLogout ? '' : 'font-light'}`}>
+                    {item.label}
+                  </span>
+                </div>
+                <ChevronRight size={16} className="sm:w-[18px] sm:h-[18px] md:w-5 md:h-5 text-gray-400" />
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

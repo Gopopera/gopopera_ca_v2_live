@@ -24,21 +24,16 @@ export const ChatMockupSection: React.FC = () => {
                 {t('chatMockup.engagement')}
               </span>
              </div>
-             <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-6xl font-heading font-bold text-[#15383c] mb-5 sm:mb-6 md:mb-8 leading-[1.1] px-2">
-               {t('chatMockup.title')} <span className="text-[#e35e25] relative inline-block">
-                 {t('chatMockup.titleHighlight')}
-                 <svg className="absolute w-full h-3 sm:h-4 -bottom-2 left-0 text-[#e35e25]/20" viewBox="0 0 100 10" preserveAspectRatio="none">
-                   <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="2.5" fill="none" />
-                 </svg>
-               </span>
+             <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-6xl font-heading font-bold text-[#15383c] mb-8 sm:mb-10 md:mb-12 leading-[1.1] px-2">
+               {t('chatMockup.title')}
              </h2>
              
-             <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-700 font-light mb-6 sm:mb-8 md:mb-10 leading-relaxed px-4 lg:px-0">
+             <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-700 font-light mb-10 sm:mb-12 md:mb-14 leading-relaxed px-4 lg:px-0">
                {t('chatMockup.description')}
              </p>
              
              <div className="space-y-4 sm:space-y-5 text-left max-w-lg mx-auto lg:mx-0">
-                <div className="flex gap-4 sm:gap-5 p-4 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-md hover:shadow-xl hover:border-[#15383c]/30 transition-all duration-300 group">
+                <div className="flex gap-4 sm:gap-5 p-5 sm:p-6 bg-[#f2f2f2] rounded-[20px] sm:rounded-[24px] shadow-md hover:shadow-lg transition-all duration-300 group border border-gray-200/50">
                    <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-[#15383c] to-[#1a4549] flex items-center justify-center text-white shrink-0 shadow-lg group-hover:scale-110 transition-transform">
                      <MessageCircle size={20} className="sm:w-6 sm:h-6" />
                    </div>
@@ -47,7 +42,7 @@ export const ChatMockupSection: React.FC = () => {
                       <p className="text-sm sm:text-base text-gray-600 leading-relaxed">{t('chatMockup.realWorldActivationDesc')}</p>
                    </div>
                 </div>
-                <div className="flex gap-4 sm:gap-5 p-4 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-md hover:shadow-xl hover:border-[#15383c]/30 transition-all duration-300 group">
+                <div className="flex gap-4 sm:gap-5 p-5 sm:p-6 bg-[#f2f2f2] rounded-[20px] sm:rounded-[24px] shadow-md hover:shadow-lg transition-all duration-300 group border border-gray-200/50">
                    <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-[#15383c] to-[#1a4549] flex items-center justify-center text-white shrink-0 shadow-lg group-hover:scale-110 transition-transform">
                      <Megaphone size={20} className="sm:w-6 sm:h-6" />
                    </div>
@@ -56,7 +51,7 @@ export const ChatMockupSection: React.FC = () => {
                       <p className="text-sm sm:text-base text-gray-600 leading-relaxed">{t('chatMockup.instantUpdatesDesc')}</p>
                    </div>
                 </div>
-                <div className="flex gap-4 sm:gap-5 p-4 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-md hover:shadow-xl hover:border-[#15383c]/30 transition-all duration-300 group">
+                <div className="flex gap-4 sm:gap-5 p-5 sm:p-6 bg-[#f2f2f2] rounded-[20px] sm:rounded-[24px] shadow-md hover:shadow-lg transition-all duration-300 group border border-gray-200/50">
                    <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-[#15383c] to-[#1a4549] flex items-center justify-center text-white shrink-0 shadow-lg group-hover:scale-110 transition-transform">
                      <BarChart2 size={20} className="sm:w-6 sm:h-6" />
                    </div>
@@ -65,24 +60,20 @@ export const ChatMockupSection: React.FC = () => {
                       <p className="text-sm sm:text-base text-gray-600 leading-relaxed">{t('chatMockup.buildTrustDesc')}</p>
                    </div>
                 </div>
-                
-                {/* Text below Build local trust component */}
-                <p className="text-sm sm:text-base text-gray-600 font-light mt-4 sm:mt-5 leading-relaxed text-center lg:text-left">
-                  {t('chatMockup.simplestWay')}
-                </p>
              </div>
           </div>
 
-          {/* Right Visual - Chat Mockup - Shorter rectangle on mobile with scrollable content */}
-          <div className="relative mx-auto lg:mx-0 w-full max-w-[320px] sm:max-w-md lg:max-w-lg order-1 lg:order-2">
-             <div className="bg-white rounded-2xl sm:rounded-[2.5rem] md:rounded-[3rem] lg:rounded-[3.5rem] shadow-[0_40px_80px_-20px_rgba(21,56,60,0.25)] border-[3px] sm:border-[6px] md:border-[8px] border-white overflow-hidden relative z-10 transform transition-transform hover:scale-[1.02] duration-300">
+          {/* Right Visual - Premium Phone Mockup */}
+          <div className="relative mx-auto lg:mx-0 w-full max-w-[320px] sm:max-w-md lg:max-w-lg order-1 lg:order-2 mb-8 lg:mb-0">
+             <div className="bg-white rounded-[24px] sm:rounded-[28px] shadow-[0_40px_80px_-20px_rgba(21,56,60,0.25)] border-[3px] sm:border-[6px] md:border-[8px] border-white overflow-hidden relative z-10 transform transition-transform hover:scale-[1.02] duration-300">
+                {/* Chat Header */}
                 <div className="bg-gradient-to-br from-[#15383c] via-[#1a4549] to-[#15383c] p-5 sm:p-6 md:p-7 pb-6 sm:pb-7 md:pb-8 text-white relative shadow-lg">
                    <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none"></div>
                    <div className="flex justify-between items-center mb-4 sm:mb-5 relative z-10">
                       <span className="font-heading font-bold text-xs sm:text-sm md:text-base opacity-90">{t('chat.popupsGroupChat')}</span>
                    </div>
                    <div className="flex items-center gap-3 sm:gap-4 relative z-10">
-                      <div className="w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 bg-gradient-to-br from-[#e35e25] to-[#cf4d1d] rounded-full flex items-center justify-center font-bold text-lg sm:text-xl md:text-2xl border-3 border-white/30 shadow-lg">P</div>
+                      <div className="w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 bg-gradient-to-br from-[#e35e25] to-[#cf4d1d] rounded-full flex items-center justify-center font-bold text-lg sm:text-xl md:text-2xl border-3 border-white/30 shadow-lg">R</div>
                       <div className="min-w-0">
                          <h3 className="font-bold text-lg sm:text-xl md:text-2xl leading-none truncate mb-1">{t('chatMockup.eventName')}</h3>
                          <span className="text-[10px] sm:text-[11px] md:text-xs text-green-300 flex items-center gap-1.5 uppercase tracking-wider font-bold"><span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span> 12 {t('chat.online')}</span>
@@ -90,69 +81,84 @@ export const ChatMockupSection: React.FC = () => {
                    </div>
                 </div>
 
-                {/* Desktop: max-height with scroll, Mobile: shorter rectangle with scrollable content */}
-                <div className="bg-gradient-to-b from-[#f8fafb] to-white p-4 sm:p-5 lg:p-7 space-y-2.5 sm:space-y-3 md:space-y-4 lg:space-y-5 h-[280px] sm:h-[440px] md:h-[480px] md:max-h-[540px] overflow-y-auto overflow-x-hidden relative" style={{ WebkitOverflowScrolling: 'touch' }}>
-                   <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-[#f8fafb] to-transparent z-10 pointer-events-none"></div>
+                {/* Chat Content */}
+                <div className="bg-gradient-to-b from-[#f2f2f2] to-white p-4 sm:p-5 lg:p-7 space-y-3 sm:space-y-4 md:space-y-5 h-[320px] sm:h-[480px] md:h-[520px] md:max-h-[580px] overflow-y-auto overflow-x-hidden relative" style={{ WebkitOverflowScrolling: 'touch' }}>
+                   <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-[#f2f2f2] to-transparent z-10 pointer-events-none"></div>
                    
                    <div className="flex justify-center pt-2"><span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider bg-white px-4 py-1.5 rounded-full shadow-md border border-gray-200">{t('chat.today')}</span></div>
 
+                   {/* Chat Message 1 */}
                    <div className="flex flex-col items-start gap-1.5">
-                      <div className="bg-white p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl rounded-tl-none shadow-md text-[12px] sm:text-sm text-gray-700 max-w-[85%] border border-gray-200 hover:shadow-lg transition-shadow">
+                      <div className="bg-white p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl rounded-tl-none shadow-md text-[12px] sm:text-sm text-gray-700 max-w-[85%] border border-gray-200/50">
                          {t('chatMockup.heyEveryone')}
                       </div>
                       <span className="text-[10px] sm:text-[11px] text-gray-500 ml-3 font-medium">{t('chatMockup.alex')} - 07:10 AM</span>
                    </div>
 
+                   {/* Chat Message 2 */}
                    <div className="flex flex-col items-start gap-1.5">
-                      <div className="bg-white p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl rounded-tl-none shadow-md text-[12px] sm:text-sm text-gray-700 max-w-[85%] border border-gray-200 hover:shadow-lg transition-shadow">
+                      <div className="bg-white p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl rounded-tl-none shadow-md text-[12px] sm:text-sm text-gray-700 max-w-[85%] border border-gray-200/50">
                          {t('chatMockup.parkingTight')}
                       </div>
                       <span className="text-[10px] sm:text-[11px] text-gray-500 ml-3 font-medium">{t('chatMockup.priya')} - 07:12 AM</span>
                    </div>
 
-                   <div className="flex flex-col items-start gap-1.5">
-                      <div className="bg-white p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl rounded-tl-none shadow-md text-[12px] sm:text-sm text-gray-700 max-w-[85%] border border-gray-200 hover:shadow-lg transition-shadow">
-                         {t('chatMockup.maraMessage')}
+                   {/* Announcement Card */}
+                   <div className="bg-gradient-to-br from-[#f2f2f2] to-[#e8e8e8] p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-md text-[#15383c] relative overflow-hidden border border-[#e35e25]/20">
+                      <div className="flex items-center gap-2 sm:gap-2.5 mb-2 sm:mb-2.5">
+                         <div className="w-5 h-5 sm:w-6 sm:h-6 bg-gradient-to-br from-[#e35e25] to-[#cf4d1d] rounded-full flex items-center justify-center shadow-lg">
+                           <Megaphone size={11} className="sm:w-[12px] sm:h-[12px] text-white" />
+                         </div>
+                         <span className="font-bold text-[11px] sm:text-xs uppercase tracking-wide text-[#e35e25]">{t('chat.announcement')}</span>
                       </div>
-                      <span className="text-[10px] sm:text-[11px] text-gray-500 ml-3 font-medium">{t('chatMockup.mara')} - 07:13 AM</span>
+                      <p className="text-[11px] sm:text-sm opacity-90 leading-relaxed">{t('chatMockup.announcementText')}</p>
                    </div>
 
-                   <div className="bg-gradient-to-br from-[#15383c] to-[#1a4549] p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-xl text-white relative overflow-hidden border border-[#15383c]/50">
-                      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none"></div>
-                      <div className="flex items-center gap-2 sm:gap-2.5 mb-2 sm:mb-2.5 relative z-10">
-                         <div className="w-5 h-5 sm:w-6 sm:h-6 bg-gradient-to-br from-[#e35e25] to-[#cf4d1d] rounded-full flex items-center justify-center shadow-lg"><Megaphone size={11} className="sm:w-[12px] sm:h-[12px]" /></div>
-                         <span className="font-bold text-[11px] sm:text-xs uppercase tracking-wide">{t('chat.announcement')}</span>
+                   {/* Poll Component */}
+                   <div className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-md border border-gray-200/50">
+                      <p className="text-[12px] sm:text-sm font-bold text-[#15383c] mb-3 sm:mb-4">{t('chatMockup.pollQuestion')}</p>
+                      <div className="flex gap-3 sm:gap-4">
+                         <button className="flex-1 bg-[#f2f2f2] hover:bg-[#e35e25] hover:text-white text-[#15383c] font-bold py-3 sm:py-4 rounded-[16px] sm:rounded-[20px] transition-all duration-200 shadow-sm hover:shadow-md text-sm sm:text-base">
+                            {t('chatMockup.yes')}
+                         </button>
+                         <button className="flex-1 bg-[#f2f2f2] hover:bg-[#15383c] hover:text-white text-[#15383c] font-bold py-3 sm:py-4 rounded-[16px] sm:rounded-[20px] transition-all duration-200 shadow-sm hover:shadow-md text-sm sm:text-base">
+                            {t('chatMockup.no')}
+                         </button>
                       </div>
-                      <p className="text-[11px] sm:text-sm opacity-95 relative z-10 leading-relaxed">{t('chatMockup.announcementText')}</p>
                    </div>
 
-                   <div className="flex flex-col items-start gap-1.5">
-                      <div className="bg-white p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl rounded-tl-none shadow-md text-[12px] sm:text-sm text-gray-700 max-w-[85%] border border-gray-200 hover:shadow-lg transition-shadow">
-                         {t('chatMockup.jonMessage')}
+                   {/* Typing Indicator */}
+                   <div className="flex items-center gap-2 pl-3">
+                      <div className="flex gap-1.5">
+                         <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                         <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                         <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                       </div>
-                      <span className="text-[10px] sm:text-[11px] text-gray-500 ml-3 font-medium">{t('chatMockup.jon')} - 07:15 AM</span>
+                      <span className="text-[10px] sm:text-[11px] text-gray-500 font-medium">{t('chatMockup.alex')} {t('chatMockup.typingIndicator')}</span>
+                   </div>
+
+                   {/* Engagement Metric - Inside Phone UI */}
+                   <div className="mt-auto pt-4">
+                      <div className="bg-gradient-to-br from-[#e35e25]/10 to-[#e35e25]/5 border border-[#e35e25]/20 rounded-2xl sm:rounded-3xl p-4 sm:p-5 flex items-center gap-3 sm:gap-4 shadow-md">
+                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-[#e35e25] to-[#cf4d1d] rounded-full flex items-center justify-center shadow-lg">
+                           <Sparkles size={18} className="sm:w-6 sm:h-6 text-white" />
+                         </div>
+                         <div>
+                            <p className="text-[10px] sm:text-[11px] text-gray-500 font-bold uppercase tracking-wider">{t('chatMockup.engagement')}</p>
+                            <p className="text-base sm:text-lg font-bold text-[#15383c]">{t('chatMockup.increaseEngagement')}</p>
+                         </div>
+                      </div>
                    </div>
                 </div>
 
-                <div className="p-3 sm:p-4 bg-gradient-to-b from-white to-gray-50 border-t border-gray-200">
+                {/* Input Bar */}
+                <div className="p-3 sm:p-4 bg-gradient-to-b from-white to-[#f2f2f2] border-t border-gray-200">
                    <div className="relative">
-                      <div className="w-full bg-gray-100 rounded-full py-3 sm:py-3.5 pl-4 sm:pl-5 pr-11 sm:pr-12 text-[11px] sm:text-sm text-gray-500 border border-gray-200 focus-within:border-[#15383c]/30 focus-within:bg-white transition-colors">{t('chat.messageGroup')}</div>
+                      <div className="w-full bg-white rounded-full py-3 sm:py-3.5 pl-4 sm:pl-5 pr-11 sm:pr-12 text-[11px] sm:text-sm text-gray-500 border border-gray-200 focus-within:border-[#15383c]/30 focus-within:bg-white transition-colors">{t('chat.messageGroup')}</div>
                       <div className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-[#15383c] to-[#1a4549] rounded-full flex items-center justify-center text-white shadow-lg hover:shadow-xl transition-shadow cursor-pointer"><Send size={12} className="sm:w-4 sm:h-4" /></div>
                    </div>
                 </div>
              </div>
-             
-             {/* Floating Badge - Engagement */}
-             <div className="absolute top-8 sm:top-10 md:top-12 -right-3 sm:-right-5 md:-right-10 bg-white p-3 sm:p-4 rounded-2xl sm:rounded-3xl shadow-2xl animate-bounce duration-[3000ms] flex items-center gap-3 sm:gap-4 z-20 border-2 border-gray-200 hover:border-[#e35e25]/30 transition-colors">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-[#e35e25]/15 to-[#e35e25]/5 rounded-full flex items-center justify-center text-[#e35e25] shadow-lg">
-                  <Sparkles size={18} className="sm:w-6 sm:h-6" />
-                </div>
-                <div>
-                   <p className="text-[11px] sm:text-xs text-gray-500 font-bold uppercase tracking-wider">{t('chatMockup.engagement')}</p>
-                   <p className="text-sm sm:text-base font-bold text-[#15383c]">{t('chatMockup.increaseEngagement')}</p>
-                </div>
-             </div>
-
           </div>
 
         </div>

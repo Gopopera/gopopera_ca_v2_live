@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ViewState } from '../../types';
+import { ViewState } from '../../../types';
 import { X } from 'lucide-react';
 
 interface PrivacySettingsPageProps {

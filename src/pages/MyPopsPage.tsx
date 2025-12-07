@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ViewState, Event } from '../../types';
-import { ChevronLeft, Calendar, MapPin, Clock, Star, MessageCircle, Edit } from 'lucide-react';
+import { ChevronLeft, Calendar, MapPin, Clock, Star, MessageCircle, Edit, Users } from 'lucide-react';
 import { useUserStore } from '../../stores/userStore';
 import { getUserProfile } from '../../firebase/db';
 import { getDbSafe } from '../lib/firebase';
@@ -218,71 +218,81 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-3 sm:gap-4 mb-6 sm:mb-8 border-b border-gray-200 overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 hide-scrollbar">
-          <button
-            onClick={() => setActiveTab('hosting')}
-            className={`pb-3 sm:pb-4 px-2 sm:px-1 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
-              activeTab === 'hosting'
-                ? 'text-[#e35e25] border-b-2 border-[#e35e25]'
-                : 'text-gray-500 hover:text-[#15383c]'
-            }`}
-          >
-            My Hosting ({hostingEvents.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('attending')}
-            className={`pb-3 sm:pb-4 px-2 sm:px-1 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
-              activeTab === 'attending'
-                ? 'text-[#e35e25] border-b-2 border-[#e35e25]'
-                : 'text-gray-500 hover:text-[#15383c]'
-            }`}
-          >
-            Attending ({attendingEvents.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('draft')}
-            className={`pb-3 sm:pb-4 px-2 sm:px-1 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
-              activeTab === 'draft'
-                ? 'text-[#e35e25] border-b-2 border-[#e35e25]'
-                : 'text-gray-500 hover:text-[#15383c]'
-            }`}
-          >
-            Drafts ({draftEvents.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('past')}
-            className={`pb-3 sm:pb-4 px-2 sm:px-1 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap flex-shrink-0 ${
-              activeTab === 'past'
-                ? 'text-[#e35e25] border-b-2 border-[#e35e25]'
-                : 'text-gray-500 hover:text-[#15383c]'
-            }`}
-          >
-            Past ({pastEvents.length})
-          </button>
+        {/* Tabs - Modern Design */}
+        <div className="mb-6 sm:mb-8">
+          <div className="flex gap-2 sm:gap-3 overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 hide-scrollbar pb-2">
+            <button
+              onClick={() => setActiveTab('hosting')}
+              className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-full font-medium text-xs sm:text-sm transition-all whitespace-nowrap flex-shrink-0 touch-manipulation active:scale-95 ${
+                activeTab === 'hosting'
+                  ? 'bg-[#e35e25] text-white shadow-md shadow-orange-900/20'
+                  : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+              }`}
+            >
+              My Hosting ({hostingEvents.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('attending')}
+              className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-full font-medium text-xs sm:text-sm transition-all whitespace-nowrap flex-shrink-0 touch-manipulation active:scale-95 ${
+                activeTab === 'attending'
+                  ? 'bg-[#e35e25] text-white shadow-md shadow-orange-900/20'
+                  : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+              }`}
+            >
+              Attending ({attendingEvents.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('draft')}
+              className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-full font-medium text-xs sm:text-sm transition-all whitespace-nowrap flex-shrink-0 touch-manipulation active:scale-95 ${
+                activeTab === 'draft'
+                  ? 'bg-[#e35e25] text-white shadow-md shadow-orange-900/20'
+                  : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+              }`}
+            >
+              Drafts ({draftEvents.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('past')}
+              className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-full font-medium text-xs sm:text-sm transition-all whitespace-nowrap flex-shrink-0 touch-manipulation active:scale-95 ${
+                activeTab === 'past'
+                  ? 'bg-[#e35e25] text-white shadow-md shadow-orange-900/20'
+                  : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+              }`}
+            >
+              Past ({pastEvents.length})
+            </button>
+          </div>
         </div>
 
-        {/* Events List - List View */}
+        {/* Events List - Enhanced Design */}
         {currentEvents.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center border-2 border-dashed border-gray-200 rounded-3xl">
-            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 text-gray-400">
-              <Calendar size={32} />
+          <div className="flex flex-col items-center justify-center py-24 text-center bg-white rounded-2xl sm:rounded-3xl border-2 border-dashed border-gray-200 shadow-sm">
+            <div className="w-20 h-20 bg-[#e35e25]/10 rounded-full flex items-center justify-center mb-4">
+              <Calendar size={40} className="text-[#e35e25]" />
             </div>
-            <h3 className="text-xl font-bold text-[#15383c] mb-2">
+            <h3 className="text-xl sm:text-2xl font-heading font-bold text-[#15383c] mb-2">
               No {activeTab === 'hosting' ? 'hosting' : activeTab === 'attending' ? 'attending' : activeTab === 'draft' ? 'draft' : 'past'} events found
             </h3>
-            <p className="text-gray-500 text-sm">
+            <p className="text-gray-500 text-sm sm:text-base max-w-md">
               {activeTab === 'hosting' 
-                ? 'Start hosting your first pop-up!' 
+                ? 'Start hosting your first pop-up and bring your community together!' 
                 : activeTab === 'attending'
-                ? 'RSVP to events to see them here.'
+                ? 'RSVP to events you\'re interested in and they\'ll appear here.'
                 : activeTab === 'draft'
-                ? 'Save events as drafts while creating them.'
-                : 'Past events will appear here.'}
+                ? 'Save events as drafts while creating them to finish later.'
+                : 'Past events you hosted or attended will appear here.'}
             </p>
+            {activeTab === 'hosting' && (
+              <button
+                onClick={() => setViewState(ViewState.CREATE_EVENT)}
+                className="mt-6 px-6 py-3 bg-[#e35e25] text-white rounded-full font-medium hover:bg-[#cf4d1d] transition-colors shadow-md shadow-orange-900/20"
+              >
+                Create Your First Event
+              </button>
+            )}
           </div>
         ) : (
-          <div className="space-y-3 sm:space-y-4">
+          <div className="space-y-4 sm:space-y-5">
             {currentEvents.map(event => {
               const profilePic = hostProfilePictures[event.id] || null;
               const eventImage = event.imageUrls?.[0] || event.imageUrl || `https://picsum.photos/seed/${event.id}/400/300`;
@@ -291,35 +301,40 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
                 <div
                   key={event.id}
                   onClick={() => handleEventClick(event)}
-                  className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 hover:border-[#e35e25] transition-all cursor-pointer overflow-hidden group shadow-sm hover:shadow-md active:scale-[0.98] touch-manipulation"
+                  className="bg-white rounded-2xl sm:rounded-3xl border border-gray-200 hover:border-[#e35e25] hover:shadow-lg transition-all cursor-pointer overflow-hidden group shadow-sm active:scale-[0.98] touch-manipulation"
                 >
-                  <div className="flex gap-3 sm:gap-4 p-3 sm:p-4">
-                    {/* Event Image - Made taller to fill space better */}
-                    <div className="w-32 h-40 sm:w-36 sm:h-44 md:w-40 md:h-48 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
+                  <div className="flex flex-col sm:flex-row gap-0 sm:gap-4 p-0 sm:p-4">
+                    {/* Event Image - Enhanced */}
+                    <div className="w-full sm:w-40 md:w-48 h-48 sm:h-40 md:h-48 rounded-t-2xl sm:rounded-xl overflow-hidden flex-shrink-0 bg-gray-100 relative">
                       <img 
                         src={eventImage} 
                         alt={event.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           target.src = `https://picsum.photos/seed/${event.id}/400/300`;
                         }}
                       />
+                      {/* Rating Badge Overlay */}
+                      <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1 shadow-md">
+                        <Star size={12} className="text-[#e35e25] fill-[#e35e25]" />
+                        <span className="text-xs font-bold text-[#15383c]">{formatRating(event.rating)}</span>
+                      </div>
                     </div>
 
-                    {/* Event Info */}
-                    <div className="flex-1 min-w-0 flex flex-col justify-between">
+                    {/* Event Info - Enhanced */}
+                    <div className="flex-1 min-w-0 flex flex-col justify-between p-4 sm:p-0">
                       <div>
-                        <div className="flex items-start justify-between gap-2 sm:gap-3 mb-1.5 sm:mb-2">
+                        <div className="flex items-start justify-between gap-3 mb-2 sm:mb-3">
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-base sm:text-lg text-[#15383c] mb-1 line-clamp-2 group-hover:text-[#e35e25] transition-colors">
+                            <h3 className="font-heading font-bold text-lg sm:text-xl text-[#15383c] mb-2 line-clamp-2 group-hover:text-[#e35e25] transition-colors">
                               {event.title}
                             </h3>
-                            <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                            <div className="flex items-center gap-2 mb-2">
                               {/* Host Profile Picture */}
                               {activeTab === 'hosting' && (
                                 <>
-                                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
+                                  <div className="w-6 h-6 rounded-full bg-gray-200 overflow-hidden flex-shrink-0 border-2 border-white shadow-sm">
                                     {profilePic && !failedProfilePics.has(event.id) ? (
                                       <img 
                                         src={profilePic} 
@@ -330,81 +345,76 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
                                         }}
                                       />
                                     ) : (
-                                      <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white text-[10px] sm:text-xs font-bold">
+                                      <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white text-xs font-bold">
                                         {user?.displayName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'Y'}
                                       </div>
                                     )}
                                   </div>
-                                  <span className="text-[10px] sm:text-xs text-gray-500 font-medium">Hosted by you</span>
+                                  <span className="text-xs text-gray-600 font-medium">Hosted by you</span>
                                 </>
                               )}
                               {activeTab !== 'hosting' && (
-                                <span className="text-[10px] sm:text-xs text-gray-500 font-medium truncate">Hosted by {event.hostName}</span>
+                                <span className="text-xs text-gray-600 font-medium truncate">Hosted by {event.hostName}</span>
                               )}
                             </div>
                           </div>
-                          
-                          {/* Rating */}
-                          <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
-                            <Star size={12} className="sm:w-3.5 sm:h-3.5 text-[#e35e25] fill-[#e35e25]" />
-                            <span className="text-xs sm:text-sm font-bold text-[#15383c]">{formatRating(event.rating)}</span>
-                            <span className="text-[10px] sm:text-xs text-gray-400">({event.reviewCount})</span>
-                          </div>
                         </div>
 
-                        {/* Date, Location, Attendees */}
-                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-xs text-gray-600 mb-2 sm:mb-3">
-                          <div className="flex items-center gap-1">
-                            <Calendar size={10} className="sm:w-3 sm:h-3 text-gray-400" />
-                            <span className="whitespace-nowrap">{formatDate(event.date)}</span>
+                        {/* Date, Location, Attendees - Enhanced */}
+                        <div className="space-y-2 mb-3">
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <div className="w-8 h-8 bg-[#e35e25]/10 rounded-lg flex items-center justify-center">
+                              <Calendar size={14} className="text-[#e35e25]" />
+                            </div>
+                            <span className="font-medium">{formatDate(event.date)}</span>
+                            <span className="text-gray-400">•</span>
+                            <Clock size={14} className="text-gray-400" />
+                            <span>{event.time}</span>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Clock size={10} className="sm:w-3 sm:h-3 text-gray-400" />
-                            <span className="whitespace-nowrap">{event.time}</span>
-                          </div>
-                          <div className="flex items-center gap-1 min-w-0">
-                            <MapPin size={10} className="sm:w-3 sm:h-3 text-gray-400 flex-shrink-0" />
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <div className="w-8 h-8 bg-[#e35e25]/10 rounded-lg flex items-center justify-center">
+                              <MapPin size={14} className="text-[#e35e25]" />
+                            </div>
                             <span className="truncate">{event.location || event.city}</span>
                           </div>
                           {event.attendeesCount > 0 && (
-                            <div className="flex items-center gap-1">
-                              <span className="text-gray-400">•</span>
-                              <span>{event.attendeesCount} attending</span>
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <div className="w-8 h-8 bg-[#e35e25]/10 rounded-lg flex items-center justify-center">
+                                <Users size={14} className="text-[#e35e25]" />
+                              </div>
+                              <span className="font-medium">{event.attendeesCount} {event.attendeesCount === 1 ? 'person' : 'people'} attending</span>
                             </div>
                           )}
                         </div>
                       </div>
 
-                      {/* Action buttons for hosting events */}
+                      {/* Action buttons for hosting events - Enhanced */}
                       {activeTab === 'hosting' && (
-                        <div className="mt-2 sm:mt-3 flex items-center gap-2">
+                        <div className="mt-4 flex items-center gap-2 sm:gap-3">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              // Navigate to group conversation for managing the event
                               onChatClick(e, event);
                             }}
-                            className="flex-1 px-3 py-1.5 sm:py-2 bg-[#e35e25] text-white text-[10px] sm:text-xs font-bold rounded-full hover:bg-[#cf4d1d] transition-colors flex items-center justify-center gap-1 sm:gap-1.5 active:scale-95 touch-manipulation"
+                            className="flex-1 px-4 py-2.5 bg-[#e35e25] text-white text-sm font-bold rounded-xl hover:bg-[#cf4d1d] transition-colors flex items-center justify-center gap-2 shadow-md shadow-orange-900/20 active:scale-95 touch-manipulation"
                           >
-                            <MessageCircle size={11} className="sm:w-3 sm:h-3" />
+                            <MessageCircle size={16} />
                             Manage
                           </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              // Navigate to edit page
                               if (onEditEvent) {
                                 onEditEvent(event);
                               } else {
-                                // Fallback: use custom event if handler not provided
                                 setTimeout(() => {
                                   window.dispatchEvent(new CustomEvent('editEvent', { detail: { eventId: event.id } }));
                                 }, 100);
                               }
                             }}
-                            className="px-3 py-1.5 sm:py-2 bg-gray-100 text-[#15383c] text-[10px] sm:text-xs font-bold rounded-full hover:bg-gray-200 transition-colors flex items-center justify-center gap-1 sm:gap-1.5 border border-gray-200 active:scale-95 touch-manipulation"
+                            className="px-4 py-2.5 bg-white text-[#15383c] text-sm font-bold rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 border-2 border-gray-200 active:scale-95 touch-manipulation"
                           >
-                            <Edit size={11} className="sm:w-3 sm:h-3" />
+                            <Edit size={16} />
                             Edit
                           </button>
                         </div>

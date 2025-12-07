@@ -7,14 +7,13 @@ import { uploadImage } from '../../firebase/storage';
 import { processImageForUpload } from '../../utils/imageProcessing';
 import { getEventById, updateEvent, deleteEvent } from '../../firebase/db';
 import { geocodeAddress } from '../../utils/geocoding';
+import { ALL_VIBES } from '../../utils/vibes';
 
 interface EditEventPageProps {
   setViewState: (view: ViewState) => void;
   eventId?: string; // Event ID to edit
   event?: Event; // Or pass the event directly
 }
-
-const CATEGORIES = ['Music', 'Community', 'Markets', 'Workshop', 'Wellness', 'Shows', 'Food & Drink', 'Sports', 'Social'] as const;
 const POPULAR_CITIES = [
   'Montreal, CA', 'Toronto, CA', 'Vancouver, CA', 'Ottawa, CA', 'Quebec City, CA',
   'Calgary, CA', 'Edmonton, CA', 'New York, US', 'Los Angeles, US', 'Chicago, US'
@@ -34,7 +33,7 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
   const [address, setAddress] = useState(initialEvent?.address || '');
   const [date, setDate] = useState(initialEvent?.date || '');
   const [time, setTime] = useState(initialEvent?.time || '');
-  const [category, setCategory] = useState<typeof CATEGORIES[number] | ''>(initialEvent?.category || '');
+  const [selectedVibes, setSelectedVibes] = useState<string[]>(initialEvent?.vibes || []);
   const [tags, setTags] = useState<string[]>(initialEvent?.tags || []);
   const [tagInput, setTagInput] = useState('');
   const [imageUrl, setImageUrl] = useState(initialEvent?.imageUrl || '');
@@ -63,7 +62,7 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
             setAddress(event.address);
             setDate(event.date);
             setTime(event.time);
-            setCategory(event.category);
+            setSelectedVibes(event.vibes || []);
             setTags(event.tags || []);
             setImageUrl(event.imageUrl);
             setImageUrls(event.imageUrls || []);
@@ -121,8 +120,14 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
     }
 
     // Validate required fields
-    if (!title || !description || !city || !time || !category) {
-      alert('Please fill in all required fields.');
+    if (!title || !description || !city || !time || selectedVibes.length === 0) {
+      alert('Please fill in all required fields, including at least one vibe.');
+      return;
+    }
+    
+    // Validate vibes selection (1-5)
+    if (selectedVibes.length === 0 || selectedVibes.length > 5) {
+      alert('Please select 1 to 5 vibes for your circle.');
       return;
     }
 
@@ -220,7 +225,7 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
         city,
         address,
         time, // Date is NOT editable
-        category: category as typeof CATEGORIES[number],
+        vibes: selectedVibes.length > 0 ? selectedVibes : undefined,
         tags,
         imageUrl: finalImageUrl,
         imageUrls: finalImageUrls.length > 0 ? finalImageUrls : undefined,
@@ -241,7 +246,7 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
         city,
         address,
         time,
-        category: category as typeof CATEGORIES[number],
+        vibes: selectedVibes.length > 0 ? selectedVibes : undefined,
         tags,
         imageUrl: finalImageUrl,
         imageUrls: finalImageUrls.length > 0 ? finalImageUrls : undefined,
@@ -466,21 +471,51 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
               />
             </div>
 
+            {/* Vibes / Subcategories - Multi-select */}
             <div className="space-y-2">
               <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
-                Pop-Up Type <span className="text-red-500">*</span>
+                Vibes <span className="text-red-500">*</span> <span className="text-gray-400 font-normal text-xs">(Select 1-5)</span>
               </label>
-              <select 
-                value={category}
-                onChange={(e) => setCategory(e.target.value as typeof CATEGORIES[number])}
-                required
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all appearance-none cursor-pointer"
-              >
-                <option value="">Select...</option>
-                {CATEGORIES.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
+              <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl min-h-[60px]">
+                {selectedVibes.length === 0 ? (
+                  <span className="text-gray-400 text-sm">No vibes selected</span>
+                ) : (
+                  selectedVibes.map((vibe) => (
+                    <span
+                      key={vibe}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#15383c] text-white text-sm font-medium"
+                    >
+                      {vibe}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedVibes(selectedVibes.filter(v => v !== vibe))}
+                        className="ml-1 hover:text-red-200"
+                      >
+                        <X size={14} />
+                      </button>
+                    </span>
+                  ))
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {ALL_VIBES.filter(vibe => !selectedVibes.includes(vibe)).map((vibe) => (
+                  <button
+                    key={vibe}
+                    type="button"
+                    onClick={() => {
+                      if (selectedVibes.length < 5) {
+                        setSelectedVibes([...selectedVibes, vibe]);
+                      } else {
+                        alert('You can select up to 5 vibes.');
+                      }
+                    }}
+                    disabled={selectedVibes.length >= 5}
+                    className="px-3 py-1.5 rounded-full bg-white border border-gray-300 text-gray-700 text-sm font-medium hover:border-[#15383c] hover:text-[#15383c] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {vibe}
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
 
             <div className="space-y-2">

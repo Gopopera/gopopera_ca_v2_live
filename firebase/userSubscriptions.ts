@@ -35,9 +35,11 @@ export function subscribeToUserProfile(
         const data = snap.data() as FirestoreUser;
         
         // REFACTORED: Use standardized fields only
+        // Handle empty strings as null/undefined for photoURL
+        const photoURL = data.photoURL || data.imageUrl || undefined;
         const userData = {
           displayName: data.displayName || data.name || 'Unknown User',
-          photoURL: data.photoURL || data.imageUrl || undefined,
+          photoURL: (photoURL && photoURL.trim() !== '') ? photoURL : undefined,
         };
         
         if (import.meta.env.DEV) {

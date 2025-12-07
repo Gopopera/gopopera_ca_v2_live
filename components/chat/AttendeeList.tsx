@@ -3,6 +3,7 @@ import { Users, X, UserX, Ban, Crown } from 'lucide-react';
 import { getDbSafe } from '../../src/lib/firebase';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { useUserStore } from '../../stores/userStore';
+import { subscribeToMultipleUserProfiles } from '../../firebase/userSubscriptions';
 
 interface Attendee {
   userId: string;
@@ -38,16 +39,51 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // REFACTORED: Use real-time subscriptions instead of polling
-  // Note: loadAttendees() still uses getDoc for one-time fetch, but we could enhance with subscriptions
+  // REFACTORED: Use real-time subscriptions for profile pictures
   useEffect(() => {
     if (isOpen) {
       loadAttendees();
-      
-      // REFACTORED: Removed polling - profile pictures update via real-time subscriptions in components
-      // If needed, we can add real-time subscriptions per attendee here
     }
   }, [isOpen, eventId]);
+
+  // Subscribe to profile updates for all attendees in real-time
+  // Use attendees.length as a dependency to re-subscribe when attendees change
+  useEffect(() => {
+    if (!isOpen || attendees.length === 0) {
+      return;
+    }
+
+    const userIds = attendees.map(a => a.userId);
+    if (userIds.length === 0) return;
+
+    const unsubscribe = subscribeToMultipleUserProfiles(userIds, (profiles) => {
+      // Update attendees with latest profile data
+      setAttendees(prev => {
+        // Only update if the attendee list structure hasn't changed
+        // (i.e., same userIds, just profile data changed)
+        const prevUserIds = prev.map(a => a.userId).sort().join(',');
+        const currentUserIds = userIds.sort().join(',');
+        if (prevUserIds !== currentUserIds) {
+          // Attendee list changed, return as-is to avoid overwriting
+          return prev;
+        }
+
+        return prev.map(attendee => {
+          const profile = profiles[attendee.userId];
+          if (profile) {
+            return {
+              ...attendee,
+              userName: profile.displayName || attendee.userName,
+              userPhoto: profile.photoURL || undefined,
+            };
+          }
+          return attendee;
+        });
+      });
+    });
+
+    return () => unsubscribe();
+  }, [isOpen, eventId, attendees.length]); // Re-subscribe when attendee count changes
 
   const loadAttendees = async () => {
     setLoading(true);

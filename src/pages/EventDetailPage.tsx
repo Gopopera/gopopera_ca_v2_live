@@ -594,11 +594,11 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       </div>
 
 
-      {/* Image Gallery - Scrollable if multiple images */}
-      <div className="relative h-[40vh] sm:h-[45vh] md:h-[50vh] lg:h-[55vh] xl:h-[60vh] w-full overflow-hidden group">
+      {/* Image Gallery - Enhanced with better visual design */}
+      <div className="relative h-[45vh] sm:h-[50vh] md:h-[55vh] lg:h-[60vh] xl:h-[65vh] w-full overflow-hidden group">
         <div className="lg:max-w-7xl lg:mx-auto lg:px-6 lg:px-8 h-full relative">
         {event.imageUrls && event.imageUrls.length > 1 ? (
-          // Multiple images - horizontal scrollable gallery
+          // Multiple images - horizontal scrollable gallery with enhanced design
           <div 
             className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth h-full hide-scrollbar cursor-pointer"
             onScroll={(e) => {
@@ -621,15 +621,18 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 <img 
                   src={url} 
                   alt={`${event.title} - Image ${index + 1}`} 
-                  className="w-full h-full object-cover object-center"
+                  className="w-full h-full object-cover object-center transition-opacity duration-300"
                 />
+                {index === currentImageIndex && (
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+                )}
               </div>
             ))}
           </div>
         ) : (
-          // Single image - prefer imageUrls[0] over imageUrl for backward compatibility
+          // Single image - enhanced with better hover effect
           <div
-            className="w-full h-full cursor-pointer"
+            className="w-full h-full cursor-pointer relative"
             onClick={() => {
               const images = event.imageUrls && event.imageUrls.length > 0 
                 ? event.imageUrls 
@@ -643,7 +646,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             <img 
               src={(event.imageUrls && event.imageUrls.length > 0) ? event.imageUrls[0] : (event.imageUrl || `https://picsum.photos/seed/${event.id}/800/600`)} 
               alt={event.title} 
-              className="w-full h-full object-cover object-center transition-transform duration-1000 group-hover:scale-105" 
+              className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-110" 
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 if (!target.src.includes('picsum.photos')) {
@@ -651,9 +654,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 }
               }}
             />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-none" />
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#15383c] via-[#15383c]/40 to-transparent opacity-90 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#15383c] via-[#15383c]/50 to-transparent opacity-95 pointer-events-none" />
         
         {/* Favorite Button - Top Right on Image (positioned below header) */}
         {onToggleFavorite && (
@@ -696,9 +700,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           </button>
         )}
         
-        {/* Image counter for multiple images - bottom right, reduced size by 3x */}
+        {/* Image counter for multiple images - Enhanced design */}
         {event.imageUrls && event.imageUrls.length > 1 && (
-          <div className="absolute bottom-4 right-4 bg-black/50 text-white text-[10px] font-medium px-1.5 py-0.5 rounded backdrop-blur-sm z-10 pointer-events-none">
+          <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md text-[#15383c] text-xs font-bold px-3 py-1.5 rounded-full shadow-lg border border-white/50 z-10 pointer-events-none">
             {currentImageIndex + 1} / {event.imageUrls.length}
           </div>
         )}
@@ -717,29 +721,29 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10 lg:py-12">
-        {/* Mobile Layout: Clean and modern */}
-        <div className="flex lg:hidden gap-2 mb-6 items-start">
-          {/* Left: Host Info with Metrics */}
+        {/* Mobile Layout: Enhanced with modern card design */}
+        <div className="flex lg:hidden gap-3 mb-6 items-start">
+          {/* Left: Host Info with Metrics - Enhanced */}
           <div className="flex-1 min-w-0">
-            <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100">
+            <div className="p-4 bg-white rounded-2xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
               {/* Host Info with Follow Button */}
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden ring-2 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick?.(displayHostName)}>
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#e35e25] to-[#15383c] overflow-hidden ring-2 ring-white shadow-md cursor-pointer shrink-0" onClick={() => onHostClick?.(displayHostName)}>
                     {hostProfilePicture ? (
                       <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
                       }} />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-base">
+                      <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-lg">
                         {displayHostName?.[0]?.toUpperCase() || 'H'}
                       </div>
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[9px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">{t('event.hostedBy')}</p>
-                    <h3 className="text-sm font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick?.(displayHostName)}>{displayHostName}</h3>
+                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">{t('event.hostedBy')}</p>
+                    <h3 className="text-sm font-bold text-[#15383c] cursor-pointer hover:text-[#e35e25] transition-colors truncate" onClick={() => onHostClick?.(displayHostName)}>{displayHostName}</h3>
                   </div>
                 </div>
                 {/* Follow Button - Right side */}
@@ -748,37 +752,37 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                     onClick={handleFollowToggle}
                     disabled={followLoading}
                     aria-label={isFollowingHost ? `Unfollow ${displayHostName}` : `Follow ${displayHostName}`}
-                    className={`px-2.5 py-1.5 rounded-full text-[10px] font-bold transition-all shadow-md whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-1 shrink-0 ${
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-1.5 shrink-0 ${
                       isFollowingHost
                         ? 'bg-[#15383c] text-white hover:bg-[#1f4d52] border border-[#15383c]'
-                        : 'bg-white border border-gray-300 text-[#15383c] hover:border-[#e35e25] hover:text-[#e35e25] hover:bg-orange-50'
+                        : 'bg-white border-2 border-gray-200 text-[#15383c] hover:border-[#e35e25] hover:text-[#e35e25] hover:bg-[#e35e25]/5'
                     } disabled:opacity-50`}
                   >
                     {isFollowingHost ? (
                       <>
-                        <UserCheck size={12} /> {t('event.following')}
+                        <UserCheck size={14} /> {t('event.following')}
                       </>
                     ) : (
                       <>
-                        <UserPlus size={12} /> {t('event.follow')}
+                        <UserPlus size={14} /> {t('event.follow')}
                       </>
                     )}
                   </button>
                 )}
               </div>
-              {/* Attending & Capacity Metrics */}
-              <div className="flex gap-2 mt-2">
-                <div className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center">
-                  <h4 className="text-base font-heading font-bold text-popera-teal">
-                    {reservationCount}
+              {/* Attending & Capacity Metrics - Enhanced */}
+              <div className="flex gap-3">
+                <div className="flex-1 bg-gradient-to-br from-[#e35e25]/10 to-[#15383c]/10 p-3 rounded-xl border border-[#e35e25]/20 text-center">
+                  <h4 className="text-lg font-heading font-bold text-[#15383c]">
+                    {reservationCount !== null ? reservationCount : '...'}
                   </h4>
-                  <p className="text-[8px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">Attending</p>
+                  <p className="text-[9px] uppercase tracking-wide text-gray-600 font-bold mt-1">Attending</p>
                 </div>
-                <div className="flex-1 bg-white p-2 rounded-xl border border-gray-200 text-center">
-                  <h4 className="text-base font-heading font-bold text-popera-teal">
+                <div className="flex-1 bg-gradient-to-br from-[#e35e25]/10 to-[#15383c]/10 p-3 rounded-xl border border-[#e35e25]/20 text-center">
+                  <h4 className="text-lg font-heading font-bold text-[#15383c]">
                     {event.capacity || '∞'}
                   </h4>
-                  <p className="text-[8px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">{t('event.capacity')}</p>
+                  <p className="text-[9px] uppercase tracking-wide text-gray-600 font-bold mt-1">{t('event.capacity')}</p>
                 </div>
               </div>
             </div>
@@ -786,27 +790,27 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           
         </div>
 
-        {/* Desktop Layout: Clean and modern */}
+        {/* Desktop Layout: Enhanced with modern card design */}
         <div className="hidden lg:block">
-          <div className="p-5 sm:p-6 md:p-7 lg:p-8 bg-gray-50 rounded-2xl sm:rounded-3xl border border-gray-100 hover:border-gray-200 transition-colors">
-            {/* Host Info with Follow Button */}
-            <div className="flex items-center justify-between gap-3 sm:gap-4 mb-3">
-              <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-gray-200 overflow-hidden ring-2 sm:ring-4 ring-white shadow-sm cursor-pointer shrink-0" onClick={() => onHostClick?.(displayHostName)}>
+          <div className="p-6 lg:p-8 bg-white rounded-2xl sm:rounded-3xl shadow-md border border-gray-100 hover:shadow-lg transition-all">
+            {/* Host Info with Follow Button - Enhanced */}
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div className="flex items-center gap-4 flex-1 min-w-0">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#e35e25] to-[#15383c] overflow-hidden ring-4 ring-white shadow-lg cursor-pointer shrink-0 hover:ring-[#e35e25]/30 transition-all" onClick={() => onHostClick?.(displayHostName)}>
                   {hostProfilePicture ? (
                     <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
                     }} />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-lg sm:text-xl md:text-2xl">
+                    <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-2xl">
                       {displayHostName?.[0]?.toUpperCase() || 'H'}
                     </div>
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">{t('event.hostedBy')}</p>
-                  <h3 className="text-base sm:text-lg md:text-xl font-bold text-popera-teal cursor-pointer hover:text-popera-orange transition-colors truncate" onClick={() => onHostClick?.(displayHostName)}>{displayHostName}</h3>
+                  <p className="text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">{t('event.hostedBy')}</p>
+                  <h3 className="text-lg font-bold text-[#15383c] cursor-pointer hover:text-[#e35e25] transition-colors truncate" onClick={() => onHostClick?.(displayHostName)}>{displayHostName}</h3>
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
@@ -814,11 +818,11 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                         setShowHostReviewsModal(true);
                       }
                     }} 
-                    className="flex items-center space-x-1 mt-1.5 bg-white hover:bg-orange-50 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-colors border border-gray-200 hover:border-orange-100 group/rating shrink-0 w-fit touch-manipulation active:scale-95"
+                    className="flex items-center space-x-1.5 mt-2 bg-[#e35e25]/10 hover:bg-[#e35e25]/20 px-3 py-1.5 rounded-lg transition-colors border border-[#e35e25]/20 hover:border-[#e35e25]/40 group/rating shrink-0 w-fit touch-manipulation active:scale-95"
                   >
-                    <Star size={11} className="sm:w-3 sm:h-3 text-gray-300 group-hover/rating:text-popera-orange group-hover/rating:fill-popera-orange transition-colors" fill="currentColor" />
-                    <span className="text-[10px] sm:text-xs font-bold text-popera-teal">{formatRating(currentRating.rating)}</span>
-                    <span className="text-[9px] sm:text-[10px] text-gray-400 group-hover/rating:text-orange-400">({currentRating.reviewCount})</span>
+                    <Star size={14} className="text-[#e35e25] fill-[#e35e25] group-hover/rating:scale-110 transition-transform" />
+                    <span className="text-xs font-bold text-[#15383c]">{formatRating(currentRating.rating)}</span>
+                    <span className="text-[10px] text-gray-500">({currentRating.reviewCount})</span>
                   </button>
                 </div>
               </div>
@@ -828,37 +832,37 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   onClick={handleFollowToggle}
                   disabled={followLoading}
                   aria-label={isFollowingHost ? `Unfollow ${displayHostName}` : `Follow ${displayHostName}`}
-                  className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all shadow-md whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-1.5 shrink-0 ${
+                  className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-md whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2 shrink-0 ${
                     isFollowingHost
                       ? 'bg-[#15383c] text-white hover:bg-[#1f4d52] border-2 border-[#15383c]'
-                      : 'bg-white border-2 border-gray-300 text-[#15383c] hover:border-[#e35e25] hover:text-[#e35e25] hover:bg-orange-50'
+                      : 'bg-white border-2 border-gray-300 text-[#15383c] hover:border-[#e35e25] hover:text-[#e35e25] hover:bg-[#e35e25]/5'
                   } disabled:opacity-50`}
                 >
                   {isFollowingHost ? (
                     <>
-                      <UserCheck size={14} className="sm:w-4 sm:h-4" /> {t('event.following')}
+                      <UserCheck size={16} /> {t('event.following')}
                     </>
                   ) : (
                     <>
-                      <UserPlus size={14} className="sm:w-4 sm:h-4" /> {t('event.follow')}
+                      <UserPlus size={16} /> {t('event.follow')}
                     </>
                   )}
                 </button>
               )}
             </div>
-            {/* Attending & Capacity Metrics */}
-            <div className="flex gap-2 sm:gap-3">
-              <div className="flex-1 bg-white p-2 sm:p-3 rounded-xl border border-gray-200 text-center">
-                <h4 className="text-base sm:text-lg font-heading font-bold text-popera-teal">
-                  {reservationCount}
+            {/* Attending & Capacity Metrics - Enhanced */}
+            <div className="flex gap-4">
+              <div className="flex-1 bg-gradient-to-br from-[#e35e25]/10 to-[#15383c]/10 p-4 rounded-xl border border-[#e35e25]/20 text-center">
+                <h4 className="text-2xl font-heading font-bold text-[#15383c]">
+                  {reservationCount !== null ? reservationCount : '...'}
                 </h4>
-                <p className="text-[8px] sm:text-[10px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">Attending</p>
+                <p className="text-[10px] uppercase tracking-wide text-gray-600 font-bold mt-1">Attending</p>
               </div>
-              <div className="flex-1 bg-white p-2 sm:p-3 rounded-xl border border-gray-200 text-center">
-                <h4 className="text-base sm:text-lg font-heading font-bold text-popera-teal">
+              <div className="flex-1 bg-gradient-to-br from-[#e35e25]/10 to-[#15383c]/10 p-4 rounded-xl border border-[#e35e25]/20 text-center">
+                <h4 className="text-2xl font-heading font-bold text-[#15383c]">
                   {event.capacity || '∞'}
                 </h4>
-                <p className="text-[8px] sm:text-[10px] uppercase tracking-wide text-gray-500 font-bold mt-0.5">{t('event.capacity')}</p>
+                <p className="text-[10px] uppercase tracking-wide text-gray-600 font-bold mt-1">{t('event.capacity')}</p>
               </div>
             </div>
           </div>
@@ -928,8 +932,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         </div>
 
         <div className="relative hidden lg:block">
-           <div className="sticky top-32 bg-white rounded-[2.5rem] shadow-[0_20px_40px_rgba(0,0,0,0.04)] border border-gray-100 p-6 lg:p-8">
-              <div className="flex justify-between items-center mb-6 lg:mb-8"><div><span className="text-3xl lg:text-4xl font-heading font-bold text-popera-teal">{event.price}</span><p className="text-xs lg:text-sm text-gray-500 font-medium mt-1">per person</p></div></div>
+           <div className="sticky top-32 bg-white rounded-3xl shadow-xl border border-gray-100 p-6 lg:p-8 hover:shadow-2xl transition-shadow">
+              <div className="flex justify-between items-center mb-6 lg:mb-8 pb-6 border-b border-gray-100">
+                <div>
+                  <span className="text-3xl lg:text-4xl font-heading font-bold text-[#15383c]">{event.price}</span>
+                  <p className="text-xs lg:text-sm text-gray-500 font-medium mt-1">per person</p>
+                </div>
+              </div>
               <div className="space-y-3">
                 {/* Edit Event Button - Only for host */}
                 {isLoggedIn && user?.uid === event.hostId && (
