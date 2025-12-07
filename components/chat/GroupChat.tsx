@@ -181,6 +181,32 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
     return false;
   }, [isHost, hasReserved, hasReservedRealTime]);
   
+  // Check if user is banned
+  const isBanned = useMemo(() => {
+    if (!currentUser || !event.id) return false;
+    const bannedEvents = (currentUser as any).bannedEvents || [];
+    return bannedEvents.includes(event.id);
+  }, [currentUser, event.id]);
+
+  // Determine view type
+  // Official launch events require reservation for chat access (unlike other Popera events)
+  // Demo events are always blocked
+  // Regular Popera events are open to all
+  // Regular events require reservation
+  // CRITICAL: Use enhanced reservation check (cached + real-time)
+  const viewType = isDemo 
+    ? 'demo' 
+    : isHost 
+    ? 'host' 
+    : isOfficialLaunch 
+    ? (hasReservedEnhanced ? 'participant' : 'blocked')
+    : (isPoperaOwned || hasReservedEnhanced) 
+    ? 'participant' 
+    : 'blocked';
+  
+  const canAccessChat = (viewType === 'host' || viewType === 'participant') && !isBanned;
+  const canSendMessages = canAccessChat && !isDemo && !!currentUser && !chatLocked; // Require authentication and not demo
+  
   // Debug logging for access control
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -199,32 +225,6 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
       });
     }
   }, [event.id, currentUser?.id, isHost, hasReserved, hasReservedRealTime, hasReservedEnhanced, isPoperaOwned, isDemo, viewType, canAccessChat, currentUser?.rsvps]);
-  
-  // Determine view type
-  // Official launch events require reservation for chat access (unlike other Popera events)
-  // Demo events are always blocked
-  // Regular Popera events are open to all
-  // Regular events require reservation
-  // CRITICAL: Use enhanced reservation check (cached + real-time)
-  const viewType = isDemo 
-    ? 'demo' 
-    : isHost 
-    ? 'host' 
-    : isOfficialLaunch 
-    ? (hasReservedEnhanced ? 'participant' : 'blocked')
-    : (isPoperaOwned || hasReservedEnhanced) 
-    ? 'participant' 
-    : 'blocked';
-  
-  // Check if user is banned
-  const isBanned = useMemo(() => {
-    if (!currentUser || !event.id) return false;
-    const bannedEvents = (currentUser as any).bannedEvents || [];
-    return bannedEvents.includes(event.id);
-  }, [currentUser, event.id]);
-  
-  const canAccessChat = (viewType === 'host' || viewType === 'participant') && !isBanned;
-  const canSendMessages = canAccessChat && !isDemo && !!currentUser && !chatLocked; // Require authentication and not demo
   
   // CRITICAL DIAGNOSTIC: Log when messages are retrieved
   const messages = getMessagesForEvent(event.id);
