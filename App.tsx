@@ -1315,8 +1315,15 @@ const AppContent: React.FC = () => {
         return;
       }
 
+      // LANDING route (root path)
+      if (pathname === '/' || pathname === '') {
+        console.log('[ROUTER] Landing route detected');
+        setViewState(ViewState.LANDING);
+        return;
+      }
+
       // FEED route
-      if (pathname === '/' || pathname === '/explore') {
+      if (pathname === '/explore') {
         console.log('[ROUTER] Feed route detected');
         setViewState(ViewState.FEED);
         return;
