@@ -7,7 +7,7 @@ import { getDbSafe } from '../src/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const IS_DEV = import.meta.env.DEV;
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/server';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 interface SMSOptions {
   to: string; // Phone number with country code (e.g., +1234567890)

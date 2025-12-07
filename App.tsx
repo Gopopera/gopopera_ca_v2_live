@@ -1716,22 +1716,6 @@ const AppContent: React.FC = () => {
   return (
     <div className="font-sans text-popera-teal bg-gray-50 min-h-screen flex flex-col w-full max-w-full overflow-x-hidden">
         <div id="recaptcha-container" style={{ display: 'none' }} />
-        {!import.meta.env.DEV && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            right: 0,
-            zIndex: 9999,
-            background: 'rgba(0,0,0,0.7)',
-            color: 'white',
-            padding: '6px 8px',
-            fontSize: '11px',
-            fontFamily: 'monospace'
-          }}>
-            viewState: {viewState} <br/>
-            selectedEvent: {selectedEvent?.id || 'null'}
-          </div>
-        )}
         {privateModeWarning && (
           <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3 text-sm text-yellow-800 text-center">
             {privateModeWarning}
