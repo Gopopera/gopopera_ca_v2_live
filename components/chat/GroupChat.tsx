@@ -19,6 +19,9 @@ import { doc, updateDoc, arrayUnion, arrayRemove, getDoc, collection, addDoc, qu
 import { processRefundForRemovedUser } from '../../utils/refundHelper';
 import { expelUserFromEvent } from '../../firebase/db';
 import { followHost, unfollowHost, isFollowing } from '../../firebase/follow';
+import { subscribeToUserProfile } from '../../firebase/userSubscriptions';
+import { useProfileStore } from '../../stores/profileStore';
+import { notifyAttendeesOfNewMessage, notifyAttendeesOfPoll, notifyAttendeesOfAnnouncement } from '../../utils/notificationHelpers';
 
 // REFACTORED: Component to fetch sender info in real-time from /users/{senderId}
 // Memoized to prevent unnecessary re-renders when multiple messages from same sender
@@ -34,7 +37,7 @@ const MessageSenderName: React.FC<{ userId: string; fallbackName: string; timeSt
     let unsubscribe: (() => void) | null = null;
     
     // Real-time subscription to sender user document
-    import('../../firebase/userSubscriptions').then(({ subscribeToUserProfile }) => {
+    try {
       unsubscribe = subscribeToUserProfile(userId, (userData) => {
         if (userData) {
           setSenderName(userData.displayName || fallbackName);
@@ -42,10 +45,10 @@ const MessageSenderName: React.FC<{ userId: string; fallbackName: string; timeSt
           setSenderName(fallbackName);
         }
       });
-    }).catch((error) => {
+    } catch (error) {
       console.error('[MESSAGE_SENDER] ❌ Error loading user subscriptions:', error);
       setSenderName(fallbackName);
-    });
+    }
     
     return () => {
       if (unsubscribe) {
@@ -446,14 +449,12 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
         await unfollowHost(currentUser.id, event.hostId);
         setIsFollowingHost(false);
         // Update profile store metrics
-        const profileStore = (await import('../../stores/profileStore')).useProfileStore;
-        profileStore.getState().unfollowHost(currentUser.id, event.hostId);
+        useProfileStore.getState().unfollowHost(currentUser.id, event.hostId);
       } else {
         await followHost(currentUser.id, event.hostId);
         setIsFollowingHost(true);
         // Update profile store metrics
-        const profileStore = (await import('../../stores/profileStore')).useProfileStore;
-        profileStore.getState().followHost(currentUser.id, event.hostId);
+        useProfileStore.getState().followHost(currentUser.id, event.hostId);
       }
     } catch (error) {
       console.error('Error toggling follow:', error);
@@ -488,9 +489,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
     // Notify attendees and host of new message (non-blocking, fire-and-forget)
     // IMPORTANT: Host should ALWAYS be notified when attendees send messages
     // All participants (attendees + host) should receive notifications
-    import('../../utils/notificationHelpers').then(async ({ notifyAttendeesOfNewMessage }) => {
-      const { getDocs, collection, query, where } = await import('firebase/firestore');
-      const { getDbSafe } = await import('../../src/lib/firebase');
+    (async () => {
       const db = getDbSafe();
       
       if (db && currentUser) {
@@ -539,8 +538,8 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
           // Don't block message sending if notifications fail
         }
       }
-    }).catch((error) => {
-      console.error('[GROUP_CHAT] Error loading notification helpers for new message:', error);
+    })().catch((error) => {
+      console.error('[GROUP_CHAT] Error in notification helper:', error);
     });
   };
   
@@ -578,9 +577,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
         await addMessage(event.id, currentUser.id, `[Image:${imageUrl}:${file.name}]`, 'message', messageIsHost);
         
         // Notify attendees and host of new image message (same as text messages)
-        import('../../utils/notificationHelpers').then(async ({ notifyAttendeesOfNewMessage }) => {
-          const { getDocs, collection, query, where } = await import('firebase/firestore');
-          const { getDbSafe } = await import('../../src/lib/firebase');
+        (async () => {
           const db = getDbSafe();
           
           if (db && currentUser) {
@@ -610,8 +607,8 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
               console.error('[GROUP_CHAT] Error sending image message notifications:', error);
             }
           }
-        }).catch((error) => {
-          console.error('[GROUP_CHAT] Error loading notification helpers for image message:', error);
+        })().catch((error) => {
+          console.error('[GROUP_CHAT] Error in notification helper for image message:', error);
         });
       };
       reader.readAsDataURL(file);
@@ -1317,7 +1314,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
             addPoll(event.id, question, options);
             
             // Notify attendees of new poll (non-blocking)
-            import('../../utils/notificationHelpers').then(async ({ notifyAttendeesOfPoll }) => {
+            (async () => {
               try {
                 const db = getDbSafe();
                 if (db) {
@@ -1343,8 +1340,8 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
               } catch (error) {
                 console.error('Error notifying attendees of poll:', error);
               }
-            }).catch((error) => {
-              console.error('Error loading notification helpers for poll:', error);
+            })().catch((error) => {
+              console.error('Error in notification helper for poll:', error);
             });
           } catch (error) {
             console.error('Error creating poll:', error);
@@ -1396,7 +1393,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
             console.log('[GROUP_CHAT] ✅ Announcement created successfully');
             
             // Notify attendees of new announcement (non-blocking)
-            import('../../utils/notificationHelpers').then(async ({ notifyAttendeesOfAnnouncement }) => {
+            (async () => {
               try {
                 const db = getDbSafe();
                 if (db) {
@@ -1433,8 +1430,8 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
               } catch (error) {
                 console.error('[GROUP_CHAT] ❌ Error notifying attendees of announcement:', error);
               }
-            }).catch((error) => {
-              console.error('[GROUP_CHAT] ❌ Error loading notification helpers for announcement:', error);
+            })().catch((error) => {
+              console.error('[GROUP_CHAT] ❌ Error in notification helper for announcement:', error);
             });
           } catch (error) {
             console.error('[GROUP_CHAT] ❌ Error creating announcement:', error);

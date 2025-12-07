@@ -9,6 +9,8 @@ import { formatDate } from '@/utils/dateFormatter';
 import { formatRating } from '@/utils/formatRating';
 import { listHostReviews, getUserProfile } from '@/firebase/db';
 import { FirestoreReview } from '@/firebase/types';
+import { subscribeToUserProfile } from '@/firebase/userSubscriptions';
+import { subscribeToFollowersCount } from '@/firebase/follow';
 
 interface HostProfileProps {
   hostName: string;
@@ -49,7 +51,9 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
   
   // Get real data from profile store - call hooks unconditionally, then use conditionally
   const isFollowing = hostId ? profileStore.isFollowing(currentUser?.id || '', hostId) : false;
-  const followersCount = hostId ? profileStore.getFollowersCount(hostId) : 0;
+  
+  // Real-time follower count from Firestore (source of truth)
+  const [followersCount, setFollowersCount] = useState<number>(0);
   
   // CRITICAL: Always fetch host profile picture from Firestore (source of truth)
   // This ensures profile pictures are synchronized across all views for ALL users
@@ -67,7 +71,7 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
     let unsubscribe: (() => void) | null = null;
     
     // Real-time subscription to host user document
-    import('../../firebase/userSubscriptions').then(({ subscribeToUserProfile }) => {
+    try {
       unsubscribe = subscribeToUserProfile(hostId, (hostData) => {
         if (hostData) {
           setHostProfilePicture(hostData.photoURL || null);
@@ -83,10 +87,10 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
           setHostProfilePicture(null);
         }
       });
-    }).catch((error) => {
+    } catch (error) {
       console.error('[HOST_PROFILE] ❌ Error loading user subscriptions:', error);
       setHostProfilePicture(null);
-    });
+    }
     
     return () => {
       if (unsubscribe) {
@@ -97,6 +101,31 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
       }
     };
   }, [hostId, isPoperaProfile]);
+  
+  // Subscribe to real-time followers count
+  useEffect(() => {
+    if (!hostId) {
+      setFollowersCount(0);
+      return;
+    }
+    
+    let unsubscribe: (() => void) | null = null;
+    
+    try {
+      unsubscribe = subscribeToFollowersCount(hostId, (count: number) => {
+        setFollowersCount(count);
+      });
+    } catch (error) {
+      console.error('[HOST_PROFILE] Error loading follow subscriptions:', error);
+      setFollowersCount(0);
+    }
+    
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [hostId]);
   
   // Fetch reviews from Firestore (only accepted reviews for accurate count)
   useEffect(() => {

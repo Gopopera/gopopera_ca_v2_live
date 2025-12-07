@@ -59,6 +59,7 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
   const [activeTab, setActiveTab] = useState<TabType>('hosting');
   const user = useUserStore((state) => state.user);
   const [hostProfilePictures, setHostProfilePictures] = useState<Record<string, string | null>>({});
+  const [failedProfilePics, setFailedProfilePics] = useState<Set<string>>(new Set());
 
   // Fetch host profile pictures for hosting events
   React.useEffect(() => {
@@ -319,18 +320,13 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
                               {activeTab === 'hosting' && (
                                 <>
                                   <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gray-200 overflow-hidden flex-shrink-0">
-                                    {profilePic ? (
+                                    {profilePic && !failedProfilePics.has(event.id) ? (
                                       <img 
                                         src={profilePic} 
                                         alt="You" 
                                         className="w-full h-full object-cover"
-                                        onError={(e) => {
-                                          const target = e.target as HTMLImageElement;
-                                          target.style.display = 'none';
-                                          const parent = target.parentElement;
-                                          if (parent) {
-                                            parent.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-[#15383c] text-white text-[10px] sm:text-xs font-bold">${user?.displayName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'Y'}</div>`;
-                                          }
+                                        onError={() => {
+                                          setFailedProfilePics(prev => new Set(prev).add(event.id));
                                         }}
                                       />
                                     ) : (
