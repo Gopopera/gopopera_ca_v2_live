@@ -7,7 +7,8 @@
 
 import { getDbSafe } from '../src/lib/firebase';
 import { collection, query, where, getDocs, deleteDoc, doc, updateDoc, writeBatch } from 'firebase/firestore';
-import { POPERA_EMAIL, POPERA_HOST_ID } from '../stores/userStore';
+import { POPERA_EMAIL } from '../stores/userStore';
+import { getAuthInstance } from '../src/lib/firebaseAuth';
 
 export async function cleanupPoperaReviews() {
   const db = getDbSafe();
@@ -16,11 +17,20 @@ export async function cleanupPoperaReviews() {
   }
 
   try {
-    console.log('[CLEANUP] Starting Popera reviews cleanup...');
+    // Get the logged-in user's UID (must be Popera account)
+    const auth = getAuthInstance();
+    const currentUser = auth?.currentUser;
+    
+    if (!currentUser || currentUser.email?.toLowerCase().trim() !== POPERA_EMAIL) {
+      throw new Error('Only the Popera account (eatezca@gmail.com) can run this cleanup');
+    }
 
-    // 1. Get all events hosted by Popera
+    const poperaUid = currentUser.uid;
+    console.log('[CLEANUP] Starting Popera reviews cleanup for user:', poperaUid);
+
+    // 1. Get all events hosted by Popera (using the actual user UID)
     const eventsCol = collection(db, 'events');
-    const eventsQuery = query(eventsCol, where('hostId', '==', POPERA_HOST_ID));
+    const eventsQuery = query(eventsCol, where('hostId', '==', poperaUid));
     const eventsSnapshot = await getDocs(eventsQuery);
     const eventIds = eventsSnapshot.docs.map(doc => doc.id);
 

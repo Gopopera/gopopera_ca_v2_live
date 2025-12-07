@@ -26,9 +26,24 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
   const [displayName, setDisplayName] = useState<string>(userName);
   
   useEffect(() => {
-    if (!user?.uid) {
+    // Initialize with userProfile from store if available (faster initial load)
+    if (userProfile?.photoURL) {
+      setProfilePicture(userProfile.photoURL);
+    } else if (user?.photoURL) {
+      setProfilePicture(user.photoURL);
+    } else {
       setProfilePicture(null);
+    }
+    
+    if (userProfile?.displayName) {
+      setDisplayName(userProfile.displayName);
+    } else if (user?.displayName) {
+      setDisplayName(user.displayName);
+    } else {
       setDisplayName(userName);
+    }
+    
+    if (!user?.uid) {
       return;
     }
     
@@ -38,7 +53,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
     
     let unsubscribe: (() => void) | null = null;
     
-    // Real-time subscription to user document
+    // Real-time subscription to user document (overrides initial values)
     try {
       unsubscribe = subscribeToUserProfile(user.uid, (userData) => {
         if (userData) {
@@ -53,14 +68,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
             });
           }
         } else {
-          setProfilePicture(null);
-          setDisplayName(userName);
+          // Fallback to user object if subscription returns null
+          setProfilePicture(user?.photoURL || null);
+          setDisplayName(user?.displayName || userName);
         }
       });
     } catch (error) {
       console.error('[PROFILE_PAGE] ❌ Error loading user subscriptions:', error);
-      setProfilePicture(null);
-      setDisplayName(userName);
+      // Fallback to user object on error
+      setProfilePicture(user?.photoURL || null);
+      setDisplayName(user?.displayName || userName);
     }
     
     return () => {
@@ -71,7 +88,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
         unsubscribe();
       }
     };
-  }, [user?.uid, userName]);
+  }, [user?.uid, userName, user?.photoURL, user?.displayName, userProfile?.photoURL, userProfile?.displayName]);
   const initials = displayName ? displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'P';
   
   // Calculate metrics - optimized with parallel queries and proper dependency tracking

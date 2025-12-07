@@ -71,6 +71,7 @@ const CreateEventPage = React.lazy(() => import('./src/pages/CreateEventPage').t
 const EditEventPage = React.lazy(() => import('./src/pages/EditEventPage').then(m => ({ default: m.EditEventPage })));
 const DebugEnvPage = React.lazy(() => import('./src/pages/DebugEnvPage').then(m => ({ default: m.DebugEnvPage })));
 const DebugSeedDemoEventsPage = React.lazy(() => import('./src/pages/DebugSeedDemoEventsPage').then(m => ({ default: m.DebugSeedDemoEventsPage })));
+const CleanupReviewsPage = React.lazy(() => import('./src/pages/CleanupReviewsPage').then(m => ({ default: m.CleanupReviewsPage })));
 const VerifyFirebasePage = React.lazy(() => import('./src/pages/VerifyFirebasePage').then(m => ({ default: m.VerifyFirebasePage })));
 
 // Consolidated Imports - lazy loaded
@@ -1888,6 +1889,11 @@ const AppContent: React.FC = () => {
         {viewState === ViewState.DEBUG_SEED_DEMO && (
           <React.Suspense fallback={<PageSkeleton />}>
             <DebugSeedDemoEventsPage setViewState={setViewState} />
+          </React.Suspense>
+        )}
+        {viewState === ViewState.DEBUG_CLEANUP_REVIEWS && (
+          <React.Suspense fallback={<PageSkeleton />}>
+            <CleanupReviewsPage setViewState={setViewState} />
           </React.Suspense>
         )}
         {viewState === ViewState.TERMS && <TermsPage setViewState={setViewState} />}
