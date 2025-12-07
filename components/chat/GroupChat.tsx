@@ -948,73 +948,75 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
 
           {/* AI Insights - Only visible to attendees (not host) */}
           {canAccessChat && !isDemo && !isHost && (
-            <>
-              <div className="bg-gradient-to-br from-white to-[#f8fafb] rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-gray-100 shadow-sm max-w-3xl mx-auto w-full">
-                <div className="flex items-center space-x-3 mb-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-[#e35e25]/10 to-[#e35e25]/5 rounded-full flex items-center justify-center text-[#e35e25] shrink-0">
-                    <Sparkles size={20} className="text-[#e35e25]" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h4 className="text-sm font-heading font-bold text-[#15383c]">AI Insights</h4>
-                    <p className="text-xs text-gray-600">What's happening in the conversation</p>
-                  </div>
+            <div className="bg-gradient-to-br from-white to-[#f8fafb] rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-gray-100 shadow-sm max-w-3xl mx-auto w-full">
+              <div className="flex items-center space-x-3 mb-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-[#e35e25]/10 to-[#e35e25]/5 rounded-full flex items-center justify-center text-[#e35e25] shrink-0">
+                  <Sparkles size={20} className="text-[#e35e25]" />
                 </div>
-                <div className="space-y-3 text-sm">
-                  <p className="font-medium text-[#15383c] leading-relaxed">{aiInsights.summary}</p>
-                  {aiInsights.highlights.length > 0 && (
-                    <div className="bg-white/60 rounded-lg p-3 border border-gray-100">
-                      <p className="font-semibold text-xs text-gray-600 mb-2 uppercase tracking-wide">Recent highlights</p>
-                      <ul className="space-y-1.5">
-                        {aiInsights.highlights.map((highlight, idx) => (
-                          <li key={idx} className="text-xs text-gray-700 flex items-start gap-2">
-                            <span className="text-[#e35e25] mt-1">•</span>
-                            <span>{highlight}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {aiInsights.topAnnouncement && (
-                    <div className="bg-[#15383c]/5 rounded-lg p-3 border border-[#15383c]/10">
-                      <p className="font-semibold text-xs text-[#15383c] mb-1.5 uppercase tracking-wide">Latest announcement</p>
-                      <p className="text-xs text-gray-700 leading-relaxed italic">"{aiInsights.topAnnouncement}"</p>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
-                    <span className="text-xs text-gray-500">Community vibe:</span>
-                    <span className="text-xs font-semibold text-[#e35e25] capitalize">{aiInsights.vibe}</span>
-                  </div>
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-sm font-heading font-bold text-[#15383c]">AI Insights</h4>
+                  <p className="text-xs text-gray-600">What's happening in the conversation</p>
                 </div>
               </div>
+              <div className="space-y-3 text-sm">
+                <p className="font-medium text-[#15383c] leading-relaxed">{aiInsights.summary}</p>
+                {aiInsights.highlights.length > 0 && (
+                  <div className="bg-white/60 rounded-lg p-3 border border-gray-100">
+                    <p className="font-semibold text-xs text-gray-600 mb-2 uppercase tracking-wide">Recent highlights</p>
+                    <ul className="space-y-1.5">
+                      {aiInsights.highlights.map((highlight, idx) => (
+                        <li key={idx} className="text-xs text-gray-700 flex items-start gap-2">
+                          <span className="text-[#e35e25] mt-1">•</span>
+                          <span>{highlight}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {aiInsights.topAnnouncement && (
+                  <div className="bg-[#15383c]/5 rounded-lg p-3 border border-[#15383c]/10">
+                    <p className="font-semibold text-xs text-[#15383c] mb-1.5 uppercase tracking-wide">Latest announcement</p>
+                    <p className="text-xs text-gray-700 leading-relaxed italic">"{aiInsights.topAnnouncement}"</p>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                  <span className="text-xs text-gray-500">Community vibe:</span>
+                  <span className="text-xs font-semibold text-[#e35e25] capitalize">{aiInsights.vibe}</span>
+                </div>
+              </div>
+            </div>
+          )}
 
-              <div className="max-w-3xl mx-auto w-full space-y-6 pb-4">
-                {/* Render actual messages from store */}
-                {(() => {
-                  // CRITICAL: Log messages right before rendering
-                  console.log(`[CHAT FEED] 🎨 Rendering ${messages.length} messages for event ${event.id}:`, {
-                    eventId: event.id,
-                    isHost,
-                    userId: currentUser?.id,
-                    hostId: event.hostId,
-                    messageCount: messages.length,
-                    messages: messages.map(m => ({
-                      id: m.id,
-                      userId: m.userId,
-                      userName: m.userName,
-                      isHost: m.isHost,
-                      type: m.type,
-                      timestamp: m.timestamp,
-                      text: m.message.substring(0, 50),
-                    })),
-                  });
-                  
-                  return messages.length === 0 ? (
-                    <div className="text-center py-12 text-gray-400">
-                      <MessageCircle size={48} className="mx-auto mb-4 opacity-50" />
-                      <p className="text-sm">No messages yet. Start the conversation!</p>
-                    </div>
-                  ) : (
-                    messages.map((msg) => {
+          {/* Messages - Visible to both hosts and attendees */}
+          {canAccessChat && !isDemo && (
+            <div className="max-w-3xl mx-auto w-full space-y-6 pb-4">
+              {/* Render actual messages from store */}
+              {(() => {
+                // CRITICAL: Log messages right before rendering
+                console.log(`[CHAT FEED] 🎨 Rendering ${messages.length} messages for event ${event.id}:`, {
+                  eventId: event.id,
+                  isHost,
+                  userId: currentUser?.id,
+                  hostId: event.hostId,
+                  messageCount: messages.length,
+                  messages: messages.map(m => ({
+                    id: m.id,
+                    userId: m.userId,
+                    userName: m.userName,
+                    isHost: m.isHost,
+                    type: m.type,
+                    timestamp: m.timestamp,
+                    text: m.message.substring(0, 50),
+                  })),
+                });
+                
+                return messages.length === 0 ? (
+                  <div className="text-center py-12 text-gray-400">
+                    <MessageCircle size={48} className="mx-auto mb-4 opacity-50" />
+                    <p className="text-sm">No messages yet. Start the conversation!</p>
+                  </div>
+                ) : (
+                  messages.map((msg) => {
                     const messageDate = new Date(msg.timestamp);
                     const timeString = messageDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
                     
@@ -1065,28 +1067,27 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                       </div>
                     );
                   })
-                  );
-                })()}
+                );
+              })()}
 
-                {/* Render poll if exists */}
-                {poll && (
-                  <div className="bg-[#15383c] rounded-2xl p-6 text-white shadow-xl shadow-[#15383c]/10">
-                    <h3 className="font-bold text-lg mb-2">{poll.question}</h3>
-                    <div className="grid grid-cols-2 gap-4 mb-5">
-                      {poll.options.map((opt, idx) => (
-                        <div key={idx} className="bg-white/10 rounded-xl p-4 text-center border border-white/5 cursor-pointer group">
-                          <div className="text-2xl font-bold mb-1 group-hover:text-[#e35e25]">{opt.percentage}%</div>
-                          <div className="text-xs text-gray-400 uppercase tracking-wide">{opt.label}</div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex justify-between items-center text-xs text-gray-400 border-t border-white/10 pt-4">
-                      <span>Participants: {poll.totalVotes} votes</span>
-                    </div>
+              {/* Render poll if exists */}
+              {poll && (
+                <div className="bg-[#15383c] rounded-2xl p-6 text-white shadow-xl shadow-[#15383c]/10">
+                  <h3 className="font-bold text-lg mb-2">{poll.question}</h3>
+                  <div className="grid grid-cols-2 gap-4 mb-5">
+                    {poll.options.map((opt, idx) => (
+                      <div key={idx} className="bg-white/10 rounded-xl p-4 text-center border border-white/5 cursor-pointer group">
+                        <div className="text-2xl font-bold mb-1 group-hover:text-[#e35e25]">{opt.percentage}%</div>
+                        <div className="text-xs text-gray-400 uppercase tracking-wide">{opt.label}</div>
+                      </div>
+                    ))}
                   </div>
-                )}
-              </div>
-            </>
+                  <div className="flex justify-between items-center text-xs text-gray-400 border-t border-white/10 pt-4">
+                    <span>Participants: {poll.totalVotes} votes</span>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
 

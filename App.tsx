@@ -642,12 +642,16 @@ const AppContent: React.FC = () => {
   const clearJustLoggedInFlag = useUserStore((state) => state.clearJustLoggedInFlag);
   
   // SIMPLE APPROACH: If user exists and we're on landing page, go to feed
+  // BUT: Respect the root path - if URL is '/', keep showing landing page
   // No complex logic, no flags, no polling - just check and navigate
   useEffect(() => {
     if (!authInitialized) return;
     
+    const currentPath = window.location.pathname;
+    
     // Simple rule: User logged in + on landing page = go to feed
-    if (user && viewState === ViewState.LANDING) {
+    // BUT: Don't redirect if we're on the root path - respect the URL
+    if (user && viewState === ViewState.LANDING && currentPath !== '/') {
       const redirect = redirectAfterLogin || ViewState.FEED;
       console.log('[APP] User logged in, navigating to:', redirect);
       setViewState(redirect);
