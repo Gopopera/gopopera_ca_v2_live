@@ -8,6 +8,40 @@ const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER;
 const TWILIO_API_URL = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
 
+/**
+ * Format phone number to E.164 format
+ * Automatically adds +1 for US/Canada (10-digit numbers)
+ */
+function formatPhoneToE164(phone: string): string {
+  const cleaned = phone.trim();
+  const digitsOnly = cleaned.replace(/\D/g, '');
+  
+  if (cleaned.startsWith('+')) {
+    return '+' + cleaned.replace(/\D/g, '');
+  }
+  
+  // Auto-add +1 for US/Canada (10 digits)
+  if (digitsOnly.length === 10) {
+    return `+1${digitsOnly}`;
+  }
+  
+  if (digitsOnly.length === 11 && digitsOnly.startsWith('1')) {
+    return `+${digitsOnly}`;
+  }
+  
+  return digitsOnly.length > 0 ? `+${digitsOnly}` : phone;
+}
+
+/**
+ * Validate E.164 formatted phone number
+ */
+function validateE164Phone(phone: string): boolean {
+  const cleanPhone = phone.trim().replace(/\s/g, '');
+  if (!cleanPhone.startsWith('+')) return false;
+  const digitsOnly = cleanPhone.slice(1).replace(/\D/g, '');
+  return /^[1-9]\d{0,14}$/.test(digitsOnly);
+}
+
 export default async function handler(req: any, res: any) {
   // Only allow POST requests
   if (req.method !== 'POST') {
@@ -45,24 +79,26 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    // Validate phone number format (E.164 format)
-    const cleanPhone = to.replace(/\s/g, '');
-    if (!/^\+?[1-9]\d{1,14}$/.test(cleanPhone)) {
+    // CRITICAL: Format phone number FIRST, then validate
+    const formattedPhone = formatPhoneToE164(to);
+    
+    if (!validateE164Phone(formattedPhone)) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Invalid phone number format. Use E.164 format (e.g., +1234567890)' 
+        error: `Invalid phone number: ${to}. Please use a valid 10-digit US/Canada number.` 
       });
     }
 
     console.log('[API] Sending SMS:', { 
-      to: cleanPhone,
+      original: to,
+      formatted: formattedPhone,
       messageLength: message.length 
     });
 
     // Prepare Twilio API request
     const formData = new URLSearchParams();
     formData.append('From', TWILIO_PHONE_NUMBER);
-    formData.append('To', cleanPhone);
+    formData.append('To', formattedPhone); // Use formatted number
     formData.append('Body', message);
 
     // Send SMS via Twilio API

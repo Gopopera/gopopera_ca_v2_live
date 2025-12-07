@@ -65,7 +65,7 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
     }
 
     if (!validatePhoneNumber(formatPhoneNumber(phoneNumber))) {
-      setError('Invalid phone number format. Please use format: +1234567890 or (123) 456-7890');
+      setError('Please enter a valid 10-digit phone number (US or Canada)');
       return;
     }
 
@@ -210,10 +210,12 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
                 type="tel"
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="+1234567890 or (123) 456-7890"
+                placeholder="(123) 456-7890 or 123-456-7890"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#15383c] focus:border-transparent"
               />
-              <p className="text-xs text-gray-500 mt-1">Include country code (e.g., +1 for US/Canada)</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Enter a US or Canada phone number. Country code (+1) will be added automatically.
+              </p>
             </div>
 
             {error && (

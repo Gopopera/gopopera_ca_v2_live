@@ -15,6 +15,40 @@ interface SMSOptions {
 }
 
 /**
+ * Format phone number to E.164 format (for SMS sending)
+ * Automatically adds +1 for US/Canada (10-digit numbers)
+ */
+function formatPhoneToE164(phone: string): string {
+  const cleaned = phone.trim();
+  const digitsOnly = cleaned.replace(/\D/g, '');
+  
+  if (cleaned.startsWith('+')) {
+    return '+' + cleaned.replace(/\D/g, '');
+  }
+  
+  // Auto-add +1 for US/Canada (10 digits)
+  if (digitsOnly.length === 10) {
+    return `+1${digitsOnly}`;
+  }
+  
+  if (digitsOnly.length === 11 && digitsOnly.startsWith('1')) {
+    return `+${digitsOnly}`;
+  }
+  
+  return digitsOnly.length > 0 ? `+${digitsOnly}` : phone;
+}
+
+/**
+ * Validate E.164 formatted phone number
+ */
+function validateE164Phone(phone: string): boolean {
+  const cleanPhone = phone.trim().replace(/\s/g, '');
+  if (!cleanPhone.startsWith('+')) return false;
+  const digitsOnly = cleanPhone.slice(1).replace(/\D/g, '');
+  return /^[1-9]\d{0,14}$/.test(digitsOnly);
+}
+
+/**
  * Log SMS attempt to Firestore
  */
 async function logSMSToFirestore(log: {
@@ -54,16 +88,20 @@ async function logSMSToFirestore(log: {
 export async function sendSMSNotification(options: SMSOptions): Promise<boolean> {
   const logId = `sms_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   
-  // Validate phone number format (E.164 format)
-  const cleanPhone = options.to.replace(/\s/g, '');
-  if (!/^\+?[1-9]\d{1,14}$/.test(cleanPhone)) {
-    console.error('[SMS] Invalid phone number format:', options.to);
+  // CRITICAL: Format phone number FIRST, then validate
+  const formattedPhone = formatPhoneToE164(options.to);
+  
+  if (!validateE164Phone(formattedPhone)) {
+    console.error('[SMS] Invalid phone number format after formatting:', { 
+      original: options.to, 
+      formatted: formattedPhone 
+    });
     logSMSToFirestore({
       id: logId,
       to: options.to,
       message: options.message,
       status: 'failed',
-      error: 'Invalid phone number format. Use E.164 format (e.g., +1234567890)',
+      error: `Invalid phone number: ${options.to}. Please use a valid 10-digit US/Canada number.`,
       timestamp: Date.now(),
     }).catch(() => {});
     return false;
@@ -72,19 +110,20 @@ export async function sendSMSNotification(options: SMSOptions): Promise<boolean>
   try {
     if (IS_DEV) {
       console.log('[SMS] Sending SMS via serverless function:', { 
-        to: cleanPhone, 
+        original: options.to,
+        formatted: formattedPhone,
         messageLength: options.message.length 
       });
     }
 
-    // Send SMS via Vercel serverless function (server-side)
+    // Send SMS via Vercel serverless function (server-side) - use FORMATTED number
     const response = await fetch(`${API_BASE_URL}/send-sms`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        to: cleanPhone,
+        to: formattedPhone, // Use formatted number
         message: options.message,
       }),
     });
@@ -101,13 +140,13 @@ export async function sendSMSNotification(options: SMSOptions): Promise<boolean>
     }
 
     if (IS_DEV) {
-      console.log('[SMS] ✅ SMS sent successfully:', { messageId: result.messageId, to: cleanPhone });
+      console.log('[SMS] ✅ SMS sent successfully:', { messageId: result.messageId, to: formattedPhone });
     }
 
     // Log success to Firestore (non-blocking)
     logSMSToFirestore({
       id: logId,
-      to: options.to,
+      to: formattedPhone, // Use formatted number for logs
       message: options.message,
       status: 'sent',
       messageId: result.messageId,

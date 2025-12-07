@@ -18,15 +18,30 @@ function generateVerificationCode(): string {
 
 /**
  * Format phone number to E.164 format
+ * Automatically adds +1 for US/Canada (10-digit numbers)
  */
 export function formatPhoneNumber(phone: string): string {
-  const digitsOnly = phone.replace(/\D/g, '');
+  const cleaned = phone.trim();
+  const digitsOnly = cleaned.replace(/\D/g, '');
   
-  if (phone.startsWith('+')) {
-    return '+' + phone.replace(/\D/g, '');
-  } else if (digitsOnly.length === 10) {
+  // If already starts with +, clean and return
+  if (cleaned.startsWith('+')) {
+    const cleanedPlus = '+' + cleaned.replace(/\D/g, '');
+    return cleanedPlus;
+  }
+  
+  // Handle 10-digit numbers (US/Canada) - auto-add +1
+  if (digitsOnly.length === 10) {
     return `+1${digitsOnly}`;
-  } else if (digitsOnly.length === 11 && digitsOnly.startsWith('1')) {
+  }
+  
+  // Handle 11-digit numbers starting with 1 (US/Canada with country code)
+  if (digitsOnly.length === 11 && digitsOnly.startsWith('1')) {
+    return `+${digitsOnly}`;
+  }
+  
+  // For other valid lengths, try to add + prefix
+  if (digitsOnly.length >= 7 && digitsOnly.length <= 15) {
     return `+${digitsOnly}`;
   }
   
@@ -35,10 +50,29 @@ export function formatPhoneNumber(phone: string): string {
 
 /**
  * Validate phone number format (E.164)
+ * Validates AFTER formatting - number should start with + and have valid digits
  */
 export function validatePhoneNumber(phone: string): boolean {
-  const cleanPhone = phone.replace(/\s/g, '');
-  return /^\+?[1-9]\d{1,14}$/.test(cleanPhone);
+  const cleanPhone = phone.trim().replace(/\s/g, '');
+  
+  // Must start with +
+  if (!cleanPhone.startsWith('+')) {
+    return false;
+  }
+  
+  const digitsOnly = cleanPhone.slice(1).replace(/\D/g, '');
+  
+  // E.164: + followed by 1-15 digits, first digit must be 1-9
+  if (digitsOnly.length < 1 || digitsOnly.length > 15) {
+    return false;
+  }
+  
+  // First digit after + must be 1-9 (country codes don't start with 0)
+  if (!/^[1-9]/.test(digitsOnly)) {
+    return false;
+  }
+  
+  return true;
 }
 
 /**
@@ -58,7 +92,7 @@ export async function sendVerificationCode(
     // Format and validate phone number
     const formattedPhone = formatPhoneNumber(phoneNumber);
     if (!validatePhoneNumber(formattedPhone)) {
-      return { success: false, error: 'Invalid phone number format. Use E.164 format (e.g., +1234567890)' };
+      return { success: false, error: 'Please enter a valid 10-digit phone number (US or Canada)' };
     }
 
     // Generate verification code
