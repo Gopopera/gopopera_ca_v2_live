@@ -17,6 +17,10 @@ import {
   Wrench, // Hands-On
   Film, // Performances
   Trophy, // Sports
+  Users2, // Community
+  BookOpen, // Workshops
+  MessageCircle, // Social
+  Theater, // Shows
 } from 'lucide-react';
 
 interface VibeIconButtonProps {
@@ -44,6 +48,10 @@ const vibeIcons: Record<string, React.ComponentType<{ size?: number; className?:
   'Hands-On': Wrench,
   'Performances': Film,
   'Sports': Trophy,
+  'Community': Users2,
+  'Workshops': BookOpen,
+  'Social': MessageCircle,
+  'Shows': Theater,
 };
 
 export const VibeIconButton: React.FC<VibeIconButtonProps> = ({

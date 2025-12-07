@@ -73,7 +73,9 @@ export const ChatMockupSection: React.FC = () => {
                       <span className="font-heading font-bold text-xs sm:text-sm md:text-base opacity-90">{t('chat.popupsGroupChat')}</span>
                    </div>
                    <div className="flex items-center gap-3 sm:gap-4 relative z-10">
-                      <div className="w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 bg-gradient-to-br from-[#e35e25] to-[#cf4d1d] rounded-full flex items-center justify-center font-bold text-lg sm:text-xl md:text-2xl border-3 border-white/30 shadow-lg">R</div>
+                      <div className="w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 bg-gradient-to-br from-[#ff7a7a] via-[#e35e25] to-[#d94646] rounded-full flex items-center justify-center font-bold text-white text-lg sm:text-xl md:text-2xl border-3 border-white/30 shadow-lg relative">
+                        <span>S</span>
+                      </div>
                       <div className="min-w-0">
                          <h3 className="font-bold text-lg sm:text-xl md:text-2xl leading-none truncate mb-1">{t('chatMockup.eventName')}</h3>
                          <span className="text-[10px] sm:text-[11px] md:text-xs text-green-300 flex items-center gap-1.5 uppercase tracking-wider font-bold"><span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></span> 12 {t('chat.online')}</span>

@@ -6,13 +6,11 @@ import { EventCard } from '../../components/events/EventCard';
 import { ChatMockupSection } from '../../components/landing/ChatMockupSection';
 import { CityInput } from '../../components/layout/CityInput';
 import { FilterDrawer } from '../../components/filters/FilterDrawer';
-import { CategoryIconButton } from '../../components/filters/CategoryIconButton';
 import { VibeIconButton } from '../../components/filters/VibeIconButton';
 import { ALL_VIBES } from '../../utils/vibes';
 import { Event, ViewState } from '../../types';
 import { ArrowRight, Sparkles, Check, ChevronDown, Search, MapPin, PlusCircle, CheckCircle2, ChevronRight, ChevronLeft, Filter } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { categoryMatches, translateCategory } from '../../utils/categoryMapper';
 import { useSelectedCity, useSetCity, type City } from '../stores/cityStore';
 import { useFilterStore } from '../../stores/filterStore';
 import { applyEventFilters } from '../../utils/filterEvents';
@@ -44,7 +42,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 }) => {
   const { t, language } = useLanguage();
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
-  const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
@@ -54,41 +51,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const location = city;
   const { filters, isFilterDrawerOpen, setFilterDrawerOpen, getActiveFilterCount, setFilter } = useFilterStore();
   
-  // Category keys (English) for internal logic
-  const categoryKeys = [
-    'All', 'Community', 'Music', 'Workshops', 'Markets', 'Sports', 'Social', 'Shows', 'Food & Drink', 'Wellness'
-  ];
-  // Translated categories for display
-  const categories = categoryKeys.map(cat => translateCategory(cat, language));
-  
-  // Get English category key from translated display name
-  const getCategoryKey = (displayName: string): string => {
-    const index = categories.indexOf(displayName);
-    return index >= 0 ? categoryKeys[index] : displayName;
-  };
-  
-  // Filter events based on category and location
+  // Filter events based on location and vibes
   const filteredEvents = useMemo(() => {
     let filtered = events;
     
     // Debug logging
     console.log('[LANDING_PAGE] Filtering events:', {
       totalEvents: events.length,
-      activeCategory,
       location,
       searchQuery,
       eventTitles: events.map(e => e.title),
       eventCities: events.map(e => e.city),
     });
-    
-    // Apply category filter - use English key for matching
-    const categoryKey = getCategoryKey(activeCategory);
-    if (categoryKey !== 'All') {
-      filtered = filtered.filter(event => 
-        categoryMatches(event.category, categoryKey)
-      );
-      console.log('[LANDING_PAGE] After category filter:', filtered.length);
-    }
     
     // Apply city filter - match by city slug or city name
     // Handle "Canada" as showing all events
@@ -140,7 +114,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     });
     
     return filtered;
-  }, [events, activeCategory, location, searchQuery, filters]);
+  }, [events, location, searchQuery, filters]);
 
   const toggleFaq = (index: number) => {
     setOpenFaqIndex(openFaqIndex === index ? null : index);
@@ -224,41 +198,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
              </div>
 
-             {/* Horizontal Categories with Icons and Filter Button */}
-             <div className="flex items-center gap-3">
-               <div className="relative z-10 flex-1">
-                 <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4 scroll-pr-32 md:scroll-pr-4">
-                    {categories.map((cat, index) => (
-                      <CategoryIconButton
-                        key={cat}
-                        category={cat}
-                        categoryKey={categoryKeys[index]}
-                        isActive={activeCategory === cat}
-                        onClick={() => setActiveCategory(cat)}
-                      />
-                    ))}
-                 </div>
-                 <div className="absolute right-0 top-0 bottom-2 w-6 sm:w-8 bg-gradient-to-l from-[#FAFAFA] to-transparent pointer-events-none md:hidden"></div>
-               </div>
-               
-               {/* Filter Button */}
-               <button
-                 onClick={() => setFilterDrawerOpen(true)}
-                 className="flex items-center gap-2 px-4 py-2.5 rounded-full border-2 border-[#15383c] text-[#15383c] font-medium hover:bg-[#15383c] hover:text-white transition-colors flex-shrink-0 touch-manipulation active:scale-[0.95] min-h-[40px] sm:min-h-0"
-               >
-                 <Filter size={18} />
-                 <span className="hidden sm:inline">Filters</span>
-                 {getActiveFilterCount() > 0 && (
-                   <span className="px-2 py-0.5 rounded-full bg-[#e35e25] text-white text-xs font-bold">
-                     {getActiveFilterCount()}
-                   </span>
-                 )}
-               </button>
-             </div>
-             
-             {/* Vibes Section - Scrollable Icons */}
+             {/* Vibes Section - Scrollable Icons with Filter Button */}
              <div className="mt-4">
-               <h3 className="text-sm font-semibold text-gray-600 mb-3">Filter by Vibes</h3>
+               <div className="flex items-center justify-between mb-3">
+                 <h3 className="text-sm font-semibold text-gray-600">Filter by Vibes</h3>
+                 <button
+                   onClick={() => setFilterDrawerOpen(true)}
+                   className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border-2 border-[#15383c] text-[#15383c] font-medium hover:bg-[#15383c] hover:text-white transition-colors flex-shrink-0 touch-manipulation active:scale-[0.95] text-xs sm:text-sm"
+                 >
+                   <Filter size={16} className="sm:w-[18px] sm:h-[18px]" />
+                   <span className="hidden sm:inline">Filters</span>
+                   {getActiveFilterCount() > 0 && (
+                     <span className="px-1.5 py-0.5 rounded-full bg-[#e35e25] text-white text-[10px] sm:text-xs font-bold">
+                       {getActiveFilterCount()}
+                     </span>
+                   )}
+                 </button>
+               </div>
                <div className="relative z-10">
                  <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4 scroll-pr-32 md:scroll-pr-4">
                    {ALL_VIBES.map(vibe => (

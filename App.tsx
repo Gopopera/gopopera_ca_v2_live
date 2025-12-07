@@ -1950,26 +1950,23 @@ const AppContent: React.FC = () => {
                         </div>
                      </div>
 
-                     {/* Filter Button and Vibes Section */}
-                     <div className="flex items-center justify-between gap-3 mb-4">
-                       <div className="flex-1"></div> {/* Spacer */}
-                       <button
-                         onClick={() => setFilterDrawerOpen(true)}
-                         className="flex items-center gap-2 px-4 py-2.5 rounded-full border-2 border-[#15383c] text-[#15383c] font-medium hover:bg-[#15383c] hover:text-white transition-colors flex-shrink-0 touch-manipulation active:scale-[0.95] min-h-[40px] sm:min-h-0"
-                       >
-                         <Filter size={18} />
-                         <span className="hidden sm:inline">Filters</span>
-                         {getActiveFilterCount() > 0 && (
-                           <span className="px-2 py-0.5 rounded-full bg-[#e35e25] text-white text-xs font-bold">
-                             {getActiveFilterCount()}
-                           </span>
-                         )}
-                       </button>
-                     </div>
-                     
-                     {/* Vibes Section - Scrollable Icons */}
-                     <div>
-                       <h3 className="text-sm font-semibold text-gray-600 mb-3">Filter by Vibes</h3>
+                     {/* Vibes Section - Scrollable Icons with Filter Button */}
+                     <div className="mt-4">
+                       <div className="flex items-center justify-between mb-3">
+                         <h3 className="text-sm font-semibold text-gray-600">Filter by Vibes</h3>
+                         <button
+                           onClick={() => setFilterDrawerOpen(true)}
+                           className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border-2 border-[#15383c] text-[#15383c] font-medium hover:bg-[#15383c] hover:text-white transition-colors flex-shrink-0 touch-manipulation active:scale-[0.95] text-xs sm:text-sm"
+                         >
+                           <Filter size={16} className="sm:w-[18px] sm:h-[18px]" />
+                           <span className="hidden sm:inline">Filters</span>
+                           {getActiveFilterCount() > 0 && (
+                             <span className="px-1.5 py-0.5 rounded-full bg-[#e35e25] text-white text-[10px] sm:text-xs font-bold">
+                               {getActiveFilterCount()}
+                             </span>
+                           )}
+                         </button>
+                       </div>
                        <div className="relative z-10">
                          <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4 scroll-pr-32 md:scroll-pr-4">
                            {ALL_VIBES.map(vibe => (
