@@ -964,10 +964,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       </div>
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 md:py-12 border-t border-gray-100">
-         <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-6 sm:mb-8 text-center">Other events you might be interested in</h2>
+         <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-6 sm:mb-8 text-center">Other circles you might be interested in</h2>
          {/* Desktop: Horizontal scroll with better spacing */}
          <div className="hidden md:block">
-           <div className="relative group">
+           <div className="relative group px-12">
              {/* Left Arrow */}
              <button
                onClick={() => {
@@ -976,19 +976,19 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                    container.scrollBy({ left: -400, behavior: 'smooth' });
                  }
                }}
-               className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100 flex"
+               className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100 flex"
                aria-label="Scroll left"
              >
                <ChevronLeft size={20} />
              </button>
              
-             {/* Scrollable Container */}
+             {/* Scrollable Container - Centered */}
              <div 
                id="other-events-scroll"
-               className="flex overflow-x-auto gap-6 lg:gap-8 pb-2 snap-x snap-mandatory scroll-smooth hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain"
+               className="flex overflow-x-auto gap-6 lg:gap-8 pb-2 snap-x snap-mandatory scroll-smooth hide-scrollbar scroll-smooth touch-pan-x overscroll-x-contain justify-center"
              >
                {recommendedEvents.map((recEvent, index) => (
-                 <div key={recEvent.id} className="snap-start shrink-0 w-[calc(25%-1.5rem)] lg:w-[calc(25%-2rem)] flex-shrink-0 flex">
+                 <div key={recEvent.id} className="snap-start shrink-0 w-[280px] lg:w-[300px] flex-shrink-0 flex">
                    <EventCard 
                      event={recEvent} 
                      onClick={onEventClick} 
@@ -1018,7 +1018,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                    container.scrollBy({ left: 400, behavior: 'smooth' });
                  }
                }}
-               className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100 flex"
+               className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100 flex"
                aria-label="Scroll right"
              >
                <ChevronRight size={20} />
