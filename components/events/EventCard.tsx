@@ -277,8 +277,8 @@ export const EventCard: React.FC<EventCardProps> = ({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent opacity-70 group-hover:opacity-80 transition-opacity" />
         
-        {/* Main Category Badge - Enhanced design */}
-        <div className="absolute top-4 left-4 inline-flex items-center justify-center py-2 sm:py-2.5 px-4 sm:px-5 rounded-full bg-white/95 backdrop-blur-md text-[#e35e25] text-[10px] sm:text-xs font-bold tracking-wider uppercase z-10 shadow-xl border border-white/50">
+        {/* Main Category Badge - Premium modern design */}
+        <div className="absolute top-4 left-4 inline-flex items-center justify-center py-2 sm:py-2.5 px-4 sm:px-5 rounded-full bg-gray-100/90 backdrop-blur-sm text-[#e35e25] text-[10px] sm:text-xs font-bold tracking-wider uppercase z-10 border border-gray-300/80">
           {getMainCategoryLabelFromEvent(event)}
         </div>
 
