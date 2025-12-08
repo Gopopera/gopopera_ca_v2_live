@@ -594,11 +594,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       </div>
 
 
-      {/* Image Gallery - Enhanced with better visual design */}
-      <div className="relative h-[45vh] sm:h-[50vh] md:h-[55vh] lg:h-[60vh] xl:h-[65vh] w-full overflow-hidden group">
-        <div className="lg:max-w-7xl lg:mx-auto lg:px-6 lg:px-8 h-full relative">
+      {/* Hero Section - Premium cinematic design */}
+      <div className="relative h-[50vh] sm:h-[55vh] md:h-[60vh] lg:h-[65vh] xl:h-[70vh] w-full overflow-hidden">
         {event.imageUrls && event.imageUrls.length > 1 ? (
-          // Multiple images - horizontal scrollable gallery with enhanced design
+          // Multiple images - horizontal scrollable gallery
           <div 
             className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth h-full hide-scrollbar cursor-pointer"
             onScroll={(e) => {
@@ -621,16 +620,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 <img 
                   src={url} 
                   alt={`${event.title} - Image ${index + 1}`} 
-                  className="w-full h-full object-cover object-center transition-opacity duration-300"
+                  className="w-full h-full object-cover object-center"
                 />
-                {index === currentImageIndex && (
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
-                )}
               </div>
             ))}
           </div>
         ) : (
-          // Single image - enhanced with better hover effect
+          // Single image - fully visible
           <div
             className="w-full h-full cursor-pointer relative"
             onClick={() => {
@@ -646,7 +642,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             <img 
               src={(event.imageUrls && event.imageUrls.length > 0) ? event.imageUrls[0] : (event.imageUrl || `https://picsum.photos/seed/${event.id}/800/600`)} 
               alt={event.title} 
-              className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-110" 
+              className="w-full h-full object-cover object-center" 
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 if (!target.src.includes('picsum.photos')) {
@@ -654,12 +650,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 }
               }}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-none" />
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#15383c] via-[#15383c]/50 to-transparent opacity-95 pointer-events-none" />
         
-        {/* Favorite Button - Top Right on Image (positioned below header) */}
+        {/* Soft gradient only at bottom for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
+        
+        {/* Favorite Button - Glass design top-right */}
         {onToggleFavorite && (
           <button
             onClick={(e) => {
@@ -683,8 +680,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               e.preventDefault();
             }}
             type="button"
-            className={`absolute top-20 sm:top-20 lg:top-20 right-4 w-11 h-11 sm:w-12 sm:h-12 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg hover:scale-105 active:scale-[0.92] transition-all touch-manipulation border border-white/50 z-50 pointer-events-auto ${
-              isFavorite ? 'text-[#e35e25]' : 'text-white'
+            className={`absolute top-20 sm:top-20 lg:top-20 right-4 w-11 h-11 sm:w-12 sm:h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 hover:bg-white/30 transition-all hover:scale-110 active:scale-95 touch-manipulation z-50 pointer-events-auto ${
+              isFavorite ? 'bg-[#e35e25]/90 border-[#e35e25]/50' : ''
             }`}
             style={{ pointerEvents: 'auto', WebkitTapHighlightColor: 'transparent' }}
             aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
@@ -692,125 +689,122 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             <Heart 
               size={22} 
               className={`sm:w-6 sm:h-6 transition-all ${
-                isFavorite ? 'fill-[#e35e25] text-[#e35e25]' : 'fill-none text-white'
+                isFavorite ? 'fill-white text-white' : 'fill-white/80 text-white'
               }`}
-              style={isFavorite ? { fill: '#e35e25', color: '#e35e25' } : { fill: 'none', color: 'white' }}
               strokeWidth={2.5}
             />
           </button>
         )}
         
-        {/* Image counter for multiple images - Enhanced design */}
+        {/* Image counter for multiple images */}
         {event.imageUrls && event.imageUrls.length > 1 && (
-          <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md text-[#15383c] text-xs font-bold px-3 py-1.5 rounded-full shadow-lg border border-white/50 z-10 pointer-events-none">
+          <div className="absolute bottom-24 right-4 bg-white/20 backdrop-blur-md text-white text-xs font-bold px-3 py-1.5 rounded-full border border-white/30 z-10 pointer-events-none">
             {currentImageIndex + 1} / {event.imageUrls.length}
           </div>
         )}
-         <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 md:p-8 lg:p-12 max-w-7xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6">
-            <div className="text-white animate-fade-in-up">
-               <span className="inline-block px-3 sm:px-3.5 py-1 sm:py-1.5 bg-gray-100/90 backdrop-blur-sm rounded-full text-[#e35e25] text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-wider mb-2 sm:mb-3 md:mb-4 border border-gray-300/80">{getMainCategoryLabelFromEvent(event)}</span>
-               <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-heading font-bold leading-tight mb-3 sm:mb-4 text-balance shadow-black drop-shadow-lg">{event.title}</h1>
-               <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 md:gap-3 lg:gap-4 text-gray-200 text-xs sm:text-sm md:text-base font-medium">
-                  <span className="flex items-center bg-white/10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg backdrop-blur-md border border-white/10"><Calendar size={14} className="sm:w-4 sm:h-4 mr-1.5 sm:mr-2 text-popera-orange shrink-0" /> <span className="truncate">{formatDate(event.date)} • {event.time}</span></span>
-                  <span className="flex items-center bg-white/10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg backdrop-blur-md border border-white/10"><MapPin size={14} className="sm:w-4 sm:h-4 mr-1.5 sm:mr-2 text-popera-orange shrink-0" /> <span className="truncate">{event.location}</span></span>
-                  {event.attendees !== undefined && (<span className="flex items-center bg-white/10 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg backdrop-blur-md border border-white/10"><User size={14} className="sm:w-4 sm:h-4 mr-1.5 sm:mr-2 text-popera-orange shrink-0" /> <span>{event.attendees} attending</span></span>)}
-               </div>
+        
+        {/* Content Overlay - White text over bottom gradient */}
+        <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 md:p-10 lg:p-12 xl:p-16 max-w-7xl mx-auto">
+          <div className="text-white">
+            {/* Category Badge */}
+            <span className="inline-block px-4 py-2 bg-gray-100/90 backdrop-blur-sm rounded-full text-[#e35e25] text-xs sm:text-sm font-bold uppercase tracking-wider mb-4 sm:mb-5 border border-gray-300/80">
+              {getMainCategoryLabelFromEvent(event)}
+            </span>
+            
+            {/* Title - Large, clean typography */}
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-heading font-bold leading-tight mb-4 sm:mb-5 md:mb-6 text-balance drop-shadow-lg">
+              {event.title}
+            </h1>
+            
+            {/* Host Info - Clean, minimal */}
+            <div className="flex items-center gap-3 mb-4 sm:mb-5">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/20 backdrop-blur-sm overflow-hidden ring-2 ring-white/30">
+                {hostProfilePicture ? (
+                  <img 
+                    src={hostProfilePicture} 
+                    alt={displayHostName} 
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-white/20 text-white font-bold text-lg">
+                    {displayHostName?.[0]?.toUpperCase() || 'H'}
+                  </div>
+                )}
+              </div>
+              <p className="text-base sm:text-lg font-medium text-white/90 drop-shadow-md">
+                {displayHostName || 'Unknown Host'}
+              </p>
             </div>
-         </div>
+            
+            {/* Metadata - Clean, icon-based, minimalist */}
+            <div className="flex flex-wrap items-center gap-4 sm:gap-5 text-white/90 mb-6 sm:mb-8">
+              <div className="flex items-center gap-2 text-sm sm:text-base">
+                <Calendar size={18} className="sm:w-5 sm:h-5 shrink-0" />
+                <span>{formatDate(event.date)} • {event.time}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm sm:text-base">
+                <MapPin size={18} className="sm:w-5 sm:h-5 shrink-0" />
+                <span className="truncate">{event.location}</span>
+              </div>
+              {reservationCount !== null && (
+                <div className="flex items-center gap-2 text-sm sm:text-base">
+                  <User size={18} className="sm:w-5 sm:h-5 shrink-0" />
+                  <span>{reservationCount} attending</span>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-10 lg:py-12">
-        {/* Mobile Layout: Enhanced with modern card design */}
-        <div className="flex lg:hidden gap-3 mb-6 items-start">
-          {/* Left: Host Info with Metrics - Enhanced */}
-          <div className="flex-1 min-w-0">
-            <div className="p-4 bg-white rounded-2xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
-              {/* Host Info with Follow Button */}
-              <div className="flex items-center justify-between gap-3 mb-3">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#e35e25] to-[#15383c] overflow-hidden ring-2 ring-white shadow-md cursor-pointer shrink-0" onClick={() => onHostClick?.(displayHostName)}>
-                    {hostProfilePicture ? (
-                      <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
+      {/* Content Sections - Premium clean design */}
+      <div className="bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 md:py-20 lg:py-24">
+          {/* Reservation Success Message */}
+          {reservationSuccess && (
+            <div className="mb-8 bg-green-50 border border-green-200 rounded-[32px] p-5 sm:p-6 flex items-center gap-3 animate-fade-in">
+              <CheckCircle2 size={24} className="text-green-600 shrink-0" />
+              <p className="text-green-800 font-medium text-base">{t('event.reservationSuccess')}</p>
+            </div>
+          )}
+
+          {/* Host Block - Premium design */}
+          <div className="mb-16 sm:mb-20 md:mb-24">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-8">
+              <div className="flex items-center gap-5 sm:gap-6">
+                {/* Large Avatar */}
+                <div 
+                  className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full bg-gradient-to-br from-[#e35e25] to-[#15383c] overflow-hidden ring-4 ring-white shadow-xl cursor-pointer hover:ring-[#e35e25]/30 transition-all shrink-0"
+                  onClick={() => onHostClick?.(displayHostName)}
+                >
+                  {hostProfilePicture ? (
+                    <img 
+                      src={hostProfilePicture} 
+                      alt={displayHostName} 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
-                      }} />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-lg">
-                        {displayHostName?.[0]?.toUpperCase() || 'H'}
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-1">{t('event.hostedBy')}</p>
-                    <h3 className="text-sm font-bold text-[#15383c] cursor-pointer hover:text-[#e35e25] transition-colors truncate" onClick={() => onHostClick?.(displayHostName)}>{displayHostName}</h3>
-                  </div>
-                </div>
-                {/* Follow Button - Right side */}
-                {isLoggedIn && (
-                  <button
-                    onClick={handleFollowToggle}
-                    disabled={followLoading}
-                    aria-label={isFollowingHost ? `Unfollow ${displayHostName}` : `Follow ${displayHostName}`}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-sm whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-1.5 shrink-0 ${
-                      isFollowingHost
-                        ? 'bg-[#15383c] text-white hover:bg-[#1f4d52] border border-[#15383c]'
-                        : 'bg-white border-2 border-gray-200 text-[#15383c] hover:border-[#e35e25] hover:text-[#e35e25] hover:bg-[#e35e25]/5'
-                    } disabled:opacity-50`}
-                  >
-                    {isFollowingHost ? (
-                      <>
-                        <UserCheck size={14} /> {t('event.following')}
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus size={14} /> {t('event.follow')}
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
-              {/* Attending & Capacity Metrics - Enhanced */}
-              <div className="flex gap-3">
-                <div className="flex-1 bg-gradient-to-br from-[#e35e25]/10 to-[#15383c]/10 p-3 rounded-xl border border-[#e35e25]/20 text-center">
-                  <h4 className="text-lg font-heading font-bold text-[#15383c]">
-                    {reservationCount !== null ? reservationCount : '...'}
-                  </h4>
-                  <p className="text-[9px] uppercase tracking-wide text-gray-600 font-bold mt-1">Attending</p>
-                </div>
-                <div className="flex-1 bg-gradient-to-br from-[#e35e25]/10 to-[#15383c]/10 p-3 rounded-xl border border-[#e35e25]/20 text-center">
-                  <h4 className="text-lg font-heading font-bold text-[#15383c]">
-                    {event.capacity || '∞'}
-                  </h4>
-                  <p className="text-[9px] uppercase tracking-wide text-gray-600 font-bold mt-1">{t('event.capacity')}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-        </div>
-
-        {/* Desktop Layout: Enhanced with modern card design */}
-        <div className="hidden lg:block">
-          <div className="p-6 lg:p-8 bg-white rounded-2xl sm:rounded-3xl shadow-md border border-gray-100 hover:shadow-lg transition-all">
-            {/* Host Info with Follow Button - Enhanced */}
-            <div className="flex items-center justify-between gap-4 mb-4">
-              <div className="flex items-center gap-4 flex-1 min-w-0">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#e35e25] to-[#15383c] overflow-hidden ring-4 ring-white shadow-lg cursor-pointer shrink-0 hover:ring-[#e35e25]/30 transition-all" onClick={() => onHostClick?.(displayHostName)}>
-                  {hostProfilePicture ? (
-                    <img src={hostProfilePicture} alt={displayHostName} className="w-full h-full object-cover" onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
-                    }} />
+                      }} 
+                    />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-2xl">
+                    <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-2xl sm:text-3xl">
                       {displayHostName?.[0]?.toUpperCase() || 'H'}
                     </div>
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">{t('event.hostedBy')}</p>
-                  <h3 className="text-lg font-bold text-[#15383c] cursor-pointer hover:text-[#e35e25] transition-colors truncate" onClick={() => onHostClick?.(displayHostName)}>{displayHostName}</h3>
+                  <p className="text-xs sm:text-sm uppercase tracking-wider text-gray-500 font-bold mb-2">{t('event.hostedBy')}</p>
+                  <h3 
+                    className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c] cursor-pointer hover:text-[#e35e25] transition-colors mb-2"
+                    onClick={() => onHostClick?.(displayHostName)}
+                  >
+                    {displayHostName}
+                  </h3>
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
@@ -818,79 +812,60 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                         setShowHostReviewsModal(true);
                       }
                     }} 
-                    className="flex items-center space-x-1.5 mt-2 bg-[#e35e25]/10 hover:bg-[#e35e25]/20 px-3 py-1.5 rounded-lg transition-colors border border-[#e35e25]/20 hover:border-[#e35e25]/40 group/rating shrink-0 w-fit touch-manipulation active:scale-95"
+                    className="flex items-center space-x-2 bg-[#e35e25]/10 hover:bg-[#e35e25]/20 px-4 py-2 rounded-full transition-colors border border-[#e35e25]/20 hover:border-[#e35e25]/40 group/rating w-fit touch-manipulation active:scale-95"
                   >
-                    <Star size={14} className="text-[#e35e25] fill-[#e35e25] group-hover/rating:scale-110 transition-transform" />
-                    <span className="text-xs font-bold text-[#15383c]">{formatRating(currentRating.rating)}</span>
-                    <span className="text-[10px] text-gray-500">({currentRating.reviewCount})</span>
+                    <Star size={16} className="text-[#e35e25] fill-[#e35e25]" />
+                    <span className="text-sm font-bold text-[#15383c]">{formatRating(currentRating.rating)}</span>
+                    <span className="text-xs text-gray-600">({currentRating.reviewCount})</span>
                   </button>
                 </div>
               </div>
-              {/* Follow Button - Right side */}
+              
+              {/* Follow Button - Modern rounded pill */}
               {isLoggedIn && (
                 <button
                   onClick={handleFollowToggle}
                   disabled={followLoading}
                   aria-label={isFollowingHost ? `Unfollow ${displayHostName}` : `Follow ${displayHostName}`}
-                  className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-md whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2 shrink-0 ${
+                  className={`px-8 py-4 rounded-full text-base font-bold transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2 shrink-0 ${
                     isFollowingHost
-                      ? 'bg-[#15383c] text-white hover:bg-[#1f4d52] border-2 border-[#15383c]'
-                      : 'bg-white border-2 border-gray-300 text-[#15383c] hover:border-[#e35e25] hover:text-[#e35e25] hover:bg-[#e35e25]/5'
-                  } disabled:opacity-50`}
+                      ? 'bg-[#15383c] text-white hover:bg-[#1f4d52]'
+                      : 'bg-white border-2 border-[#15383c] text-[#15383c] hover:bg-[#15383c] hover:text-white'
+                  } disabled:opacity-50 shadow-lg hover:shadow-xl`}
                 >
                   {isFollowingHost ? (
                     <>
-                      <UserCheck size={16} /> {t('event.following')}
+                      <UserCheck size={20} /> {t('event.following')}
                     </>
                   ) : (
                     <>
-                      <UserPlus size={16} /> {t('event.follow')}
+                      <UserPlus size={20} /> {t('event.follow')}
                     </>
                   )}
                 </button>
               )}
             </div>
-            {/* Attending & Capacity Metrics - Enhanced */}
-            <div className="flex gap-4">
-              <div className="flex-1 bg-gradient-to-br from-[#e35e25]/10 to-[#15383c]/10 p-4 rounded-xl border border-[#e35e25]/20 text-center">
-                <h4 className="text-2xl font-heading font-bold text-[#15383c]">
-                  {reservationCount !== null ? reservationCount : '...'}
-                </h4>
-                <p className="text-[10px] uppercase tracking-wide text-gray-600 font-bold mt-1">Attending</p>
-              </div>
-              <div className="flex-1 bg-gradient-to-br from-[#e35e25]/10 to-[#15383c]/10 p-4 rounded-xl border border-[#e35e25]/20 text-center">
-                <h4 className="text-2xl font-heading font-bold text-[#15383c]">
-                  {event.capacity || '∞'}
-                </h4>
-                <p className="text-[10px] uppercase tracking-wide text-gray-600 font-bold mt-1">{t('event.capacity')}</p>
-              </div>
-            </div>
           </div>
-        </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6 sm:pb-8 md:pb-10 lg:pb-12">
-        <div className="space-y-6 sm:space-y-8 md:space-y-10">
-          {/* Reservation Success Message */}
-          {reservationSuccess && (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3 animate-fade-in">
-              <CheckCircle2 size={20} className="text-green-600 shrink-0" />
-              <p className="text-green-800 font-medium text-sm">{t('event.reservationSuccess')}</p>
+          {/* Description Section - Premium spacing */}
+          <div className="mb-16 sm:mb-20 md:mb-24">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-6 sm:mb-8">
+              {t('event.aboutEvent')}
+            </h2>
+            <div className="prose prose-lg max-w-none">
+              <p className="text-base sm:text-lg md:text-xl text-gray-700 leading-relaxed font-light">
+                {event.description || "Join us for an incredible experience..."}
+              </p>
             </div>
-          )}
-
-          <div>
-            <h2 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-popera-teal mb-3 sm:mb-4 md:mb-6 flex items-center gap-2 sm:gap-3">{t('event.aboutEvent')}</h2>
-            <div className="prose prose-lg text-gray-600 leading-relaxed font-light text-sm sm:text-base md:text-base"><p>{event.description || "Join us for an incredible experience..."}</p></div>
             
             {/* Vibes - Subtle display after description */}
             {event.vibes && event.vibes.length > 0 && (
-              <div className="mt-4 sm:mt-5 pt-4 sm:pt-5 border-t border-gray-100">
-                <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+              <div className="mt-8 sm:mt-10 pt-8 sm:pt-10 border-t border-gray-100">
+                <div className="flex flex-wrap items-center gap-3 sm:gap-4">
                   {event.vibes.map((vibe, index) => (
                     <span
                       key={index}
-                      className="inline-flex items-center px-3 py-1.5 rounded-full bg-gray-50 text-gray-600 border border-gray-200 text-xs sm:text-sm font-medium hover:border-[#e35e25]/30 hover:text-[#e35e25] transition-colors"
+                      className="inline-flex items-center px-4 py-2 rounded-full bg-gray-50 text-gray-600 border border-gray-200 text-sm sm:text-base font-medium hover:border-[#e35e25]/30 hover:text-[#e35e25] transition-colors"
                     >
                       {vibe}
                     </span>
@@ -900,20 +875,25 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             )}
           </div>
 
+          {/* What to Expect Section */}
           {event.whatToExpect && (
-            <div>
-              <h2 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-popera-teal mb-3 sm:mb-4 md:mb-6 flex items-center gap-2 sm:gap-3">
-                <Sparkles size={18} className="sm:w-5 sm:h-5 text-popera-orange" /> {t('event.whatToExpect')}
+            <div className="mb-16 sm:mb-20 md:mb-24">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-6 sm:mb-8 flex items-center gap-3">
+                <Sparkles size={24} className="text-[#e35e25]" /> 
+                {t('event.whatToExpect')}
               </h2>
-              <div className="bg-popera-softTeal p-4 sm:p-6 md:p-8 rounded-xl sm:rounded-[1.5rem] md:rounded-[2rem] border border-popera-teal/5 text-gray-600 font-light leading-relaxed text-sm sm:text-base">
-                <p className="mb-3 sm:mb-4 whitespace-pre-line">{event.whatToExpect}</p>
+              <div className="bg-[#f8fafb] p-8 sm:p-10 md:p-12 rounded-[32px] md:rounded-[40px] border border-gray-100 text-gray-700 leading-relaxed text-base sm:text-lg font-light">
+                <p className="whitespace-pre-line">{event.whatToExpect}</p>
               </div>
             </div>
           )}
 
-          <div className="border-t border-gray-100 pt-6 sm:pt-8 md:pt-10">
-            <h2 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-popera-teal mb-4 sm:mb-6">{t('event.location')}</h2>
-            <div className="rounded-xl sm:rounded-[1.5rem] md:rounded-[2rem] overflow-hidden h-40 sm:h-48 md:h-64 relative group cursor-pointer shadow-inner border border-gray-200">
+          {/* Location Section - Premium design */}
+          <div className="mb-16 sm:mb-20 md:mb-24">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-6 sm:mb-8">
+              {t('event.location')}
+            </h2>
+            <div className="rounded-[32px] md:rounded-[40px] overflow-hidden h-64 sm:h-80 md:h-96 relative group cursor-pointer shadow-lg border border-gray-200 mb-6">
               <MockMap 
                 lat={event.lat}
                 lng={event.lng}
@@ -922,54 +902,55 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 className="w-full h-full object-cover"
               />
             </div>
-            <p className="mt-3 sm:mt-4 md:mt-6 text-popera-teal font-medium text-sm sm:text-base md:text-lg flex items-center">
-              <MapPin size={16} className="sm:w-[18px] sm:h-[18px] mr-1.5 sm:mr-2 md:mr-3 text-popera-orange shrink-0" /> 
-              <span className="truncate">{event.location}</span>
+            <p className="text-lg sm:text-xl md:text-2xl text-[#15383c] font-medium flex items-center gap-3">
+              <MapPin size={24} className="text-[#e35e25] shrink-0" /> 
+              <span>{event.location}</span>
             </p>
+          </div>
 
-            {/* Cancellation / Expulsion Policy Section - Moved here after location */}
-            <div className="mt-6 sm:mt-8 md:mt-10 pt-6 sm:pt-8 md:pt-10 border-t border-gray-100">
-              <h3 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">
-                Cancellation / Expulsion Policy
-              </h3>
-              <div className="space-y-4 text-gray-700 text-sm sm:text-base leading-relaxed">
-                <p>
-                  <strong className="text-[#15383c]">Cancellation Policy:</strong> Full refund 48+ hours before, 50% refund 24-48 hours before, no refund within 24 hours or no-shows.
-                </p>
-                <p>
-                  <strong className="text-[#15383c]">Expulsion Policy:</strong> Hosts may expel rule-violating attendees without refunds; repeat offenders may be banned.
-                </p>
-                <p className="text-gray-500 text-xs sm:text-sm italic">
-                  For complete policy details, please review our <button onClick={() => setViewState(ViewState.CANCELLATION)} className="text-[#e35e25] hover:underline font-medium">Cancellation Policy</button> page.
-                </p>
-              </div>
+          {/* Cancellation Policy Section */}
+          <div className="mb-16 sm:mb-20 md:mb-24 pt-8 sm:pt-10 border-t border-gray-100">
+            <h3 className="text-2xl sm:text-3xl font-heading font-bold text-[#15383c] mb-6 sm:mb-8">
+              Cancellation / Expulsion Policy
+            </h3>
+            <div className="space-y-4 text-gray-700 text-base sm:text-lg leading-relaxed">
+              <p>
+                <strong className="text-[#15383c]">Cancellation Policy:</strong> Full refund 48+ hours before, 50% refund 24-48 hours before, no refund within 24 hours or no-shows.
+              </p>
+              <p>
+                <strong className="text-[#15383c]">Expulsion Policy:</strong> Hosts may expel rule-violating attendees without refunds; repeat offenders may be banned.
+              </p>
+              <p className="text-gray-500 text-sm sm:text-base italic">
+                For complete policy details, please review our <button onClick={() => setViewState(ViewState.CANCELLATION)} className="text-[#e35e25] hover:underline font-medium">Cancellation Policy</button> page.
+              </p>
             </div>
           </div>
         </div>
 
+        {/* Sticky Sidebar - Premium design */}
         <div className="relative hidden lg:block">
-           <div className="sticky top-32 bg-white rounded-3xl shadow-xl border border-gray-100 p-6 lg:p-8 hover:shadow-2xl transition-shadow">
-              <div className="flex justify-between items-center mb-6 lg:mb-8 pb-6 border-b border-gray-100">
+           <div className="sticky top-32 bg-white rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100 p-8 hover:shadow-[0_12px_40px_rgb(0,0,0,0.12)] transition-shadow">
+              <div className="flex justify-between items-center mb-8 pb-8 border-b border-gray-100">
                 <div>
-                  <span className="text-3xl lg:text-4xl font-heading font-bold text-[#15383c]">{event.price}</span>
-                  <p className="text-xs lg:text-sm text-gray-500 font-medium mt-1">per person</p>
+                  <span className="text-4xl lg:text-5xl font-heading font-bold text-[#15383c]">{event.price}</span>
+                  <p className="text-sm lg:text-base text-gray-500 font-medium mt-2">per person</p>
                 </div>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {/* Edit Event Button - Only for host */}
                 {isLoggedIn && user?.uid === event.hostId && (
                   <button
                     onClick={() => setViewState(ViewState.EDIT_EVENT)}
-                    className="w-full py-3.5 lg:py-4 bg-gray-100 text-[#15383c] rounded-full text-base lg:text-lg font-bold hover:bg-gray-200 transition-colors shadow-md whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2 border border-gray-200"
+                    className="w-full py-4 lg:py-5 bg-white border-2 border-[#15383c] text-[#15383c] rounded-full text-lg font-bold hover:bg-[#15383c] hover:text-white transition-all shadow-lg hover:shadow-xl whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2"
                   >
-                    <Edit size={18} /> Edit Event
+                    <Edit size={20} /> Edit Event
                   </button>
                 )}
                 <button 
                   onClick={handleRSVP}
                   disabled={isDemo || reserving}
                   aria-label={hasRSVPed ? "Cancel reservation" : "Reserve spot"}
-                  className={`w-full py-3.5 lg:py-4 font-bold text-base lg:text-lg rounded-full shadow-xl transition-all hover:-translate-y-0.5 touch-manipulation active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  className={`w-full py-4 lg:py-5 font-bold text-lg rounded-full shadow-lg transition-all hover:-translate-y-0.5 touch-manipulation active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
                     isDemo 
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                       : hasRSVPed
@@ -982,25 +963,26 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 <button
                   onClick={handleShare}
                   aria-label="Share event"
-                  className="w-full py-3.5 lg:py-4 bg-[#15383c] text-white rounded-full text-base lg:text-lg font-bold hover:bg-[#1f4d52] transition-colors shadow-md whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2 !opacity-100 !visible"
-                  style={{ backgroundColor: '#15383c', opacity: 1, visibility: 'visible' as const }}
+                  className="w-full py-4 lg:py-5 bg-white border-2 border-[#15383c] text-[#15383c] rounded-full text-lg font-bold hover:bg-[#15383c] hover:text-white transition-all shadow-lg hover:shadow-xl whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2"
                 >
-                  <Share2 size={18} /> Share Event
+                  <Share2 size={20} /> Share Event
                 </button>
                 <button 
                   onClick={handleConversationClick}
                   disabled={isDemo}
-                  className={`w-full py-3.5 lg:py-4 font-bold text-base lg:text-lg rounded-full border flex items-center justify-center gap-2 touch-manipulation active:scale-95 transition-colors ${
+                  className={`w-full py-4 lg:py-5 font-bold text-lg rounded-full border-2 flex items-center justify-center gap-2 touch-manipulation active:scale-95 transition-colors ${
                     isDemo
                       ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                      : 'bg-popera-teal/5 text-popera-teal border-popera-teal/10 hover:bg-popera-teal/10'
+                      : 'bg-white border-[#15383c] text-[#15383c] hover:bg-[#15383c] hover:text-white'
                   }`}
                 >
-                  <MessageCircle size={20} className="lg:w-[22px] lg:h-[22px]" /> 
+                  <MessageCircle size={20} /> 
                   {isDemo ? 'Chat Locked' : 'Join Group Chat'}
                 </button>
               </div>
-              <div className="mt-6 lg:mt-8 pt-4 lg:pt-6 border-t border-gray-100 text-center"><p className="text-[10px] lg:text-xs text-gray-400 leading-relaxed">Secure payment powered by Stripe.</p></div>
+              <div className="mt-8 pt-6 border-t border-gray-100 text-center">
+                <p className="text-xs text-gray-400 leading-relaxed">Secure payment powered by Stripe.</p>
+              </div>
            </div>
         </div>
       </div>
