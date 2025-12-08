@@ -707,7 +707,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 md:p-10 lg:p-12 xl:p-16 max-w-7xl mx-auto">
           <div className="text-white">
             {/* Category Badge */}
-            <span className="inline-block px-4 py-2 bg-gray-100/90 backdrop-blur-sm rounded-full text-[#e35e25] text-xs sm:text-sm font-bold uppercase tracking-wider mb-4 sm:mb-5 border border-gray-300/80">
+            <span className="inline-block px-4 py-2 bg-white/20 backdrop-blur-md rounded-full text-[#e35e25] text-xs sm:text-sm font-bold uppercase tracking-wider mb-4 sm:mb-5 border border-white/30">
               {getMainCategoryLabelFromEvent(event)}
             </span>
             
@@ -715,30 +715,6 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-heading font-bold leading-tight mb-4 sm:mb-5 md:mb-6 text-balance drop-shadow-lg">
               {event.title}
             </h1>
-            
-            {/* Host Info - Clean, minimal */}
-            <div className="flex items-center gap-3 mb-4 sm:mb-5">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/20 backdrop-blur-sm overflow-hidden ring-2 ring-white/30">
-                {hostProfilePicture ? (
-                  <img 
-                    src={hostProfilePicture} 
-                    alt={displayHostName} 
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-white/20 text-white font-bold text-lg">
-                    {displayHostName?.[0]?.toUpperCase() || 'H'}
-                  </div>
-                )}
-              </div>
-              <p className="text-base sm:text-lg font-medium text-white/90 drop-shadow-md">
-                {displayHostName || 'Unknown Host'}
-              </p>
-            </div>
             
             {/* Metadata - Clean, icon-based, minimalist */}
             <div className="flex flex-wrap items-center gap-4 sm:gap-5 text-white/90 mb-6 sm:mb-8">
