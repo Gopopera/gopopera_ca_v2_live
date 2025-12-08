@@ -286,10 +286,10 @@ export const EventCard: React.FC<EventCardProps> = ({
           }}
         />
         {/* Soft gradient only at bottom for text readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none z-10" />
         
         {/* Main Category Badge - Premium modern design */}
-        <div className="absolute top-4 left-4 inline-flex items-center justify-center py-2 px-4 rounded-full bg-gray-100/90 backdrop-blur-sm text-[#e35e25] text-[10px] sm:text-xs font-bold tracking-wider uppercase z-10 border border-gray-300/80">
+        <div className="absolute top-4 left-4 inline-flex items-center justify-center py-2 px-4 rounded-full bg-gray-100/90 backdrop-blur-sm text-[#e35e25] text-[10px] sm:text-xs font-bold tracking-wider uppercase z-20 border border-gray-300/80">
           {getMainCategoryLabelFromEvent(event)}
         </div>
 
@@ -366,7 +366,7 @@ export const EventCard: React.FC<EventCardProps> = ({
         </div>
 
         {/* Content Overlay - White text over bottom gradient */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 md:p-6 z-20">
+        <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 md:p-6 z-30">
           {/* Title - Large, clean typography */}
           <h3 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-white mb-2 leading-tight line-clamp-2 drop-shadow-lg">
             {event.title}
