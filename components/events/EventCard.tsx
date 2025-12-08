@@ -14,6 +14,7 @@ import {
   getAvailableSpots 
 } from '../../utils/eventHelpers';
 import { getMainCategoryLabelFromEvent } from '../../utils/categoryMapper';
+import { getInitials, getAvatarColor } from '../../utils/avatarUtils';
 
 // REFACTORED: Real-time attendees count component
 const EventAttendeesCount: React.FC<{ eventId: string; capacity?: number; inline?: boolean }> = ({ eventId, capacity, inline = false }) => {
@@ -403,8 +404,11 @@ export const EventCard: React.FC<EventCardProps> = ({
                     }}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-white/20 text-white font-bold text-[10px]">
-                    {displayHostName?.[0]?.toUpperCase() || 'H'}
+                  <div 
+                    className="w-full h-full flex items-center justify-center text-white font-bold text-[10px]"
+                    style={{ backgroundColor: `${getAvatarColor(displayHostName)}CC` }} // Add transparency for overlay
+                  >
+                    {getInitials(displayHostName)}
                   </div>
                 )}
               </span>
@@ -444,8 +448,11 @@ export const EventCard: React.FC<EventCardProps> = ({
                     }}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-white/20 text-white font-bold text-xs">
-                    {displayHostName?.[0]?.toUpperCase() || 'H'}
+                  <div 
+                    className="w-full h-full flex items-center justify-center text-white font-bold text-xs"
+                    style={{ backgroundColor: `${getAvatarColor(displayHostName)}CC` }} // Add transparency for overlay
+                  >
+                    {getInitials(displayHostName)}
                   </div>
                 )}
               </span>

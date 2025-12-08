@@ -8,6 +8,7 @@ import { getReservationCountForEvent, listHostReviews } from '../../firebase/db'
 import { getFollowingHosts, getHostFollowers } from '../../firebase/follow';
 import { subscribeToUserProfile } from '../../firebase/userSubscriptions';
 import { EventCard } from '../../components/events/EventCard';
+import { getInitials, getAvatarBgColor } from '../../utils/avatarUtils';
 
 interface ProfilePageProps {
   setViewState: (view: ViewState) => void;
@@ -90,7 +91,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
       }
     };
   }, [user?.uid, userName, user?.photoURL, user?.displayName, userProfile?.photoURL, userProfile?.displayName]);
-  const initials = displayName ? displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'P';
+  const initials = getInitials(displayName);
   
   // Calculate metrics - optimized with parallel queries and proper dependency tracking
   useEffect(() => {
@@ -279,15 +280,17 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
                     target.style.display = 'none';
                     const parent = target.parentElement;
                     if (parent) {
-                      const fallback = document.createElement('span');
-                      fallback.className = 'font-heading font-bold text-[#15383c] text-3xl sm:text-4xl md:text-5xl';
+                      const fallback = document.createElement('div');
+                      fallback.className = `w-full h-full flex items-center justify-center ${getAvatarBgColor(displayName)} text-white font-heading font-bold text-3xl sm:text-4xl md:text-5xl`;
                       fallback.textContent = initials;
                       parent.appendChild(fallback);
                     }
                   }}
                 />
               ) : (
-                <span className="font-heading font-bold text-[#15383c] text-3xl sm:text-4xl md:text-5xl">{initials}</span>
+                <div className={`w-full h-full flex items-center justify-center ${getAvatarBgColor(displayName)} text-white font-heading font-bold text-3xl sm:text-4xl md:text-5xl`}>
+                  {initials}
+                </div>
               )}
             </div>
           </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Event, ViewState } from '../../types';
-import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info, Star, Sparkles, X, UserPlus, UserCheck, ChevronRight, CheckCircle2, Edit } from 'lucide-react';
+import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info, Star, Sparkles, X, UserPlus, UserCheck, ChevronRight, CheckCircle2, Edit, Users } from 'lucide-react';
 import { followHost, unfollowHost, isFollowing } from '../../firebase/follow';
 import { useUserStore } from '../../stores/userStore';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -16,6 +16,8 @@ import { getReservationCountForEvent, listHostReviews, subscribeToReservationCou
 // REFACTORED: No longer using getUserProfile - using real-time subscriptions instead
 import { getMainCategoryLabelFromEvent } from '../../utils/categoryMapper';
 import { getSessionFrequencyText, getSessionModeText } from '../../utils/eventHelpers';
+import { getInitials, getAvatarBgColor } from '../../utils/avatarUtils';
+import { subscribeToFollowersCount } from '../../firebase/follow';
 
 interface EventDetailPageProps {
   event: Event;
@@ -65,6 +67,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const [reserving, setReserving] = useState(false);
   const [reservationSuccess, setReservationSuccess] = useState(false);
   const [hostProfilePicture, setHostProfilePicture] = useState<string | null>(null);
+  const [hostBio, setHostBio] = useState<string | null>(null);
+  const [followersCount, setFollowersCount] = useState<number>(0);
   
   // Store hooks - always called
   const user = useUserStore((state) => state.user);
@@ -293,23 +297,27 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         if (hostData) {
           setHostProfilePicture(hostData.photoURL || null);
           setDisplayHostName(hostData.displayName || 'Unknown Host');
+          setHostBio(hostData.bio || null);
           
           if (import.meta.env.DEV) {
             console.log('[EVENT_DETAIL] ✅ Host profile updated:', {
               hostId: eventHostId,
               displayName: hostData.displayName,
               hasPhoto: !!hostData.photoURL,
+              hasBio: !!hostData.bio,
             });
           }
         } else {
           setHostProfilePicture(null);
           setDisplayHostName('Unknown Host');
+          setHostBio(null);
         }
       });
     }).catch((error) => {
       console.error('[EVENT_DETAIL] ❌ Error loading user subscriptions:', error);
       setHostProfilePicture(null);
       setDisplayHostName('Unknown Host');
+      setHostBio(null);
     });
     
     return () => {
@@ -317,6 +325,31 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         if (import.meta.env.DEV) {
           console.log('[EVENT_DETAIL] 🧹 Unsubscribing from host profile:', { hostId: eventHostId });
         }
+        unsubscribe();
+      }
+    };
+  }, [eventHostId]);
+  
+  // Subscribe to followers count in real-time
+  useEffect(() => {
+    if (!eventHostId) {
+      setFollowersCount(0);
+      return;
+    }
+    
+    let unsubscribe: (() => void) | null = null;
+    
+    try {
+      unsubscribe = subscribeToFollowersCount(eventHostId, (count: number) => {
+        setFollowersCount(count);
+      });
+    } catch (error) {
+      console.error('[EVENT_DETAIL] ❌ Error loading followers count:', error);
+      setFollowersCount(0);
+    }
+    
+    return () => {
+      if (unsubscribe) {
         unsubscribe();
       }
     };
@@ -771,8 +804,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                           }} 
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-2xl sm:text-3xl">
-                          {displayHostName?.[0]?.toUpperCase() || 'H'}
+                        <div className={`w-full h-full flex items-center justify-center ${getAvatarBgColor(displayHostName)} text-white font-bold text-2xl sm:text-3xl`}>
+                          {getInitials(displayHostName)}
                         </div>
                       )}
                     </div>
@@ -797,6 +830,23 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                         <span className="text-sm font-bold text-[#15383c]">{formatRating(currentRating.rating)}</span>
                         <span className="text-xs text-gray-600">({currentRating.reviewCount})</span>
                       </button>
+                      
+                      {/* Followers Count */}
+                      {followersCount > 0 && (
+                        <div className="flex items-center gap-2 mt-3">
+                          <Users size={16} className="text-gray-500" />
+                          <span className="text-sm text-gray-600">
+                            {followersCount} {followersCount === 1 ? 'follower' : 'followers'}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {/* Host Bio */}
+                      {hostBio && (
+                        <p className="text-gray-600 text-sm sm:text-base mt-4 leading-relaxed max-w-2xl">
+                          {hostBio}
+                        </p>
+                      )}
                     </div>
                   </div>
                   
