@@ -113,7 +113,7 @@ export const Pillars: React.FC = () => {
             {pillars.map((pillar) => (
               <div 
                 key={pillar.id}
-                className="group relative h-auto min-h-[500px] sm:min-h-[560px] md:min-h-[550px] lg:min-h-[600px] xl:min-h-[650px] w-[85%] sm:w-[60%] md:w-[35%] flex-shrink-0 snap-start md:snap-center rounded-3xl sm:rounded-[2rem] md:rounded-[2.5rem] lg:rounded-[3rem] overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-3"
+                className="group relative h-auto min-h-[425px] sm:min-h-[560px] md:min-h-[550px] lg:min-h-[600px] xl:min-h-[650px] w-[85%] sm:w-[60%] md:w-[35%] flex-shrink-0 snap-start md:snap-center rounded-3xl sm:rounded-[2rem] md:rounded-[2.5rem] lg:rounded-[3rem] overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-3"
                 style={{ touchAction: 'pan-x pan-y' }}
               >
               {/* Background Image - No filters, crisp and clean */}
@@ -140,8 +140,8 @@ export const Pillars: React.FC = () => {
                     </h3>
                   </div>
                   
-                  {/* Description - Fixed height to ensure tag alignment */}
-                  <p className="text-white text-sm sm:text-base md:text-sm lg:text-base xl:text-lg font-sans font-normal leading-relaxed mb-0 border-l-4 border-[#e35e25] pl-4 sm:pl-5 md:pl-4 lg:pl-5 xl:pl-6 drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] bg-black/40 backdrop-blur-md py-3 sm:py-4 md:py-3 lg:py-4 xl:py-5 pr-3 sm:pr-4 md:pr-3 lg:pr-4 xl:pr-5 rounded-r-xl h-[80px] sm:h-[90px] md:h-[85px] lg:h-[90px] xl:h-[95px] flex items-center">
+                  {/* Description - Flexible height with proper text sizing */}
+                  <p className="text-white text-xs sm:text-sm md:text-sm lg:text-base xl:text-lg font-sans font-normal leading-relaxed mb-0 border-l-4 border-[#e35e25] pl-3 sm:pl-4 md:pl-4 lg:pl-5 xl:pl-6 drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] bg-black/40 backdrop-blur-md py-2.5 sm:py-3 md:py-3 lg:py-4 xl:py-5 pr-2.5 sm:pr-3 md:pr-3 lg:pr-4 xl:pr-5 rounded-r-xl min-h-[70px] sm:min-h-[80px] md:min-h-[85px] lg:min-h-[90px] xl:min-h-[95px] flex items-center">
                     {pillar.description}
                   </p>
                 </div>
