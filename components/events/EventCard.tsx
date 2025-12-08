@@ -265,10 +265,10 @@ export const EventCard: React.FC<EventCardProps> = ({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       style={{ touchAction: 'manipulation' }}
-      className={`group relative bg-white rounded-[28px] md:rounded-[32px] overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.12)] transition-all duration-500 cursor-pointer h-full flex flex-col w-full max-w-[420px] min-h-[500px] sm:min-h-[520px] md:min-h-[540px] focus:outline-none focus:ring-2 focus:ring-[#15383c] focus:ring-offset-2`}
+      className={`group relative bg-white rounded-[28px] md:rounded-[32px] overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.12)] transition-all duration-500 cursor-pointer flex flex-col w-full max-w-[420px] focus:outline-none focus:ring-2 focus:ring-[#15383c] focus:ring-offset-2`}
     >
       {/* Image Container - Premium cinematic design */}
-      <div className={`relative w-full aspect-[4/3] overflow-hidden bg-gradient-to-br from-[#15383c] to-[#1f4d52]`}>
+      <div className={`relative w-full aspect-[4/3] overflow-hidden bg-gradient-to-br from-[#15383c] to-[#1f4d52] flex-shrink-0`}>
         <img 
           src={event.imageUrls && event.imageUrls.length > 0 ? event.imageUrls[0] : (event.imageUrl || `https://picsum.photos/seed/${event.id || 'event'}/800/600`)} 
           alt={event.title} 
@@ -289,7 +289,7 @@ export const EventCard: React.FC<EventCardProps> = ({
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
         
         {/* Main Category Badge - Premium modern design */}
-        <div className="absolute top-5 left-5 inline-flex items-center justify-center py-2.5 sm:py-3 px-5 sm:px-6 rounded-full bg-gray-100/90 backdrop-blur-sm text-[#e35e25] text-[10px] sm:text-xs font-bold tracking-wider uppercase z-10 border border-gray-300/80">
+        <div className="absolute top-4 left-4 inline-flex items-center justify-center py-2 px-4 rounded-full bg-gray-100/90 backdrop-blur-sm text-[#e35e25] text-[10px] sm:text-xs font-bold tracking-wider uppercase z-10 border border-gray-300/80">
           {getMainCategoryLabelFromEvent(event)}
         </div>
 
@@ -366,14 +366,14 @@ export const EventCard: React.FC<EventCardProps> = ({
         </div>
 
         {/* Content Overlay - White text over bottom gradient */}
-        <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6 md:p-7 z-20">
+        <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 md:p-6 z-20">
           {/* Title - Large, clean typography */}
-          <h3 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-white mb-2 sm:mb-3 leading-tight line-clamp-2 drop-shadow-lg">
+          <h3 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-white mb-2 leading-tight line-clamp-2 drop-shadow-lg">
             {event.title}
           </h3>
           
           {/* Host Name - Clean, minimal */}
-          <div className="flex items-center gap-2 mb-3 sm:mb-4">
+          <div className="flex items-center gap-2 mb-2">
             <span className="w-6 h-6 sm:w-7 sm:h-7 shrink-0 rounded-full bg-white/20 backdrop-blur-sm overflow-hidden ring-1 ring-white/30">
               {hostProfilePicture ? (
                 <img 
@@ -391,25 +391,18 @@ export const EventCard: React.FC<EventCardProps> = ({
                 </div>
               )}
             </span>
-            <p className="text-sm sm:text-base font-medium text-white/90 drop-shadow-md">
+            <p className="text-xs sm:text-sm font-medium text-white/90 drop-shadow-md">
               {displayHostName || 'Unknown Host'}
             </p>
           </div>
-
-          {/* Description - Short, clean */}
-          {event.description && (
-            <p className="text-sm sm:text-base text-white/80 mb-4 sm:mb-5 line-clamp-2 leading-relaxed drop-shadow-md">
-              {event.description}
-            </p>
-          )}
 
           {/* Circle Continuity Indicator - Starting Soon */}
           {(() => {
             const continuity = getCircleContinuityText(event);
             if (continuity?.type === 'startingSoon') {
               return (
-                <div className="mb-4 sm:mb-5">
-                  <span className="inline-flex items-center px-4 py-2 rounded-full bg-[#e35e25] text-white text-xs sm:text-sm font-bold uppercase tracking-wider shadow-lg">
+                <div className="mb-2">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#e35e25] text-white text-xs font-bold uppercase tracking-wider shadow-lg">
                     {continuity.text}
                   </span>
                 </div>
@@ -419,32 +412,34 @@ export const EventCard: React.FC<EventCardProps> = ({
           })()}
 
           {/* Metadata - Clean, icon-based, minimalist */}
-          <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-4 sm:mb-5 text-white/90">
-            <div className="flex items-center gap-1.5 text-sm">
-              <Calendar size={14} className="sm:w-4 sm:h-4 shrink-0" />
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-white/90 mb-3">
+            <div className="flex items-center gap-1 text-xs sm:text-sm">
+              <Calendar size={12} className="sm:w-3 sm:h-3 shrink-0" />
               <span className="text-xs sm:text-sm">{formatDate(event.date)} • {event.time}</span>
             </div>
-            <div className="flex items-center gap-1.5 text-sm">
-              <MapPin size={14} className="sm:w-4 sm:h-4 shrink-0" />
+            <div className="flex items-center gap-1 text-xs sm:text-sm">
+              <MapPin size={12} className="sm:w-3 sm:h-3 shrink-0" />
               <span className="text-xs sm:text-sm truncate">{event.city}</span>
             </div>
-            <div className="flex items-center gap-1.5 text-sm">
-              <Users size={14} className="sm:w-4 sm:h-4 shrink-0" />
+            <div className="flex items-center gap-1 text-xs sm:text-sm">
+              <Users size={12} className="sm:w-3 sm:h-3 shrink-0" />
               <EventAttendeesCount eventId={event.id} capacity={event.capacity} inline={true} />
             </div>
           </div>
-
-          {/* Primary Button - White background + dark text */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onClick(event);
-            }}
-            className="w-full sm:w-auto px-8 py-3.5 sm:py-4 bg-white text-[#15383c] rounded-full text-sm sm:text-base font-bold hover:bg-gray-50 transition-all shadow-lg hover:shadow-xl active:scale-95 touch-manipulation"
-          >
-            Reserve a Spot
-          </button>
         </div>
+      </div>
+
+      {/* Button Section - Outside image container */}
+      <div className="p-4 sm:p-5 md:p-6 pt-3 sm:pt-4">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onClick(event);
+          }}
+          className="w-full px-6 py-3 bg-white border-2 border-[#15383c] text-[#15383c] rounded-full text-sm sm:text-base font-bold hover:bg-[#15383c] hover:text-white transition-all shadow-lg hover:shadow-xl active:scale-95 touch-manipulation"
+        >
+          Reserve a Spot
+        </button>
       </div>
     </div>
   );

@@ -910,9 +910,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
 
           {/* Cancellation Policy Section */}
           <div className="mb-16 sm:mb-20 md:mb-24 pt-8 sm:pt-10 border-t border-gray-100">
-            <h3 className="text-2xl sm:text-3xl font-heading font-bold text-[#15383c] mb-6 sm:mb-8">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-6 sm:mb-8">
               Cancellation / Expulsion Policy
-            </h3>
+            </h2>
             <div className="space-y-4 text-gray-700 text-base sm:text-lg leading-relaxed">
               <p>
                 <strong className="text-[#15383c]">Cancellation Policy:</strong> Full refund 48+ hours before, 50% refund 24-48 hours before, no refund within 24 hours or no-shows.
@@ -988,7 +988,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       </div>
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 md:py-12 border-t border-gray-100">
-         <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-popera-teal mb-6 sm:mb-8">Other events you might be interested in</h2>
+         <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-6 sm:mb-8">Other events you might be interested in</h2>
          {/* Desktop: Horizontal scroll with better spacing */}
          <div className="hidden md:block">
            <div className="relative group">
