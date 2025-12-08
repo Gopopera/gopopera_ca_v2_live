@@ -927,35 +927,35 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           </div>
         </div>
 
-        {/* Sticky Sidebar - Premium design */}
+        {/* Sticky Sidebar - Refined modern design */}
         <div className="relative hidden lg:block">
-           <div className="sticky top-32 bg-white rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100 p-8 hover:shadow-[0_12px_40px_rgb(0,0,0,0.12)] transition-shadow">
-              <div className="flex justify-between items-center mb-8 pb-8 border-b border-gray-100">
+           <div className="sticky top-32 bg-white rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.06)] border border-gray-100 p-5 hover:shadow-[0_6px_24px_rgb(0,0,0,0.08)] transition-shadow">
+              <div className="flex justify-between items-center mb-5 pb-5 border-b border-gray-100">
                 <div>
-                  <span className="text-4xl lg:text-5xl font-heading font-bold text-[#15383c]">{event.price}</span>
-                  <p className="text-sm lg:text-base text-gray-500 font-medium mt-2">per person</p>
+                  <span className="text-3xl font-heading font-bold text-[#15383c]">{event.price}</span>
+                  <p className="text-xs text-gray-500 font-medium mt-1">per person</p>
                 </div>
               </div>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {/* Edit Event Button - Only for host */}
                 {isLoggedIn && user?.uid === event.hostId && (
                   <button
                     onClick={() => setViewState(ViewState.EDIT_EVENT)}
-                    className="w-full py-4 lg:py-5 bg-white border-2 border-[#15383c] text-[#15383c] rounded-full text-lg font-bold hover:bg-[#15383c] hover:text-white transition-all shadow-lg hover:shadow-xl whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2"
+                    className="w-full py-2.5 bg-white border border-[#15383c] text-[#15383c] rounded-full text-sm font-semibold hover:bg-[#15383c] hover:text-white transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2"
                   >
-                    <Edit size={20} /> Edit Event
+                    <Edit size={16} /> Edit Event
                   </button>
                 )}
                 <button 
                   onClick={handleRSVP}
                   disabled={isDemo || reserving}
                   aria-label={hasRSVPed ? "Cancel reservation" : "Reserve spot"}
-                  className={`w-full py-4 lg:py-5 font-bold text-lg rounded-full shadow-lg transition-all hover:-translate-y-0.5 touch-manipulation active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  className={`w-full py-3 font-semibold text-sm rounded-full transition-all touch-manipulation active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
                     isDemo 
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                       : hasRSVPed
                       ? 'bg-[#15383c] text-white hover:bg-[#1f4d52]'
-                      : 'bg-[#e35e25] text-white hover:bg-[#cf4d1d] shadow-orange-900/20 hover:shadow-orange-900/30'
+                      : 'bg-[#e35e25] text-white hover:bg-[#cf4d1d]'
                   }`}
                 >
                   {reserving ? 'Reserving...' : isDemo ? 'Demo Event (Locked)' : hasRSVPed ? 'Reserved ✓' : 'Reserve Spot'}
@@ -963,25 +963,25 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 <button
                   onClick={handleShare}
                   aria-label="Share event"
-                  className="w-full py-4 lg:py-5 bg-white border-2 border-[#15383c] text-[#15383c] rounded-full text-lg font-bold hover:bg-[#15383c] hover:text-white transition-all shadow-lg hover:shadow-xl whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2"
+                  className="w-full py-2.5 bg-white border border-[#15383c] text-[#15383c] rounded-full text-sm font-semibold hover:bg-[#15383c] hover:text-white transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2"
                 >
-                  <Share2 size={20} /> Share Event
+                  <Share2 size={16} /> Share Event
                 </button>
                 <button 
                   onClick={handleConversationClick}
                   disabled={isDemo}
-                  className={`w-full py-4 lg:py-5 font-bold text-lg rounded-full border-2 flex items-center justify-center gap-2 touch-manipulation active:scale-95 transition-colors ${
+                  className={`w-full py-2.5 font-semibold text-sm rounded-full border flex items-center justify-center gap-2 touch-manipulation active:scale-95 transition-colors ${
                     isDemo
                       ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
                       : 'bg-white border-[#15383c] text-[#15383c] hover:bg-[#15383c] hover:text-white'
                   }`}
                 >
-                  <MessageCircle size={20} /> 
+                  <MessageCircle size={16} /> 
                   {isDemo ? 'Chat Locked' : 'Join Group Chat'}
                 </button>
               </div>
-              <div className="mt-8 pt-6 border-t border-gray-100 text-center">
-                <p className="text-xs text-gray-400 leading-relaxed">Secure payment powered by Stripe.</p>
+              <div className="mt-5 pt-4 border-t border-gray-100 text-center">
+                <p className="text-[10px] text-gray-400 leading-relaxed">Secure payment powered by Stripe.</p>
               </div>
            </div>
         </div>
@@ -1012,7 +1012,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                className="flex overflow-x-auto gap-6 lg:gap-8 pb-2 snap-x snap-mandatory scroll-smooth hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain"
              >
                {recommendedEvents.map((recEvent, index) => (
-                 <div key={recEvent.id} className="snap-start shrink-0 w-[calc(25%-1.5rem)] lg:w-[calc(25%-2rem)] flex-shrink-0">
+                 <div key={recEvent.id} className="snap-start shrink-0 w-[calc(25%-1.5rem)] lg:w-[calc(25%-2rem)] flex-shrink-0 flex">
                    <EventCard 
                      event={recEvent} 
                      onClick={onEventClick} 
@@ -1052,7 +1052,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
          <div className="md:hidden">
            <div className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-4 pb-2 -mx-4 px-4 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4">
              {recommendedEvents.map((recEvent, index) => (
-               <div key={recEvent.id} className="snap-start shrink-0 w-[85vw] max-w-[360px]">
+               <div key={recEvent.id} className="snap-start shrink-0 w-[85vw] max-w-[360px] flex">
                  <EventCard 
                    event={recEvent} 
                    onClick={onEventClick} 

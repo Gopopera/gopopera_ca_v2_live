@@ -265,7 +265,7 @@ export const EventCard: React.FC<EventCardProps> = ({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       style={{ touchAction: 'manipulation' }}
-      className={`group relative bg-white rounded-[28px] md:rounded-[32px] overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.12)] transition-all duration-500 cursor-pointer flex flex-col w-full max-w-[420px] focus:outline-none focus:ring-2 focus:ring-[#15383c] focus:ring-offset-2`}
+      className={`group relative bg-white rounded-[28px] md:rounded-[32px] overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.12)] transition-all duration-500 cursor-pointer flex flex-col w-full h-full focus:outline-none focus:ring-2 focus:ring-[#15383c] focus:ring-offset-2`}
     >
       {/* Image Container - Premium cinematic design */}
       <div className={`relative w-full aspect-[4/3] overflow-hidden bg-gradient-to-br from-[#15383c] to-[#1f4d52] flex-shrink-0`}>
