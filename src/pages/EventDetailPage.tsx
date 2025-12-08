@@ -929,7 +929,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
 
         {/* Sticky Sidebar - Refined modern design */}
         <div className="relative hidden lg:block">
-           <div className="sticky top-32 bg-white rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.06)] border border-gray-100 p-5 hover:shadow-[0_6px_24px_rgb(0,0,0,0.08)] transition-shadow">
+           <div className="sticky top-32 bg-white rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.06)] border border-gray-100 p-5 hover:shadow-[0_6px_24px_rgb(0,0,0,0.08)] transition-shadow max-w-[280px] mx-auto">
               <div className="flex justify-between items-center mb-5 pb-5 border-b border-gray-100">
                 <div>
                   <span className="text-3xl font-heading font-bold text-[#15383c]">{event.price}</span>
