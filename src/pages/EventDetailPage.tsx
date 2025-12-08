@@ -748,78 +748,142 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             </div>
           )}
 
-          {/* Host Block - Premium design */}
+          {/* Host Block with Sidebar - Premium design */}
           <div className="mb-16 sm:mb-20 md:mb-24">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-8">
-              <div className="flex items-center gap-5 sm:gap-6">
-                {/* Large Avatar */}
-                <div 
-                  className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full bg-gradient-to-br from-[#e35e25] to-[#15383c] overflow-hidden ring-4 ring-white shadow-xl cursor-pointer hover:ring-[#e35e25]/30 transition-all shrink-0"
-                  onClick={() => onHostClick?.(displayHostName)}
-                >
-                  {hostProfilePicture ? (
-                    <img 
-                      src={hostProfilePicture} 
-                      alt={displayHostName} 
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
-                      }} 
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-2xl sm:text-3xl">
-                      {displayHostName?.[0]?.toUpperCase() || 'H'}
+            <div className="lg:grid lg:grid-cols-12 lg:gap-8">
+              {/* Host Info - Left side */}
+              <div className="lg:col-span-7 mb-6 lg:mb-0">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-8">
+                  <div className="flex items-center gap-5 sm:gap-6">
+                    {/* Large Avatar */}
+                    <div 
+                      className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full bg-gradient-to-br from-[#e35e25] to-[#15383c] overflow-hidden ring-4 ring-white shadow-xl cursor-pointer hover:ring-[#e35e25]/30 transition-all shrink-0"
+                      onClick={() => onHostClick?.(displayHostName)}
+                    >
+                      {hostProfilePicture ? (
+                        <img 
+                          src={hostProfilePicture} 
+                          alt={displayHostName} 
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
+                          }} 
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-[#15383c] text-white font-bold text-2xl sm:text-3xl">
+                          {displayHostName?.[0]?.toUpperCase() || 'H'}
+                        </div>
+                      )}
                     </div>
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-sm uppercase tracking-wider text-gray-500 font-bold mb-2">{t('event.hostedBy')}</p>
+                      <h3 
+                        className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c] cursor-pointer hover:text-[#e35e25] transition-colors mb-2"
+                        onClick={() => onHostClick?.(displayHostName)}
+                      >
+                        {displayHostName}
+                      </h3>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (event.hostId) {
+                            setShowHostReviewsModal(true);
+                          }
+                        }} 
+                        className="flex items-center space-x-2 bg-[#e35e25]/10 hover:bg-[#e35e25]/20 px-4 py-2 rounded-full transition-colors border border-[#e35e25]/20 hover:border-[#e35e25]/40 group/rating w-fit touch-manipulation active:scale-95"
+                      >
+                        <Star size={16} className="text-[#e35e25] fill-[#e35e25]" />
+                        <span className="text-sm font-bold text-[#15383c]">{formatRating(currentRating.rating)}</span>
+                        <span className="text-xs text-gray-600">({currentRating.reviewCount})</span>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Follow Button - Modern rounded pill */}
+                  {isLoggedIn && (
+                    <button
+                      onClick={handleFollowToggle}
+                      disabled={followLoading}
+                      aria-label={isFollowingHost ? `Unfollow ${displayHostName}` : `Follow ${displayHostName}`}
+                      className={`px-8 py-4 rounded-full text-base font-bold transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2 shrink-0 ${
+                        isFollowingHost
+                          ? 'bg-[#15383c] text-white hover:bg-[#1f4d52]'
+                          : 'bg-white border-2 border-[#15383c] text-[#15383c] hover:bg-[#15383c] hover:text-white'
+                      } disabled:opacity-50 shadow-lg hover:shadow-xl`}
+                    >
+                      {isFollowingHost ? (
+                        <>
+                          <UserCheck size={20} /> {t('event.following')}
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus size={20} /> {t('event.follow')}
+                        </>
+                      )}
+                    </button>
                   )}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs sm:text-sm uppercase tracking-wider text-gray-500 font-bold mb-2">{t('event.hostedBy')}</p>
-                  <h3 
-                    className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c] cursor-pointer hover:text-[#e35e25] transition-colors mb-2"
-                    onClick={() => onHostClick?.(displayHostName)}
-                  >
-                    {displayHostName}
-                  </h3>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (event.hostId) {
-                        setShowHostReviewsModal(true);
-                      }
-                    }} 
-                    className="flex items-center space-x-2 bg-[#e35e25]/10 hover:bg-[#e35e25]/20 px-4 py-2 rounded-full transition-colors border border-[#e35e25]/20 hover:border-[#e35e25]/40 group/rating w-fit touch-manipulation active:scale-95"
-                  >
-                    <Star size={16} className="text-[#e35e25] fill-[#e35e25]" />
-                    <span className="text-sm font-bold text-[#15383c]">{formatRating(currentRating.rating)}</span>
-                    <span className="text-xs text-gray-600">({currentRating.reviewCount})</span>
-                  </button>
                 </div>
               </div>
-              
-              {/* Follow Button - Modern rounded pill */}
-              {isLoggedIn && (
-                <button
-                  onClick={handleFollowToggle}
-                  disabled={followLoading}
-                  aria-label={isFollowingHost ? `Unfollow ${displayHostName}` : `Follow ${displayHostName}`}
-                  className={`px-8 py-4 rounded-full text-base font-bold transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2 shrink-0 ${
-                    isFollowingHost
-                      ? 'bg-[#15383c] text-white hover:bg-[#1f4d52]'
-                      : 'bg-white border-2 border-[#15383c] text-[#15383c] hover:bg-[#15383c] hover:text-white'
-                  } disabled:opacity-50 shadow-lg hover:shadow-xl`}
-                >
-                  {isFollowingHost ? (
-                    <>
-                      <UserCheck size={20} /> {t('event.following')}
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus size={20} /> {t('event.follow')}
-                    </>
-                  )}
-                </button>
-              )}
+
+              {/* Reservation Sidebar - Right side (desktop only) */}
+              <div className="lg:col-span-5 hidden lg:block">
+                <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.06)] border border-gray-100 p-5 hover:shadow-[0_6px_24px_rgb(0,0,0,0.08)] transition-shadow">
+                  <div className="flex justify-between items-center mb-5 pb-5 border-b border-gray-100">
+                    <div>
+                      <span className="text-3xl font-heading font-bold text-[#15383c]">{event.price}</span>
+                      <p className="text-xs text-gray-500 font-medium mt-1">per person</p>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    {/* Edit Event Button - Only for host */}
+                    {isLoggedIn && user?.uid === event.hostId && (
+                      <button
+                        onClick={() => setViewState(ViewState.EDIT_EVENT)}
+                        className="w-full py-2.5 bg-white border border-[#15383c] text-[#15383c] rounded-full text-sm font-semibold hover:bg-[#15383c] hover:text-white transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2"
+                      >
+                        <Edit size={16} /> Edit Event
+                      </button>
+                    )}
+                    <button 
+                      onClick={handleRSVP}
+                      disabled={isDemo || reserving}
+                      aria-label={hasRSVPed ? "Cancel reservation" : "Reserve spot"}
+                      className={`w-full py-3 font-semibold text-sm rounded-full transition-all touch-manipulation active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        isDemo 
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                          : hasRSVPed
+                          ? 'bg-[#15383c] text-white hover:bg-[#1f4d52]'
+                          : 'bg-[#e35e25] text-white hover:bg-[#cf4d1d]'
+                      }`}
+                    >
+                      {reserving ? 'Reserving...' : isDemo ? 'Demo Event (Locked)' : hasRSVPed ? 'Reserved ✓' : 'Reserve Spot'}
+                    </button>
+                    <button
+                      onClick={handleShare}
+                      aria-label="Share event"
+                      className="w-full py-2.5 bg-white border border-[#15383c] text-[#15383c] rounded-full text-sm font-semibold hover:bg-[#15383c] hover:text-white transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      <Share2 size={16} /> Share Event
+                    </button>
+                    <button 
+                      onClick={handleConversationClick}
+                      disabled={isDemo}
+                      className={`w-full py-2.5 font-semibold text-sm rounded-full border flex items-center justify-center gap-2 touch-manipulation active:scale-95 transition-colors ${
+                        isDemo
+                          ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                          : 'bg-white border-[#15383c] text-[#15383c] hover:bg-[#15383c] hover:text-white'
+                      }`}
+                    >
+                      <MessageCircle size={16} /> 
+                      {isDemo ? 'Chat Locked' : 'Join Group Chat'}
+                    </button>
+                  </div>
+                  <div className="mt-5 pt-4 border-t border-gray-100 text-center">
+                    <p className="text-[10px] text-gray-400 leading-relaxed">Secure payment powered by Stripe.</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -901,65 +965,6 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               </p>
             </div>
           </div>
-        </div>
-
-        {/* Sticky Sidebar - Refined modern design */}
-        <div className="relative hidden lg:block">
-           <div className="sticky top-32 bg-white rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.06)] border border-gray-100 p-5 hover:shadow-[0_6px_24px_rgb(0,0,0,0.08)] transition-shadow max-w-[280px] mx-auto">
-              <div className="flex justify-between items-center mb-5 pb-5 border-b border-gray-100">
-                <div>
-                  <span className="text-3xl font-heading font-bold text-[#15383c]">{event.price}</span>
-                  <p className="text-xs text-gray-500 font-medium mt-1">per person</p>
-                </div>
-              </div>
-              <div className="space-y-3">
-                {/* Edit Event Button - Only for host */}
-                {isLoggedIn && user?.uid === event.hostId && (
-                  <button
-                    onClick={() => setViewState(ViewState.EDIT_EVENT)}
-                    className="w-full py-2.5 bg-white border border-[#15383c] text-[#15383c] rounded-full text-sm font-semibold hover:bg-[#15383c] hover:text-white transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2"
-                  >
-                    <Edit size={16} /> Edit Event
-                  </button>
-                )}
-                <button 
-                  onClick={handleRSVP}
-                  disabled={isDemo || reserving}
-                  aria-label={hasRSVPed ? "Cancel reservation" : "Reserve spot"}
-                  className={`w-full py-3 font-semibold text-sm rounded-full transition-all touch-manipulation active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
-                    isDemo 
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                      : hasRSVPed
-                      ? 'bg-[#15383c] text-white hover:bg-[#1f4d52]'
-                      : 'bg-[#e35e25] text-white hover:bg-[#cf4d1d]'
-                  }`}
-                >
-                  {reserving ? 'Reserving...' : isDemo ? 'Demo Event (Locked)' : hasRSVPed ? 'Reserved ✓' : 'Reserve Spot'}
-                </button>
-                <button
-                  onClick={handleShare}
-                  aria-label="Share event"
-                  className="w-full py-2.5 bg-white border border-[#15383c] text-[#15383c] rounded-full text-sm font-semibold hover:bg-[#15383c] hover:text-white transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2"
-                >
-                  <Share2 size={16} /> Share Event
-                </button>
-                <button 
-                  onClick={handleConversationClick}
-                  disabled={isDemo}
-                  className={`w-full py-2.5 font-semibold text-sm rounded-full border flex items-center justify-center gap-2 touch-manipulation active:scale-95 transition-colors ${
-                    isDemo
-                      ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                      : 'bg-white border-[#15383c] text-[#15383c] hover:bg-[#15383c] hover:text-white'
-                  }`}
-                >
-                  <MessageCircle size={16} /> 
-                  {isDemo ? 'Chat Locked' : 'Join Group Chat'}
-                </button>
-              </div>
-              <div className="mt-5 pt-4 border-t border-gray-100 text-center">
-                <p className="text-[10px] text-gray-400 leading-relaxed">Secure payment powered by Stripe.</p>
-              </div>
-           </div>
         </div>
       </div>
 
