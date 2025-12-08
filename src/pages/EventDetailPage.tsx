@@ -988,7 +988,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       </div>
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 md:py-12 border-t border-gray-100">
-         <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-6 sm:mb-8">Other events you might be interested in</h2>
+         <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-6 sm:mb-8 text-center">Other events you might be interested in</h2>
          {/* Desktop: Horizontal scroll with better spacing */}
          <div className="hidden md:block">
            <div className="relative group">
