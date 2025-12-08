@@ -70,6 +70,7 @@ interface EventCardProps {
   onToggleFavorite?: (e: React.MouseEvent, eventId: string) => void;
   onEditClick?: (e: React.MouseEvent, event: Event) => void; // Edit button handler
   showEditButton?: boolean; // Whether to show edit button (only for host's own events)
+  compact?: boolean; // Compact variant for recommended events section
 }
 
 export const EventCard: React.FC<EventCardProps> = ({ 
@@ -81,7 +82,8 @@ export const EventCard: React.FC<EventCardProps> = ({
   isFavorite,
   onToggleFavorite,
   onEditClick,
-  showEditButton = false
+  showEditButton = false,
+  compact = false
 }) => {
   const { t } = useLanguage();
   const user = useUserStore((state) => state.user);
@@ -288,10 +290,12 @@ export const EventCard: React.FC<EventCardProps> = ({
         {/* Soft gradient only at bottom for text readability */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none z-10" />
         
-        {/* Main Category Badge - Premium modern design */}
-        <div className="absolute top-4 left-4 inline-flex items-center justify-center py-2 px-4 rounded-full bg-gray-100/90 backdrop-blur-sm text-[#e35e25] text-[10px] sm:text-xs font-bold tracking-wider uppercase z-20 border border-gray-300/80">
-          {getMainCategoryLabelFromEvent(event)}
-        </div>
+        {/* Main Category Badge - Premium modern design (hidden in compact mode) */}
+        {!compact && (
+          <div className="absolute top-4 left-4 inline-flex items-center justify-center py-2 px-4 rounded-full bg-gray-100/90 backdrop-blur-sm text-[#e35e25] text-[10px] sm:text-xs font-bold tracking-wider uppercase z-20 border border-gray-300/80">
+            {getMainCategoryLabelFromEvent(event)}
+          </div>
+        )}
 
         {/* Edit Button - Bottom Right (only for host's own events) */}
         {showEditButton && onEditClick && (
@@ -308,147 +312,224 @@ export const EventCard: React.FC<EventCardProps> = ({
           </button>
         )}
 
-        {/* ACTION BUTTONS - Modern glass cluster top-right */}
-        <div className="absolute top-4 right-4 flex items-center gap-2 z-30 pointer-events-auto">
-           {/* FEATURE: Favorite Heart - Glass design */}
-           {onToggleFavorite && (
+        {/* ACTION BUTTONS - Modern glass cluster top-right (hidden in compact mode) */}
+        {!compact && (
+          <div className="absolute top-4 right-4 flex items-center gap-2 z-30 pointer-events-auto">
+             {/* FEATURE: Favorite Heart - Glass design */}
+             {onToggleFavorite && (
+               <button
+                 onClick={handleFavoriteClick}
+                 onTouchEnd={handleFavoriteClick}
+                 onMouseDown={(e) => e.stopPropagation()}
+                 onTouchStart={(e) => {
+                   e.stopPropagation();
+                   e.preventDefault();
+                 }}
+                 className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 touch-manipulation shrink-0 pointer-events-auto z-30 backdrop-blur-md border ${
+                   isFavorite 
+                     ? 'bg-[#e35e25]/90 border-[#e35e25]/50 shadow-lg shadow-orange-900/30' 
+                     : 'bg-white/20 border-white/30 hover:bg-white/30'
+                 }`}
+                 aria-label="Toggle Favorite"
+                 type="button"
+                 style={{ pointerEvents: 'auto', WebkitTapHighlightColor: 'transparent' }}
+               >
+                 <Heart 
+                   size={20} 
+                   className={`sm:w-5 sm:h-5 transition-all ${
+                     isFavorite 
+                       ? 'fill-white text-white' 
+                       : 'fill-white/80 text-white'
+                   }`}
+                   strokeWidth={2.5}
+                 />
+               </button>
+             )}
+
+             {/* FEATURE: Conversation Icon - Glass design */}
              <button
-               onClick={handleFavoriteClick}
-               onTouchEnd={handleFavoriteClick}
-               onMouseDown={(e) => e.stopPropagation()}
-               onTouchStart={(e) => {
+               onClick={(e) => {
                  e.stopPropagation();
                  e.preventDefault();
+                 onChatClick(e, event);
                }}
-               className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 touch-manipulation shrink-0 pointer-events-auto z-30 backdrop-blur-md border ${
-                 isFavorite 
-                   ? 'bg-[#e35e25]/90 border-[#e35e25]/50 shadow-lg shadow-orange-900/30' 
-                   : 'bg-white/20 border-white/30 hover:bg-white/30'
-               }`}
-               aria-label="Toggle Favorite"
+               onTouchEnd={(e) => {
+                 e.stopPropagation();
+                 e.preventDefault();
+                 onChatClick(e as any, event);
+               }}
+               onTouchStart={(e) => {
+                 e.stopPropagation();
+               }}
+               className="w-10 h-10 sm:w-11 sm:h-11 bg-white/20 border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-all hover:scale-110 active:scale-95 touch-manipulation shrink-0 pointer-events-auto z-30 backdrop-blur-md"
+               aria-label="Join Event Chat"
                type="button"
                style={{ pointerEvents: 'auto', WebkitTapHighlightColor: 'transparent' }}
              >
-               <Heart 
-                 size={20} 
-                 className={`sm:w-5 sm:h-5 transition-all ${
-                   isFavorite 
-                     ? 'fill-white text-white' 
-                     : 'fill-white/80 text-white'
-                 }`}
-                 strokeWidth={2.5}
-               />
+               <MessageCircle size={20} className="sm:w-5 sm:h-5" strokeWidth={2.5} />
              </button>
-           )}
-
-           {/* FEATURE: Conversation Icon - Glass design */}
-           <button
-             onClick={(e) => {
-               e.stopPropagation();
-               e.preventDefault();
-               onChatClick(e, event);
-             }}
-             onTouchEnd={(e) => {
-               e.stopPropagation();
-               e.preventDefault();
-               onChatClick(e as any, event);
-             }}
-             onTouchStart={(e) => {
-               e.stopPropagation();
-             }}
-             className="w-10 h-10 sm:w-11 sm:h-11 bg-white/20 border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-all hover:scale-110 active:scale-95 touch-manipulation shrink-0 pointer-events-auto z-30 backdrop-blur-md"
-             aria-label="Join Event Chat"
-             type="button"
-             style={{ pointerEvents: 'auto', WebkitTapHighlightColor: 'transparent' }}
-           >
-             <MessageCircle size={20} className="sm:w-5 sm:h-5" strokeWidth={2.5} />
-           </button>
-        </div>
+          </div>
+        )}
 
         {/* Content Overlay - White text over bottom gradient */}
-        <div 
-          className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 md:p-6 z-30 pointer-events-none" 
-          style={{ 
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            zIndex: 30
-          }}
-        >
-          {/* Title - Large, clean typography */}
-          <h3 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-white mb-2 leading-tight line-clamp-2 drop-shadow-lg pointer-events-auto">
-            {event.title}
-          </h3>
-          
-          {/* Host Name - Clean, minimal */}
-          <div className="flex items-center gap-2 mb-2 pointer-events-auto">
-            <span className="w-6 h-6 sm:w-7 sm:h-7 shrink-0 rounded-full bg-white/20 backdrop-blur-sm overflow-hidden ring-1 ring-white/30">
-              {hostProfilePicture ? (
-                <img 
-                  src={hostProfilePicture} 
-                  alt={displayHostName} 
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = `https://picsum.photos/seed/${displayHostName}/50/50`;
-                  }}
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-white/20 text-white font-bold text-xs">
-                  {displayHostName?.[0]?.toUpperCase() || 'H'}
-                </div>
-              )}
-            </span>
-            <p className="text-xs sm:text-sm font-medium text-white/90 drop-shadow-md">
-              {displayHostName || 'Unknown Host'}
-            </p>
-          </div>
-
-          {/* Circle Continuity Indicator - Starting Soon */}
-          {(() => {
-            const continuity = getCircleContinuityText(event);
-            if (continuity?.type === 'startingSoon') {
-              return (
-                <div className="mb-2 pointer-events-auto">
-                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#e35e25] text-white text-xs font-bold uppercase tracking-wider shadow-lg">
-                    {continuity.text}
-                  </span>
-                </div>
-              );
-            }
-            return null;
-          })()}
-
-          {/* Metadata - Clean, icon-based, minimalist */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-white/90 mb-3 pointer-events-auto">
-            <div className="flex items-center gap-1 text-xs sm:text-sm">
-              <Calendar size={12} className="sm:w-3 sm:h-3 shrink-0" />
-              <span className="text-xs sm:text-sm">{formatDate(event.date)} • {event.time}</span>
-            </div>
-            <div className="flex items-center gap-1 text-xs sm:text-sm">
-              <MapPin size={12} className="sm:w-3 sm:h-3 shrink-0" />
-              <span className="text-xs sm:text-sm truncate">{event.city}</span>
-            </div>
-            <div className="flex items-center gap-1 text-xs sm:text-sm">
-              <Users size={12} className="sm:w-3 sm:h-3 shrink-0" />
-              <EventAttendeesCount eventId={event.id} capacity={event.capacity} inline={true} />
+        {compact ? (
+          /* Compact variant - Simple overlay with just title and host at bottom */
+          <div 
+            className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 z-30 pointer-events-none" 
+            style={{ 
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 30
+            }}
+          >
+            {/* Title - Smaller in compact mode */}
+            <h3 className="text-sm sm:text-base font-heading font-bold text-white mb-2 leading-tight line-clamp-1 drop-shadow-lg pointer-events-auto">
+              {event.title}
+            </h3>
+            
+            {/* Host Name - At bottom of image */}
+            <div className="flex items-center gap-2 pointer-events-auto">
+              <span className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 rounded-full bg-white/20 backdrop-blur-sm overflow-hidden ring-1 ring-white/30">
+                {hostProfilePicture ? (
+                  <img 
+                    src={hostProfilePicture} 
+                    alt={displayHostName} 
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = `https://picsum.photos/seed/${displayHostName}/50/50`;
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-white/20 text-white font-bold text-[10px]">
+                    {displayHostName?.[0]?.toUpperCase() || 'H'}
+                  </div>
+                )}
+              </span>
+              <p className="text-[10px] sm:text-xs font-medium text-white/90 drop-shadow-md truncate">
+                {displayHostName || 'Unknown Host'}
+              </p>
             </div>
           </div>
-        </div>
+        ) : (
+          /* Full variant - All content overlaid */
+          <div 
+            className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 md:p-6 z-30 pointer-events-none" 
+            style={{ 
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 30
+            }}
+          >
+            {/* Title - Large, clean typography */}
+            <h3 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-white mb-2 leading-tight line-clamp-2 drop-shadow-lg pointer-events-auto">
+              {event.title}
+            </h3>
+            
+            {/* Host Name - Clean, minimal */}
+            <div className="flex items-center gap-2 mb-2 pointer-events-auto">
+              <span className="w-6 h-6 sm:w-7 sm:h-7 shrink-0 rounded-full bg-white/20 backdrop-blur-sm overflow-hidden ring-1 ring-white/30">
+                {hostProfilePicture ? (
+                  <img 
+                    src={hostProfilePicture} 
+                    alt={displayHostName} 
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = `https://picsum.photos/seed/${displayHostName}/50/50`;
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-white/20 text-white font-bold text-xs">
+                    {displayHostName?.[0]?.toUpperCase() || 'H'}
+                  </div>
+                )}
+              </span>
+              <p className="text-xs sm:text-sm font-medium text-white/90 drop-shadow-md">
+                {displayHostName || 'Unknown Host'}
+              </p>
+            </div>
+
+            {/* Circle Continuity Indicator - Starting Soon */}
+            {(() => {
+              const continuity = getCircleContinuityText(event);
+              if (continuity?.type === 'startingSoon') {
+                return (
+                  <div className="mb-2 pointer-events-auto">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#e35e25] text-white text-xs font-bold uppercase tracking-wider shadow-lg">
+                      {continuity.text}
+                    </span>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
+            {/* Metadata - Clean, icon-based, minimalist */}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-white/90 mb-3 pointer-events-auto">
+              <div className="flex items-center gap-1 text-xs sm:text-sm">
+                <Calendar size={12} className="sm:w-3 sm:h-3 shrink-0" />
+                <span className="text-xs sm:text-sm">{formatDate(event.date)} • {event.time}</span>
+              </div>
+              <div className="flex items-center gap-1 text-xs sm:text-sm">
+                <MapPin size={12} className="sm:w-3 sm:h-3 shrink-0" />
+                <span className="text-xs sm:text-sm truncate">{event.city}</span>
+              </div>
+              <div className="flex items-center gap-1 text-xs sm:text-sm">
+                <Users size={12} className="sm:w-3 sm:h-3 shrink-0" />
+                <EventAttendeesCount eventId={event.id} capacity={event.capacity} inline={true} />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Button Section - Outside image container */}
-      <div className="p-4 sm:p-5 md:p-6 pt-3 sm:pt-4">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onClick(event);
-          }}
-          className="w-full px-6 py-3 bg-white border-2 border-[#15383c] text-[#15383c] rounded-full text-sm sm:text-base font-bold hover:bg-[#15383c] hover:text-white transition-all shadow-lg hover:shadow-xl active:scale-95 touch-manipulation"
-        >
-          Reserve a Spot
-        </button>
+      <div className={`p-4 sm:p-5 md:p-6 ${compact ? 'pt-3 sm:pt-3' : 'pt-3 sm:pt-4'}`}>
+        {compact ? (
+          /* Compact variant - Show metadata and button */
+          <>
+            {/* Metadata - Below image in compact mode */}
+            <div className="mb-3 space-y-1.5">
+              <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                <Calendar size={12} className="text-[#e35e25] shrink-0" />
+                <span>{formatDate(event.date)} • {event.time}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                <MapPin size={12} className="text-[#e35e25] shrink-0" />
+                <span className="truncate">{event.city}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                <Users size={12} className="text-[#e35e25] shrink-0" />
+                <EventAttendeesCount eventId={event.id} capacity={event.capacity} inline={true} />
+              </div>
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onClick(event);
+              }}
+              className="w-full px-4 py-2.5 bg-white border-2 border-[#15383c] text-[#15383c] rounded-full text-xs sm:text-sm font-bold hover:bg-[#15383c] hover:text-white transition-all shadow-md hover:shadow-lg active:scale-95 touch-manipulation"
+            >
+              Reserve a Spot
+            </button>
+          </>
+        ) : (
+          /* Full variant - Just button */
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onClick(event);
+            }}
+            className="w-full px-6 py-3 bg-white border-2 border-[#15383c] text-[#15383c] rounded-full text-sm sm:text-base font-bold hover:bg-[#15383c] hover:text-white transition-all shadow-lg hover:shadow-xl active:scale-95 touch-manipulation"
+          >
+            Reserve a Spot
+          </button>
+        )}
       </div>
     </div>
   );

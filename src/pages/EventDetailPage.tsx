@@ -1027,7 +1027,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                      onReviewsClick={onReviewsClick} 
                      isLoggedIn={isLoggedIn} 
                      isFavorite={favorites.includes(recEvent.id)} 
-                     onToggleFavorite={onToggleFavorite} 
+                     onToggleFavorite={onToggleFavorite}
+                     compact={true}
                    />
                  </div>
                ))}
@@ -1067,7 +1068,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                    onReviewsClick={onReviewsClick} 
                    isLoggedIn={isLoggedIn} 
                    isFavorite={favorites.includes(recEvent.id)} 
-                   onToggleFavorite={onToggleFavorite} 
+                   onToggleFavorite={onToggleFavorite}
+                   compact={true}
                  />
                </div>
              ))}
