@@ -72,6 +72,7 @@ interface EventCardProps {
   onEditClick?: (e: React.MouseEvent, event: Event) => void; // Edit button handler
   showEditButton?: boolean; // Whether to show edit button (only for host's own events)
   compact?: boolean; // Compact variant for recommended events section
+  profileVariant?: boolean; // Profile variant - no buttons/icons, all text overlaid on image
 }
 
 export const EventCard: React.FC<EventCardProps> = ({ 
@@ -84,7 +85,8 @@ export const EventCard: React.FC<EventCardProps> = ({
   onToggleFavorite,
   onEditClick,
   showEditButton = false,
-  compact = false
+  compact = false,
+  profileVariant = false
 }) => {
   const { t } = useLanguage();
   const user = useUserStore((state) => state.user);
@@ -271,7 +273,7 @@ export const EventCard: React.FC<EventCardProps> = ({
       className={`group relative bg-white rounded-[28px] md:rounded-[32px] overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.12)] transition-all duration-500 cursor-pointer flex flex-col w-full h-full focus:outline-none focus:ring-2 focus:ring-[#15383c] focus:ring-offset-2`}
     >
       {/* Image Container - Premium cinematic design */}
-      <div className={`relative w-full aspect-[4/3] overflow-hidden bg-gradient-to-br from-[#15383c] to-[#1f4d52] flex-shrink-0`} style={{ position: 'relative' }}>
+      <div className={`relative w-full ${profileVariant ? 'aspect-square' : 'aspect-[4/3]'} overflow-hidden bg-gradient-to-br from-[#15383c] to-[#1f4d52] flex-shrink-0`} style={{ position: 'relative' }}>
         <img 
           src={event.imageUrls && event.imageUrls.length > 0 ? event.imageUrls[0] : (event.imageUrl || `https://picsum.photos/seed/${event.id || 'event'}/800/600`)} 
           alt={event.title} 
@@ -291,8 +293,8 @@ export const EventCard: React.FC<EventCardProps> = ({
         {/* Soft gradient only at bottom for text readability */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none z-10" />
         
-        {/* Main Category Badge - Premium modern design (hidden in compact mode) */}
-        {!compact && (
+        {/* Main Category Badge - Premium modern design (hidden in compact/profile mode) */}
+        {!compact && !profileVariant && (
           <div className="absolute top-4 left-4 inline-flex items-center justify-center py-2 px-4 rounded-full bg-gray-100/90 backdrop-blur-sm text-[#e35e25] text-[10px] sm:text-xs font-bold tracking-wider uppercase z-20 border border-gray-300/80">
             {getMainCategoryLabelFromEvent(event)}
           </div>
@@ -313,8 +315,8 @@ export const EventCard: React.FC<EventCardProps> = ({
           </button>
         )}
 
-        {/* ACTION BUTTONS - Modern glass cluster top-right (hidden in compact mode) */}
-        {!compact && (
+        {/* ACTION BUTTONS - Modern glass cluster top-right (hidden in compact/profile mode) */}
+        {!compact && !profileVariant && (
           <div className="absolute top-4 right-4 flex items-center gap-2 z-30 pointer-events-auto">
              {/* FEATURE: Favorite Heart - Glass design */}
              {onToggleFavorite && (
@@ -373,7 +375,67 @@ export const EventCard: React.FC<EventCardProps> = ({
         )}
 
         {/* Content Overlay - White text over bottom gradient */}
-        {compact ? (
+        {profileVariant ? (
+          /* Profile variant - All text overlaid on image, no buttons */
+          <div 
+            className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 md:p-6 z-30 pointer-events-none" 
+            style={{ 
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 30
+            }}
+          >
+            {/* Title */}
+            <h3 className="text-base sm:text-lg md:text-xl font-heading font-bold text-white mb-2 leading-tight line-clamp-2 drop-shadow-lg pointer-events-auto">
+              {event.title}
+            </h3>
+            
+            {/* Host Name */}
+            <div className="flex items-center gap-2 mb-3 pointer-events-auto">
+              <span className="w-6 h-6 sm:w-7 sm:h-7 shrink-0 rounded-full bg-white/20 backdrop-blur-sm overflow-hidden ring-1 ring-white/30">
+                {hostProfilePicture ? (
+                  <img 
+                    src={hostProfilePicture} 
+                    alt={displayHostName} 
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = `https://picsum.photos/seed/${displayHostName}/50/50`;
+                    }}
+                  />
+                ) : (
+                  <div 
+                    className="w-full h-full flex items-center justify-center text-white font-bold text-xs"
+                    style={{ backgroundColor: `${getAvatarColor(displayHostName, event.hostId)}CC` }}
+                  >
+                    {getInitials(displayHostName)}
+                  </div>
+                )}
+              </span>
+              <p className="text-xs sm:text-sm font-medium text-white/90 drop-shadow-md truncate">
+                {displayHostName || 'Unknown Host'}
+              </p>
+            </div>
+
+            {/* Metadata - All overlaid on image */}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-white/90 pointer-events-auto">
+              <div className="flex items-center gap-1 text-xs sm:text-sm">
+                <Calendar size={12} className="sm:w-3 sm:h-3 shrink-0" />
+                <span className="text-xs sm:text-sm">{formatDate(event.date)} • {event.time}</span>
+              </div>
+              <div className="flex items-center gap-1 text-xs sm:text-sm">
+                <MapPin size={12} className="sm:w-3 sm:h-3 shrink-0" />
+                <span className="text-xs sm:text-sm truncate">{event.city}</span>
+              </div>
+              <div className="flex items-center gap-1 text-xs sm:text-sm">
+                <Users size={12} className="sm:w-3 sm:h-3 shrink-0" />
+                <EventAttendeesCount eventId={event.id} capacity={event.capacity} inline={true} />
+              </div>
+            </div>
+          </div>
+        ) : compact ? (
           /* Compact variant - Simple overlay with just title and host at bottom */
           <div 
             className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 z-30 pointer-events-none" 
@@ -406,7 +468,7 @@ export const EventCard: React.FC<EventCardProps> = ({
                 ) : (
                   <div 
                     className="w-full h-full flex items-center justify-center text-white font-bold text-[10px]"
-                    style={{ backgroundColor: `${getAvatarColor(displayHostName)}CC` }} // Add transparency for overlay
+                    style={{ backgroundColor: `${getAvatarColor(displayHostName, event.hostId)}CC` }} // Add transparency for overlay
                   >
                     {getInitials(displayHostName)}
                   </div>
@@ -450,7 +512,7 @@ export const EventCard: React.FC<EventCardProps> = ({
                 ) : (
                   <div 
                     className="w-full h-full flex items-center justify-center text-white font-bold text-xs"
-                    style={{ backgroundColor: `${getAvatarColor(displayHostName)}CC` }} // Add transparency for overlay
+                    style={{ backgroundColor: `${getAvatarColor(displayHostName, event.hostId)}CC` }} // Add transparency for overlay
                   >
                     {getInitials(displayHostName)}
                   </div>
@@ -495,7 +557,8 @@ export const EventCard: React.FC<EventCardProps> = ({
         )}
       </div>
 
-      {/* Button Section - Outside image container */}
+      {/* Button Section - Outside image container (hidden in profile variant) */}
+      {!profileVariant && (
       <div className={`p-4 sm:p-5 md:p-6 ${compact ? 'pt-3 sm:pt-3' : 'pt-3 sm:pt-4'}`}>
         {compact ? (
           /* Compact variant - Show metadata and button */
@@ -538,6 +601,7 @@ export const EventCard: React.FC<EventCardProps> = ({
           </button>
         )}
       </div>
+      )}
     </div>
   );
 };

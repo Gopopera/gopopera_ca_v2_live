@@ -804,7 +804,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                           }} 
                         />
                       ) : (
-                        <div className={`w-full h-full flex items-center justify-center ${getAvatarBgColor(displayHostName)} text-white font-bold text-2xl sm:text-3xl`}>
+                        <div className={`w-full h-full flex items-center justify-center ${getAvatarBgColor(displayHostName, event.hostId)} text-white font-bold text-2xl sm:text-3xl`}>
                           {getInitials(displayHostName)}
                         </div>
                       )}
@@ -832,14 +832,12 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                       </button>
                       
                       {/* Followers Count */}
-                      {followersCount > 0 && (
-                        <div className="flex items-center gap-2 mt-3">
-                          <Users size={16} className="text-gray-500" />
-                          <span className="text-sm text-gray-600">
-                            {followersCount} {followersCount === 1 ? 'follower' : 'followers'}
-                          </span>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2 mt-3">
+                        <Users size={16} className="text-gray-500" />
+                        <span className="text-sm text-gray-600">
+                          {followersCount} {followersCount === 1 ? 'follower' : 'followers'}
+                        </span>
+                      </div>
                       
                       {/* Host Bio */}
                       {hostBio && (

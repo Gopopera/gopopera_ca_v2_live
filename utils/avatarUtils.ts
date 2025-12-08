@@ -28,16 +28,19 @@ export function getInitials(displayName: string | null | undefined): string {
 /**
  * Generate a consistent color based on user's name/ID
  * Uses a simple hash function to ensure the same user always gets the same color
+ * Prefers ID over name for consistency across different name formats
  */
-export function getAvatarColor(identifier: string | null | undefined): string {
-  if (!identifier || identifier.trim() === '') {
+export function getAvatarColor(identifier: string | null | undefined, userId?: string | null): string {
+  // Prefer userId for consistency, fallback to identifier (name)
+  const key = userId || identifier;
+  if (!key || key.trim() === '') {
     return '#15383c'; // Default dark teal
   }
   
   // Simple hash function to convert string to number
   let hash = 0;
-  for (let i = 0; i < identifier.length; i++) {
-    hash = identifier.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < key.length; i++) {
+    hash = key.charCodeAt(i) + ((hash << 5) - hash);
   }
   
   // Use Popera brand colors as the palette
@@ -57,9 +60,10 @@ export function getAvatarColor(identifier: string | null | undefined): string {
 /**
  * Get avatar background color class for Tailwind
  * Returns the hex color (for inline styles) or a predefined class
+ * Prefers userId over identifier for consistency
  */
-export function getAvatarBgColor(identifier: string | null | undefined): string {
-  const color = getAvatarColor(identifier);
+export function getAvatarBgColor(identifier: string | null | undefined, userId?: string | null): string {
+  const color = getAvatarColor(identifier, userId);
   
   // Map hex colors to Tailwind classes for consistency
   const colorMap: Record<string, string> = {

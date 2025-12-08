@@ -11,6 +11,7 @@ import { listHostReviews, getUserProfile } from '@/firebase/db';
 import { FirestoreReview } from '@/firebase/types';
 import { subscribeToUserProfile } from '@/firebase/userSubscriptions';
 import { subscribeToFollowersCount } from '@/firebase/follow';
+import { getInitials, getAvatarBgColor } from '@/utils/avatarUtils';
 
 interface HostProfileProps {
   hostName: string;
@@ -323,9 +324,9 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
                       }}
                     />
                   ) : (
-                    <span className="font-heading font-bold text-white text-2xl sm:text-3xl md:text-4xl">
-                      {displayName?.[0] || 'H'}
-                    </span>
+                    <div className={`w-full h-full flex items-center justify-center ${getAvatarBgColor(displayName, hostId)} text-white font-heading font-bold text-2xl sm:text-3xl md:text-4xl`}>
+                      {getInitials(displayName)}
+                    </div>
                   )}
                 </div>
                 <div className="absolute -bottom-1 -right-1 w-8 h-8 sm:w-10 sm:h-10 bg-[#e35e25] text-white rounded-full flex items-center justify-center ring-4 ring-white shadow-lg">
@@ -440,7 +441,8 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
                       onReviewsClick={() => {}} 
                       isLoggedIn={isLoggedIn} 
                       isFavorite={favorites.includes(event.id)} 
-                      onToggleFavorite={onToggleFavorite} 
+                      onToggleFavorite={onToggleFavorite}
+                      profileVariant={true}
                     />
                   </div>
                 ))}

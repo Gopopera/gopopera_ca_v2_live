@@ -5,6 +5,7 @@ import { ViewState } from '@/types';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useUserStore } from '../../stores/userStore';
 import { getUnreadNotificationCount } from '../../firebase/notifications';
+import { Logo } from './Logo';
 
 interface HeaderProps {
   setViewState: (view: ViewState) => void;
@@ -196,9 +197,11 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
           className="cursor-pointer z-50 group" 
           onClick={() => handleNav(isLoggedIn ? ViewState.FEED : ViewState.LANDING)}
         >
-           <h1 className={`font-heading font-bold text-2xl sm:text-3xl tracking-tight transition-colors ${getTextColor(false)}`}>
-            Popera
-           </h1>
+          <Logo 
+            size="md" 
+            textColor={getTextColor(false)} 
+            onClick={() => handleNav(isLoggedIn ? ViewState.FEED : ViewState.LANDING)}
+          />
         </div>
 
         {/* Desktop Nav */}

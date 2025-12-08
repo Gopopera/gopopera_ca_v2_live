@@ -2,6 +2,7 @@ import React from 'react';
 import { Instagram, MessageCircle, Music } from 'lucide-react';
 import { ViewState } from '@/types';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { Logo } from './Logo';
 
 interface FooterProps {
   setViewState?: (view: ViewState) => void;
@@ -34,7 +35,11 @@ export const Footer: React.FC<FooterProps> = ({ setViewState, isLoggedIn = false
         
         {/* Logo Section */}
         <div className="mb-8 sm:mb-10 md:mb-12">
-          <h2 className="font-heading font-bold text-2xl sm:text-3xl text-[#e35e25] tracking-tight cursor-pointer transition-colors" onClick={() => handleNav(ViewState.LANDING)}>Popera</h2>
+          <Logo 
+            size="md" 
+            textColor="text-white" 
+            onClick={() => handleNav(ViewState.LANDING)}
+          />
         </div>
 
         {/* Links Grid - Mobile: 2 cols, Tablet: 3 cols, Desktop: 6 cols */}

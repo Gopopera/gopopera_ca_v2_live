@@ -288,7 +288,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
                   }}
                 />
               ) : (
-                <div className={`w-full h-full flex items-center justify-center ${getAvatarBgColor(displayName)} text-white font-heading font-bold text-3xl sm:text-4xl md:text-5xl`}>
+                <div className={`w-full h-full flex items-center justify-center ${getAvatarBgColor(displayName, user?.uid)} text-white font-heading font-bold text-3xl sm:text-4xl md:text-5xl`}>
                   {initials}
                 </div>
               )}

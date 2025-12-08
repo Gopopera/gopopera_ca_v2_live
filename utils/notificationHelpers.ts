@@ -14,6 +14,20 @@ import { RSVPHostNotificationTemplate } from '../src/emails/templates/RSVPHostNo
 import { ReservationConfirmationEmailTemplate } from '../src/emails/templates/ReservationConfirmationEmail';
 import { FirstEventWelcomeEmailTemplate } from '../src/emails/templates/FirstEventWelcomeEmail';
 
+/**
+ * Get Popera logo header HTML for emails
+ */
+function getPoperaLogoHeader(): string {
+  return `
+    <div style="background: linear-gradient(135deg, #15383c 0%, #1f4d52 100%); padding: 24px 32px; text-align: center; margin: -20px -20px 20px -20px; border-radius: 16px 16px 0 0;">
+      <div style="display: inline-flex; align-items: baseline; margin: 0;">
+        <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold; letter-spacing: -0.5px; font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Popera</h1>
+        <span style="display: inline-block; width: 3.5px; height: 3.5px; background-color: #e35e25; border-radius: 50%; flex-shrink: 0; margin-left: 1px; align-self: baseline;"></span>
+      </div>
+    </div>
+  `;
+}
+
 // Base URL for event links (fallback to window.location.origin if not set)
 const BASE_URL = import.meta.env.VITE_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://gopopera.ca');
 
@@ -115,6 +129,12 @@ export async function sendComprehensiveNotification(
       // Use simple HTML email for generic notifications
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #15383c 0%, #1f4d52 100%); padding: 24px 32px; text-align: center; margin: -20px -20px 20px -20px; border-radius: 16px 16px 0 0;">
+            <div style="display: inline-flex; align-items: baseline; margin: 0;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold; letter-spacing: -0.5px; font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Popera</h1>
+              <span style="display: inline-block; width: 3.5px; height: 3.5px; background-color: #e35e25; border-radius: 50%; flex-shrink: 0; margin-left: 1px; align-self: baseline;"></span>
+            </div>
+          </div>
           <h2 style="color: #15383c;">${emailContent.subject}</h2>
           <p>Hello ${contactInfo.name || 'there'},</p>
           <div style="color: #333; line-height: 1.6;">
@@ -442,6 +462,7 @@ export async function notifyAttendeesOfNewMessage(
         try {
           const emailHtml = `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              ${getPoperaLogoHeader()}
               <h2 style="color: #15383c;">New message in ${eventTitle}</h2>
               <p>Hello ${contactInfo.name || 'there'},</p>
               <div style="background-color: #f8fafb; padding: 16px; border-radius: 8px; margin: 20px 0;">
@@ -840,6 +861,7 @@ export async function notifyHostOfNewFollower(
       try {
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            ${getPoperaLogoHeader()}
             <h2 style="color: #15383c;">New Follower on Popera</h2>
             <p>Hello ${hostInfo.name || 'there'},</p>
             <div style="background-color: #f8fafb; padding: 16px; border-radius: 8px; margin: 20px 0;">
@@ -925,6 +947,7 @@ export async function notifyHostOfNewFavorite(
       try {
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            ${getPoperaLogoHeader()}
             <h2 style="color: #15383c;">Someone Favorited Your Event</h2>
             <p>Hello ${hostInfo.name || 'there'},</p>
             <div style="background-color: #f8fafb; padding: 16px; border-radius: 8px; margin: 20px 0;">
@@ -1016,6 +1039,7 @@ export async function notifyUsersEventGettingFull(
       try {
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            ${getPoperaLogoHeader()}
             <h2 style="color: #15383c;">${eventTitle} is Getting Full!</h2>
             <p>Hello ${contactInfo.name || 'there'},</p>
             <div style="background-color: #fff7ed; border-left: 4px solid #e35e25; padding: 16px; border-radius: 8px; margin: 20px 0;">
@@ -1101,6 +1125,7 @@ export async function notifyHostEventTrending(
       try {
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            ${getPoperaLogoHeader()}
             <h2 style="color: #15383c;">Your Event is Trending! 🔥</h2>
             <p>Hello ${hostInfo.name || 'there'},</p>
             <div style="background-color: #fff7ed; border-left: 4px solid #e35e25; padding: 16px; border-radius: 8px; margin: 20px 0;">

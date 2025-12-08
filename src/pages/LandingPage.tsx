@@ -462,11 +462,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* Stay Updated */}
       <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] text-white relative overflow-hidden border-t border-white/5">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-          <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-4xl font-heading font-bold text-[#e35e25] mb-4 sm:mb-6 tracking-tight uppercase leading-none">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-[#e35e25] mb-4 sm:mb-6 tracking-tight uppercase leading-none">
             Stay Updated
           </h2>
           
-          <p className="text-xs sm:text-sm text-gray-300 mb-8 sm:mb-10 md:mb-12 font-light max-w-2xl mx-auto leading-relaxed">
+          <p className="text-sm sm:text-base text-gray-300 mb-8 sm:mb-10 md:mb-12 font-light max-w-2xl mx-auto leading-relaxed">
             Be part of Canada's first platform for Circles and real-life Sessions. <br className="hidden md:block" />
             Join the waitlist before launch on May 15th, 2026.
           </p>

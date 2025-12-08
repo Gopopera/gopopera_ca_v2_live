@@ -20,7 +20,10 @@ export function getBaseEmailTemplate(content: string, ctaText?: string, ctaUrl?:
           <!-- Header -->
           <tr>
             <td style="background: linear-gradient(135deg, #15383c 0%, #1f4d52 100%); padding: 32px 40px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 32px; font-weight: bold; letter-spacing: -0.5px;">POPERA</h1>
+              <div style="display: inline-flex; align-items: baseline; margin: 0;">
+                <h1 style="margin: 0; color: #ffffff; font-size: 32px; font-weight: bold; letter-spacing: -0.5px; font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Popera</h1>
+                <span style="display: inline-block; width: 4px; height: 4px; background-color: #e35e25; border-radius: 50%; flex-shrink: 0; margin-left: 1px; align-self: baseline;"></span>
+              </div>
             </td>
           </tr>
           
