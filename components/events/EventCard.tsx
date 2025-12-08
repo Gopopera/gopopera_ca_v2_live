@@ -268,7 +268,7 @@ export const EventCard: React.FC<EventCardProps> = ({
       className={`group relative bg-white rounded-[28px] md:rounded-[32px] overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.12)] transition-all duration-500 cursor-pointer flex flex-col w-full h-full focus:outline-none focus:ring-2 focus:ring-[#15383c] focus:ring-offset-2`}
     >
       {/* Image Container - Premium cinematic design */}
-      <div className={`relative w-full aspect-[4/3] overflow-hidden bg-gradient-to-br from-[#15383c] to-[#1f4d52] flex-shrink-0`}>
+      <div className={`relative w-full aspect-[4/3] overflow-hidden bg-gradient-to-br from-[#15383c] to-[#1f4d52] flex-shrink-0`} style={{ position: 'relative' }}>
         <img 
           src={event.imageUrls && event.imageUrls.length > 0 ? event.imageUrls[0] : (event.imageUrl || `https://picsum.photos/seed/${event.id || 'event'}/800/600`)} 
           alt={event.title} 
@@ -366,14 +366,23 @@ export const EventCard: React.FC<EventCardProps> = ({
         </div>
 
         {/* Content Overlay - White text over bottom gradient */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 md:p-6 z-30">
+        <div 
+          className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 md:p-6 z-30 pointer-events-none" 
+          style={{ 
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 30
+          }}
+        >
           {/* Title - Large, clean typography */}
-          <h3 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-white mb-2 leading-tight line-clamp-2 drop-shadow-lg">
+          <h3 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-white mb-2 leading-tight line-clamp-2 drop-shadow-lg pointer-events-auto">
             {event.title}
           </h3>
           
           {/* Host Name - Clean, minimal */}
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2 pointer-events-auto">
             <span className="w-6 h-6 sm:w-7 sm:h-7 shrink-0 rounded-full bg-white/20 backdrop-blur-sm overflow-hidden ring-1 ring-white/30">
               {hostProfilePicture ? (
                 <img 
@@ -401,7 +410,7 @@ export const EventCard: React.FC<EventCardProps> = ({
             const continuity = getCircleContinuityText(event);
             if (continuity?.type === 'startingSoon') {
               return (
-                <div className="mb-2">
+                <div className="mb-2 pointer-events-auto">
                   <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#e35e25] text-white text-xs font-bold uppercase tracking-wider shadow-lg">
                     {continuity.text}
                   </span>
@@ -412,7 +421,7 @@ export const EventCard: React.FC<EventCardProps> = ({
           })()}
 
           {/* Metadata - Clean, icon-based, minimalist */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-white/90 mb-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-white/90 mb-3 pointer-events-auto">
             <div className="flex items-center gap-1 text-xs sm:text-sm">
               <Calendar size={12} className="sm:w-3 sm:h-3 shrink-0" />
               <span className="text-xs sm:text-sm">{formatDate(event.date)} • {event.time}</span>
