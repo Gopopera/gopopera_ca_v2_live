@@ -87,20 +87,39 @@ export default defineConfig(({ mode }) => {
         sourcemap: false, // Disable source maps in production for smaller bundles
         // CACHE-BUSTING: Force clean build without cache
         emptyOutDir: true,
+        // Increase build timeout for large chunks
+        chunkSizeWarningLimit: 1000, // Increase limit to 1000KB
         rollupOptions: {
           external: ['@react-google-maps/api'], // Exclude Google Maps from bundle
           output: {
             entryFileNames: `assets/[name].[hash].js`,
             chunkFileNames: `assets/[name].[hash].js`,
             assetFileNames: `assets/[name].[hash].[ext]`,
-            manualChunks: {
-              'react-vendor': ['react', 'react-dom'],
-              'firebase-vendor': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
-              'zustand-vendor': ['zustand'],
+            manualChunks: (id) => {
+              // Separate large image processing library into its own chunk
+              if (id.includes('heic2any') || id.includes('imageProcessing') || id.includes('utils/imageProcessing')) {
+                return 'image-processing';
+              }
+              // Vendor chunks
+              if (id.includes('node_modules')) {
+                if (id.includes('react') || id.includes('react-dom')) {
+                  return 'react-vendor';
+                }
+                if (id.includes('firebase')) {
+                  return 'firebase-vendor';
+                }
+                if (id.includes('zustand')) {
+                  return 'zustand-vendor';
+                }
+                if (id.includes('stripe')) {
+                  return 'stripe-vendor';
+                }
+                // Other node_modules
+                return 'vendor';
+              }
             },
           },
         },
-        chunkSizeWarningLimit: 600, // Increase limit to 600KB
       }
     };
 });
