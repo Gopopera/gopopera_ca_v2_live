@@ -45,7 +45,7 @@ export const translations = {
       mobilizeSupport: {
         category: 'GATHERINGS',
         title: 'Mobilize & Support',
-        description: 'Move your community for causes, conversations, or local actions. Spark meaningful moments that strengthen your neighborhood and group bonds.',
+        description: 'Move your community for causes, conversations, or local actions. Spark meaningful moments that strengthen your group bonds.',
       },
       learningWorkshops: {
         category: 'LEARNING',
