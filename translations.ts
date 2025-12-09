@@ -34,23 +34,23 @@ export const translations = {
       description: 'Popera gives you the power to activate your community anywhere — from local hangouts to impactful meetups and small-group experiences.',
       curatedSales: {
         category: 'SHOPPING',
-        title: 'Curated Sales',
-        description: 'Host curated selling Sessions, manage buyers, and bring your community together with small-group drops.',
+        title: 'Sell & Shop',
+        description: 'Small-group drops, thrifting meetups, curated sales, garage-style events — activate your buyers and bring them exactly where you want.',
       },
       connectPromote: {
         category: 'EXPERIENCES',
         title: 'Connect & Promote',
-        description: 'Create Circles around your craft, passion, or skill and host Sessions that turn followers into meaningful relationships.',
+        description: 'Gather your followers around your craft, passion, or brand. Host intimate experiences that turn online attention into real-world connection.',
       },
       mobilizeSupport: {
         category: 'GATHERINGS',
         title: 'Mobilize & Support',
-        description: 'Start Circles dedicated to causes or local impact, and bring people together through meaningful real-life Sessions.',
+        description: 'Move your community for causes, conversations, or local actions. Spark meaningful moments that strengthen your neighborhood or group.',
       },
       learningWorkshops: {
         category: 'LEARNING',
         title: 'Learn & Grow',
-        description: 'Host workshops, classes, and skill-building Sessions. From drawing and cooking to tech meetups for growth.',
+        description: 'Bring people together to share skills, learn something new, or try an activity together — from art and cooking to coding nights or creator-led sessions.',
       },
     },
     // Landing Page
