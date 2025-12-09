@@ -12,11 +12,11 @@ All code is implemented and integrated. Your webhook is configured. Here's what'
 - ✅ Webhook Name: "Popera"
 - ✅ Endpoint URL: `https://gopopera.ca/api/stripe/webhook`
 - ✅ Status: Active
-- ✅ Signing Secret: `whsec_tyNojzRFmC3sRCQ70Y0LZ2gngQtq962x`
+- ✅ Signing Secret: `whsec_...` (configured in Vercel)
 - ✅ Listening to: 4 events
 
 **Action Required:**
-- ⚠️ Add webhook secret to Vercel: `STRIPE_WEBHOOK_SECRET=whsec_tyNojzRFmC3sRCQ70Y0LZ2gngQtq962x`
+- ⚠️ Add webhook secret to Vercel: `STRIPE_WEBHOOK_SECRET=whsec_...` (get from Stripe Dashboard)
 
 ---
 
@@ -109,7 +109,7 @@ See `HOST_FLOW_TEST_GUIDE.md` for complete step-by-step testing instructions.
 
 ### Vercel Environment Variables:
 - [x] `STRIPE_SECRET_KEY` - ✅ You've added this
-- [ ] `STRIPE_WEBHOOK_SECRET` - ⚠️ **Add this:** `whsec_tyNojzRFmC3sRCQ70Y0LZ2gngQtq962x`
+- [ ] `STRIPE_WEBHOOK_SECRET` - ⚠️ **Add this:** `whsec_...` (get from Stripe Dashboard → Webhooks)
 
 ### Local .env (for development):
 - [ ] `VITE_STRIPE_PUBLISHABLE_KEY` - For local testing
@@ -122,7 +122,7 @@ See `HOST_FLOW_TEST_GUIDE.md` for complete step-by-step testing instructions.
 **Symptom:** Webhook events show "Failed" in Stripe Dashboard
 
 **Solution:**
-- Verify `STRIPE_WEBHOOK_SECRET` in Vercel matches: `whsec_tyNojzRFmC3sRCQ70Y0LZ2gngQtq962x`
+- Verify `STRIPE_WEBHOOK_SECRET` in Vercel matches the secret from Stripe Dashboard
 - Check Vercel function logs for signature errors
 - The webhook handler tries multiple methods to get raw body
 

@@ -34,8 +34,23 @@ export const StripeSettingsPage: React.FC<StripeSettingsPageProps> = ({ setViewS
   }, [refreshUserProfile]);
 
   const handleCreateAccount = async () => {
+    console.log('[STRIPE_SETTINGS] handleCreateAccount called', { 
+      hasUser: !!user, 
+      userId: user?.uid, 
+      email: user?.email 
+    });
+
     if (!user?.uid) {
-      setError('You must be logged in to set up Stripe');
+      const errorMsg = 'You must be logged in to set up Stripe';
+      console.error('[STRIPE_SETTINGS]', errorMsg);
+      setError(errorMsg);
+      return;
+    }
+
+    if (!user.email) {
+      const errorMsg = 'You must have an email address to set up Stripe';
+      console.error('[STRIPE_SETTINGS]', errorMsg);
+      setError(errorMsg);
       return;
     }
 
@@ -43,29 +58,52 @@ export const StripeSettingsPage: React.FC<StripeSettingsPageProps> = ({ setViewS
     setError(null);
 
     try {
+      const requestBody = {
+        userId: user.uid,
+        email: user.email,
+        returnUrl: `${window.location.origin}/profile?stripe_return=true`,
+      };
+
+      console.log('[STRIPE_SETTINGS] Calling API:', {
+        url: '/api/stripe/create-account-link',
+        body: requestBody,
+      });
+
       // Call backend API to create Stripe Connect account
       const response = await fetch('/api/stripe/create-account-link', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          userId: user.uid,
-          email: user.email,
-          returnUrl: `${window.location.origin}/profile?stripe_return=true`,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
+      console.log('[STRIPE_SETTINGS] API response status:', response.status, response.statusText);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create Stripe account');
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (e) {
+          errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
+        }
+        console.error('[STRIPE_SETTINGS] API error:', errorData);
+        throw new Error(errorData.error || `Failed to create Stripe account (${response.status})`);
       }
 
-      const { accountId, onboardingUrl: url } = await response.json();
+      const data = await response.json();
+      console.log('[STRIPE_SETTINGS] API success:', data);
+
+      const { accountId, onboardingUrl: url } = data;
+
+      if (!accountId || !url) {
+        throw new Error('Invalid response from server: missing accountId or onboardingUrl');
+      }
 
       // Save account ID to user profile
       const db = getDbSafe();
       if (db && user.uid) {
+        console.log('[STRIPE_SETTINGS] Saving account ID to Firestore:', accountId);
         await updateDoc(doc(db, 'users', user.uid), {
           stripeAccountId: accountId,
           stripeOnboardingStatus: 'pending',
@@ -76,23 +114,28 @@ export const StripeSettingsPage: React.FC<StripeSettingsPageProps> = ({ setViewS
       }
 
       // Redirect to Stripe onboarding
+      console.log('[STRIPE_SETTINGS] Redirecting to Stripe onboarding:', url);
       if (url) {
         window.location.href = url;
       } else {
         setOnboardingUrl(url);
+        setError('Onboarding URL not received. Please try again.');
       }
     } catch (err: any) {
-      console.error('Error creating Stripe account:', err);
-      setError(err.message || 'Failed to create Stripe account. Please try again.');
-    } finally {
+      console.error('[STRIPE_SETTINGS] Error creating Stripe account:', err);
+      const errorMessage = err.message || 'Failed to create Stripe account. Please try again.';
+      setError(errorMessage);
       setLoading(false);
     }
   };
 
   const handleCompleteOnboarding = () => {
+    console.log('[STRIPE_SETTINGS] handleCompleteOnboarding called', { hasOnboardingUrl: !!onboardingUrl });
     if (onboardingUrl) {
+      console.log('[STRIPE_SETTINGS] Using existing onboarding URL');
       window.location.href = onboardingUrl;
     } else {
+      console.log('[STRIPE_SETTINGS] No existing URL, creating new account');
       handleCreateAccount();
     }
   };
@@ -192,8 +235,16 @@ export const StripeSettingsPage: React.FC<StripeSettingsPageProps> = ({ setViewS
 
             {statusDisplay.action && (
               <button
-                onClick={handleCompleteOnboarding}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('[STRIPE_SETTINGS] Button clicked', { loading, action: statusDisplay.action });
+                  if (!loading) {
+                    handleCompleteOnboarding();
+                  }
+                }}
                 disabled={loading}
+                type="button"
                 className="px-8 py-4 bg-[#635bff] text-white font-bold rounded-full hover:bg-[#544dc9] transition-colors flex items-center gap-2 mx-auto shadow-lg shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (

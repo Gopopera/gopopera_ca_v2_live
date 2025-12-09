@@ -10,13 +10,13 @@ All code is implemented, integrated, and ready for testing.
 
 ### 1. Environment Variables ✅
 - [x] Vercel: `STRIPE_SECRET_KEY` - ✅ You've added
-- [ ] Vercel: `STRIPE_WEBHOOK_SECRET` - ⚠️ **Add:** `whsec_tyNojzRFmC3sRCQ70Y0LZ2gngQtq962x`
+- [ ] Vercel: `STRIPE_WEBHOOK_SECRET` - ⚠️ **Add:** `whsec_...` (get from Stripe Dashboard → Webhooks)
 - [ ] Local `.env`: `VITE_STRIPE_PUBLISHABLE_KEY` - For local development
 
 ### 2. Webhook Configuration ✅
 - ✅ Endpoint: `https://gopopera.ca/api/stripe/webhook`
 - ✅ Status: Active
-- ✅ Secret: `whsec_tyNojzRFmC3sRCQ70Y0LZ2gngQtq962x`
+- ✅ Secret: `whsec_...` (configured in Vercel)
 - ✅ Events: 4 events selected
 
 ---
@@ -228,7 +228,7 @@ All code is implemented, integrated, and ready for testing.
 **Check:**
 - Stripe Dashboard → Webhooks → "Popera" → Event deliveries
 - Vercel function logs for `/api/stripe/webhook`
-- Verify `STRIPE_WEBHOOK_SECRET` in Vercel matches: `whsec_tyNojzRFmC3sRCQ70Y0LZ2gngQtq962x`
+- Verify `STRIPE_WEBHOOK_SECRET` in Vercel matches the secret from Stripe Dashboard
 
 ### Issue: Firestore Not Updating
 **Check:**

@@ -10,7 +10,7 @@ This guide walks you through testing the entire host flow from Stripe setup to e
 
 Before starting, verify:
 - [ ] Webhook is configured in Stripe Dashboard (✅ You've done this!)
-- [ ] Webhook secret added to Vercel: `STRIPE_WEBHOOK_SECRET=whsec_tyNojzRFmC3sRCQ70Y0LZ2gngQtq962x`
+- [ ] Webhook secret added to Vercel: `STRIPE_WEBHOOK_SECRET=whsec_...` (get from Stripe Dashboard → Webhooks)
 - [ ] Stripe secret key in Vercel: `STRIPE_SECRET_KEY`
 - [ ] Publishable key in `.env`: `VITE_STRIPE_PUBLISHABLE_KEY`
 
@@ -323,7 +323,7 @@ After each test, verify:
 ### Issue: Webhook not received
 **Solution:**
 - Verify webhook URL in Stripe: `https://gopopera.ca/api/stripe/webhook`
-- Check webhook secret matches: `whsec_tyNojzRFmC3sRCQ70Y0LZ2gngQtq962x`
+- Check webhook secret matches the one from Stripe Dashboard
 - Check Vercel function logs for errors
 - Verify webhook is "Active" in Stripe Dashboard
 
