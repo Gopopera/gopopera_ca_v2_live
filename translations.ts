@@ -30,8 +30,8 @@ export const translations = {
     // Pillars
     pillars: {
       badge: 'Our Ecosystem',
-      title: 'How Popera Brings People Together',
-      description: 'One simple platform to bring people together. Whether you\'re exchanging goods, offering experiences, or building community impact.',
+      title: 'What You Can Bring to Life With Your Crowd?',
+      description: 'Popera gives you the power to activate your community anywhere — from local hangouts to impactful meetups and small-group experiences.',
       curatedSales: {
         category: 'SHOPPING',
         title: 'Curated Sales',
