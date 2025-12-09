@@ -42,8 +42,8 @@ You need a backend server (Node.js/Express, Vercel Serverless Functions, or simi
 ### 1. Get API Keys
 
 1. Go to https://dashboard.stripe.com/apikeys
-2. Copy your **Publishable Key** (starts with `pk_`)
-3. Copy your **Secret Key** (starts with `sk_`)
+2. Copy your **Publishable key** (starts with `pk_live_...` or `pk_test_...`)
+3. Copy your **Secret key** (starts with `sk_live_...` or `sk_test_...`)
 4. Save these for environment variables
 
 ### 2. Enable Stripe Connect
@@ -69,7 +69,7 @@ You need a backend server (Node.js/Express, Vercel Serverless Functions, or simi
    - `customer.subscription.updated`
    - `customer.subscription.deleted`
    - `account.updated` (for Connect accounts)
-5. Copy the webhook signing secret (starts with `whsec_`)
+5. Copy the webhook signing secret (starts with `whsec_tyNojzRFmC3sRCQ7OY0LZ2gngQtq962x`)
 
 ---
 
@@ -80,7 +80,7 @@ Add these to your `.env` file (and production environment):
 ```env
 # Stripe Keys
 VITE_STRIPE_PUBLISHABLE_KEY=pk_test_... (or pk_live_...)
-STRIPE_SECRET_KEY=sk_test_... (or sk_live_...)
+STRIPE_SECRET_KEY=sk_test_... (your Stripe secret key from Stripe Dashboard) (or sk_live_...)
 STRIPE_WEBHOOK_SECRET=whsec_...
 
 # Platform Configuration

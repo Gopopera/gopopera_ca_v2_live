@@ -19,6 +19,7 @@ interface ProfilePageProps {
 export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName, onLogout }) => {
   const user = useUserStore((state) => state.user);
   const userProfile = useUserStore((state) => state.userProfile);
+  const refreshUserProfile = useUserStore((state) => state.refreshUserProfile);
   const allEvents = useEventStore((state) => state.events);
   const [stats, setStats] = useState({ revenue: 30, hosted: 0, attendees: 0, following: 0, attended: 0, reviews: 0, followers: 0 });
   const [loading, setLoading] = useState(true);
@@ -234,6 +235,31 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
       unsubscribes.forEach(unsubscribe => unsubscribe());
     };
   }, [user?.uid]);
+
+  // Cleanup pending reviews for eatezca@gmail.com (run once on mount)
+  useEffect(() => {
+    if (user?.email === 'eatezca@gmail.com' && user?.uid) {
+      // Run cleanup once - check if we've already run it this session
+      const cleanupKey = `cleanup_reviews_${user.uid}`;
+      const hasRunCleanup = sessionStorage.getItem(cleanupKey);
+      
+      if (!hasRunCleanup) {
+        console.log('[PROFILE] Running cleanup for pending reviews...');
+        import('../../utils/cleanupPendingReviews').then(({ deletePendingReviewsForHost }) => {
+          deletePendingReviewsForHost(user.uid).then(result => {
+            console.log('[PROFILE] Cleanup result:', result);
+            sessionStorage.setItem(cleanupKey, 'true');
+            // Refresh profile to update review count
+            refreshUserProfile();
+          }).catch(error => {
+            console.error('[PROFILE] Cleanup error:', error);
+          });
+        }).catch(error => {
+          console.error('[PROFILE] Failed to load cleanup module:', error);
+        });
+      }
+    }
+  }, [user?.email, user?.uid, refreshUserProfile]);
   
   // Get user's hosted events for preview
   const hostedEvents = useMemo(() => {

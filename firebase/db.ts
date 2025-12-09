@@ -799,11 +799,26 @@ export function subscribeToHostedEventsCount(
     return onSnapshot(
       q,
       (snapshot) => {
-        // Count only non-draft events (filter client-side)
+        // Count only non-draft events AND validate hostId matches exactly
+        // This prevents counting events with corrupted or incorrect hostId values
         const count = snapshot.docs.filter(doc => {
           const data = doc.data() as FirestoreEvent;
-          return data.isDraft !== true;
+          // Ensure hostId matches exactly (defense against data corruption)
+          const isValidHost = data.hostId === hostId;
+          const isNotDraft = data.isDraft !== true;
+          
+          if (!isValidHost) {
+            console.warn('[HOSTED_EVENTS_COUNT] Event has mismatched hostId:', {
+              eventId: doc.id,
+              eventHostId: data.hostId,
+              expectedHostId: hostId,
+              eventTitle: data.title
+            });
+          }
+          
+          return isValidHost && isNotDraft;
         }).length;
+        
         callback(count);
       },
       (error) => {
@@ -977,6 +992,10 @@ export function subscribeToTotalAttendeesCount(
 
 /**
  * Subscribe to reviews count for a host in real-time
+ * Reviews are stored per event, so we need to:
+ * 1. Subscribe to all events for this host
+ * 2. Periodically recalculate total accepted reviews count
+ * This uses polling approach for simplicity (reviews don't have hostId field)
  */
 export function subscribeToReviewsCount(
   hostId: string,
@@ -988,29 +1007,96 @@ export function subscribeToReviewsCount(
     return () => {};
   }
 
+  let isActive = true;
+  let intervalId: NodeJS.Timeout | null = null;
+  let eventsUnsubscribe: (() => void) | null = null;
+
+  const recalculateCount = async () => {
+    if (!isActive || !db) return;
+
+    try {
+      // Get all events for this host
+      const eventsCol = collection(db, "events");
+      const eventsQuery = query(eventsCol, where("hostId", "==", hostId));
+      const eventsSnapshot = await getDocs(eventsQuery);
+      const eventIds = eventsSnapshot.docs.map(doc => doc.id);
+
+      if (eventIds.length === 0) {
+        callback(0);
+        return;
+      }
+
+      // Get all reviews for these events
+      const reviewsCol = collection(db, "reviews");
+      const allReviewQueries = eventIds.map(eventId => {
+        const q = query(reviewsCol, where("eventId", "==", eventId));
+        return getDocs(q);
+      });
+
+      const reviewSnapshots = await Promise.all(allReviewQueries);
+      
+      // Count only accepted reviews (or reviews without status for backward compatibility)
+      const totalCount = reviewSnapshots.reduce((sum, snapshot) => {
+        return sum + snapshot.docs.filter(doc => {
+          const data = doc.data();
+          const status = data.status;
+          // Include accepted reviews or reviews without status (backward compatibility)
+          return status === 'accepted' || status === undefined || status === null;
+        }).length;
+      }, 0);
+
+      if (isActive) {
+        callback(totalCount);
+      }
+    } catch (error) {
+      console.error('[REVIEWS_COUNT] Error recalculating count:', error);
+      if (isActive) {
+        callback(0);
+      }
+    }
+  };
+
+  // Subscribe to events to detect when new events are added
   try {
-    const reviewsCol = collection(db, "reviews");
-    const q = query(
-      reviewsCol,
-      where("hostId", "==", hostId),
-      where("status", "==", "accepted")
-    );
+    const eventsCol = collection(db, "events");
+    const eventsQuery = query(eventsCol, where("hostId", "==", hostId));
     
-    return onSnapshot(
-      q,
-      (snapshot) => {
-        callback(snapshot.size);
+    eventsUnsubscribe = onSnapshot(
+      eventsQuery,
+      () => {
+        // When events change, recalculate count
+        recalculateCount();
       },
       (error) => {
-        console.error('Error in reviews count subscription:', error);
+        console.error('[REVIEWS_COUNT] Error in events subscription:', error);
         callback(0);
       }
     );
+
+    // Initial calculation
+    recalculateCount();
+
+    // Poll every 10 seconds to catch review changes (since we can't easily subscribe to all reviews)
+    intervalId = setInterval(() => {
+      if (isActive) {
+        recalculateCount();
+      }
+    }, 10000);
   } catch (error) {
     console.error('Error setting up reviews count subscription:', error);
     callback(0);
-    return () => {};
   }
+
+  // Return unsubscribe function
+  return () => {
+    isActive = false;
+    if (eventsUnsubscribe) {
+      eventsUnsubscribe();
+    }
+    if (intervalId) {
+      clearInterval(intervalId);
+    }
+  };
 }
 
 // Chat Messages
