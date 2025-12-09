@@ -50,7 +50,7 @@ export const translations = {
       learningWorkshops: {
         category: 'LEARNING',
         title: 'Learn & Grow',
-        description: 'Bring people together to share skills, learn something new, or try activities together. From art and cooking to coding nights or creator sessions.',
+        description: 'Bring people together to share skills, learn something new, or try activities together. From art and cooking to coding nights and creator sessions.',
       },
     },
     // Landing Page
