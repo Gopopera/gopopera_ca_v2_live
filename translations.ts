@@ -35,7 +35,7 @@ export const translations = {
       curatedSales: {
         category: 'SHOPPING',
         title: 'Sell & Shop',
-        description: 'Small-group drops, thrifting meetups, curated sales, garage-style events — activate your buyers and bring them exactly where you want.',
+        description: 'Small-group drops, thrifting meetups, curated sales, and garage-style events. Activate your buyers and bring them exactly where you want.',
       },
       connectPromote: {
         category: 'EXPERIENCES',
@@ -50,7 +50,7 @@ export const translations = {
       learningWorkshops: {
         category: 'LEARNING',
         title: 'Learn & Grow',
-        description: 'Bring people together to share skills, learn something new, or try an activity together — from art and cooking to coding nights or creator-led sessions.',
+        description: 'Bring people together to share skills, learn something new, or try activities together — from art and cooking to coding nights and creator-led sessions.',
       },
     },
     // Landing Page
