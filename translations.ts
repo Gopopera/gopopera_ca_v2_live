@@ -341,6 +341,8 @@ export const translations = {
       instantUpdatesDesc: 'Changes or announcements reach everyone fast.',
       buildTrust: 'Build local trust',
       buildTrustDesc: 'Transparent profiles, ratings, and community-led moderation.',
+      monetizeCircles: 'Monetize your circles',
+      monetizeCirclesDesc: 'Charge a commit fee when you want and monetize circles.',
       simplestWay: 'The simplest way to gather your crowd and keep them connected.',
       increaseEngagement: 'Engagement +140%',
       eventName: 'Group-conversation',

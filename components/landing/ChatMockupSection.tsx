@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageCircle, BarChart2, Megaphone, Send, Sparkles, Users } from 'lucide-react';
+import { MessageCircle, BarChart2, Megaphone, Send, Sparkles, Users, DollarSign } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 export const ChatMockupSection: React.FC = () => {
@@ -32,32 +32,41 @@ export const ChatMockupSection: React.FC = () => {
                {t('chatMockup.description')}
              </p>
              
-             <div className="space-y-4 sm:space-y-5 text-left max-w-lg mx-auto lg:mx-0">
-                <div className="flex gap-4 sm:gap-5 p-5 sm:p-6 bg-[#f2f2f2] rounded-[20px] sm:rounded-[24px] shadow-md hover:shadow-lg transition-all duration-300 group border border-gray-200/50">
-                   <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-[#15383c] to-[#1a4549] flex items-center justify-center text-white shrink-0 shadow-lg group-hover:scale-110 transition-transform">
-                     <MessageCircle size={20} className="sm:w-6 sm:h-6" />
+             <div className="space-y-3 sm:space-y-4 text-left max-w-lg mx-auto lg:mx-0">
+                <div className="flex gap-3 sm:gap-4 p-4 sm:p-5 bg-[#f2f2f2] rounded-[16px] sm:rounded-[20px] shadow-md hover:shadow-lg transition-all duration-300 group border border-gray-200/50">
+                   <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-br from-[#15383c] to-[#1a4549] flex items-center justify-center text-white shrink-0 shadow-lg group-hover:scale-110 transition-transform">
+                     <MessageCircle size={18} className="sm:w-5 sm:h-5" />
                    </div>
                    <div className="min-w-0 flex-1">
-                      <h3 className="font-bold text-base sm:text-lg text-[#15383c] mb-1">{t('chatMockup.realWorldActivation')}</h3>
-                      <p className="text-sm sm:text-base text-gray-600 leading-relaxed">{t('chatMockup.realWorldActivationDesc')}</p>
+                      <h3 className="font-bold text-sm sm:text-base text-[#15383c] mb-1">{t('chatMockup.realWorldActivation')}</h3>
+                      <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">{t('chatMockup.realWorldActivationDesc')}</p>
                    </div>
                 </div>
-                <div className="flex gap-4 sm:gap-5 p-5 sm:p-6 bg-[#f2f2f2] rounded-[20px] sm:rounded-[24px] shadow-md hover:shadow-lg transition-all duration-300 group border border-gray-200/50">
-                   <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-[#15383c] to-[#1a4549] flex items-center justify-center text-white shrink-0 shadow-lg group-hover:scale-110 transition-transform">
-                     <Megaphone size={20} className="sm:w-6 sm:h-6" />
+                <div className="flex gap-3 sm:gap-4 p-4 sm:p-5 bg-[#f2f2f2] rounded-[16px] sm:rounded-[20px] shadow-md hover:shadow-lg transition-all duration-300 group border border-gray-200/50">
+                   <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-br from-[#15383c] to-[#1a4549] flex items-center justify-center text-white shrink-0 shadow-lg group-hover:scale-110 transition-transform">
+                     <Megaphone size={18} className="sm:w-5 sm:h-5" />
                    </div>
                    <div className="min-w-0 flex-1">
-                      <h3 className="font-bold text-base sm:text-lg text-[#15383c] mb-1">{t('chatMockup.instantUpdates')}</h3>
-                      <p className="text-sm sm:text-base text-gray-600 leading-relaxed">{t('chatMockup.instantUpdatesDesc')}</p>
+                      <h3 className="font-bold text-sm sm:text-base text-[#15383c] mb-1">{t('chatMockup.instantUpdates')}</h3>
+                      <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">{t('chatMockup.instantUpdatesDesc')}</p>
                    </div>
                 </div>
-                <div className="flex gap-4 sm:gap-5 p-5 sm:p-6 bg-[#f2f2f2] rounded-[20px] sm:rounded-[24px] shadow-md hover:shadow-lg transition-all duration-300 group border border-gray-200/50">
-                   <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-[#15383c] to-[#1a4549] flex items-center justify-center text-white shrink-0 shadow-lg group-hover:scale-110 transition-transform">
-                     <BarChart2 size={20} className="sm:w-6 sm:h-6" />
+                <div className="flex gap-3 sm:gap-4 p-4 sm:p-5 bg-[#f2f2f2] rounded-[16px] sm:rounded-[20px] shadow-md hover:shadow-lg transition-all duration-300 group border border-gray-200/50">
+                   <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-br from-[#15383c] to-[#1a4549] flex items-center justify-center text-white shrink-0 shadow-lg group-hover:scale-110 transition-transform">
+                     <BarChart2 size={18} className="sm:w-5 sm:h-5" />
                    </div>
                    <div className="min-w-0 flex-1">
-                      <h3 className="font-bold text-base sm:text-lg text-[#15383c] mb-1">{t('chatMockup.buildTrust')}</h3>
-                      <p className="text-sm sm:text-base text-gray-600 leading-relaxed">{t('chatMockup.buildTrustDesc')}</p>
+                      <h3 className="font-bold text-sm sm:text-base text-[#15383c] mb-1">{t('chatMockup.buildTrust')}</h3>
+                      <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">{t('chatMockup.buildTrustDesc')}</p>
+                   </div>
+                </div>
+                <div className="flex gap-3 sm:gap-4 p-4 sm:p-5 bg-[#f2f2f2] rounded-[16px] sm:rounded-[20px] shadow-md hover:shadow-lg transition-all duration-300 group border border-gray-200/50">
+                   <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-br from-[#15383c] to-[#1a4549] flex items-center justify-center text-white shrink-0 shadow-lg group-hover:scale-110 transition-transform">
+                     <DollarSign size={18} className="sm:w-5 sm:h-5" />
+                   </div>
+                   <div className="min-w-0 flex-1">
+                      <h3 className="font-bold text-sm sm:text-base text-[#15383c] mb-1">{t('chatMockup.monetizeCircles')}</h3>
+                      <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">{t('chatMockup.monetizeCirclesDesc')}</p>
                    </div>
                 </div>
              </div>
