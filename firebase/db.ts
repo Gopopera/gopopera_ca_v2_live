@@ -550,6 +550,8 @@ export async function createReservation(
     supportContribution?: number;
     paymentMethod?: string;
     totalAmount?: number;
+    paymentIntentId?: string;
+    subscriptionId?: string;
   }
 ): Promise<string> {
   const db = getDbSafe();
@@ -573,6 +575,10 @@ export async function createReservation(
       supportContribution: options?.supportContribution,
       paymentMethod: options?.paymentMethod,
       totalAmount: options?.totalAmount,
+      paymentIntentId: options?.paymentIntentId,
+      subscriptionId: options?.subscriptionId,
+      paymentStatus: options?.paymentIntentId || options?.subscriptionId ? 'succeeded' : undefined,
+      payoutStatus: options?.paymentIntentId ? 'held' : undefined, // One-time events: hold until 24h after
     };
 
     // Validate and remove undefined values

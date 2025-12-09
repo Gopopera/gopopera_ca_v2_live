@@ -63,6 +63,10 @@ export interface FirestoreEvent {
   weeklyDayOfWeek?: number; // 0-6 for weekly sessions (0 = Sunday)
   monthlyDayOfMonth?: number; // 1-31 for monthly sessions
   startDateTime?: number; // Timestamp for session start (alternative to startDate)
+  // Payment fields
+  hasFee?: boolean; // Whether event charges a fee
+  feeAmount?: number; // Fee amount in cents
+  currency?: string; // Default: 'cad' or 'usd'
 }
 
 // REFACTORED: Single source of truth for user data
@@ -102,6 +106,12 @@ export interface FirestoreUser {
   isVerified?: boolean;
   isPoperaDemoHost?: boolean;
   
+  // Stripe Connect fields for host payouts
+  stripeAccountId?: string; // Stripe Connect account ID
+  stripeOnboardingStatus?: 'pending' | 'incomplete' | 'complete'; // Onboarding status
+  stripeOnboardingUrl?: string; // Link to complete onboarding
+  stripeAccountEnabled?: boolean; // Whether account can receive payouts
+  
   // DEPRECATED FIELDS - kept for backward compatibility during migration
   // These will be removed after migration is complete
   /** @deprecated Use displayName instead */
@@ -132,6 +142,15 @@ export interface FirestoreReservation {
   supportContribution?: number; // Optional support contribution amount
   paymentMethod?: string; // Payment method used: 'google-pay', 'stripe', or empty for free events
   totalAmount?: number; // Total amount paid (for paid events)
+  // Stripe payment fields
+  paymentIntentId?: string; // Stripe PaymentIntent ID
+  subscriptionId?: string; // Stripe Subscription ID (for recurring events)
+  paymentStatus?: 'pending' | 'succeeded' | 'failed' | 'refunded';
+  payoutStatus?: 'pending' | 'held' | 'released' | 'paid'; // For one-time events
+  payoutReleasedAt?: number; // Timestamp when payout was released
+  nextChargeDate?: number; // For subscriptions - when next charge occurs
+  optOutRequested?: boolean; // User requested to opt-out of subscription
+  optOutProcessed?: boolean; // Whether opt-out was processed
 }
 
 export interface FirestoreExpulsion {
@@ -176,7 +195,7 @@ export interface FirestoreHostProfile {
 export interface FirestoreNotification {
   id: string;
   userId: string;
-  type: 'new-event' | 'new-rsvp' | 'announcement' | 'poll' | 'new-message' | 'followed-host-event' | 'new-follower' | 'new-favorite' | 'event-getting-full' | 'event-trending' | 'follow-host-suggestion';
+  type: 'new-event' | 'new-rsvp' | 'announcement' | 'poll' | 'new-message' | 'followed-host-event' | 'new-follower' | 'new-favorite' | 'event-getting-full' | 'event-trending' | 'follow-host-suggestion' | 'subscription-reminder';
   title: string;
   body: string;
   timestamp: number; // serverTimestamp
@@ -203,4 +222,24 @@ export interface FirestorePollVote {
   userId: string;
   option: string; // Selected option index or text
   timestamp: number;
+}
+
+// Payment tracking
+export interface FirestorePayment {
+  id: string;
+  reservationId: string;
+  eventId: string;
+  userId: string;
+  hostId: string;
+  amount: number; // Total amount in cents
+  platformFee: number; // Platform fee in cents (10% including Stripe fees)
+  hostPayout: number; // Amount to host in cents
+  currency: string; // 'cad' or 'usd'
+  paymentIntentId: string; // Stripe PaymentIntent ID
+  subscriptionId?: string; // Stripe Subscription ID (for recurring)
+  status: 'pending' | 'succeeded' | 'failed' | 'refunded';
+  payoutStatus: 'pending' | 'held' | 'released' | 'paid';
+  createdAt: number;
+  eventEndDate?: number; // For one-time events - when to release payout (24h after event)
+  payoutReleasedAt?: number; // Timestamp when payout was released
 }

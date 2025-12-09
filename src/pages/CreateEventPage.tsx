@@ -54,6 +54,10 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
   const [repeatTime, setRepeatTime] = useState<string>('');
   const [weeklyDayOfWeek, setWeeklyDayOfWeek] = useState<number | undefined>(undefined);
   const [monthlyDayOfMonth, setMonthlyDayOfMonth] = useState<number | undefined>(undefined);
+  // Payment fields
+  const [hasFee, setHasFee] = useState(false);
+  const [feeAmount, setFeeAmount] = useState<number>(0); // Fee in dollars (will convert to cents)
+  const [currency, setCurrency] = useState<'cad' | 'usd'>('cad');
 
   // Auto-calculate groupSize from attendeesCount
   useEffect(() => {
@@ -672,6 +676,10 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         // Keep old fields for backward compatibility
         weeklyDayOfWeek: sessionFrequency === 'weekly' ? (weeklyDayOfWeek !== undefined ? weeklyDayOfWeek : (date ? new Date(date).getDay() : undefined)) : undefined,
         monthlyDayOfMonth: sessionFrequency === 'monthly' ? (monthlyDayOfMonth !== undefined ? monthlyDayOfMonth : (date ? new Date(date).getDate() : undefined)) : undefined,
+        // Payment fields
+        hasFee: hasFee && feeAmount > 0,
+        feeAmount: hasFee && feeAmount > 0 ? Math.round(feeAmount * 100) : undefined, // Convert to cents
+        currency: hasFee && feeAmount > 0 ? currency : undefined,
       } as any); // Type assertion needed for optional fields
       
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -713,6 +721,9 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       setWhatToExpect('');
       setAttendeesCount(0);
       setPrice('Free');
+      setHasFee(false);
+      setFeeAmount(0);
+      setCurrency('cad');
       setSessionFrequency('');
       setSessionMode('');
       setMainCategory('');
@@ -1219,6 +1230,71 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                 onChange={(e) => setPrice(e.target.value)}
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all" 
               />
+            </div>
+
+            {/* Fee Option */}
+            <div className="space-y-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="hasFee"
+                  checked={hasFee}
+                  onChange={(e) => {
+                    setHasFee(e.target.checked);
+                    if (!e.target.checked) {
+                      setFeeAmount(0);
+                    }
+                  }}
+                  className="w-5 h-5 text-[#15383c] border-gray-300 rounded focus:ring-[#15383c]"
+                />
+                <label htmlFor="hasFee" className="text-sm font-medium text-gray-700 cursor-pointer">
+                  Charge a fee for this event
+                </label>
+              </div>
+              
+              {hasFee && (
+                <div className="space-y-2 pl-8">
+                  {userProfile?.stripeAccountId && userProfile?.stripeOnboardingStatus === 'complete' ? (
+                    <>
+                      <div className="flex gap-2">
+                        <select
+                          value={currency}
+                          onChange={(e) => setCurrency(e.target.value as 'cad' | 'usd')}
+                          className="bg-white border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-[#15383c]"
+                        >
+                          <option value="cad">CAD ($)</option>
+                          <option value="usd">USD ($)</option>
+                        </select>
+                        <input
+                          type="number"
+                          placeholder="0.00"
+                          value={feeAmount || ''}
+                          onChange={(e) => setFeeAmount(parseFloat(e.target.value) || 0)}
+                          min="0"
+                          step="0.01"
+                          className="flex-1 bg-white border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-[#15383c]"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Platform fee: 10% (includes Stripe fees). You'll receive payouts 24 hours after the event.
+                      </p>
+                    </>
+                  ) : (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                      <p className="text-sm text-yellow-800 mb-2">
+                        You need to set up Stripe to charge fees. Click below to complete your Stripe account setup.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setViewState(ViewState.PROFILE_STRIPE)}
+                        className="text-sm font-semibold text-[#e35e25] hover:underline"
+                      >
+                        Set up Stripe Account →
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

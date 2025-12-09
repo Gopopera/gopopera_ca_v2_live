@@ -56,6 +56,10 @@ export interface Event {
   weeklyDayOfWeek?: number; // 0-6 for weekly sessions (0 = Sunday)
   monthlyDayOfMonth?: number; // 1-31 for monthly sessions
   startDateTime?: number; // Timestamp for session start (alternative to startDate)
+  // Payment fields
+  hasFee?: boolean; // Whether event charges a fee
+  feeAmount?: number; // Fee amount in cents
+  currency?: string; // 'cad' or 'usd'
 }
 
 export enum ViewState {

@@ -728,7 +728,7 @@ export const useUserStore = create<UserStore>()(
         }
       },
 
-      addRSVP: async (userId: string, eventId: string, options?: { attendeeCount?: number; supportContribution?: number; paymentMethod?: string; totalAmount?: number }) => {
+      addRSVP: async (userId: string, eventId: string, options?: { attendeeCount?: number; supportContribution?: number; paymentMethod?: string; totalAmount?: number; paymentIntentId?: string; subscriptionId?: string }): Promise<string> => {
         try {
           const currentUser = get().user;
           const currentRSVPs = Array.isArray(currentUser?.rsvps) ? currentUser.rsvps : [];

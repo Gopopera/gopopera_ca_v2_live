@@ -18,6 +18,8 @@ import { getMainCategoryLabelFromEvent } from '../../utils/categoryMapper';
 import { getSessionFrequencyText, getSessionModeText } from '../../utils/eventHelpers';
 import { getInitials, getAvatarBgColor } from '../../utils/avatarUtils';
 import { subscribeToFollowersCount } from '../../firebase/follow';
+import { PaymentModal } from '../../components/payments/PaymentModal';
+import { hasEventFee, isRecurringEvent } from '../../utils/stripeHelpers';
 
 interface EventDetailPageProps {
   event: Event;
@@ -69,6 +71,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const [hostProfilePicture, setHostProfilePicture] = useState<string | null>(null);
   const [hostBio, setHostBio] = useState<string | null>(null);
   const [followersCount, setFollowersCount] = useState<number>(0);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   
   // Store hooks - always called
   const user = useUserStore((state) => state.user);
@@ -483,8 +486,14 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             }
           }, 500);
         } else {
-          // For paid events, navigate to Confirm & Pay page first
-          setViewState(ViewState.CONFIRM_RESERVATION);
+          // Check if event has Stripe fee (new payment system)
+          if (hasEventFee(event)) {
+            // Show payment modal for Stripe payments
+            setShowPaymentModal(true);
+          } else {
+            // For legacy paid events, navigate to Confirm & Pay page
+            setViewState(ViewState.CONFIRM_RESERVATION);
+          }
         }
       }
     } catch (error) {
@@ -517,6 +526,35 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     setViewState(ViewState.CHAT);
   };
 
+  const handlePaymentSuccess = async (paymentIntentId: string, subscriptionId?: string) => {
+    try {
+      // Create reservation with payment info
+      const { addRSVP } = useUserStore.getState();
+      const reservationId = await addRSVP(user.uid, event.id, {
+        paymentMethod: 'stripe',
+        totalAmount: event.feeAmount,
+        paymentIntentId,
+        subscriptionId,
+      });
+      
+      setReservationSuccess(true);
+      setReservationCount((prev) => (prev !== null ? prev + 1 : 1));
+      
+      // Refresh user profile
+      await useUserStore.getState().refreshUserProfile();
+      
+      // Navigate to confirmation
+      setTimeout(() => {
+        if (onRSVP) {
+          onRSVP(event.id, reservationId);
+        }
+      }, 500);
+    } catch (error) {
+      console.error('Error creating reservation after payment:', error);
+      alert('Payment succeeded but failed to create reservation. Please contact support.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white pt-0">
       <FakeEventReservationModal
@@ -524,6 +562,23 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         onClose={() => setShowFakeEventModal(false)}
         onBrowseEvents={handleBrowseEvents}
       />
+      {hasEventFee(event) && (
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          onSuccess={handlePaymentSuccess}
+          eventTitle={event.title}
+          feeAmount={event.feeAmount || 0}
+          currency={event.currency || 'cad'}
+          attendeeCount={1}
+          isRecurring={isRecurringEvent(event)}
+          eventId={event.id}
+          hostId={event.hostId}
+          userId={user?.uid}
+          userEmail={user?.email}
+          subscriptionInterval={event.sessionFrequency === 'weekly' ? 'week' : event.sessionFrequency === 'monthly' ? 'month' : undefined}
+        />
+      )}
       <div className="fixed top-0 left-0 right-0 z-40 p-4 sm:p-4 flex items-center justify-between lg:hidden pointer-events-none safe-area-inset-top">
          <button onClick={() => window.history.back()} className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center text-popera-teal shadow-lg pointer-events-auto hover:scale-105 active:scale-[0.92] transition-transform touch-manipulation border border-white/50"><ChevronLeft size={22} className="sm:w-6 sm:h-6" /></button>
          <div className="flex gap-2.5 sm:gap-3 pointer-events-auto">

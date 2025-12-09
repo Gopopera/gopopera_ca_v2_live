@@ -23,6 +23,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
   const [stats, setStats] = useState({ revenue: 30, hosted: 0, attendees: 0, following: 0, attended: 0, reviews: 0, followers: 0 });
   const [loading, setLoading] = useState(true);
   
+  // Auto-navigate to Stripe settings if returning from Stripe onboarding
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('stripe_return') === 'true') {
+      setViewState(ViewState.PROFILE_STRIPE);
+      // Clean up URL
+      window.history.replaceState({}, '', '/profile');
+    }
+  }, [setViewState]);
+  
   // REFACTORED: Real-time subscription to /users/{userId} - single source of truth
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string>(userName);

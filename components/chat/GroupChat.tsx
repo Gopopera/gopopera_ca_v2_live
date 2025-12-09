@@ -13,6 +13,8 @@ import { CreatePollModal } from './CreatePollModal';
 import { CreateAnnouncementModal } from './CreateAnnouncementModal';
 import { CreateSurveyModal } from './CreateSurveyModal';
 import { MoreToolsModal } from './MoreToolsModal';
+import { SubscriptionOptOutModal } from '../payments/SubscriptionOptOutModal';
+import { isRecurringEvent } from '../../utils/stripeHelpers';
 import { POPERA_HOST_ID } from '@/stores/userStore';
 import { getDbSafe } from '../../src/lib/firebase';
 import { doc, updateDoc, arrayUnion, arrayRemove, getDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
@@ -87,6 +89,8 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   const [showCreateAnnouncementModal, setShowCreateAnnouncementModal] = useState(false);
   const [showCreateSurveyModal, setShowCreateSurveyModal] = useState(false);
   const [showMoreToolsModal, setShowMoreToolsModal] = useState(false);
+  const [showSubscriptionOptOut, setShowSubscriptionOptOut] = useState(false);
+  const [userSubscription, setUserSubscription] = useState<{ subscriptionId: string; nextChargeDate?: Date } | null>(null);
   const [isFollowingHost, setIsFollowingHost] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [hasReservedRealTime, setHasReservedRealTime] = useState<boolean | null>(null); // null = not checked yet
@@ -108,6 +112,41 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   const hasReserved = currentUser ? currentUser.rsvps.includes(event.id) : false;
   
   // CRITICAL: Real-time RSVP check function - checks Firestore directly
+  // Check if user has a subscription for this event
+  useEffect(() => {
+    const checkSubscription = async () => {
+      if (!currentUser?.uid || !event.id || !isRecurringEvent(event)) return;
+
+      try {
+        const db = getDbSafe();
+        if (!db) return;
+
+        const reservationsRef = collection(db, 'reservations');
+        const q = query(
+          reservationsRef,
+          where('eventId', '==', event.id),
+          where('userId', '==', currentUser.uid),
+          where('status', '==', 'reserved')
+        );
+        const snapshot = await getDocs(q);
+
+        if (!snapshot.empty) {
+          const reservation = snapshot.docs[0].data();
+          if (reservation.subscriptionId && !reservation.optOutProcessed) {
+            setUserSubscription({
+              subscriptionId: reservation.subscriptionId,
+              nextChargeDate: reservation.nextChargeDate ? new Date(reservation.nextChargeDate) : undefined,
+            });
+          }
+        }
+      } catch (error) {
+        console.error('[GROUP_CHAT] Error checking subscription:', error);
+      }
+    };
+
+    checkSubscription();
+  }, [currentUser?.uid, event.id, event.sessionFrequency]);
+
   // This ensures we don't miss reservations due to stale cache
   const checkReservationInFirestore = React.useCallback(async (eventId: string, userId: string): Promise<boolean> => {
     if (!userId || !eventId) return false;
@@ -1528,9 +1567,66 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
           alert(muteAll ? 'All notifications unmuted' : 'All notifications muted');
         }}
         onDownloadHistory={handleDownloadChatHistory}
+        onManageSubscription={() => setShowSubscriptionOptOut(true)}
+        hasSubscription={!!userSubscription}
         chatLocked={chatLocked}
         muteAll={muteAll}
       />
+
+      {/* Subscription Opt-Out Modal */}
+      {userSubscription && (
+        <SubscriptionOptOutModal
+          isOpen={showSubscriptionOptOut}
+          onClose={() => setShowSubscriptionOptOut(false)}
+          onConfirm={async () => {
+            try {
+              // Cancel subscription via API
+              const response = await fetch('/api/stripe/cancel-subscription', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  subscriptionId: userSubscription.subscriptionId,
+                }),
+              });
+
+              if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to cancel subscription');
+              }
+
+              // Update reservation in Firestore
+              const db = getDbSafe();
+              if (db && currentUser?.uid) {
+                const reservationsRef = collection(db, 'reservations');
+                const q = query(
+                  reservationsRef,
+                  where('eventId', '==', event.id),
+                  where('userId', '==', currentUser.uid),
+                  where('status', '==', 'reserved')
+                );
+                const snapshot = await getDocs(q);
+                
+                if (!snapshot.empty) {
+                  const reservationDoc = snapshot.docs[0];
+                  await updateDoc(doc(db, 'reservations', reservationDoc.id), {
+                    optOutRequested: true,
+                    optOutProcessed: true,
+                  });
+                }
+              }
+
+              setUserSubscription(null);
+            } catch (error: any) {
+              console.error('Error cancelling subscription:', error);
+              throw error;
+            }
+          }}
+          eventTitle={event.title}
+          nextChargeDate={userSubscription.nextChargeDate}
+        />
+      )}
     </div>
   );
 };

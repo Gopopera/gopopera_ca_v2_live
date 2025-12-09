@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, MessageSquareOff, Lock, BellOff, Download } from 'lucide-react';
+import { X, MessageSquareOff, Lock, BellOff, Download, CreditCard } from 'lucide-react';
 
 interface MoreToolsModalProps {
   isOpen: boolean;
@@ -8,8 +8,10 @@ interface MoreToolsModalProps {
   onToggleLockMessages: () => void;
   onToggleMuteAll: () => void;
   onDownloadHistory: () => void;
+  onManageSubscription?: () => void;
   chatLocked: boolean;
   muteAll: boolean;
+  hasSubscription?: boolean;
 }
 
 export const MoreToolsModal: React.FC<MoreToolsModalProps> = ({
@@ -19,8 +21,10 @@ export const MoreToolsModal: React.FC<MoreToolsModalProps> = ({
   onToggleLockMessages,
   onToggleMuteAll,
   onDownloadHistory,
+  onManageSubscription,
   chatLocked,
   muteAll,
+  hasSubscription,
 }) => {
   if (!isOpen) return null;
 
@@ -125,6 +129,25 @@ export const MoreToolsModal: React.FC<MoreToolsModalProps> = ({
               <p className="text-sm text-gray-600">Export conversation as JSON file</p>
             </div>
           </button>
+
+          {/* Manage Subscription (only for recurring events with subscription) */}
+          {hasSubscription && onManageSubscription && (
+            <button
+              onClick={() => {
+                onManageSubscription();
+                onClose();
+              }}
+              className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 hover:border-[#e35e25] hover:bg-[#e35e25]/5 transition-all text-left"
+            >
+              <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center shrink-0">
+                <CreditCard size={20} className="text-purple-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-[#15383c]">Manage Subscription</h3>
+                <p className="text-sm text-gray-600">Cancel or modify your recurring payment</p>
+              </div>
+            </button>
+          )}
         </div>
 
         {/* Footer */}
