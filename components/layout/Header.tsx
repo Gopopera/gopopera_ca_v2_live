@@ -192,7 +192,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
   return (
     <header className={navClasses}>
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 flex items-center justify-between">
-        {/* Logo */}
+        {/* Logo - Animates from "Popera." to "P." on scroll */}
         <div 
           className="cursor-pointer z-50 group" 
           onClick={() => handleNav(isLoggedIn ? ViewState.FEED : ViewState.LANDING)}
@@ -201,6 +201,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
             size="md" 
             textColor={getTextColor(false)} 
             onClick={() => handleNav(isLoggedIn ? ViewState.FEED : ViewState.LANDING)}
+            isCollapsed={isScrolled}
           />
         </div>
 

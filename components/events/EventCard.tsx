@@ -295,7 +295,7 @@ export const EventCard: React.FC<EventCardProps> = ({
         
         {/* Main Category Badge - Liquid Glass Style (hidden in compact/profile mode) */}
         {!compact && !profileVariant && (
-          <div className="absolute top-3 left-3 inline-flex items-center justify-center py-1.5 px-3 rounded-full bg-white/80 backdrop-blur-md text-[#e35e25] text-[10px] sm:text-xs font-bold tracking-wider uppercase z-20 border border-white/60 shadow-sm">
+          <div className="absolute top-3 left-3 inline-flex items-center justify-center py-1.5 px-3 rounded-full bg-white/20 backdrop-blur-md text-[#e35e25] text-[10px] sm:text-xs font-bold tracking-wider uppercase z-20 border border-white/30">
             {getMainCategoryLabelFromEvent(event)}
           </div>
         )}
@@ -318,7 +318,7 @@ export const EventCard: React.FC<EventCardProps> = ({
         {/* ACTION BUTTONS - Liquid Glass cluster top-right (hidden in compact/profile mode) */}
         {!compact && !profileVariant && (
           <div className="absolute top-3 right-3 flex items-center gap-1.5 z-30 pointer-events-auto">
-             {/* FEATURE: Favorite Heart - Liquid Glass */}
+             {/* FEATURE: Favorite Heart - Light Grey Glass, Orange Heart when favorited */}
              {onToggleFavorite && (
                <button
                  onClick={handleFavoriteClick}
@@ -328,11 +328,7 @@ export const EventCard: React.FC<EventCardProps> = ({
                    e.stopPropagation();
                    e.preventDefault();
                  }}
-                 className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 touch-manipulation shrink-0 pointer-events-auto z-30 backdrop-blur-xl border shadow-sm ${
-                   isFavorite 
-                     ? 'bg-[#e35e25] border-[#e35e25]/60 shadow-lg shadow-[#e35e25]/30' 
-                     : 'bg-white/70 border-white/50 hover:bg-white/90'
-                 }`}
+                 className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 touch-manipulation shrink-0 pointer-events-auto z-30 backdrop-blur-xl border shadow-sm bg-gray-100/70 border-gray-200/50 hover:bg-gray-100/90"
                  aria-label="Toggle Favorite"
                  type="button"
                  style={{ pointerEvents: 'auto', WebkitTapHighlightColor: 'transparent' }}
@@ -341,10 +337,10 @@ export const EventCard: React.FC<EventCardProps> = ({
                    size={16} 
                    className={`sm:w-[18px] sm:h-[18px] transition-all ${
                      isFavorite 
-                       ? 'fill-white text-white' 
-                       : 'fill-[#e35e25] text-[#e35e25]'
+                       ? 'fill-[#e35e25] text-[#e35e25]' 
+                       : 'fill-none text-gray-500'
                    }`}
-                   strokeWidth={2.5}
+                   strokeWidth={2}
                  />
                </button>
              )}

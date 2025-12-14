@@ -768,16 +768,14 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               e.preventDefault();
             }}
             type="button"
-            className={`absolute top-20 sm:top-20 lg:top-20 right-4 w-11 h-11 sm:w-12 sm:h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 hover:bg-white/30 transition-all hover:scale-110 active:scale-95 touch-manipulation z-50 pointer-events-auto ${
-              isFavorite ? 'bg-[#e35e25]/90 border-[#e35e25]/50' : ''
-            }`}
+            className="absolute top-20 sm:top-20 lg:top-20 right-4 w-11 h-11 sm:w-12 sm:h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 hover:bg-white/30 transition-all hover:scale-110 active:scale-95 touch-manipulation z-50 pointer-events-auto"
             style={{ pointerEvents: 'auto', WebkitTapHighlightColor: 'transparent' }}
             aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
           >
             <Heart 
               size={22} 
               className={`sm:w-6 sm:h-6 transition-all ${
-                isFavorite ? 'fill-white text-white' : 'fill-white/80 text-white'
+                isFavorite ? 'fill-[#e35e25] text-[#e35e25]' : 'fill-white/80 text-white'
               }`}
               strokeWidth={2.5}
             />
@@ -791,14 +789,12 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           </div>
         )}
         
-        {/* Content Overlay - Minimal, just category badge */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 md:p-10 lg:p-12 max-w-7xl mx-auto">
-          <div className="text-white">
-            {/* Category Badge */}
-            <span className="inline-block px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-[#e35e25] text-xs font-bold uppercase tracking-wider border border-white/30">
-              {getMainCategoryLabelFromEvent(event)}
-            </span>
-          </div>
+        {/* Content Overlay - Category badge on the right */}
+        <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 md:p-10 lg:p-12 max-w-7xl mx-auto flex justify-end">
+          {/* Category Badge - Right aligned */}
+          <span className="inline-block px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-[#e35e25] text-xs font-bold uppercase tracking-wider border border-white/30">
+            {getMainCategoryLabelFromEvent(event)}
+          </span>
         </div>
       </div>
 
@@ -867,7 +863,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               </div>
 
               {/* RIGHT: Host Info */}
-              <div className="lg:flex lg:flex-col lg:items-end lg:text-right">
+              <div className="flex flex-col items-start lg:items-end lg:text-right mt-4 lg:mt-0">
                 <p className="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1">{t('event.hostedBy')}</p>
                 <h3 
                   className="text-lg sm:text-xl font-heading font-bold text-[#15383c] cursor-pointer hover:text-[#e35e25] transition-colors mb-2"
@@ -877,7 +873,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 </h3>
                 
                 {/* Rating + Followers - Inline */}
-                <div className="flex items-center gap-3 lg:justify-end mb-3">
+                <div className="flex items-center gap-3 mb-3">
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
@@ -898,7 +894,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   </div>
                 </div>
                 
-                {/* Follow Button - Compact */}
+                {/* Follow Button - Liquid Glass Style */}
                 {isLoggedIn && user?.uid !== event.hostId && (
                   <button
                     onClick={handleFollowToggle}
@@ -1053,20 +1049,20 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             </p>
           </div>
 
-          {/* Cancellation Policy Section */}
-          <div className="mb-16 sm:mb-20 md:mb-24 pt-8 sm:pt-10 border-t border-gray-100">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-6 sm:mb-8">
+          {/* Cancellation Policy Section - Compact */}
+          <div className="mb-10 sm:mb-12 md:mb-16 pt-6 sm:pt-8 border-t border-gray-100">
+            <h2 className="text-lg sm:text-xl font-heading font-bold text-[#15383c] mb-3 sm:mb-4">
               Cancellation / Expulsion Policy
             </h2>
-            <div className="space-y-4 text-gray-700 text-base sm:text-lg leading-relaxed">
+            <div className="space-y-2 text-gray-600 text-xs sm:text-sm leading-relaxed">
               <p>
-                <strong className="text-[#15383c]">Cancellation Policy:</strong> Full refund 48+ hours before, 50% refund 24-48 hours before, no refund within 24 hours or no-shows.
+                <strong className="text-[#15383c]">Cancellation:</strong> Full refund 48+ hours before, 50% refund 24-48 hours before, no refund within 24 hours or no-shows.
               </p>
               <p>
-                <strong className="text-[#15383c]">Expulsion Policy:</strong> Hosts may expel rule-violating attendees without refunds; repeat offenders may be banned.
+                <strong className="text-[#15383c]">Expulsion:</strong> Hosts may expel rule-violating attendees without refunds; repeat offenders may be banned.
               </p>
-              <p className="text-gray-500 text-sm sm:text-base italic">
-                For complete policy details, please review our <button onClick={() => setViewState(ViewState.CANCELLATION)} className="text-[#e35e25] hover:underline font-medium">Cancellation Policy</button> page.
+              <p className="text-gray-400 text-xs italic">
+                For complete details, review our <button onClick={() => setViewState(ViewState.CANCELLATION)} className="text-[#e35e25] hover:underline font-medium">Cancellation Policy</button>.
               </p>
             </div>
           </div>

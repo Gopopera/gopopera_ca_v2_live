@@ -20,7 +20,7 @@ export const translations = {
     // Hero
     hero: {
       badge: 'Local Circle Discovery',
-      title: 'Find, join or start your circle.',
+      title: 'Find, join or start your social circle.',
       titleHighlight: '',
       description: 'A social platform for small Circles and meaningful real-life Sessions.',
       getStarted: 'Get Started',
@@ -867,7 +867,7 @@ export const translations = {
     // Hero
     hero: {
       badge: 'Découverte de cercle local',
-      title: 'Trouvez, créez ou rejoignez un cercle.',
+      title: 'Trouvez, créez ou rejoignez un cercle social.',
       titleHighlight: '',
       description: 'Une plateforme sociale pour les petits Cercles et les Sessions en personne significatives.',
       getStarted: 'Commencer',
