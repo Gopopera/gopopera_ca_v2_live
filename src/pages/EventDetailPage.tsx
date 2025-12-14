@@ -791,146 +791,145 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           </div>
         )}
         
-        {/* Content Overlay - White text over bottom gradient */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 md:p-10 lg:p-12 xl:p-16 max-w-7xl mx-auto">
+        {/* Content Overlay - Minimal, just category badge */}
+        <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 md:p-10 lg:p-12 max-w-7xl mx-auto">
           <div className="text-white">
             {/* Category Badge */}
-            <span className="inline-block px-4 py-2 bg-white/20 backdrop-blur-md rounded-full text-[#e35e25] text-xs sm:text-sm font-bold uppercase tracking-wider mb-4 sm:mb-5 border border-white/30">
+            <span className="inline-block px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-[#e35e25] text-xs font-bold uppercase tracking-wider border border-white/30">
               {getMainCategoryLabelFromEvent(event)}
             </span>
-            
-            {/* Title - Large, clean typography */}
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-heading font-bold leading-tight mb-4 sm:mb-5 md:mb-6 text-balance drop-shadow-lg">
-              {event.title}
-            </h1>
-            
-            {/* Metadata - Clean, icon-based, minimalist */}
-            <div className="flex flex-wrap items-center gap-4 sm:gap-5 text-white/90 mb-6 sm:mb-8">
-              <div className="flex items-center gap-2 text-sm sm:text-base">
-                <Calendar size={18} className="sm:w-5 sm:h-5 shrink-0" />
-                <span>{formatDate(event.date)} • {event.time}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm sm:text-base">
-                <MapPin size={18} className="sm:w-5 sm:h-5 shrink-0" />
-                <span className="truncate">{event.location}</span>
-              </div>
-              {reservationCount !== null && (
-                <div className="flex items-center gap-2 text-sm sm:text-base">
-                  <User size={18} className="sm:w-5 sm:h-5 shrink-0" />
-                  <span>{reservationCount} attending</span>
-                </div>
-              )}
-            </div>
           </div>
         </div>
       </div>
 
       {/* Content Sections - Premium clean design */}
-      <div className="bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 md:py-20 lg:py-24">
+      <div className="bg-white relative">
+        {/* Host Avatar - Overlapping hero/content boundary */}
+        <div className="absolute -top-8 sm:-top-10 left-4 sm:left-6 lg:left-8 xl:left-[calc((100%-1280px)/2+32px)] z-10">
+          <div 
+            className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-[#e35e25] to-[#15383c] overflow-hidden ring-4 ring-white shadow-xl cursor-pointer hover:ring-[#e35e25]/30 transition-all"
+            onClick={() => onHostClick?.(displayHostName)}
+          >
+            {hostProfilePicture ? (
+              <img 
+                src={hostProfilePicture} 
+                alt={displayHostName} 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
+                }} 
+              />
+            ) : (
+              <div className={`w-full h-full flex items-center justify-center ${getAvatarBgColor(displayHostName, event.hostId)} text-white font-bold text-xl sm:text-2xl`}>
+                {getInitials(displayHostName)}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-14 pb-12 sm:pb-16 md:pb-20 lg:pb-24">
           {/* Reservation Success Message */}
           {reservationSuccess && (
-            <div className="mb-8 bg-green-50 border border-green-200 rounded-[32px] p-5 sm:p-6 flex items-center gap-3 animate-fade-in">
-              <CheckCircle2 size={24} className="text-green-600 shrink-0" />
-              <p className="text-green-800 font-medium text-base">{t('event.reservationSuccess')}</p>
+            <div className="mb-6 bg-green-50 border border-green-200 rounded-2xl p-4 sm:p-5 flex items-center gap-3 animate-fade-in">
+              <CheckCircle2 size={20} className="text-green-600 shrink-0" />
+              <p className="text-green-800 font-medium text-sm">{t('event.reservationSuccess')}</p>
             </div>
           )}
 
-          {/* Host Block with Sidebar - Premium design */}
-          <div className="mb-16 sm:mb-20 md:mb-24">
-            <div className="lg:grid lg:grid-cols-12 lg:gap-8">
-              {/* Host Info - Left side */}
-              <div className="lg:col-span-7 mb-6 lg:mb-0">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-8">
-                  <div className="flex items-center gap-5 sm:gap-6">
-                    {/* Large Avatar */}
-                    <div 
-                      className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full bg-gradient-to-br from-[#e35e25] to-[#15383c] overflow-hidden ring-4 ring-white shadow-xl cursor-pointer hover:ring-[#e35e25]/30 transition-all shrink-0"
-                      onClick={() => onHostClick?.(displayHostName)}
-                    >
-                      {hostProfilePicture ? (
-                        <img 
-                          src={hostProfilePicture} 
-                          alt={displayHostName} 
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
-                          }} 
-                        />
-                      ) : (
-                        <div className={`w-full h-full flex items-center justify-center ${getAvatarBgColor(displayHostName, event.hostId)} text-white font-bold text-2xl sm:text-3xl`}>
-                          {getInitials(displayHostName)}
-                        </div>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs sm:text-sm uppercase tracking-wider text-gray-500 font-bold mb-2">{t('event.hostedBy')}</p>
-                      <h3 
-                        className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c] cursor-pointer hover:text-[#e35e25] transition-colors mb-2"
-                        onClick={() => onHostClick?.(displayHostName)}
-                      >
-                        {displayHostName}
-                      </h3>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (event.hostId) {
-                            setShowHostReviewsModal(true);
-                          }
-                        }} 
-                        className="flex items-center space-x-2 bg-[#e35e25]/10 hover:bg-[#e35e25]/20 px-4 py-2 rounded-full transition-colors border border-[#e35e25]/20 hover:border-[#e35e25]/40 group/rating w-fit touch-manipulation active:scale-95"
-                      >
-                        <Star size={16} className="text-[#e35e25] fill-[#e35e25]" />
-                        <span className="text-sm font-bold text-[#15383c]">{formatRating(currentRating.rating)}</span>
-                        <span className="text-xs text-gray-600">({currentRating.reviewCount})</span>
-                      </button>
-                      
-                      {/* Followers Count */}
-                      <div className="flex items-center gap-2 mt-3">
-                        <Users size={16} className="text-gray-500" />
-                        <span className="text-sm text-gray-600">
-                          {followersCount} {followersCount === 1 ? 'follower' : 'followers'}
-                        </span>
-                      </div>
-                      
-                      {/* Host Bio */}
-                      {hostBio && (
-                        <p className="text-gray-600 text-sm sm:text-base mt-4 leading-relaxed max-w-2xl">
-                          {hostBio}
-                        </p>
-                      )}
-                    </div>
+          {/* Event Info + Host Section - Two Column Layout */}
+          <div className="mb-10 sm:mb-12 md:mb-16">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 items-start">
+              {/* LEFT: Event Info (Title, Date, Location, Attending) */}
+              <div>
+                {/* Title */}
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-bold text-[#15383c] leading-tight mb-4">
+                  {event.title}
+                </h1>
+                
+                {/* Metadata - Compact, clean */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2.5 text-gray-600">
+                    <Calendar size={16} className="text-[#e35e25] shrink-0" />
+                    <span className="text-sm sm:text-base">{formatDate(event.date)} • {event.time}</span>
                   </div>
-                  
-                  {/* Follow Button - Liquid Glass Style (hidden for hosts viewing their own event) */}
-                  {isLoggedIn && user?.uid !== event.hostId && (
-                    <button
-                      onClick={handleFollowToggle}
-                      disabled={followLoading}
-                      aria-label={isFollowingHost ? `Unfollow ${displayHostName}` : `Follow ${displayHostName}`}
-                      className={`px-7 py-3.5 rounded-full text-base font-semibold transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2 shrink-0 ${
-                        isFollowingHost
-                          ? 'bg-white/80 backdrop-blur-sm text-[#15383c] border border-gray-200/60 hover:bg-white hover:border-gray-300'
-                          : 'bg-[#e35e25] text-white shadow-lg shadow-[#e35e25]/25 hover:shadow-xl hover:shadow-[#e35e25]/30'
-                      } disabled:opacity-50`}
-                    >
-                      {isFollowingHost ? (
-                        <>
-                          <UserCheck size={18} /> {t('event.following')}
-                        </>
-                      ) : (
-                        <>
-                          <UserPlus size={18} /> {t('event.follow')}
-                        </>
-                      )}
-                    </button>
+                  <div className="flex items-center gap-2.5 text-gray-600">
+                    <MapPin size={16} className="text-[#e35e25] shrink-0" />
+                    <span className="text-sm sm:text-base truncate">{event.location}</span>
+                  </div>
+                  {reservationCount !== null && (
+                    <div className="flex items-center gap-2.5 text-gray-600">
+                      <User size={16} className="text-[#e35e25] shrink-0" />
+                      <span className="text-sm sm:text-base">{reservationCount} attending</span>
+                    </div>
                   )}
                 </div>
               </div>
 
-              {/* Reservation Sidebar - Right side (desktop only) - Liquid Glass */}
-              <div className="lg:col-span-5 hidden lg:block">
+              {/* RIGHT: Host Info */}
+              <div className="lg:flex lg:flex-col lg:items-end lg:text-right">
+                <p className="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1">{t('event.hostedBy')}</p>
+                <h3 
+                  className="text-lg sm:text-xl font-heading font-bold text-[#15383c] cursor-pointer hover:text-[#e35e25] transition-colors mb-2"
+                  onClick={() => onHostClick?.(displayHostName)}
+                >
+                  {displayHostName}
+                </h3>
+                
+                {/* Rating + Followers - Inline */}
+                <div className="flex items-center gap-3 lg:justify-end mb-3">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (event.hostId) {
+                        setShowHostReviewsModal(true);
+                      }
+                    }} 
+                    className="flex items-center gap-1.5 bg-[#e35e25]/10 hover:bg-[#e35e25]/20 px-3 py-1.5 rounded-full transition-colors border border-[#e35e25]/20 hover:border-[#e35e25]/40 touch-manipulation active:scale-95"
+                  >
+                    <Star size={14} className="text-[#e35e25] fill-[#e35e25]" />
+                    <span className="text-xs font-bold text-[#15383c]">{formatRating(currentRating.rating)}</span>
+                    <span className="text-[10px] text-gray-600">({currentRating.reviewCount})</span>
+                  </button>
+                  
+                  <div className="flex items-center gap-1.5 text-gray-500">
+                    <Users size={14} />
+                    <span className="text-xs">{followersCount} {followersCount === 1 ? 'follower' : 'followers'}</span>
+                  </div>
+                </div>
+                
+                {/* Follow Button - Compact */}
+                {isLoggedIn && user?.uid !== event.hostId && (
+                  <button
+                    onClick={handleFollowToggle}
+                    disabled={followLoading}
+                    aria-label={isFollowingHost ? `Unfollow ${displayHostName}` : `Follow ${displayHostName}`}
+                    className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-1.5 ${
+                      isFollowingHost
+                        ? 'bg-white/80 backdrop-blur-sm text-[#15383c] border border-gray-200/60 hover:bg-white hover:border-gray-300'
+                        : 'bg-[#e35e25] text-white shadow-lg shadow-[#e35e25]/25 hover:shadow-xl hover:shadow-[#e35e25]/30'
+                    } disabled:opacity-50`}
+                  >
+                    {isFollowingHost ? (
+                      <>
+                        <UserCheck size={14} /> {t('event.following')}
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus size={14} /> {t('event.follow')}
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Reservation Sidebar - Desktop only - Liquid Glass */}
+          <div className="mb-10 sm:mb-12 hidden lg:block">
+            <div className="lg:grid lg:grid-cols-12 lg:gap-8">
+              <div className="lg:col-span-7"></div>
+              <div className="lg:col-span-5">
                 <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.05)] border border-white/60 p-5 hover:shadow-[0_6px_24px_rgb(0,0,0,0.08)] transition-shadow">
                   <div className="flex justify-between items-center mb-5 pb-5 border-b border-gray-100/80">
                     <div>
