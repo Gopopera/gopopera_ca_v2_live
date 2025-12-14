@@ -14,6 +14,14 @@ export async function followHost(followerId: string, hostId: string): Promise<vo
   const db = getDbSafe();
   if (!db) throw new Error('Database not available');
 
+  // Prevent users from following themselves
+  if (followerId === hostId) {
+    if (import.meta.env.DEV) {
+      console.warn('[FOLLOW] User attempted to follow themselves:', followerId);
+    }
+    return;
+  }
+
   // Check if already following to avoid unnecessary writes
   const followerRef = doc(db, 'users', followerId);
   const followerDoc = await getDoc(followerRef);

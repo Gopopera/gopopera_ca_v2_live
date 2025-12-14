@@ -3,9 +3,17 @@ import { ViewState, Event } from '../../types';
 import { ChevronRight, ChevronLeft, Calendar, Users, Star, Heart, Settings } from 'lucide-react';
 import { useUserStore } from '../../stores/userStore';
 import { useEventStore } from '../../stores/eventStore';
-import { getReservationCountForEvent, listHostReviews } from '../../firebase/db';
-// REFACTORED: No longer using getUserProfile - using real-time subscriptions instead
-import { getFollowingHosts, getHostFollowers } from '../../firebase/follow';
+import { 
+  subscribeToHostedEventsCount,
+  subscribeToAttendedEventsCount,
+  subscribeToTotalAttendeesCount,
+  subscribeToReviewsCount
+} from '../../firebase/db';
+// REFACTORED: Using real-time subscriptions for all metrics
+import { 
+  subscribeToFollowersCount, 
+  subscribeToFollowingCount 
+} from '../../firebase/follow';
 import { subscribeToUserProfile } from '../../firebase/userSubscriptions';
 import { EventCard } from '../../components/events/EventCard';
 import { getInitials, getAvatarBgColor } from '../../utils/avatarUtils';
@@ -104,134 +112,81 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
   }, [user?.uid, userName, user?.photoURL, user?.displayName, userProfile?.photoURL, userProfile?.displayName]);
   const initials = getInitials(displayName);
   
-  // Calculate metrics - optimized with parallel queries and proper dependency tracking
+  // Subscribe to ALL real-time metrics updates (no initial async calculation to avoid race conditions)
+  // FIXED: Use static imports and synchronous subscription setup to ensure metrics update in real-time
   useEffect(() => {
-    const calculateMetrics = async () => {
-      if (!user?.uid) {
-        setLoading(false);
-        setStats({ revenue: 0, hosted: 0, attendees: 0, following: 0, attended: 0, reviews: 0, followers: 0 });
-        return;
-      }
-      
-      try {
-        setLoading(true);
-        
-        // Get hosted events (filter non-draft events for accurate count)
-        const hostedEvents = allEvents.filter(e => e.hostId === user.uid && e.isDraft !== true);
-        const hostedCount = hostedEvents.length;
-        
-        // Calculate total attendees across all hosted events (accumulated) - parallel queries for performance
-        let totalAttendees = 0;
-        if (hostedEvents.length > 0) {
-          const attendeeCounts = await Promise.allSettled(
-            hostedEvents.map(event => getReservationCountForEvent(event.id))
-          );
-          
-          totalAttendees = attendeeCounts.reduce((sum, result) => {
-            if (result.status === 'fulfilled') {
-              return sum + result.value;
-            } else {
-              // If query fails, fallback to 0 (not event.attendeesCount to ensure accuracy)
-              console.warn('[PROFILE_METRICS] Failed to get reservation count for event:', result.reason);
-              return sum;
-            }
-          }, 0);
-        }
-        
-        // Get events attended (from RSVPs) - ensure accurate count
-        const attendedCount = Array.isArray(user.rsvps) ? user.rsvps.length : 0;
-        
-        // Parallel queries for following, followers, and reviews for better performance
-        // IMPORTANT: Only count accepted reviews (includePending=false) to match what's displayed
-        const [followingIds, followersIds, reviews] = await Promise.allSettled([
-          getFollowingHosts(user.uid),
-          getHostFollowers(user.uid),
-          listHostReviews(user.uid, false), // Only accepted reviews for accurate count
-        ]);
-        
-        const followingCount = followingIds.status === 'fulfilled' ? followingIds.value.length : 0;
-        const followersCount = followersIds.status === 'fulfilled' ? followersIds.value.length : 0;
-        const reviewsCount = reviews.status === 'fulfilled' ? reviews.value.length : 0;
-        
-        setStats({
-          revenue: 0, // Will be calculated from Stripe transactions later
-          hosted: hostedCount,
-          attendees: totalAttendees, // Always accurate - 0 if no reservations
-          following: followingCount,
-          attended: attendedCount,
-          reviews: reviewsCount,
-          followers: followersCount,
-        });
-      } catch (error) {
-        console.error('[PROFILE_METRICS] Error calculating metrics:', error);
-        // Set safe defaults on error
-        setStats({ revenue: 0, hosted: 0, attendees: 0, following: 0, attended: 0, reviews: 0, followers: 0 });
-      } finally {
+    if (!user?.uid) {
+      setLoading(false);
+      setStats({ revenue: 0, hosted: 0, attendees: 0, following: 0, attended: 0, reviews: 0, followers: 0 });
+      return;
+    }
+    
+    setLoading(true);
+    
+    // Track how many subscriptions have fired at least once
+    let subscriptionsFired = 0;
+    const totalSubscriptions = 6; // followers, following, hosted, attended, attendees, reviews
+    
+    const checkLoadingComplete = () => {
+      subscriptionsFired++;
+      if (subscriptionsFired >= totalSubscriptions) {
         setLoading(false);
       }
     };
     
-    calculateMetrics();
-  }, [user?.uid, allEvents.length, user?.rsvps?.length]); // Use length to avoid unnecessary recalculations
-  
-  // Subscribe to real-time metrics updates
-  useEffect(() => {
-    if (!user?.uid) return;
-    
+    // All subscriptions are set up synchronously using static imports
     const unsubscribes: (() => void)[] = [];
     
-    // Subscribe to followers count (real-time)
-    import('../../firebase/follow').then(({ subscribeToFollowersCount, subscribeToFollowingCount }) => {
-      const unsubscribeFollowers = subscribeToFollowersCount(user.uid, (count: number) => {
-        setStats(prev => ({ ...prev, followers: count }));
-      });
-      unsubscribes.push(unsubscribeFollowers);
-      
-      // Subscribe to following count (real-time)
-      const unsubscribeFollowing = subscribeToFollowingCount(user.uid, (count: number) => {
-        setStats(prev => ({ ...prev, following: count }));
-      });
-      unsubscribes.push(unsubscribeFollowing);
-    }).catch((error) => {
-      console.error('[PROFILE_PAGE] Error loading follow module:', error);
+    // Subscribe to followers count (real-time) - STATIC IMPORT
+    const unsubscribeFollowers = subscribeToFollowersCount(user.uid, (count: number) => {
+      setStats(prev => ({ ...prev, followers: count }));
+      checkLoadingComplete();
     });
+    unsubscribes.push(unsubscribeFollowers);
     
-    // Subscribe to hosted events count (real-time)
-    import('../../firebase/db').then(({ 
-      subscribeToHostedEventsCount, 
-      subscribeToAttendedEventsCount,
-      subscribeToTotalAttendeesCount,
-      subscribeToReviewsCount
-    }) => {
-      // Subscribe to hosted events count
-      const unsubscribeHosted = subscribeToHostedEventsCount(user.uid, (count: number) => {
-        setStats(prev => ({ ...prev, hosted: count }));
-      });
-      unsubscribes.push(unsubscribeHosted);
-      
-      // Subscribe to attended events count (real-time)
-      const unsubscribeAttended = subscribeToAttendedEventsCount(user.uid, (count: number) => {
-        setStats(prev => ({ ...prev, attended: count }));
-      });
-      unsubscribes.push(unsubscribeAttended);
-      
-      // Subscribe to total attendees count across all hosted events (real-time)
-      const unsubscribeAttendees = subscribeToTotalAttendeesCount(user.uid, (count: number) => {
-        setStats(prev => ({ ...prev, attendees: count }));
-      });
-      unsubscribes.push(unsubscribeAttendees);
-      
-      // Subscribe to reviews count (real-time)
-      const unsubscribeReviews = subscribeToReviewsCount(user.uid, (count: number) => {
-        setStats(prev => ({ ...prev, reviews: count }));
-      });
-      unsubscribes.push(unsubscribeReviews);
-    }).catch((error) => {
-      console.error('[PROFILE_PAGE] Error loading db module:', error);
+    // Subscribe to following count (real-time) - STATIC IMPORT
+    const unsubscribeFollowing = subscribeToFollowingCount(user.uid, (count: number) => {
+      setStats(prev => ({ ...prev, following: count }));
+      checkLoadingComplete();
     });
+    unsubscribes.push(unsubscribeFollowing);
+    
+    // Subscribe to hosted events count (real-time) - STATIC IMPORT
+    const unsubscribeHosted = subscribeToHostedEventsCount(user.uid, (count: number) => {
+      setStats(prev => ({ ...prev, hosted: count }));
+      checkLoadingComplete();
+    });
+    unsubscribes.push(unsubscribeHosted);
+    
+    // Subscribe to attended events count (real-time) - STATIC IMPORT
+    const unsubscribeAttended = subscribeToAttendedEventsCount(user.uid, (count: number) => {
+      setStats(prev => ({ ...prev, attended: count }));
+      checkLoadingComplete();
+    });
+    unsubscribes.push(unsubscribeAttended);
+    
+    // Subscribe to total attendees count across all hosted events (real-time) - STATIC IMPORT
+    const unsubscribeAttendees = subscribeToTotalAttendeesCount(user.uid, (count: number) => {
+      setStats(prev => ({ ...prev, attendees: count }));
+      checkLoadingComplete();
+    });
+    unsubscribes.push(unsubscribeAttendees);
+    
+    // Subscribe to reviews count (real-time) - STATIC IMPORT
+    const unsubscribeReviews = subscribeToReviewsCount(user.uid, (count: number) => {
+      setStats(prev => ({ ...prev, reviews: count }));
+      checkLoadingComplete();
+    });
+    unsubscribes.push(unsubscribeReviews);
+    
+    // Fallback: if subscriptions don't fire within 3 seconds, stop loading
+    const loadingTimeout = setTimeout(() => {
+      setLoading(false);
+    }, 3000);
     
     // Cleanup all subscriptions
     return () => {
+      clearTimeout(loadingTimeout);
       unsubscribes.forEach(unsubscribe => unsubscribe());
     };
   }, [user?.uid]);
@@ -273,7 +228,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
   const userBio = userProfile?.bio || '';
 
   const settingsLinks = [
-    { label: 'My Pop-ups', action: () => setViewState(ViewState.MY_POPS), icon: Calendar },
+    { label: 'My Circles', action: () => setViewState(ViewState.MY_POPS), icon: Calendar },
     { label: 'Basic Details', action: () => setViewState(ViewState.PROFILE_BASIC), icon: Users },
     { label: 'Notification Preferences', action: () => setViewState(ViewState.PROFILE_NOTIFICATIONS), icon: Settings },
     { label: 'Privacy Settings', action: () => setViewState(ViewState.PROFILE_PRIVACY), icon: Settings },

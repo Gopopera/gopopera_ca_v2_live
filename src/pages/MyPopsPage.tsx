@@ -56,7 +56,7 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
   onToggleFavorite,
   onEditEvent
 }) => {
-  const [activeTab, setActiveTab] = useState<TabType>('hosting');
+  const [activeTab, setActiveTab] = useState<TabType>('attending');
   const user = useUserStore((state) => state.user);
   const [hostProfilePictures, setHostProfilePictures] = useState<Record<string, string | null>>({});
   const [failedProfilePics, setFailedProfilePics] = useState<Set<string>>(new Set());
@@ -206,7 +206,7 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
             >
               <ChevronLeft size={20} />
             </button>
-            <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c]">My Pop-Ups</h1>
+            <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c]">My Circles</h1>
           </div>
           <button
             onClick={() => setViewState(ViewState.MY_CALENDAR)}
