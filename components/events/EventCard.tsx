@@ -318,7 +318,7 @@ export const EventCard: React.FC<EventCardProps> = ({
         {/* ACTION BUTTONS - Liquid Glass cluster top-right (hidden in compact/profile mode) */}
         {!compact && !profileVariant && (
           <div className="absolute top-3 right-3 flex items-center gap-1.5 z-30 pointer-events-auto">
-             {/* FEATURE: Favorite Heart - Light Grey Glass, Orange Heart when favorited */}
+             {/* FEATURE: Favorite Heart - Same glass style as conversation, orange when favorited */}
              {onToggleFavorite && (
                <button
                  onClick={handleFavoriteClick}
@@ -328,7 +328,7 @@ export const EventCard: React.FC<EventCardProps> = ({
                    e.stopPropagation();
                    e.preventDefault();
                  }}
-                 className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 touch-manipulation shrink-0 pointer-events-auto z-30 backdrop-blur-xl border shadow-sm bg-gray-100/70 border-gray-200/50 hover:bg-gray-100/90"
+                 className="w-9 h-9 sm:w-10 sm:h-10 bg-white/70 border border-white/50 rounded-full flex items-center justify-center hover:bg-white/90 transition-all hover:scale-110 active:scale-95 touch-manipulation shrink-0 pointer-events-auto z-30 backdrop-blur-xl shadow-sm"
                  aria-label="Toggle Favorite"
                  type="button"
                  style={{ pointerEvents: 'auto', WebkitTapHighlightColor: 'transparent' }}
@@ -338,7 +338,7 @@ export const EventCard: React.FC<EventCardProps> = ({
                    className={`sm:w-[18px] sm:h-[18px] transition-all ${
                      isFavorite 
                        ? 'fill-[#e35e25] text-[#e35e25]' 
-                       : 'fill-none text-gray-500'
+                       : 'fill-none text-[#15383c]'
                    }`}
                    strokeWidth={2}
                  />
@@ -365,7 +365,7 @@ export const EventCard: React.FC<EventCardProps> = ({
                type="button"
                style={{ pointerEvents: 'auto', WebkitTapHighlightColor: 'transparent' }}
              >
-               <MessageCircle size={16} className="sm:w-[18px] sm:h-[18px]" strokeWidth={2.5} />
+               <MessageCircle size={16} className="sm:w-[18px] sm:h-[18px]" strokeWidth={2} />
              </button>
           </div>
         )}
@@ -553,51 +553,6 @@ export const EventCard: React.FC<EventCardProps> = ({
         )}
       </div>
 
-      {/* Button Section - Outside image container (hidden in profile variant) */}
-      {!profileVariant && (
-      <div className={`p-4 sm:p-5 md:p-6 ${compact ? 'pt-3 sm:pt-3' : 'pt-3 sm:pt-4'}`}>
-        {compact ? (
-          /* Compact variant - Show metadata and button */
-          <>
-            {/* Metadata - Below image in compact mode */}
-            <div className="mb-3 space-y-1.5">
-              <div className="flex items-center gap-1.5 text-xs text-gray-600">
-                <Calendar size={12} className="text-[#e35e25] shrink-0" />
-                <span>{formatDate(event.date)} • {event.time}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-gray-600">
-                <MapPin size={12} className="text-[#e35e25] shrink-0" />
-                <span className="truncate">{event.city}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-gray-600">
-                <Users size={12} className="text-[#e35e25] shrink-0" />
-                <EventAttendeesCount eventId={event.id} capacity={event.capacity} inline={true} />
-              </div>
-            </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onClick(event);
-              }}
-              className="w-full px-4 py-2.5 bg-white border-2 border-[#15383c] text-[#15383c] rounded-full text-xs sm:text-sm font-bold hover:bg-[#15383c] hover:text-white transition-all shadow-md hover:shadow-lg active:scale-95 touch-manipulation"
-            >
-              Reserve a Spot
-            </button>
-          </>
-        ) : (
-          /* Full variant - Just button */
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onClick(event);
-            }}
-            className="w-full px-6 py-3 bg-white border-2 border-[#15383c] text-[#15383c] rounded-full text-sm sm:text-base font-bold hover:bg-[#15383c] hover:text-white transition-all shadow-lg hover:shadow-xl active:scale-95 touch-manipulation"
-          >
-            Reserve a Spot
-          </button>
-        )}
-      </div>
-      )}
     </div>
   );
 };

@@ -82,8 +82,12 @@ export const ChatMockupSection: React.FC = () => {
                       <span className="font-heading font-bold text-xs sm:text-sm md:text-base opacity-90">{t('chat.popupsGroupChat')}</span>
                    </div>
                    <div className="flex items-center gap-3 sm:gap-4 relative z-10">
-                      <div className="w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 bg-gradient-to-br from-[#ff7a7a] via-[#e35e25] to-[#d94646] rounded-full flex items-center justify-center font-bold text-white text-lg sm:text-xl md:text-2xl border-3 border-white/30 shadow-lg relative">
-                        <span>S</span>
+                      <div className="w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full overflow-hidden border-2 border-white/30 shadow-lg relative">
+                        <img 
+                          src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face" 
+                          alt="Host profile"
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                       <div className="min-w-0">
                          <h3 className="font-bold text-lg sm:text-xl md:text-2xl leading-none truncate mb-1">{t('chatMockup.eventName')}</h3>
@@ -155,7 +159,6 @@ export const ChatMockupSection: React.FC = () => {
                            <Sparkles size={18} className="sm:w-6 sm:h-6 text-white" />
                          </div>
                          <div>
-                            <p className="text-[10px] sm:text-[11px] text-gray-500 font-bold uppercase tracking-wider">{t('chatMockup.engagement')}</p>
                             <p className="text-base sm:text-lg font-bold text-[#15383c]">{t('chatMockup.increaseEngagement')}</p>
                          </div>
                       </div>

@@ -163,7 +163,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         {/* Header Content */}
         <div className="flex flex-col gap-4 sm:gap-5 md:gap-6 mb-6 sm:mb-8 md:mb-10 lg:mb-12">
           <div className="max-w-3xl">
-            <div className="mb-3 sm:mb-4">
+            <div className="mb-3 sm:mb-4 px-4 sm:px-0">
                <span className="inline-flex items-center gap-2 py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">
                   <Sparkles size={10} className="sm:w-3 sm:h-3 -mt-0.5" />
                   {t('feed.happeningNow')}
