@@ -94,21 +94,21 @@ export const Footer: React.FC<FooterProps> = ({ setViewState, isLoggedIn = false
             </ul>
           </div>
 
-           {/* Social */}
+           {/* Social - Glass Style */}
            <div className="col-span-1">
             <h3 className="font-heading font-bold text-white text-sm sm:text-base md:text-lg mb-3 sm:mb-4 md:mb-6">{t('footer.social')}</h3>
-            <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
+            <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
                {/* Reddit */}
-              <a href="https://www.reddit.com/user/Visible-Citron-4632/" target="_blank" rel="noopener noreferrer" className="text-[#e35e25] hover:bg-[#e35e25] hover:text-white transition-all border-2 border-[#e35e25] rounded-xl p-2 sm:p-2.5 touch-manipulation active:scale-95">
-                <MessageCircle size={18} className="sm:w-5 sm:h-5" />
+              <a href="https://www.reddit.com/user/Visible-Citron-4632/" target="_blank" rel="noopener noreferrer" className="text-[#e35e25] hover:bg-[#e35e25] hover:text-white transition-all bg-white/10 backdrop-blur-sm border border-white/20 rounded-full p-2.5 touch-manipulation active:scale-95">
+                <MessageCircle size={16} />
               </a>
               {/* Instagram */}
-              <a href="https://www.instagram.com/gopopera.ca/" target="_blank" rel="noopener noreferrer" className="text-[#e35e25] hover:bg-[#e35e25] hover:text-white transition-all border-2 border-[#e35e25] rounded-xl p-2 sm:p-2.5 touch-manipulation active:scale-95">
-                <Instagram size={18} className="sm:w-5 sm:h-5" />
+              <a href="https://www.instagram.com/gopopera.ca/" target="_blank" rel="noopener noreferrer" className="text-[#e35e25] hover:bg-[#e35e25] hover:text-white transition-all bg-white/10 backdrop-blur-sm border border-white/20 rounded-full p-2.5 touch-manipulation active:scale-95">
+                <Instagram size={16} />
               </a>
               {/* TikTok */}
-              <a href="https://www.tiktok.com/@gopopera.ca?lang=en" target="_blank" rel="noopener noreferrer" className="text-[#e35e25] hover:bg-[#e35e25] hover:text-white transition-all border-2 border-[#e35e25] rounded-xl p-2 sm:p-2.5 touch-manipulation active:scale-95">
-                <Music size={18} className="sm:w-5 sm:h-5" />
+              <a href="https://www.tiktok.com/@gopopera.ca?lang=en" target="_blank" rel="noopener noreferrer" className="text-[#e35e25] hover:bg-[#e35e25] hover:text-white transition-all bg-white/10 backdrop-blur-sm border border-white/20 rounded-full p-2.5 touch-manipulation active:scale-95">
+                <Music size={16} />
               </a>
             </div>
           </div>

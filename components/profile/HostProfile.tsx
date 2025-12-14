@@ -354,15 +354,15 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
             </p>
           )}
 
-          {/* Follow Button */}
+          {/* Follow Button - Glass Style */}
           {isLoggedIn && currentUser?.id !== hostId && (
             <button 
               onClick={handleFollowToggle}
               disabled={isUpdatingFollow}
-              className={`px-6 sm:px-8 py-2.5 sm:py-3 rounded-full font-bold text-sm sm:text-base transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation active:scale-95 ${
+              className={`px-6 sm:px-8 py-2.5 sm:py-3 rounded-full font-semibold text-sm sm:text-base transition-all disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation active:scale-95 ${
                 isFollowingState 
-                  ? 'bg-white text-[#15383c] border-2 border-gray-200 hover:bg-gray-50' 
-                  : 'bg-[#e35e25] text-white hover:bg-[#cf4d1d] shadow-orange-900/20'
+                  ? 'bg-white/80 backdrop-blur-sm text-[#15383c] border border-gray-200/60 hover:bg-white hover:border-gray-300' 
+                  : 'bg-[#e35e25] text-white shadow-lg shadow-[#e35e25]/25 hover:shadow-xl hover:shadow-[#e35e25]/30'
               }`}
             >
               {isUpdatingFollow ? '...' : (isFollowingState ? 'Following' : 'Follow')}
@@ -370,11 +370,11 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
           )}
         </div>
 
-        {/* Stats Section */}
-        <div className="grid grid-cols-2 gap-4 sm:gap-5 mb-6 sm:mb-8">
-          <div className="bg-white p-4 sm:p-5 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex items-center gap-3">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#e35e25]/10 rounded-full flex items-center justify-center">
-              <Users size={18} className="sm:w-5 sm:h-5 text-[#e35e25]" />
+        {/* Stats Section - Glass Cards */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <div className="bg-white/90 backdrop-blur-sm p-4 sm:p-5 rounded-2xl shadow-sm border border-white/60 flex items-center gap-3">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 bg-[#e35e25]/10 rounded-full flex items-center justify-center">
+              <Users size={16} className="sm:w-[18px] sm:h-[18px] text-[#e35e25]" />
             </div>
             <div className="text-left flex-1">
               <div className="text-xl sm:text-2xl font-heading font-bold text-[#15383c]">{followersCount.toLocaleString()}</div>
@@ -383,9 +383,9 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
           </div>
           
           {reviewCount > 0 && (
-            <div className="bg-white p-4 sm:p-5 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 flex items-center gap-3">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#e35e25]/10 rounded-full flex items-center justify-center">
-                <Star size={18} className="sm:w-5 sm:h-5 text-[#e35e25] fill-[#e35e25]" />
+            <div className="bg-white/90 backdrop-blur-sm p-4 sm:p-5 rounded-2xl shadow-sm border border-white/60 flex items-center gap-3">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 bg-[#e35e25]/10 rounded-full flex items-center justify-center">
+                <Star size={16} className="sm:w-[18px] sm:h-[18px] text-[#e35e25] fill-[#e35e25]" />
               </div>
               <div className="text-left flex-1">
                 <div className="text-xl sm:text-2xl font-heading font-bold text-[#15383c]">{formatRating(averageRating)}</div>

@@ -903,25 +903,25 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                     </div>
                   </div>
                   
-                  {/* Follow Button - Modern rounded pill (hidden for hosts viewing their own event) */}
+                  {/* Follow Button - Liquid Glass Style (hidden for hosts viewing their own event) */}
                   {isLoggedIn && user?.uid !== event.hostId && (
                     <button
                       onClick={handleFollowToggle}
                       disabled={followLoading}
                       aria-label={isFollowingHost ? `Unfollow ${displayHostName}` : `Follow ${displayHostName}`}
-                      className={`px-8 py-4 rounded-full text-base font-bold transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2 shrink-0 ${
+                      className={`px-7 py-3.5 rounded-full text-base font-semibold transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2 shrink-0 ${
                         isFollowingHost
-                          ? 'bg-[#15383c] text-white hover:bg-[#1f4d52]'
-                          : 'bg-white border-2 border-[#15383c] text-[#15383c] hover:bg-[#15383c] hover:text-white'
-                      } disabled:opacity-50 shadow-lg hover:shadow-xl`}
+                          ? 'bg-white/80 backdrop-blur-sm text-[#15383c] border border-gray-200/60 hover:bg-white hover:border-gray-300'
+                          : 'bg-[#e35e25] text-white shadow-lg shadow-[#e35e25]/25 hover:shadow-xl hover:shadow-[#e35e25]/30'
+                      } disabled:opacity-50`}
                     >
                       {isFollowingHost ? (
                         <>
-                          <UserCheck size={20} /> {t('event.following')}
+                          <UserCheck size={18} /> {t('event.following')}
                         </>
                       ) : (
                         <>
-                          <UserPlus size={20} /> {t('event.follow')}
+                          <UserPlus size={18} /> {t('event.follow')}
                         </>
                       )}
                     </button>
@@ -929,21 +929,21 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 </div>
               </div>
 
-              {/* Reservation Sidebar - Right side (desktop only) */}
+              {/* Reservation Sidebar - Right side (desktop only) - Liquid Glass */}
               <div className="lg:col-span-5 hidden lg:block">
-                <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.06)] border border-gray-100 p-5 hover:shadow-[0_6px_24px_rgb(0,0,0,0.08)] transition-shadow">
-                  <div className="flex justify-between items-center mb-5 pb-5 border-b border-gray-100">
+                <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.05)] border border-white/60 p-5 hover:shadow-[0_6px_24px_rgb(0,0,0,0.08)] transition-shadow">
+                  <div className="flex justify-between items-center mb-5 pb-5 border-b border-gray-100/80">
                     <div>
                       <span className="text-3xl font-heading font-bold text-[#15383c]">{event.price}</span>
                       <p className="text-xs text-gray-500 font-medium mt-1">per person</p>
                     </div>
                   </div>
                   <div className="space-y-3">
-                    {/* Edit Event Button - Only for host */}
+                    {/* Edit Event Button - Only for host - Glass Style */}
                     {isLoggedIn && user?.uid === event.hostId && (
                       <button
                         onClick={() => setViewState(ViewState.EDIT_EVENT)}
-                        className="w-full py-2.5 bg-white border border-[#15383c] text-[#15383c] rounded-full text-sm font-semibold hover:bg-[#15383c] hover:text-white transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2"
+                        className="w-full py-2.5 bg-white/80 backdrop-blur-sm border border-[#15383c]/30 text-[#15383c] rounded-full text-sm font-semibold hover:bg-white hover:border-[#15383c] transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2"
                       >
                         <Edit size={16} /> Edit Event
                       </button>
@@ -1183,97 +1183,106 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
          </div>
       </section>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white/98 backdrop-blur-lg border-t border-gray-200 px-4 sm:px-6 py-4 sm:py-4 lg:hidden z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] safe-area-inset-bottom">
-        <div className="flex items-center justify-between gap-3 sm:gap-4 max-w-xl mx-auto">
-           {/* Show price only if not reserved and not the host */}
-           {!hasRSVPed && user?.uid !== event.hostId && (
-             <div className="flex flex-col shrink-0 min-w-0">
-               <span className="text-xl sm:text-xl md:text-2xl font-heading font-bold text-[#15383c] truncate">{event.price}</span>
-               <span className="text-xs sm:text-xs text-gray-600 sm:text-gray-500 font-bold uppercase tracking-wide">per person</span>
-             </div>
-           )}
-           {/* After reservation: Show Conversation + Reserved (only for non-hosts) */}
+      {/* Mobile Footer - Liquid Glass Style */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/70 backdrop-blur-2xl border-t border-white/60 px-4 py-3 lg:hidden z-40 shadow-[0_-8px_32px_rgba(0,0,0,0.08)] safe-area-inset-bottom">
+        <div className="flex items-center gap-2.5 max-w-xl mx-auto">
+           {/* After reservation: Conversation + Attending pill (only for non-hosts) */}
            {hasRSVPed && user?.uid !== event.hostId && (
-             <div className="flex items-center gap-3 sm:gap-3 flex-1 min-w-0">
+             <>
                <button 
                  onClick={handleConversationClick}
                  disabled={isDemo}
-                 className={`w-12 h-12 sm:w-12 sm:h-12 shrink-0 rounded-full border-2 flex items-center justify-center active:scale-[0.92] transition-transform touch-manipulation shadow-sm ${
+                 className={`w-10 h-10 shrink-0 rounded-full backdrop-blur-sm border flex items-center justify-center active:scale-[0.92] transition-all touch-manipulation ${
                    isDemo
-                     ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                     : 'bg-[#15383c] text-white border-[#15383c] hover:bg-[#1f4d52]'
+                     ? 'bg-gray-100/80 text-gray-400 border-gray-200/60 cursor-not-allowed'
+                     : 'bg-white/80 text-[#15383c] border-gray-200/60 hover:bg-white hover:border-gray-300'
                  }`}
                  aria-label="Conversation"
                >
-                 <MessageCircle size={20} className="sm:w-5 sm:h-5" />
+                 <MessageCircle size={18} />
                </button>
                <button 
                  disabled
-                 className="flex-1 min-w-0 h-12 sm:h-12 font-bold text-base sm:text-base rounded-full bg-[#15383c] text-white shadow-lg flex items-center justify-center touch-manipulation px-5 gap-2"
+                 className="flex-1 h-11 font-semibold text-[15px] rounded-full bg-[#15383c] text-white shadow-lg shadow-[#15383c]/20 flex items-center justify-center touch-manipulation px-5 gap-2"
                >
-                 <CheckCircle2 size={18} className="sm:w-5 sm:h-5" />
-                 Reserved
+                 <CheckCircle2 size={16} />
+                 Attending
                </button>
-             </div>
+             </>
            )}
-           {/* Host view: Show Share + Conversation only */}
+
+           {/* Host view: Share + Conversation only */}
            {user?.uid === event.hostId && (
-             <div className="flex items-center gap-3 sm:gap-3 flex-1 justify-end min-w-0">
+             <>
                <button 
                  onClick={handleShare}
-                 className="w-12 h-12 sm:w-12 sm:h-12 shrink-0 rounded-full border-2 border-[#15383c] bg-[#15383c] text-white flex items-center justify-center active:scale-[0.92] transition-transform touch-manipulation shadow-sm hover:bg-[#1f4d52] hover:border-[#1f4d52] !opacity-100 !visible"
+                 className="w-10 h-10 shrink-0 rounded-full bg-white/80 backdrop-blur-sm border border-gray-200/60 text-[#15383c] flex items-center justify-center active:scale-[0.92] transition-all touch-manipulation hover:bg-white hover:border-gray-300"
                  aria-label="Share"
                >
-                 <Share2 size={20} className="sm:w-5 sm:h-5" />
+                 <Share2 size={18} />
                </button>
                <button 
                  onClick={handleConversationClick}
                  disabled={isDemo}
-                 className={`w-12 h-12 sm:w-12 sm:h-12 shrink-0 rounded-full border-2 flex items-center justify-center active:scale-[0.92] transition-transform touch-manipulation shadow-sm ${
+                 className={`flex-1 h-11 font-semibold text-[15px] rounded-full shadow-lg flex items-center justify-center touch-manipulation px-5 gap-2 ${
                    isDemo
-                     ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                     : 'bg-[#15383c]/5 text-[#15383c] border-[#15383c]/20 hover:bg-[#15383c]/10'
+                     ? 'bg-gray-200/80 text-gray-500 cursor-not-allowed'
+                     : 'bg-[#15383c] text-white shadow-[#15383c]/20 hover:bg-[#1f4d52]'
                  }`}
-                 aria-label="Chat"
+                 aria-label="Open Chat"
                >
-                 <MessageCircle size={20} className="sm:w-5 sm:h-5" />
+                 <MessageCircle size={16} />
+                 Manage Event
                </button>
-             </div>
+             </>
            )}
-           {/* Before reservation: Show Share + Conversation + Reserve (only for non-hosts) */}
+
+           {/* Before reservation: Price pill + Share + Chat + Attend button (only for non-hosts) */}
            {!hasRSVPed && user?.uid !== event.hostId && (
-             <div className="flex items-center gap-3 sm:gap-3 flex-1 justify-end min-w-0">
+             <>
+               {/* Price pill - Liquid glass style */}
+               <div className="shrink-0 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-sm border border-gray-200/60 shadow-sm">
+                 <span className="text-sm font-bold text-[#15383c] uppercase tracking-wide">
+                   {event.price === 'Free' || event.price === '$0' || event.price === '0' ? 'Free' : event.price}
+                 </span>
+               </div>
+               
+               {/* Share button */}
                <button 
                  onClick={handleShare}
-                 className="w-12 h-12 sm:w-12 sm:h-12 shrink-0 rounded-full border-2 border-[#15383c] bg-[#15383c] text-white flex items-center justify-center active:scale-[0.92] transition-transform touch-manipulation shadow-sm hover:bg-[#1f4d52] hover:border-[#1f4d52] !opacity-100 !visible"
+                 className="w-10 h-10 shrink-0 rounded-full bg-white/80 backdrop-blur-sm border border-gray-200/60 text-[#15383c] flex items-center justify-center active:scale-[0.92] transition-all touch-manipulation hover:bg-white hover:border-gray-300"
                  aria-label="Share"
                >
-                 <Share2 size={20} className="sm:w-5 sm:h-5" />
+                 <Share2 size={18} />
                </button>
+               
+               {/* Chat button */}
                <button 
                  onClick={handleConversationClick}
                  disabled={isDemo}
-                 className={`w-12 h-12 sm:w-12 sm:h-12 shrink-0 rounded-full border-2 flex items-center justify-center active:scale-[0.92] transition-transform touch-manipulation shadow-sm ${
+                 className={`w-10 h-10 shrink-0 rounded-full backdrop-blur-sm border flex items-center justify-center active:scale-[0.92] transition-all touch-manipulation ${
                    isDemo
-                     ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                     : 'bg-[#15383c]/5 text-[#15383c] border-[#15383c]/20 hover:bg-[#15383c]/10'
+                     ? 'bg-gray-100/80 text-gray-400 border-gray-200/60 cursor-not-allowed'
+                     : 'bg-white/80 text-[#15383c] border-gray-200/60 hover:bg-white hover:border-gray-300'
                  }`}
                  aria-label="Chat"
                >
-                 <MessageCircle size={20} className="sm:w-5 sm:h-5" />
+                 <MessageCircle size={18} />
                </button>
+               
+               {/* Main Attend button - Large, takes remaining space */}
                <button 
                  onClick={handleRSVP}
                  disabled={isDemo}
-                 className={`flex-1 min-w-0 max-w-[200px] sm:max-w-[200px] h-12 sm:h-12 font-bold text-base sm:text-base rounded-full shadow-lg active:scale-[0.97] transition-transform whitespace-nowrap flex items-center justify-center touch-manipulation px-5 ${
+                 className={`flex-1 h-11 font-semibold text-[15px] rounded-full shadow-lg active:scale-[0.97] transition-all whitespace-nowrap flex items-center justify-center touch-manipulation px-5 ${
                    isDemo
-                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                     : 'bg-[#e35e25] text-white shadow-orange-900/20 hover:bg-[#cf4d1d]'
+                     ? 'bg-gray-300/90 text-gray-500 cursor-not-allowed shadow-none'
+                     : 'bg-[#15383c] text-white shadow-[#15383c]/25 hover:bg-[#1f4d52]'
                  }`}
                >
-                 {isDemo ? 'Locked' : 'Reserve'}
+                 {isDemo ? 'Locked' : 'Attend'}
                </button>
-             </div>
+             </>
            )}
         </div>
       </div>

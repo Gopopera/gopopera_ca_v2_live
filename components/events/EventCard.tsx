@@ -270,7 +270,7 @@ export const EventCard: React.FC<EventCardProps> = ({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       style={{ touchAction: 'manipulation' }}
-      className={`group relative bg-white rounded-[28px] md:rounded-[32px] overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.12)] transition-all duration-500 cursor-pointer flex flex-col w-full h-full focus:outline-none focus:ring-2 focus:ring-[#15383c] focus:ring-offset-2`}
+      className={`group relative bg-white/95 backdrop-blur-sm rounded-[28px] md:rounded-[32px] overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.1)] border border-white/60 transition-all duration-500 cursor-pointer flex flex-col w-full h-full focus:outline-none focus:ring-2 focus:ring-[#15383c] focus:ring-offset-2`}
     >
       {/* Image Container - Premium cinematic design */}
       <div className={`relative w-full ${profileVariant ? 'aspect-square' : 'aspect-[4/3]'} overflow-hidden bg-gradient-to-br from-[#15383c] to-[#1f4d52] flex-shrink-0`} style={{ position: 'relative' }}>
@@ -293,9 +293,9 @@ export const EventCard: React.FC<EventCardProps> = ({
         {/* Soft gradient only at bottom for text readability */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none z-10" />
         
-        {/* Main Category Badge - Premium modern design (hidden in compact/profile mode) */}
+        {/* Main Category Badge - Liquid Glass Style (hidden in compact/profile mode) */}
         {!compact && !profileVariant && (
-          <div className="absolute top-4 left-4 inline-flex items-center justify-center py-2 px-4 rounded-full bg-gray-100/90 backdrop-blur-sm text-[#e35e25] text-[10px] sm:text-xs font-bold tracking-wider uppercase z-20 border border-gray-300/80">
+          <div className="absolute top-3 left-3 inline-flex items-center justify-center py-1.5 px-3 rounded-full bg-white/80 backdrop-blur-md text-[#e35e25] text-[10px] sm:text-xs font-bold tracking-wider uppercase z-20 border border-white/60 shadow-sm">
             {getMainCategoryLabelFromEvent(event)}
           </div>
         )}
@@ -315,10 +315,10 @@ export const EventCard: React.FC<EventCardProps> = ({
           </button>
         )}
 
-        {/* ACTION BUTTONS - Modern glass cluster top-right (hidden in compact/profile mode) */}
+        {/* ACTION BUTTONS - Liquid Glass cluster top-right (hidden in compact/profile mode) */}
         {!compact && !profileVariant && (
-          <div className="absolute top-4 right-4 flex items-center gap-2 z-30 pointer-events-auto">
-             {/* FEATURE: Favorite Heart - Glass design */}
+          <div className="absolute top-3 right-3 flex items-center gap-1.5 z-30 pointer-events-auto">
+             {/* FEATURE: Favorite Heart - Liquid Glass */}
              {onToggleFavorite && (
                <button
                  onClick={handleFavoriteClick}
@@ -328,28 +328,28 @@ export const EventCard: React.FC<EventCardProps> = ({
                    e.stopPropagation();
                    e.preventDefault();
                  }}
-                 className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 touch-manipulation shrink-0 pointer-events-auto z-30 backdrop-blur-md border ${
+                 className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95 touch-manipulation shrink-0 pointer-events-auto z-30 backdrop-blur-xl border shadow-sm ${
                    isFavorite 
-                     ? 'bg-[#e35e25]/90 border-[#e35e25]/50 shadow-lg shadow-orange-900/30' 
-                     : 'bg-white/20 border-white/30 hover:bg-white/30'
+                     ? 'bg-[#e35e25] border-[#e35e25]/60 shadow-lg shadow-[#e35e25]/30' 
+                     : 'bg-white/70 border-white/50 hover:bg-white/90'
                  }`}
                  aria-label="Toggle Favorite"
                  type="button"
                  style={{ pointerEvents: 'auto', WebkitTapHighlightColor: 'transparent' }}
                >
                  <Heart 
-                   size={20} 
-                   className={`sm:w-5 sm:h-5 transition-all ${
+                   size={16} 
+                   className={`sm:w-[18px] sm:h-[18px] transition-all ${
                      isFavorite 
                        ? 'fill-white text-white' 
-                       : 'fill-white/80 text-white'
+                       : 'fill-[#e35e25] text-[#e35e25]'
                    }`}
                    strokeWidth={2.5}
                  />
                </button>
              )}
 
-             {/* FEATURE: Conversation Icon - Glass design */}
+             {/* FEATURE: Conversation Icon - Liquid Glass */}
              <button
                onClick={(e) => {
                  e.stopPropagation();
@@ -364,12 +364,12 @@ export const EventCard: React.FC<EventCardProps> = ({
                onTouchStart={(e) => {
                  e.stopPropagation();
                }}
-               className="w-10 h-10 sm:w-11 sm:h-11 bg-white/20 border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-all hover:scale-110 active:scale-95 touch-manipulation shrink-0 pointer-events-auto z-30 backdrop-blur-md"
+               className="w-9 h-9 sm:w-10 sm:h-10 bg-white/70 border border-white/50 rounded-full flex items-center justify-center text-[#15383c] hover:bg-white/90 transition-all hover:scale-110 active:scale-95 touch-manipulation shrink-0 pointer-events-auto z-30 backdrop-blur-xl shadow-sm"
                aria-label="Join Event Chat"
                type="button"
                style={{ pointerEvents: 'auto', WebkitTapHighlightColor: 'transparent' }}
              >
-               <MessageCircle size={20} className="sm:w-5 sm:h-5" strokeWidth={2.5} />
+               <MessageCircle size={16} className="sm:w-[18px] sm:h-[18px]" strokeWidth={2.5} />
              </button>
           </div>
         )}

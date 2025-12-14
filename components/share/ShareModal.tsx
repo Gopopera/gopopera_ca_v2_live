@@ -119,20 +119,20 @@ export const ShareModal: React.FC<ShareModalProps> = ({ event, isOpen, onClose }
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center px-4 sm:px-6">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl sm:rounded-3xl w-full max-w-md shadow-2xl overflow-hidden">
-        <div className="p-4 sm:p-6 border-b border-gray-100 flex items-center justify-between">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-md" onClick={onClose} />
+      <div className="relative bg-white/95 backdrop-blur-2xl rounded-2xl sm:rounded-3xl w-full max-w-md shadow-2xl border border-white/60 overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-gray-100/80 flex items-center justify-between">
           <h3 className="text-lg sm:text-xl font-heading font-bold text-popera-teal">Share Event</h3>
-          <button onClick={onClose} className="p-2 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-500 transition-colors shrink-0">
-            <X size={20} />
+          <button onClick={onClose} className="p-2 bg-white/80 backdrop-blur-sm hover:bg-white border border-gray-200/60 rounded-full text-gray-500 transition-all shrink-0">
+            <X size={18} />
           </button>
         </div>
         
-        <div className="p-4 sm:p-6 space-y-3">
-          {/* Share Link */}
+        <div className="p-4 sm:p-5 space-y-2.5">
+          {/* Share Link - Glass Style */}
           <button
             onClick={handleShareLink}
-            className="w-full flex items-center gap-3 p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors text-left"
+            className="w-full flex items-center gap-3 p-3.5 bg-white/80 backdrop-blur-sm hover:bg-white border border-gray-200/60 rounded-xl transition-all text-left"
           >
             <div className="w-12 h-12 bg-popera-teal/10 rounded-full flex items-center justify-center shrink-0">
               <Link2 size={24} className="text-popera-teal" />

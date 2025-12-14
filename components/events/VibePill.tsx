@@ -22,9 +22,9 @@ export const VibePill: React.FC<VibePillProps> = ({
     <span
       className={`
         inline-flex items-center rounded-full
-        bg-[#15383c]/5 text-[#15383c]
-        border border-[#15383c]/10
-        font-medium
+        bg-white/80 backdrop-blur-sm text-[#15383c]
+        border border-gray-200/60
+        font-medium shadow-sm
         ${sizeClasses[size]}
         ${className}
       `}
@@ -62,7 +62,7 @@ export const VibePillList: React.FC<VibePillListProps> = ({
         <VibePill key={index} vibe={vibe} size={size} />
       ))}
       {remainingCount > 0 && (
-        <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs bg-gray-100 text-gray-600 font-medium border border-gray-200">
+        <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs bg-white/80 backdrop-blur-sm text-gray-600 font-medium border border-gray-200/60 shadow-sm">
           +{remainingCount}
         </span>
       )}

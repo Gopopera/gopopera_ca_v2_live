@@ -181,10 +181,10 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
   const isLightPage = !isLandingPage || isScrolled;
   const isLandingAtTop = isLandingPage && !isScrolled;
   
-  // Header background: transparent on landing at top, white otherwise
+  // Header background: transparent on landing at top, liquid glass otherwise
   const navClasses = isLandingAtTop
     ? 'fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-transparent py-4'
-    : 'fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white/95 backdrop-blur-md shadow-sm py-4';
+    : 'fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white/70 backdrop-blur-2xl border-b border-white/60 shadow-[0_4px_32px_rgba(0,0,0,0.06)] py-4';
 
   // Header text/icons: white on landing at top, teal otherwise
   const getTextColor = (_isMobile: boolean) => isLandingAtTop ? 'text-white' : 'text-popera-teal';
@@ -213,54 +213,64 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
 
         {/* Desktop Actions - Right Side */}
         <div className="hidden lg:flex items-center space-x-6">
-          {/* Language Toggle */}
+          {/* Language Toggle - Glass Style */}
           <button
             onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
-            className={`w-9 h-9 rounded-full border-2 font-bold text-xs transition-all hover:scale-105 flex items-center justify-center ${
+            className={`w-9 h-9 rounded-full font-bold text-xs transition-all hover:scale-105 flex items-center justify-center ${
               isLandingAtTop
-                ? 'border-white/40 text-white hover:bg-white/10'
-                : 'border-[#15383c] text-[#15383c] hover:bg-[#15383c]/5'
+                ? 'border border-white/30 text-white hover:bg-white/10 backdrop-blur-sm'
+                : 'bg-white/80 backdrop-blur-sm border border-gray-200/60 text-[#15383c] hover:bg-white hover:border-gray-300'
             }`}
           >
             {language === 'en' ? 'FR' : 'EN'}
           </button>
-          <button className={`p-2 rounded-full hover:bg-white/10 transition-colors ${getTextColor(false)}`}>
-            <Search size={20} />
+          <button className={`p-2 rounded-full transition-all ${isLandingAtTop ? 'hover:bg-white/10' : 'bg-white/80 backdrop-blur-sm border border-gray-200/60 hover:bg-white hover:border-gray-300'} ${getTextColor(false)}`}>
+            <Search size={18} />
           </button>
 
           {isLoggedIn ? (
              <>
-               {/* Host Event Button */}
+               {/* Host Event Button - Primary CTA */}
                <button 
                  onClick={() => handleNav(ViewState.CREATE_EVENT)}
-                 className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-full bg-[#e35e25] hover:bg-[#cf4d1d] text-white font-bold text-sm transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
+                 className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-full bg-[#e35e25] hover:bg-[#cf4d1d] text-white font-bold text-sm transition-all shadow-lg shadow-[#e35e25]/25 hover:shadow-xl hover:shadow-[#e35e25]/30 hover:-translate-y-0.5"
                >
-                 <PlusCircle size={18} /> {t('header.hostEvent')}
+                 <PlusCircle size={16} /> {t('header.hostEvent')}
                </button>
                
-               {/* Favorites Button */}
+               {/* Favorites Button - Glass Style */}
                <button
                  onClick={() => handleNav(ViewState.FAVORITES)}
-                 className={`p-2 rounded-full hover:bg-black/5 transition-colors group ${getTextColor(false)}`}
+                 className={`p-2 rounded-full transition-all group ${
+                   isLandingAtTop 
+                     ? 'hover:bg-white/10' 
+                     : 'bg-white/80 backdrop-blur-sm border border-gray-200/60 hover:bg-white hover:border-gray-300'
+                 } ${getTextColor(false)}`}
                >
-                 <Heart size={20} className="group-hover:text-[#e35e25] transition-colors" />
+                 <Heart size={18} className="group-hover:text-[#e35e25] transition-colors" />
                </button>
 
+               {/* Notifications Button - Glass Style */}
                <button 
                  onClick={onNotificationsClick}
-                 className={`p-2 rounded-full hover:bg-black/5 transition-colors relative group ${getTextColor(false)}`}
+                 className={`p-2 rounded-full transition-all relative group ${
+                   isLandingAtTop 
+                     ? 'hover:bg-white/10' 
+                     : 'bg-white/80 backdrop-blur-sm border border-gray-200/60 hover:bg-white hover:border-gray-300'
+                 } ${getTextColor(false)}`}
                >
-                 <Bell size={20} />
+                 <Bell size={18} />
                  {unreadCount > 0 && (
-                   <span className="absolute top-0 right-0 w-5 h-5 bg-[#e35e25] text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                   <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#e35e25] text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white">
                      {unreadCount > 9 ? '9+' : unreadCount}
                    </span>
                  )}
                </button>
 
+               {/* Profile Button */}
                <button 
                 onClick={onProfileClick}
-                className="w-10 h-10 rounded-full bg-[#e35e25] flex items-center justify-center text-white font-bold text-sm shadow-md hover:scale-105 transition-transform ring-2 ring-white overflow-hidden"
+                className="w-9 h-9 rounded-full bg-[#e35e25] flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-[#e35e25]/25 hover:scale-105 transition-transform ring-2 ring-white/80 overflow-hidden"
               >
                 {userPhoto ? (
                   <img 
@@ -287,7 +297,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
           ) : (
               <button 
                 onClick={() => handleNav(ViewState.AUTH)}
-                className="px-6 py-2.5 rounded-full bg-[#e35e25] text-white font-medium text-sm hover:bg-[#cf4d1d] transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 border-2 border-[#e35e25]"
+                className="px-5 py-2 rounded-full bg-[#e35e25] text-white font-semibold text-sm hover:bg-[#cf4d1d] transition-all shadow-lg shadow-[#e35e25]/25 hover:shadow-xl hover:-translate-y-0.5"
               >
                 {t('header.signIn')}
               </button>
@@ -307,14 +317,14 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
         </div>
 
         {/* Mobile Toggle - Right Side */}
-        <div className="lg:hidden z-[55] flex items-center gap-2.5 relative">
-          {/* Language Toggle - Mobile */}
+        <div className="lg:hidden z-[55] flex items-center gap-2 relative">
+          {/* Language Toggle - Mobile - Glass Style */}
           <button
             onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
-            className={`w-10 h-10 rounded-full border-2 font-bold text-xs transition-all active:scale-[0.95] touch-manipulation flex items-center justify-center ${
+            className={`w-9 h-9 rounded-full font-bold text-xs transition-all active:scale-[0.95] touch-manipulation flex items-center justify-center ${
               isLandingAtTop && !mobileMenuOpen
-                ? 'border-white/40 text-white hover:bg-white/10'
-                : 'border-[#15383c] text-[#15383c] hover:bg-[#15383c]/5'
+                ? 'border border-white/30 text-white hover:bg-white/10 backdrop-blur-sm'
+                : 'bg-white/80 backdrop-blur-sm border border-gray-200/60 text-[#15383c] hover:bg-white'
             }`}
           >
             {language === 'en' ? 'FR' : 'EN'}
@@ -323,7 +333,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
           {isLoggedIn && (
              <button 
                onClick={onProfileClick}
-               className="w-11 h-11 rounded-full bg-[#e35e25] flex items-center justify-center text-white font-bold text-sm shadow-md active:scale-[0.95] touch-manipulation ring-2 ring-white/20 overflow-hidden"
+               className="w-10 h-10 rounded-full bg-[#e35e25] flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-[#e35e25]/25 active:scale-[0.95] touch-manipulation ring-2 ring-white/80 overflow-hidden"
              >
                {userPhoto ? (
                  <img 
@@ -348,14 +358,19 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
              </button>
           )}
           
+          {/* Menu Toggle - Glass Style */}
           <button 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className={`${isLandingAtTop && !mobileMenuOpen ? 'text-white' : 'text-popera-teal'} w-11 h-11 flex items-center justify-center active:scale-[0.95] touch-manipulation rounded-full hover:bg-white/10 transition-colors relative`}
+            className={`w-10 h-10 flex items-center justify-center active:scale-[0.95] touch-manipulation rounded-full transition-all relative ${
+              isLandingAtTop && !mobileMenuOpen 
+                ? 'text-white hover:bg-white/10' 
+                : 'bg-white/80 backdrop-blur-sm border border-gray-200/60 text-[#15383c] hover:bg-white'
+            }`}
             aria-label="Toggle menu"
           >
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-[#e35e25] rounded-full border-2 border-white"></span>
+              <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-[#e35e25] rounded-full border border-white"></span>
             )}
           </button>
         </div>
@@ -370,9 +385,9 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
             onClick={() => setMobileMenuOpen(false)}
             style={{ zIndex: 9998 }}
           />
-          {/* Menu Panel - Slides in from right */}
+          {/* Menu Panel - Slides in from right - Liquid Glass */}
           <div 
-            className="fixed top-0 right-0 bottom-0 bg-white z-[9999] flex flex-col pt-20 sm:pt-24 md:pt-28 px-4 sm:px-6 md:px-8 overflow-y-auto shadow-2xl w-full max-w-[240px] sm:max-w-[260px] md:max-w-[280px]" 
+            className="fixed top-0 right-0 bottom-0 bg-white/95 backdrop-blur-2xl border-l border-white/60 z-[9999] flex flex-col pt-20 sm:pt-24 md:pt-28 px-4 sm:px-6 md:px-8 overflow-y-auto shadow-2xl w-full max-w-[240px] sm:max-w-[260px] md:max-w-[280px]" 
             style={{ 
               position: 'fixed', 
               top: 0, 

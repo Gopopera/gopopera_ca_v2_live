@@ -304,25 +304,25 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
             </p>
           )}
           
-          {/* Edit Profile Button - Modern rounded pill */}
+          {/* Edit Profile Button - Liquid Glass Style */}
           <button 
             onClick={() => setViewState(ViewState.PROFILE_BASIC)} 
-            className="px-8 py-3 rounded-full border-2 border-[#15383c] text-[#15383c] text-sm sm:text-base font-bold hover:bg-[#15383c] hover:text-white transition-all bg-white shadow-lg hover:shadow-xl touch-manipulation active:scale-95"
+            className="px-7 py-2.5 rounded-full bg-white/80 backdrop-blur-sm border border-[#15383c]/30 text-[#15383c] text-sm sm:text-base font-semibold hover:bg-white hover:border-[#15383c] transition-all shadow-sm touch-manipulation active:scale-95"
           >
             Edit Profile
           </button>
         </div>
 
-        {/* Stats Section - Minimal icon-count items */}
+        {/* Stats Section - Liquid Glass Style */}
         <div className="mb-12 sm:mb-16 md:mb-20">
-          <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-12 md:gap-16">
+          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 md:gap-14">
             {/* Following */}
             <button
               onClick={() => setViewState(ViewState.PROFILE_FOLLOWING)}
               className="flex flex-col items-center gap-2 cursor-pointer touch-manipulation active:scale-95 group"
             >
-              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-[#e35e25]/10 rounded-full flex items-center justify-center group-hover:bg-[#e35e25]/20 transition-colors">
-                <Users size={24} className="text-[#e35e25]" />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/80 backdrop-blur-sm border border-gray-200/60 rounded-full flex items-center justify-center group-hover:bg-white group-hover:border-[#e35e25]/30 transition-all shadow-sm">
+                <Users size={20} className="text-[#e35e25]" />
               </div>
               <div className="text-center">
                 <div className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c]">{loading ? '...' : stats.following}</div>
@@ -335,8 +335,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
               onClick={() => setViewState(ViewState.MY_POPS)}
               className="flex flex-col items-center gap-2 cursor-pointer touch-manipulation active:scale-95 group"
             >
-              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-[#e35e25]/10 rounded-full flex items-center justify-center group-hover:bg-[#e35e25]/20 transition-colors">
-                <Calendar size={24} className="text-[#e35e25]" />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/80 backdrop-blur-sm border border-gray-200/60 rounded-full flex items-center justify-center group-hover:bg-white group-hover:border-[#e35e25]/30 transition-all shadow-sm">
+                <Calendar size={20} className="text-[#e35e25]" />
               </div>
               <div className="text-center">
                 <div className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c]">{loading ? '...' : stats.hosted}</div>
@@ -346,8 +346,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
             
             {/* Attendees */}
             <div className="flex flex-col items-center gap-2">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-[#e35e25]/10 rounded-full flex items-center justify-center">
-                <Users size={24} className="text-[#e35e25]" />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/80 backdrop-blur-sm border border-gray-200/60 rounded-full flex items-center justify-center shadow-sm">
+                <Users size={20} className="text-[#e35e25]" />
               </div>
               <div className="text-center">
                 <div className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c]">{loading ? '...' : stats.attendees}</div>
@@ -360,8 +360,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
               onClick={() => setViewState(ViewState.PROFILE_REVIEWS)}
               className="flex flex-col items-center gap-2 cursor-pointer touch-manipulation active:scale-95 group"
             >
-              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-[#e35e25]/10 rounded-full flex items-center justify-center group-hover:bg-[#e35e25]/20 transition-colors">
-                <Star size={24} className="text-[#e35e25] fill-[#e35e25]" />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/80 backdrop-blur-sm border border-gray-200/60 rounded-full flex items-center justify-center group-hover:bg-white group-hover:border-[#e35e25]/30 transition-all shadow-sm">
+                <Star size={20} className="text-[#e35e25] fill-[#e35e25]" />
               </div>
               <div className="text-center">
                 <div className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c]">{loading ? '...' : stats.reviews}</div>
@@ -374,8 +374,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
               onClick={() => setViewState(ViewState.PROFILE_FOLLOWERS)}
               className="flex flex-col items-center gap-2 cursor-pointer touch-manipulation active:scale-95 group"
             >
-              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-[#e35e25]/10 rounded-full flex items-center justify-center group-hover:bg-[#e35e25]/20 transition-colors">
-                <Users size={24} className="text-[#e35e25]" />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/80 backdrop-blur-sm border border-gray-200/60 rounded-full flex items-center justify-center group-hover:bg-white group-hover:border-[#e35e25]/30 transition-all shadow-sm">
+                <Users size={20} className="text-[#e35e25]" />
               </div>
               <div className="text-center">
                 <div className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c]">{loading ? '...' : stats.followers}</div>
@@ -385,14 +385,14 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
           </div>
         </div>
 
-        {/* Total Revenue Card - Premium design */}
+        {/* Total Revenue Card - Liquid Glass Dark */}
         <div 
-          className="bg-[#15383c] p-8 sm:p-10 rounded-[32px] md:rounded-[40px] shadow-xl flex justify-between items-center mb-12 sm:mb-16 cursor-pointer hover:shadow-2xl transition-all touch-manipulation active:scale-95 group" 
+          className="bg-[#15383c]/90 backdrop-blur-xl p-7 sm:p-9 rounded-[28px] md:rounded-[36px] shadow-xl border border-[#15383c]/50 flex justify-between items-center mb-12 sm:mb-16 cursor-pointer hover:shadow-2xl transition-all touch-manipulation active:scale-95 group" 
           onClick={() => setViewState(ViewState.PROFILE_STRIPE)}
         >
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors">
-              <span className="text-white font-bold text-2xl">$</span>
+            <div className="w-14 h-14 bg-white/15 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:bg-white/25 transition-all border border-white/20">
+              <span className="text-white font-bold text-xl">$</span>
             </div>
             <div>
               <span className="text-white/80 font-medium text-sm sm:text-base block mb-1">Total Revenue</span>
@@ -442,31 +442,31 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
           </div>
         )}
 
-        {/* Settings Menu - Premium design */}
-        <div className="bg-white rounded-[32px] md:rounded-[40px] shadow-lg border border-gray-100 overflow-hidden">
+        {/* Settings Menu - Liquid Glass Style */}
+        <div className="bg-white/90 backdrop-blur-sm rounded-[28px] md:rounded-[36px] shadow-lg border border-white/60 overflow-hidden">
           {settingsLinks.map((item, idx) => {
             const Icon = item.icon || Settings;
             return (
               <button
                 key={idx}
                 onClick={item.action}
-                className={`w-full flex items-center justify-between p-5 sm:p-6 md:p-7 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors text-left touch-manipulation active:scale-95 ${
+                className={`w-full flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-gray-100/80 last:border-0 hover:bg-white/80 transition-all text-left touch-manipulation active:scale-95 ${
                   item.isLogout ? 'text-gray-500 hover:text-red-500' : 'text-[#15383c]'
                 }`}
               >
-                <div className="flex items-center gap-4 sm:gap-5">
-                  <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center ${
-                    item.isLogout ? 'bg-gray-100' : 'bg-[#e35e25]/10'
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center backdrop-blur-sm ${
+                    item.isLogout ? 'bg-gray-100/80 border border-gray-200/60' : 'bg-white/80 border border-gray-200/60'
                   }`}>
-                    <Icon size={20} className={`sm:w-6 sm:h-6 ${
+                    <Icon size={18} className={`sm:w-5 sm:h-5 ${
                       item.isLogout ? 'text-gray-500' : 'text-[#e35e25]'
                     }`} />
                   </div>
-                  <span className={`text-base sm:text-lg md:text-xl ${item.isLogout ? '' : 'font-medium'}`}>
+                  <span className={`text-base sm:text-lg ${item.isLogout ? '' : 'font-medium'}`}>
                     {item.label}
                   </span>
                 </div>
-                <ChevronRight size={20} className="sm:w-6 sm:h-6 text-gray-400" />
+                <ChevronRight size={18} className="sm:w-5 sm:h-5 text-gray-400" />
               </button>
             );
           })}

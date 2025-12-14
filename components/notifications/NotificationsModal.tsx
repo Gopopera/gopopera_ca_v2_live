@@ -144,15 +144,15 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-fade-in" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/40 backdrop-blur-md" onClick={onClose}>
+      <div className="bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/60 max-w-2xl w-full max-h-[90vh] flex flex-col animate-fade-in" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+        <div className="flex items-center justify-between p-5 sm:p-6 border-b border-gray-100/80">
           <div className="flex items-center gap-3">
-            <Bell size={24} className="text-[#15383c]" />
-            <h2 className="text-2xl font-heading font-bold text-[#15383c]">Notifications</h2>
+            <Bell size={22} className="text-[#15383c]" />
+            <h2 className="text-xl sm:text-2xl font-heading font-bold text-[#15383c]">Notifications</h2>
             {unreadCount > 0 && (
-              <span className="px-2 py-1 bg-[#e35e25] text-white text-xs font-bold rounded-full">
+              <span className="px-2 py-0.5 bg-[#e35e25] text-white text-xs font-bold rounded-full shadow-sm shadow-[#e35e25]/30">
                 {unreadCount}
               </span>
             )}

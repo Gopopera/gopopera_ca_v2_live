@@ -166,13 +166,13 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9998] transition-opacity duration-300"
+        className="fixed inset-0 bg-black/40 backdrop-blur-md z-[9998] transition-opacity duration-300"
         onClick={onClose}
       />
       
-      {/* Drawer Panel */}
+      {/* Drawer Panel - Liquid Glass */}
       <div 
-        className="fixed top-0 right-0 bottom-0 bg-white z-[9999] flex flex-col w-full max-w-[420px] shadow-2xl overflow-y-auto"
+        className="fixed top-0 right-0 bottom-0 bg-white/95 backdrop-blur-2xl border-l border-white/60 z-[9999] flex flex-col w-full max-w-[420px] shadow-2xl overflow-y-auto"
         style={{ 
           animation: 'slideInRight 0.3s ease-out',
         }}

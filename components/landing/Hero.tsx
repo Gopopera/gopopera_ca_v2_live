@@ -44,20 +44,20 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
         </p>
         
         <div className="flex flex-row sm:flex-row items-center justify-center gap-2.5 sm:gap-4 w-full sm:w-auto px-4">
-          {/* First CTA: Get Started → goes to onboarding (sign-up flow) */}
+          {/* First CTA: Get Started - Primary Orange */}
           <button 
             onClick={() => handleNav(ViewState.AUTH)}
-            className="flex-1 sm:flex-none sm:w-auto px-6 sm:px-8 md:px-10 py-4 sm:py-3.5 md:py-4 min-h-[48px] sm:min-h-0 bg-transparent border-2 border-[#e35e25] text-white rounded-full font-bold text-sm sm:text-base md:text-lg hover:bg-[#e35e25] hover:shadow-xl hover:shadow-orange-900/20 hover:-translate-y-1 transition-all duration-300 flex items-center justify-center group touch-manipulation active:scale-[0.97] active:bg-[#e35e25]"
+            className="flex-1 sm:flex-none sm:w-auto px-6 sm:px-8 md:px-10 py-3.5 sm:py-3 md:py-3.5 min-h-[48px] sm:min-h-0 bg-[#e35e25] text-white rounded-full font-bold text-sm sm:text-base md:text-lg shadow-lg shadow-[#e35e25]/30 hover:shadow-xl hover:shadow-[#e35e25]/40 hover:-translate-y-1 transition-all duration-300 flex items-center justify-center group touch-manipulation active:scale-[0.97]"
           >
             {t('hero.getStarted')}
           </button>
           
-          {/* Second CTA: Start Browsing → shows events / main feed */}
+          {/* Second CTA: Start Browsing - Glass Style */}
           <button 
             onClick={() => handleNav(ViewState.FEED)}
-            className="flex-1 sm:flex-none sm:w-auto px-6 sm:px-8 md:px-10 py-4 sm:py-3.5 md:py-4 min-h-[48px] sm:min-h-0 bg-transparent border-2 border-white/20 text-white rounded-full font-bold text-sm sm:text-base md:text-lg hover:bg-white/5 transition-all duration-300 flex items-center justify-center gap-2 touch-manipulation active:scale-[0.97] active:bg-white/10 whitespace-nowrap"
+            className="flex-1 sm:flex-none sm:w-auto px-6 sm:px-8 md:px-10 py-3.5 sm:py-3 md:py-3.5 min-h-[48px] sm:min-h-0 bg-white/10 backdrop-blur-sm border border-white/30 text-white rounded-full font-bold text-sm sm:text-base md:text-lg hover:bg-white/20 transition-all duration-300 flex items-center justify-center gap-2 touch-manipulation active:scale-[0.97] whitespace-nowrap"
           >
-            {t('hero.startBrowsing')} <ArrowRight size={18} className="sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform shrink-0" />
+            {t('hero.startBrowsing')} <ArrowRight size={16} className="sm:w-[18px] sm:h-[18px] group-hover:translate-x-1 transition-transform shrink-0" />
           </button>
         </div>
       </div>

@@ -92,15 +92,15 @@ export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({
 
   if (isMobile) {
     return (
-      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex items-center justify-between shrink-0">
+      <header className="bg-white/95 backdrop-blur-2xl border-b border-gray-200/60 px-4 sm:px-6 py-3.5 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           {onViewDetails && (
             <button
               onClick={onViewDetails}
-              className="w-10 h-10 flex items-center justify-center text-[#15383c] hover:bg-gray-100 rounded-full transition-colors shrink-0 touch-manipulation active:scale-95"
+              className="w-9 h-9 flex items-center justify-center text-[#15383c] bg-white/80 backdrop-blur-sm border border-gray-200/60 hover:bg-white rounded-full transition-all shrink-0 touch-manipulation active:scale-95"
               aria-label="Back to Event"
             >
-              <ArrowLeft size={20} />
+              <ArrowLeft size={18} />
             </button>
           )}
           <button
@@ -124,7 +124,7 @@ export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({
                 Host
               </span>
             </div>
-            {/* Follow Button - Moved lower, only for attendees (not host) */}
+            {/* Follow Button - Liquid Glass Style */}
             {!isHost && onFollowToggle && (
               <button
                 onClick={(e) => {
@@ -134,9 +134,9 @@ export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({
                 disabled={followLoading}
                 className={`mt-1 px-3 py-1 rounded-full text-xs font-semibold transition-all active:scale-95 touch-manipulation flex items-center gap-1.5 w-fit ${
                   isFollowing
-                    ? 'bg-[#15383c] text-white hover:bg-[#1f4d52]'
-                    : 'bg-[#e35e25] text-white hover:bg-[#d14e1a]'
-                } ${followLoading ? 'opacity-50 cursor-not-allowed' : ''} shadow-sm`}
+                    ? 'bg-white/80 backdrop-blur-sm text-[#15383c] border border-gray-200/60 hover:bg-white'
+                    : 'bg-[#e35e25] text-white shadow-lg shadow-[#e35e25]/25 hover:shadow-xl'
+                } ${followLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {isFollowing ? (
                   <>
@@ -156,7 +156,7 @@ export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={onClose}
-            className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100 shrink-0"
+            className="w-9 h-9 flex items-center justify-center text-gray-500 bg-white/80 backdrop-blur-sm border border-gray-200/60 hover:bg-white hover:text-gray-700 transition-all rounded-full shrink-0"
           >
             <X size={20} />
           </button>
@@ -166,15 +166,15 @@ export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({
   }
 
   return (
-    <div className="bg-white border-b border-gray-200 px-6 lg:px-8 py-5 flex items-center justify-between shrink-0">
+    <div className="bg-white/95 backdrop-blur-2xl border-b border-gray-200/60 px-6 lg:px-8 py-4 flex items-center justify-between shrink-0">
       <div className="flex items-center gap-4 min-w-0 flex-1">
         {onViewDetails && (
           <button
             onClick={onViewDetails}
-            className="flex items-center gap-2 px-4 py-2 text-[#15383c] hover:bg-gray-100 rounded-full transition-colors shrink-0 font-medium text-sm"
+            className="flex items-center gap-2 px-4 py-2 text-[#15383c] bg-white/80 backdrop-blur-sm border border-gray-200/60 hover:bg-white hover:border-gray-300 rounded-full transition-all shrink-0 font-medium text-sm"
             aria-label="Back to Event"
           >
-            <ArrowLeft size={18} />
+            <ArrowLeft size={16} />
             <span>Back to Event</span>
           </button>
         )}
@@ -199,7 +199,7 @@ export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({
               Host
             </span>
           </div>
-          {/* Follow Button - Moved lower, only for attendees (not host) */}
+          {/* Follow Button - Liquid Glass Style */}
           {!isHost && onFollowToggle && (
             <button
               onClick={(e) => {
@@ -209,9 +209,9 @@ export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({
               disabled={followLoading}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all active:scale-95 touch-manipulation flex items-center gap-1.5 w-fit ${
                 isFollowing
-                  ? 'bg-[#15383c] text-white hover:bg-[#1f4d52]'
-                  : 'bg-[#e35e25] text-white hover:bg-[#d14e1a]'
-              } ${followLoading ? 'opacity-50 cursor-not-allowed' : ''} shadow-sm`}
+                  ? 'bg-white/80 backdrop-blur-sm text-[#15383c] border border-gray-200/60 hover:bg-white hover:border-gray-300'
+                  : 'bg-[#e35e25] text-white shadow-lg shadow-[#e35e25]/25 hover:shadow-xl'
+              } ${followLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {isFollowing ? (
                 <>
@@ -231,9 +231,9 @@ export const GroupChatHeader: React.FC<GroupChatHeaderProps> = ({
       <div className="flex items-center gap-3 shrink-0">
         <button
           onClick={onClose}
-          className="p-2 hover:bg-red-50 rounded-full text-gray-400 hover:text-red-500 transition-colors shrink-0"
+          className="p-2 bg-white/80 backdrop-blur-sm border border-gray-200/60 hover:bg-white hover:border-red-200 rounded-full text-gray-400 hover:text-red-500 transition-all shrink-0"
         >
-          <X size={20} />
+          <X size={18} />
         </button>
       </div>
     </div>

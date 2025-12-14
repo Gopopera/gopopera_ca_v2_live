@@ -207,10 +207,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
               </div>
             </div>
 
-            {/* Email Sign-Up Button */}
+            {/* Email Sign-Up Button - Primary CTA */}
             <button
               onClick={() => setStep('email-signup')}
-              className="w-full py-3.5 sm:py-4 bg-[#15383c] text-white font-bold rounded-full shadow-lg hover:bg-[#1f4d52] transition-all touch-manipulation text-sm sm:text-base"
+              className="w-full py-3.5 sm:py-4 bg-[#15383c] text-white font-bold rounded-full shadow-lg shadow-[#15383c]/25 hover:shadow-xl hover:shadow-[#15383c]/30 transition-all touch-manipulation text-sm sm:text-base"
             >
               {t('auth.emailSignUp')}
             </button>
@@ -241,7 +241,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
               {t('auth.enterDetails')}
             </p>
 
-            {/* Name Field */}
+            {/* Name Field - Glass Style Input */}
             <div>
               <label className="block text-xs sm:text-sm font-semibold text-[#15383c] mb-2">
                 {t('auth.name')}
@@ -252,11 +252,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
                 value={formData.name}
                 onChange={handleInputChange}
                 placeholder={t('auth.namePlaceholder')}
-                className="w-full px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:border-[#e35e25] focus:outline-none transition-colors"
+                className="w-full px-4 py-3 text-base bg-white/80 backdrop-blur-sm border border-gray-200/60 rounded-xl focus:border-[#e35e25] focus:bg-white focus:outline-none transition-all shadow-sm"
               />
             </div>
 
-            {/* Email Field */}
+            {/* Email Field - Glass Style Input */}
             <div>
               <label className="block text-xs sm:text-sm font-semibold text-[#15383c] mb-2">
                 {t('auth.email')}
@@ -267,11 +267,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
                 value={formData.email}
                 onChange={handleInputChange}
                 placeholder={t('auth.emailPlaceholder')}
-                className="w-full px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:border-[#e35e25] focus:outline-none transition-colors"
+                className="w-full px-4 py-3 text-base bg-white/80 backdrop-blur-sm border border-gray-200/60 rounded-xl focus:border-[#e35e25] focus:bg-white focus:outline-none transition-all shadow-sm"
               />
             </div>
 
-            {/* Password Field */}
+            {/* Password Field - Glass Style Input */}
             <div>
               <label className="block text-xs sm:text-sm font-semibold text-[#15383c] mb-2">
                 {t('auth.password')}
@@ -283,7 +283,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
                   value={formData.password}
                   onChange={handleInputChange}
                   placeholder={t('auth.passwordPlaceholder')}
-                  className="w-full px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:border-[#e35e25] focus:outline-none transition-colors pr-12"
+                  className="w-full px-4 py-3 text-base bg-white/80 backdrop-blur-sm border border-gray-200/60 rounded-xl focus:border-[#e35e25] focus:bg-white focus:outline-none transition-all pr-12 shadow-sm"
                 />
                 <button
                   type="button"
