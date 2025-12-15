@@ -164,3 +164,33 @@ export const useSelectedCity = (): string => useCityStore((s) => s.selectedCity)
 export const useSetCity = () => useCityStore((s) => s.setCity);
 export const resetCity = () => useCityStore.getState().resetCity();
 export const initializeGeoLocation = () => useCityStore.getState().initializeFromGeo();
+
+/**
+ * Validate that the current city has events, otherwise fall back to "Canada"
+ * Call this after events are loaded to ensure the user sees results
+ */
+export function validateCityHasEvents(events: { city: string }[]): void {
+  const state = useCityStore.getState();
+  const currentCity = state.selectedCity;
+  
+  // If already "Canada" or user manually set it, don't override
+  if (currentCity.toLowerCase() === 'canada' || hasManualLocationSet()) {
+    return;
+  }
+  
+  // Check if any events match the current city
+  const cityLower = currentCity.toLowerCase();
+  const hasEventsInCity = events.some(event => {
+    const eventCityLower = event.city?.toLowerCase() || '';
+    const normalizedEventCity = eventCityLower.replace(/,\s*ca$/, '').trim();
+    return normalizedEventCity.includes(cityLower) || 
+           cityLower.includes(normalizedEventCity) ||
+           eventCityLower.includes(cityLower);
+  });
+  
+  // If no events in this city, fall back to Canada
+  if (!hasEventsInCity && events.length > 0) {
+    console.log('[cityStore] No events in detected city, falling back to Canada');
+    state.setCity('Canada', false); // Set without marking as manual
+  }
+}

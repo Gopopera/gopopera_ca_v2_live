@@ -92,7 +92,7 @@ import { useUserStore } from './stores/userStore';
 import { categoryMatches } from './utils/categoryMapper';
 import { useDebouncedFavorite } from './hooks/useDebouncedFavorite';
 import { ConversationButtonModal } from './components/chat/ConversationButtonModal';
-import { useSelectedCity, useSetCity, initializeGeoLocation, type City } from './src/stores/cityStore';
+import { useSelectedCity, useSetCity, initializeGeoLocation, validateCityHasEvents, type City } from './src/stores/cityStore';
 import { useFilterStore } from './stores/filterStore';
 import { NotificationsModal } from './components/notifications/NotificationsModal';
 import { isPrivateMode, getPrivateModeMessage } from './utils/browserDetection';
@@ -504,6 +504,13 @@ const AppContent: React.FC = () => {
       eventTitles: allEvents.map(e => e.title),
     });
   }, [allEvents.length, isLoadingEvents, eventsError]);
+  
+  // Validate city has events after events are loaded (smart geo fallback)
+  useEffect(() => {
+    if (!isLoadingEvents && allEvents.length > 0) {
+      validateCityHasEvents(allEvents);
+    }
+  }, [allEvents, isLoadingEvents]);
   
   // Initialize auth listener and events store on mount
   // City store auto-initializes via Zustand persist middleware
