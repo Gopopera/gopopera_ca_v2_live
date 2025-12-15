@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Hero } from '../../components/landing/Hero';
 import { Pillars } from '../../components/landing/Pillars';
 import { EventFeed } from '../../components/events/EventFeed';
@@ -8,9 +8,9 @@ import { CityInput } from '../../components/layout/CityInput';
 import { FilterDrawer } from '../../components/filters/FilterDrawer';
 import { SeoHelmet } from '../../components/seo/SeoHelmet';
 import { Event, ViewState } from '../../types';
-import { ArrowRight, Sparkles, Check, ChevronDown, Search, MapPin, PlusCircle, CheckCircle2, ChevronRight, ChevronLeft, Filter } from 'lucide-react';
+import { ArrowRight, Sparkles, Check, ChevronDown, Search, MapPin, PlusCircle, CheckCircle2, ChevronRight, ChevronLeft, Filter, Eye, CalendarCheck, Users } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { useSelectedCity, useSetCity, type City } from '../stores/cityStore';
+import { useSelectedCity, useSetCity, initializeGeoLocation, type City } from '../stores/cityStore';
 import { useFilterStore } from '../../stores/filterStore';
 import { applyEventFilters } from '../../utils/filterEvents';
 import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS, type MainCategory } from '../../utils/categoryMapper';
@@ -50,6 +50,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const setCity = useSetCity();
   const location = city;
   const { filters, isFilterDrawerOpen, setFilterDrawerOpen, getActiveFilterCount, setFilter } = useFilterStore();
+  
+  // Initialize location from IP geolocation on mount
+  useEffect(() => {
+    initializeGeoLocation();
+  }, []);
   
   // Filter events based on location and vibes
   const filteredEvents = useMemo(() => {
@@ -160,6 +165,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       
       {/* 1. Bring Your Crowd Anywhere (Hero section) */}
       <Hero setViewState={setViewState} />
+      
+      {/* How it works strip */}
+      <div className="bg-[#15383c] border-t border-white/10 py-4 sm:py-5">
+        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 lg:gap-12 text-white/80">
+            <div className="flex items-center gap-2.5">
+              <Eye size={18} className="text-[#e35e25] shrink-0" />
+              <span className="text-sm font-medium">Browse circles</span>
+            </div>
+            <div className="hidden sm:block w-8 h-px bg-white/20" />
+            <div className="flex items-center gap-2.5">
+              <CalendarCheck size={18} className="text-[#e35e25] shrink-0" />
+              <span className="text-sm font-medium">RSVP to reserve</span>
+            </div>
+            <div className="hidden sm:block w-8 h-px bg-white/20" />
+            <div className="flex items-center gap-2.5">
+              <Users size={18} className="text-[#e35e25] shrink-0" />
+              <span className="text-sm font-medium">Meet in person</span>
+            </div>
+          </div>
+        </div>
+      </div>
       
       {/* 2. Upcoming Events (event feed section) */}
       <section className="section-padding md:container md:mx-auto md:px-6 lg:px-8 bg-[#FAFAFA] overflow-hidden">

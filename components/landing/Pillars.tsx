@@ -96,8 +96,8 @@ export const Pillars: React.FC = () => {
             {t('pillars.badge')}
           </span>
           <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-6xl font-heading font-bold text-[#15383c] mb-4 sm:mb-5 md:mb-6 lg:mb-8">
-            <span className="block">What You Can Bring to Life</span>
-            <span className="block md:mt-0">With Your Crowd?</span>
+            <span className="block">What you can do</span>
+            <span className="block md:mt-0">in a small circle</span>
           </h2>
           <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-3xl mx-auto font-light leading-relaxed px-4">
             {t('pillars.description')}

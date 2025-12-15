@@ -92,7 +92,7 @@ import { useUserStore } from './stores/userStore';
 import { categoryMatches } from './utils/categoryMapper';
 import { useDebouncedFavorite } from './hooks/useDebouncedFavorite';
 import { ConversationButtonModal } from './components/chat/ConversationButtonModal';
-import { useSelectedCity, useSetCity, type City } from './src/stores/cityStore';
+import { useSelectedCity, useSetCity, initializeGeoLocation, type City } from './src/stores/cityStore';
 import { useFilterStore } from './stores/filterStore';
 import { NotificationsModal } from './components/notifications/NotificationsModal';
 import { isPrivateMode, getPrivateModeMessage } from './utils/browserDetection';
@@ -389,6 +389,9 @@ const AppContent: React.FC = () => {
     if (isPrivateMode()) {
       setPrivateModeWarning(getPrivateModeMessage());
     }
+    
+    // Initialize location from IP geolocation (if not manually set)
+    initializeGeoLocation();
   }, []);
   const city = useSelectedCity();
   

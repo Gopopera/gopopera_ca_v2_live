@@ -202,8 +202,8 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
   
   // Bio text
   const bio = isPoperaProfile 
-    ? "Popera is where pop-up culture comes alive. We help creators, organizers, and communities host micro-moments that bring people together. From spontaneous markets to meaningful gatherings, Popera makes it easy to activate your local crowd and create real-world connections. Join our early-user community and help shape the future of spontaneous, authentic experiences."
-    : "Community organizer and event enthusiast.";
+    ? "Popera is where small-group circles come alive. We help creators, organizers, and communities host intimate 3–10 person sessions that bring people together. From hands-on workshops to meaningful gatherings, Popera makes it easy to connect with your neighbors and create real-world experiences. Join our early-user community and help shape the future of in-person connection."
+    : "Community organizer and circle host.";
   
   const [isFollowingState, setIsFollowingState] = useState(false);
   const [isUpdatingFollow, setIsUpdatingFollow] = useState(false);

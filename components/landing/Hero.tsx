@@ -67,6 +67,11 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
             {t('hero.becomeHost')} <ArrowRight size={16} className="sm:w-[18px] sm:h-[18px] group-hover:translate-x-1 transition-transform shrink-0" />
           </button>
         </div>
+        
+        {/* Micro-proof line */}
+        <p className="mt-6 sm:mt-8 text-xs sm:text-sm text-gray-400 font-medium tracking-wide">
+          In-person only • 3–10 seats • Verified hosts
+        </p>
       </div>
     </section>
   );
