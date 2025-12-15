@@ -8,11 +8,9 @@ export const ALL_VIBES = [
   // Attribute Vibes (atmosphere/style)
   'Creative',
   'Movement',
-  'Social Connection',
+  'Social',
   'Spiritual',
   'Learning',
-  'Resilience',
-  'Cozy',
   'Outdoors',
   'Curious',
   'Purposeful',
@@ -27,7 +25,6 @@ export const ALL_VIBES = [
   'Wellness',
   'Community',
   'Workshops',
-  'Social',
   'Shows',
 ] as const;
 

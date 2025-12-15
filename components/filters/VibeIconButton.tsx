@@ -2,12 +2,10 @@ import React from 'react';
 import {
   Sparkles, // Creative
   Heart, // Movement
-  Users, // Social Connection
+  Users, // Social
   Leaf, // Wellness
   Star, // Spiritual
   GraduationCap, // Learning
-  Shield, // Resilience
-  Home, // Cozy
   Mountain, // Outdoors
   Search, // Curious
   Target, // Purposeful
@@ -19,7 +17,6 @@ import {
   Trophy, // Sports
   Users2, // Community
   BookOpen, // Workshops
-  MessageCircle, // Social
   Theater, // Shows
 } from 'lucide-react';
 
@@ -33,12 +30,10 @@ interface VibeIconButtonProps {
 const vibeIcons: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   'Creative': Sparkles,
   'Movement': Heart,
-  'Social Connection': Users,
+  'Social': Users,
   'Wellness': Leaf,
   'Spiritual': Star,
   'Learning': GraduationCap,
-  'Resilience': Shield,
-  'Cozy': Home,
   'Outdoors': Mountain,
   'Curious': Search,
   'Purposeful': Target,
@@ -50,7 +45,6 @@ const vibeIcons: Record<string, React.ComponentType<{ size?: number; className?:
   'Sports': Trophy,
   'Community': Users2,
   'Workshops': BookOpen,
-  'Social': MessageCircle,
   'Shows': Theater,
 };
 
@@ -66,7 +60,7 @@ export const VibeIconButton: React.FC<VibeIconButtonProps> = ({
       onClick={onClick}
       className={`
         flex flex-col items-center justify-center gap-1.5 flex-shrink-0 touch-manipulation active:scale-[0.95]
-        transition-all min-w-[64px] max-w-[64px] sm:min-w-[72px] sm:max-w-[72px]
+        transition-all min-w-[72px] sm:min-w-[80px]
       `}
       aria-label={vibe}
     >
@@ -87,8 +81,8 @@ export const VibeIconButton: React.FC<VibeIconButtonProps> = ({
       {/* Label */}
       <span
         className={`
-          text-xs sm:text-xs font-medium text-center leading-tight
-          transition-colors duration-200 max-w-[64px] sm:max-w-[72px]
+          text-xs sm:text-xs font-medium text-center leading-tight whitespace-nowrap
+          transition-colors duration-200
           ${isActive ? 'text-[#15383c] font-semibold' : 'text-gray-600'}
         `}
         style={{ lineHeight: '1.2' }}
