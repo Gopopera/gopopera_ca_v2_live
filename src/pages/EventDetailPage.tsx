@@ -789,9 +789,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           </div>
         )}
         
-        {/* Content Overlay - Category badge on the top left */}
-        <div className="absolute top-20 sm:top-20 lg:top-24 left-4 sm:left-6 lg:left-8 z-10">
-          {/* Category Badge - Top left aligned */}
+        {/* Content Overlay - Category badge on the top left, aligned with favorite icon */}
+        <div className="absolute top-20 sm:top-20 lg:top-20 left-4 z-10">
+          {/* Category Badge - Top left aligned with same vertical as favorite button */}
           <span className="inline-block px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-[#e35e25] text-xs font-bold uppercase tracking-wider border border-white/30">
             {getMainCategoryLabelFromEvent(event)}
           </span>

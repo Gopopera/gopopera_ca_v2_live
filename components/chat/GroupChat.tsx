@@ -26,7 +26,12 @@ import { useProfileStore } from '../../stores/profileStore';
 import { notifyAttendeesOfNewMessage, notifyAttendeesOfPoll, notifyAttendeesOfAnnouncement } from '../../utils/notificationHelpers';
 
 // REFACTORED: Component to fetch sender avatar in real-time from /users/{senderId}
-const MessageAvatar: React.FC<{ userId: string; fallbackName: string; isHost: boolean }> = React.memo(({ userId, fallbackName, isHost }) => {
+const MessageAvatar: React.FC<{ 
+  userId: string; 
+  fallbackName: string; 
+  isHost: boolean;
+  onClick?: () => void;
+}> = React.memo(({ userId, fallbackName, isHost, onClick }) => {
   const [photoURL, setPhotoURL] = React.useState<string | null>(null);
   const [displayName, setDisplayName] = React.useState<string>(fallbackName);
   
@@ -62,7 +67,13 @@ const MessageAvatar: React.FC<{ userId: string; fallbackName: string; isHost: bo
   const initials = displayName?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
   
   return (
-    <div className={`w-8 h-8 rounded-full shrink-0 overflow-hidden ${isHost ? 'ring-2 ring-[#e35e25]' : ''}`}>
+    <div 
+      className={`w-8 h-8 rounded-full shrink-0 overflow-hidden ${isHost ? 'ring-2 ring-[#e35e25]' : ''} ${onClick ? 'cursor-pointer hover:ring-2 hover:ring-[#15383c]/50 transition-all' : ''}`}
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      title={onClick ? `View ${displayName}'s profile` : undefined}
+    >
       {photoURL ? (
         <img 
           src={photoURL} 
@@ -86,7 +97,13 @@ MessageAvatar.displayName = 'MessageAvatar';
 
 // REFACTORED: Component to fetch sender info in real-time from /users/{senderId}
 // Memoized to prevent unnecessary re-renders when multiple messages from same sender
-const MessageSenderName: React.FC<{ userId: string; fallbackName: string; timeString: string; isHost?: boolean }> = React.memo(({ userId, fallbackName, timeString, isHost }) => {
+const MessageSenderName: React.FC<{ 
+  userId: string; 
+  fallbackName: string; 
+  timeString: string; 
+  isHost?: boolean;
+  onClick?: () => void;
+}> = React.memo(({ userId, fallbackName, timeString, isHost, onClick }) => {
   const [senderName, setSenderName] = React.useState<string>(fallbackName);
   
   React.useEffect(() => {
@@ -121,7 +138,13 @@ const MessageSenderName: React.FC<{ userId: string; fallbackName: string; timeSt
   return (
     <span className="text-[10px] text-gray-400">
       {isHost && <span className="font-bold text-[#e35e25]">Host • </span>}
-      {senderName} • {timeString}
+      <span 
+        className={onClick ? "cursor-pointer hover:text-[#15383c] hover:underline transition-colors" : ""}
+        onClick={onClick}
+      >
+        {senderName}
+      </span>
+      {" • "}{timeString}
     </span>
   );
 });
@@ -1421,7 +1444,16 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                               <h3 className="font-bold text-sm md:text-base">Announcement</h3>
                             </div>
                             <p className="text-gray-200 text-sm mb-4 leading-relaxed">{cleanMessage}</p>
-                            <MessageSenderName userId={msg.userId} fallbackName={msg.userName} timeString={timeString} />
+                            <MessageSenderName 
+                              userId={msg.userId} 
+                              fallbackName={msg.userName} 
+                              timeString={timeString}
+                              onClick={() => {
+                                if (msg.userId && onHostClick) {
+                                  onHostClick(msg.userName, msg.userId);
+                                }
+                              }}
+                            />
                           </div>
                         </div>
                       );
@@ -1442,8 +1474,18 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                     
                     return (
                       <div key={msg.id} className="flex items-start gap-3">
-                        {/* Profile picture on the left */}
-                        <MessageAvatar userId={msg.userId} fallbackName={msg.userName} isHost={msg.isHost} />
+                        {/* Profile picture on the left - clickable to view profile */}
+                        <MessageAvatar 
+                          userId={msg.userId} 
+                          fallbackName={msg.userName} 
+                          isHost={msg.isHost}
+                          onClick={() => {
+                            if (msg.userId && onHostClick) {
+                              // Navigate to user profile - uses same handler as host click
+                              onHostClick(msg.userName, msg.userId);
+                            }
+                          }}
+                        />
                         
                         {/* Message content - no flex-1 to prevent stretching, max-w on parent */}
                         <div className="flex flex-col space-y-1 min-w-0 max-w-[85%]">
@@ -1467,7 +1509,17 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                               msg.message
                             )}
                           </div>
-                          <MessageSenderName userId={msg.userId} fallbackName={msg.userName} timeString={timeString} isHost={msg.isHost} />
+                          <MessageSenderName 
+                            userId={msg.userId} 
+                            fallbackName={msg.userName} 
+                            timeString={timeString} 
+                            isHost={msg.isHost}
+                            onClick={() => {
+                              if (msg.userId && onHostClick) {
+                                onHostClick(msg.userName, msg.userId);
+                              }
+                            }}
+                          />
                         </div>
                       </div>
                     );
