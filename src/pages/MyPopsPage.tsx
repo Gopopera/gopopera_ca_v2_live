@@ -356,7 +356,7 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
             </h3>
             <p className="text-gray-500 text-sm sm:text-base max-w-md">
               {activeTab === 'hosting' 
-                ? 'Start hosting your first pop-up and bring your community together!' 
+                ? 'Start hosting your first circle and bring your community together!' 
                 : activeTab === 'attending'
                 ? 'RSVP to events you\'re interested in and they\'ll appear here.'
                 : activeTab === 'draft'

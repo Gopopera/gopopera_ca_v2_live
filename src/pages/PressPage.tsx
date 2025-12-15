@@ -35,7 +35,7 @@ export const PressPage: React.FC<PressPageProps> = ({ setViewState }) => {
               About Popera
             </h2>
             <p className="text-gray-600 mb-4 leading-relaxed">
-              Popera is Canada's first community-powered pop-up platform, connecting people through real-world experiences. From garage sales to art shows, local meetups, and cultural events, Popera makes it easy for anyone to create, discover, and join meaningful pop-up moments in their community.
+              Popera is a peer-to-peer marketplace for small, in-person experiences. Neighbors host intimate 3–10 person circles — cooking nights, creative workshops, learning sessions — and others join to learn something new and meet people in real life.
             </p>
             <p className="text-gray-600 leading-relaxed">
               Founded with a mission to bring people together through authentic, local connections, Popera combines simple RSVPs, built-in group chats, and transparent reviews to create a safe, engaging platform for community events.
@@ -97,7 +97,7 @@ export const PressPage: React.FC<PressPageProps> = ({ setViewState }) => {
             <ul className="space-y-3">
               <li className="flex items-start gap-2">
                 <span className="text-[#e35e25] font-bold">•</span>
-                <span className="text-gray-600"><strong>Platform:</strong> Community-powered pop-up event platform</span>
+                <span className="text-gray-600"><strong>Platform:</strong> Peer-to-peer marketplace for small, in-person experiences</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-[#e35e25] font-bold">•</span>
@@ -109,7 +109,7 @@ export const PressPage: React.FC<PressPageProps> = ({ setViewState }) => {
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-[#e35e25] font-bold">•</span>
-                <span className="text-gray-600"><strong>Mission:</strong> Connect communities through real-world pop-up experiences</span>
+                <span className="text-gray-600"><strong>Mission:</strong> Connect neighbors through small-group, in-person experiences</span>
               </li>
             </ul>
           </section>

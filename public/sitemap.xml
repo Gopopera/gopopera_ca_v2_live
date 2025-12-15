@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Static sitemap for gopopera.ca
+  
+  This sitemap includes all static public pages. For a production site,
+  you may want to generate this dynamically to include:
+  - All event pages (/event/{id})
+  - All host profile pages (/host/{name})
+  - City-specific pages (/montreal/experiences, /toronto/experiences, etc.)
+  - Category pages (/circles/cooking, /circles/wellness, etc.)
+  
+  For now, this static sitemap helps search engines discover the main pages.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+                            http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+  
+  <!-- Homepage / Landing Page - highest priority -->
+  <url>
+    <loc>https://gopopera.ca/</loc>
+    <lastmod>2024-12-15</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  
+  <!-- Explore / Discovery Page - high priority, updated frequently -->
+  <url>
+    <loc>https://gopopera.ca/explore</loc>
+    <lastmod>2024-12-15</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <!-- About Page -->
+  <url>
+    <loc>https://gopopera.ca/about</loc>
+    <lastmod>2024-12-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  
+  <!-- Community Guidelines -->
+  <url>
+    <loc>https://gopopera.ca/guidelines</loc>
+    <lastmod>2024-12-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <!-- Terms of Service -->
+  <url>
+    <loc>https://gopopera.ca/terms</loc>
+    <lastmod>2024-12-15</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  
+  <!-- Privacy Policy -->
+  <url>
+    <loc>https://gopopera.ca/privacy</loc>
+    <lastmod>2024-12-15</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  
+  <!-- Safety Center -->
+  <url>
+    <loc>https://gopopera.ca/safety</loc>
+    <lastmod>2024-12-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <!-- Help Center -->
+  <url>
+    <loc>https://gopopera.ca/help</loc>
+    <lastmod>2024-12-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <!-- Careers Page -->
+  <url>
+    <loc>https://gopopera.ca/careers</loc>
+    <lastmod>2024-12-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <!-- Contact Page -->
+  <url>
+    <loc>https://gopopera.ca/contact</loc>
+    <lastmod>2024-12-15</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <!-- Press Page -->
+  <url>
+    <loc>https://gopopera.ca/press</loc>
+    <lastmod>2024-12-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <!-- Cancellation Policy -->
+  <url>
+    <loc>https://gopopera.ca/cancellation</loc>
+    <lastmod>2024-12-15</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  
+</urlset>
+

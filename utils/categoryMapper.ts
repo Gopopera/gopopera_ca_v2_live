@@ -12,12 +12,111 @@ export type MainCategory =
   | 'mobilizeSupport' 
   | 'learnGrow';
 
+// Main category keys for iteration
+export const MAIN_CATEGORIES: MainCategory[] = [
+  'curatedSales',
+  'connectPromote',
+  'mobilizeSupport',
+  'learnGrow',
+];
+
 export const MAIN_CATEGORY_LABELS: Record<MainCategory, string> = {
-  curatedSales: 'Curated Sales',
+  curatedSales: 'Sell & Shop',
   connectPromote: 'Connect & Promote',
   mobilizeSupport: 'Mobilize & Support',
   learnGrow: 'Learn & Grow',
 };
+
+/**
+ * Mapping of vibes to main categories
+ * Each vibe belongs to exactly one main category
+ * Used for fallback derivation when mainCategory is not set
+ */
+export const VIBE_TO_CATEGORY: Record<string, MainCategory> = {
+  // Sell & Shop (curatedSales)
+  'Markets': 'curatedSales',
+  'Hands-On': 'curatedSales',
+  
+  // Connect & Promote (connectPromote)
+  'Social': 'connectPromote',
+  'Music': 'connectPromote',
+  'Performances': 'connectPromote',
+  'Shows': 'connectPromote',
+  'Sports': 'connectPromote', // Sports → Connect & Promote as specified
+  'Food & Drink': 'connectPromote',
+  
+  // Mobilize & Support (mobilizeSupport)
+  'Community': 'mobilizeSupport',
+  'Purposeful': 'mobilizeSupport',
+  'Outdoors': 'mobilizeSupport',
+  
+  // Learn & Grow (learnGrow)
+  'Learning': 'learnGrow',
+  'Workshops': 'learnGrow',
+  'Creative': 'learnGrow',
+  'Curious': 'learnGrow',
+  'Wellness': 'learnGrow',
+  'Spiritual': 'learnGrow',
+  'Movement': 'learnGrow',
+};
+
+/**
+ * Get vibes grouped by main category
+ * Returns an object with category keys and arrays of vibes
+ */
+export function getVibesByCategory(): Record<MainCategory, string[]> {
+  const result: Record<MainCategory, string[]> = {
+    curatedSales: [],
+    connectPromote: [],
+    mobilizeSupport: [],
+    learnGrow: [],
+  };
+  
+  for (const [vibe, category] of Object.entries(VIBE_TO_CATEGORY)) {
+    result[category].push(vibe);
+  }
+  
+  return result;
+}
+
+/**
+ * Get vibes for a specific main category
+ */
+export function getVibesForCategory(category: MainCategory): string[] {
+  return Object.entries(VIBE_TO_CATEGORY)
+    .filter(([_, cat]) => cat === category)
+    .map(([vibe]) => vibe);
+}
+
+/**
+ * Get main category from an item (event/circle)
+ * Uses mainCategory if set, otherwise derives from first vibe
+ * Returns null if no category can be determined
+ */
+export function getMainCategory(item: { mainCategory?: string | null; vibes?: string[] | null; category?: string | null }): MainCategory | null {
+  // If mainCategory exists and is valid, use it
+  if (item.mainCategory && isValidMainCategory(item.mainCategory)) {
+    return item.mainCategory as MainCategory;
+  }
+  
+  // Try to derive from vibes
+  if (item.vibes && item.vibes.length > 0) {
+    for (const vibe of item.vibes) {
+      const category = VIBE_TO_CATEGORY[vibe];
+      if (category) {
+        return category;
+      }
+    }
+  }
+  
+  // Fall back to mapping from old category field
+  if (item.category) {
+    return mapOldCategoryToMainCategory(item.category);
+  }
+  
+  // No category can be determined
+  return null;
+}
 
 /**
  * Map old category values to new mainCategory system

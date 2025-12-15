@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { HelmetProvider } from 'react-helmet-async';
 import './index.css';
 import './lib/ui-normalize.css';
 import App from '../App';
@@ -28,10 +29,14 @@ window.addEventListener('unhandledrejection', (event) => {
   }
 });
 
+// HelmetProvider enables react-helmet-async for SEO meta tag management
+// It must wrap the entire app to collect and dedupe head elements
 ReactDOM.createRoot(el).render(
-  <AppErrorBoundary>
-    <SafeShell />
-  </AppErrorBoundary>
+  <HelmetProvider>
+    <AppErrorBoundary>
+      <SafeShell />
+    </AppErrorBoundary>
+  </HelmetProvider>
 );
 
 console.log('[BOOT] React root rendered');

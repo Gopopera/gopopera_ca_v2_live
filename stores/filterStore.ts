@@ -1,7 +1,11 @@
 import { create } from 'zustand';
 import { ALL_VIBES } from '../utils/vibes';
+import type { MainCategory } from '../utils/categoryMapper';
 
 export interface EventFilters {
+  // Main Category (new - for tabs and drawer)
+  mainCategory: MainCategory | null;
+  
   // Location
   country: string | null;
   city: string | null;
@@ -32,6 +36,7 @@ interface FilterStore {
 }
 
 const defaultFilters: EventFilters = {
+  mainCategory: null,
   country: null,
   city: null,
   groupSize: null,
@@ -66,6 +71,7 @@ export const useFilterStore = create<FilterStore>((set, get) => ({
     const { filters } = get();
     let count = 0;
     
+    if (filters.mainCategory) count++;
     if (filters.country) count++;
     if (filters.city) count++;
     if (filters.groupSize) count++;

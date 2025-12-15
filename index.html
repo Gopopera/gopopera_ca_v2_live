@@ -3,22 +3,73 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Popera - Canada's Community-Powered Pop-up Platform</title>
-    <meta name="description" content="Popera is Canada's first community-powered pop-up platform, where anyone can safely create, discover, and join meaningful pop-up experiences near them." />
+    
+    <!-- Primary Meta Tags (will be overridden by react-helmet-async on route change) -->
+    <title>Popera — Small in-person experiences, hosted by people near you</title>
+    <meta name="description" content="Join intimate 3–10 person circles in your neighborhood to cook, create, learn, and connect — or host your own and earn from what you know." />
+    <link rel="canonical" href="https://gopopera.ca/" />
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://gopopera.ca/" />
-    <meta property="og:title" content="Popera — Discover Local Circles & Meaningful Real-Life Sessions" />
-    <meta property="og:description" content="The micro-community platform for finding Circles that match your interests and joining Sessions that bring people together." />
+    <meta property="og:title" content="Popera — Small in-person experiences, hosted by people near you" />
+    <meta property="og:description" content="Join intimate 3–10 person circles in your neighborhood to cook, create, learn, and connect — or host your own and earn from what you know." />
     <meta property="og:image" content="https://gopopera.ca/og-image.png" />
+    <meta property="og:site_name" content="Popera" />
+    <meta property="og:locale" content="en_CA" />
     
     <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://gopopera.ca/" />
-    <meta property="twitter:title" content="Popera — Discover Local Circles & Meaningful Real-Life Sessions" />
-    <meta property="twitter:description" content="The micro-community platform for finding Circles that match your interests and joining Sessions that bring people together." />
-    <meta property="twitter:image" content="https://gopopera.ca/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://gopopera.ca/" />
+    <meta name="twitter:title" content="Popera — Small in-person experiences, hosted by people near you" />
+    <meta name="twitter:description" content="Join intimate 3–10 person circles in your neighborhood to cook, create, learn, and connect — or host your own and earn from what you know." />
+    <meta name="twitter:image" content="https://gopopera.ca/og-image.png" />
+    
+    <!-- JSON-LD Structured Data for Organization + WebSite -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://gopopera.ca/#organization",
+          "name": "Popera",
+          "url": "https://gopopera.ca/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://gopopera.ca/og-image.png",
+            "width": 1200,
+            "height": 630
+          },
+          "description": "Popera is a peer-to-peer marketplace for small, in-person experiences. Neighbors host intimate 3–10 person circles — cooking nights, creative workshops, learning sessions — and others join to learn something new and meet people in real life.",
+          "foundingDate": "2024",
+          "areaServed": {
+            "@type": "Country",
+            "name": "Canada"
+          },
+          "sameAs": []
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://gopopera.ca/#website",
+          "url": "https://gopopera.ca/",
+          "name": "Popera",
+          "description": "Join intimate 3–10 person circles in your neighborhood to cook, create, learn, and connect.",
+          "publisher": {
+            "@id": "https://gopopera.ca/#organization"
+          },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://gopopera.ca/explore?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        }
+      ]
+    }
+    </script>
     <script>
       // Set up error handlers IMMEDIATELY, before anything else loads
       // This must run before React or any other scripts

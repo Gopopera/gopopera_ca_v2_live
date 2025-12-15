@@ -6,14 +6,14 @@ import { EventCard } from '../../components/events/EventCard';
 import { ChatMockupSection } from '../../components/landing/ChatMockupSection';
 import { CityInput } from '../../components/layout/CityInput';
 import { FilterDrawer } from '../../components/filters/FilterDrawer';
-import { VibeIconButton } from '../../components/filters/VibeIconButton';
-import { ALL_VIBES } from '../../utils/vibes';
+import { SeoHelmet } from '../../components/seo/SeoHelmet';
 import { Event, ViewState } from '../../types';
 import { ArrowRight, Sparkles, Check, ChevronDown, Search, MapPin, PlusCircle, CheckCircle2, ChevronRight, ChevronLeft, Filter } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useSelectedCity, useSetCity, type City } from '../stores/cityStore';
 import { useFilterStore } from '../../stores/filterStore';
 import { applyEventFilters } from '../../utils/filterEvents';
+import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS, type MainCategory } from '../../utils/categoryMapper';
 import { getDbSafe } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { sendEmail } from '../lib/email';
@@ -155,6 +155,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   return (
     <main className="min-h-screen bg-[#FAFAFA] w-full max-w-full overflow-x-hidden">
+      {/* SEO: Landing page meta tags for improved search visibility */}
+      <SeoHelmet viewState={ViewState.LANDING} />
+      
       {/* 1. Bring Your Crowd Anywhere (Hero section) */}
       <Hero setViewState={setViewState} />
       
@@ -198,10 +201,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
              </div>
 
-             {/* Vibes Section - Scrollable Icons with Filter Button */}
+             {/* Category Tabs + Filter Button */}
              <div className="mt-4">
                <div className="flex items-center justify-between mb-3">
-                 <h3 className="text-sm font-semibold text-gray-600">Filter by Vibes</h3>
+                 <h3 className="text-sm font-semibold text-gray-600">Filter by Category</h3>
                  <button
                    onClick={() => setFilterDrawerOpen(true)}
                    className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border-2 border-[#15383c] text-[#15383c] font-medium hover:bg-[#15383c] hover:text-white transition-colors flex-shrink-0 touch-manipulation active:scale-[0.95] text-xs sm:text-sm"
@@ -216,21 +219,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                  </button>
                </div>
                <div className="relative z-10">
-                 <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4 scroll-pr-32 md:scroll-pr-4">
-                   {ALL_VIBES.map(vibe => (
-                     <VibeIconButton
-                       key={vibe}
-                       vibe={vibe}
-                       isActive={filters.vibes.includes(vibe)}
-                       onClick={() => {
-                         const currentVibes = filters.vibes;
-                         if (currentVibes.includes(vibe)) {
-                           setFilter('vibes', currentVibes.filter(v => v !== vibe));
-                         } else {
-                           setFilter('vibes', [...currentVibes, vibe]);
-                         }
-                       }}
-                     />
+                 <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4 scroll-pr-32 md:scroll-pr-4">
+                   {/* All tab */}
+                   <button
+                     onClick={() => setFilter('mainCategory', null)}
+                     className={`shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-bold tracking-wider uppercase transition-all touch-manipulation active:scale-[0.95] ${
+                       filters.mainCategory === null
+                         ? 'bg-[#e35e25] text-white shadow-md'
+                         : 'bg-white/20 backdrop-blur-md text-[#15383c] border border-[#15383c]/20 hover:border-[#e35e25] hover:text-[#e35e25]'
+                     }`}
+                   >
+                     All
+                   </button>
+                   {/* Category tabs */}
+                   {MAIN_CATEGORIES.map(category => (
+                     <button
+                       key={category}
+                       onClick={() => setFilter('mainCategory', filters.mainCategory === category ? null : category)}
+                       className={`shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-bold tracking-wider uppercase transition-all touch-manipulation active:scale-[0.95] whitespace-nowrap ${
+                         filters.mainCategory === category
+                           ? 'bg-[#e35e25] text-white shadow-md'
+                           : 'bg-white/20 backdrop-blur-md text-[#15383c] border border-[#15383c]/20 hover:border-[#e35e25] hover:text-[#e35e25]'
+                       }`}
+                     >
+                       {MAIN_CATEGORY_LABELS[category]}
+                     </button>
                    ))}
                  </div>
                  <div className="absolute right-0 top-0 bottom-2 w-6 sm:w-8 bg-gradient-to-l from-[#FAFAFA] to-transparent pointer-events-none md:hidden"></div>
@@ -244,7 +257,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           {/* Left Arrow - Desktop only */}
           <button
             onClick={() => {
-              const container = document.getElementById('upcoming-popups-scroll');
+              const container = document.getElementById('upcoming-circles-scroll');
               if (container) {
                 container.scrollBy({ left: -400, behavior: 'smooth' });
               }
@@ -257,7 +270,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           
           {/* Scrollable Row - One event at a time */}
           <div 
-            id="upcoming-popups-scroll"
+            id="upcoming-circles-scroll"
             className="flex overflow-x-auto gap-4 lg:gap-6 pb-2 snap-x snap-mandatory scroll-smooth hide-scrollbar w-full touch-pan-x overscroll-x-contain cursor-grab active:cursor-grabbing"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-x pan-y', WebkitOverflowScrolling: 'touch' }}
             onWheel={(e) => {
@@ -314,7 +327,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           {/* Right Arrow - Desktop only */}
           <button
             onClick={() => {
-              const container = document.getElementById('upcoming-popups-scroll');
+              const container = document.getElementById('upcoming-circles-scroll');
               if (container) {
                 container.scrollBy({ left: 400, behavior: 'smooth' });
               }
@@ -336,7 +349,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* 3. Pop-ups and Crowd Activation section */}
+      {/* 3. Pillars / Types of Circles section */}
       <section className="py-12 sm:py-16 md:py-20 lg:py-24 xl:py-28 bg-[#FAFAFA] relative overflow-hidden w-full">
          <div className="max-w-5xl md:max-w-6xl lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
             <div className="mb-6 sm:mb-8 md:mb-10">
@@ -367,7 +380,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
          </div>
       </section>
 
-      {/* 4. Every Great Pop-up Starts With Real Connection */}
+      {/* 4. Every Great Circle Starts With Real Connection */}
       <ChatMockupSection />
 
       {/* 5. How To Move Your Crowd */}
@@ -467,8 +480,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </h2>
           
           <p className="text-sm sm:text-base text-gray-300 mb-8 sm:mb-10 md:mb-12 font-light max-w-2xl mx-auto leading-relaxed">
-            Be part of Canada's first platform for Circles and real-life Sessions. <br className="hidden md:block" />
-            Join the waitlist before launch on May 15th, 2026.
+            Get updates on new Circles and Sessions in your area.
           </p>
 
           <form 

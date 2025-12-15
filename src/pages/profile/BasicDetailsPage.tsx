@@ -34,7 +34,7 @@ export const BasicDetailsPage: React.FC<BasicDetailsPageProps> = ({ setViewState
            </div>
            <div className="space-y-2">
               <label className="block text-sm font-light text-gray-600 pl-1">Bio</label>
-              <textarea rows={4} defaultValue="Discover & host pop-up events in your city. We're commited to empowering pop-culture by creating a safe hub around connections and opportunities to be safely accessible." className="w-full bg-white border border-gray-200 rounded-3xl py-4 px-6 text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all resize-none" />
+              <textarea rows={4} defaultValue="Discover & host small-group experiences in your neighborhood. Join intimate circles to learn, create, and connect with people nearby." className="w-full bg-white border border-gray-200 rounded-3xl py-4 px-6 text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all resize-none" />
            </div>
            <div className="pt-8">
              <button className="w-full py-4 bg-[#15383c] text-white font-bold rounded-2xl hover:bg-[#1f4d52] transition-colors shadow-lg">Update</button>

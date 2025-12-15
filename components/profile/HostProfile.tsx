@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft, MapPin, Star, Users, Instagram, Twitter, Globe, Check, Calendar } from 'lucide-react';
-import { Event } from '@/types';
+import { Event, ViewState } from '@/types';
 import { EventCard } from '../events/EventCard';
 import { useProfileStore } from '@/stores/profileStore';
 import { useUserStore, POPERA_HOST_ID, POPERA_HOST_NAME } from '@/stores/userStore';
 import { PoperaProfilePicture } from './PoperaProfilePicture';
+import { SeoHelmet } from '../seo/SeoHelmet';
 import { formatDate } from '@/utils/dateFormatter';
 import { formatRating } from '@/utils/formatRating';
 import { listHostReviews, getUserProfile } from '@/firebase/db';
@@ -293,6 +294,14 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
 
   return (
     <div className="min-h-screen bg-[#f8fafb] pt-20 pb-12 font-sans">
+      {/* SEO: Dynamic meta tags for host profile page */}
+      <SeoHelmet 
+        viewState={ViewState.HOST_PROFILE} 
+        hostName={displayName} 
+        hostBio={bio}
+        hostPhotoUrl={hostProfilePicture || undefined}
+      />
+      
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         {/* Back Button */}
         <div className="mb-4 sm:mb-6">

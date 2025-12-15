@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { Event, ViewState } from '../../types';
 import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info, Star, Sparkles, X, UserPlus, UserCheck, ChevronRight, CheckCircle2, Edit, Users } from 'lucide-react';
 import { followHost, unfollowHost, isFollowing } from '../../firebase/follow';
@@ -10,6 +11,7 @@ import { FakeEventReservationModal } from '../../components/events/FakeEventRese
 import { ImageViewerModal } from '../../components/events/ImageViewerModal';
 import { HostReviewsModal } from '../../components/events/HostReviewsModal';
 import { ShareModal } from '../../components/share/ShareModal';
+import { SeoHelmet } from '../../components/seo/SeoHelmet';
 import { formatDate } from '../../utils/dateFormatter';
 import { formatRating } from '../../utils/formatRating';
 import { getReservationCountForEvent, listHostReviews, subscribeToReservationCount } from '../../firebase/db';
@@ -20,6 +22,115 @@ import { getInitials, getAvatarBgColor } from '../../utils/avatarUtils';
 import { subscribeToFollowersCount } from '../../firebase/follow';
 import { PaymentModal } from '../../components/payments/PaymentModal';
 import { hasEventFee, isRecurringEvent } from '../../utils/stripeHelpers';
+
+/**
+ * Build Event JSON-LD structured data for search engines
+ * Schema.org/Event - helps Google show rich results for events
+ */
+function buildEventJsonLd(event: Event, reservationCount: number | null): object | null {
+  if (!event?.id || !event?.title) return null;
+  
+  // Parse and format start date as ISO timestamp
+  const parseEventDateTime = (): string => {
+    try {
+      const dateStr = event.date || '';
+      const timeStr = event.time || '';
+      
+      // Try to parse the date
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) {
+        // Fallback: use current date if parsing fails
+        return new Date().toISOString();
+      }
+      
+      // Try to parse time (e.g., "7:00 PM", "19:00")
+      if (timeStr) {
+        const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+        if (timeMatch) {
+          let hours = parseInt(timeMatch[1], 10);
+          const minutes = parseInt(timeMatch[2], 10);
+          const period = timeMatch[3]?.toUpperCase();
+          
+          if (period === 'PM' && hours !== 12) hours += 12;
+          else if (period === 'AM' && hours === 12) hours = 0;
+          
+          date.setHours(hours, minutes, 0, 0);
+        }
+      }
+      
+      return date.toISOString();
+    } catch {
+      return new Date().toISOString();
+    }
+  };
+
+  const startDate = parseEventDateTime();
+  
+  // Truncate description safely
+  const truncateDesc = (text: string, maxLen: number): string => {
+    if (!text) return '';
+    if (text.length <= maxLen) return text;
+    return text.slice(0, maxLen - 3).trim() + '...';
+  };
+
+  // Build location object
+  const location: object = {
+    '@type': 'Place',
+    name: event.address || `Private Location in ${event.city || 'Canada'}`,
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: event.city || '',
+      addressRegion: 'ON', // Default to Ontario, could be derived from city
+      addressCountry: 'CA',
+    },
+  };
+
+  // Build organizer
+  const organizer: object = {
+    '@type': 'Person',
+    name: event.hostName || event.host || 'Local Host',
+  };
+
+  // Build the base JSON-LD object
+  const jsonLd: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    name: event.title,
+    description: truncateDesc(event.description || event.aboutEvent || '', 300),
+    startDate,
+    endDate: startDate, // Same as start for single-block events
+    eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+    eventStatus: 'https://schema.org/EventScheduled',
+    location,
+    organizer,
+    image: event.imageUrls?.[0] || event.imageUrl || 'https://gopopera.ca/og-image.png',
+    url: `https://gopopera.ca/event/${event.id}`,
+  };
+
+  // Add capacity if available
+  if (event.capacity) {
+    jsonLd.maximumAttendeeCapacity = event.capacity;
+  }
+
+  // Add offers only if the event is paid
+  if (event.hasFee && event.feeAmount) {
+    const isFull = reservationCount !== null && event.capacity 
+      ? reservationCount >= event.capacity 
+      : false;
+    
+    jsonLd.offers = {
+      '@type': 'Offer',
+      price: (event.feeAmount / 100).toFixed(2), // Convert cents to dollars
+      priceCurrency: event.currency?.toUpperCase() || 'CAD',
+      availability: isFull 
+        ? 'https://schema.org/SoldOut' 
+        : 'https://schema.org/InStock',
+      url: `https://gopopera.ca/event/${event.id}`,
+    };
+  }
+
+  return jsonLd;
+}
 
 interface EventDetailPageProps {
   event: Event;
@@ -555,8 +666,23 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     }
   };
 
+  // Build Event JSON-LD for structured data (only when event is loaded)
+  const eventJsonLd = useMemo(() => buildEventJsonLd(event, reservationCount), [event, reservationCount]);
+
   return (
     <div className="min-h-screen bg-white pt-0">
+      {/* SEO: Dynamic meta tags for event detail page with Open Graph for social sharing */}
+      <SeoHelmet viewState={ViewState.DETAIL} event={event} />
+      
+      {/* Event JSON-LD Structured Data for rich search results */}
+      {eventJsonLd && (
+        <Helmet>
+          <script type="application/ld+json">
+            {JSON.stringify(eventJsonLd)}
+          </script>
+        </Helmet>
+      )}
+      
       <FakeEventReservationModal
         isOpen={showFakeEventModal}
         onClose={() => setShowFakeEventModal(false)}
@@ -683,7 +809,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
 
 
       {/* Hero Section - Premium cinematic design */}
-      <div className="relative h-[50vh] sm:h-[55vh] md:h-[60vh] lg:h-[65vh] xl:h-[70vh] w-full overflow-hidden">
+      {/* Desktop: contained width for less full-width feel; Mobile/Tablet: full width */}
+      <div className="lg:max-w-7xl lg:mx-auto lg:px-8 lg:pt-4">
+      <div className="relative h-[50vh] sm:h-[55vh] md:h-[60vh] lg:h-[55vh] xl:h-[60vh] w-full overflow-hidden lg:rounded-2xl">
         {event.imageUrls && event.imageUrls.length > 1 ? (
           // Multiple images - horizontal scrollable gallery
           <div 
@@ -745,6 +873,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
         
         {/* Favorite Button - Glass design top-right */}
+        {/* Desktop: positioned at top-right of hero (stacked under header area); Mobile: same position */}
         {onToggleFavorite && (
           <button
             onClick={(e) => {
@@ -768,7 +897,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               e.preventDefault();
             }}
             type="button"
-            className="absolute top-20 sm:top-20 lg:top-20 right-4 w-11 h-11 sm:w-12 sm:h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 hover:bg-white/30 transition-all hover:scale-110 active:scale-95 touch-manipulation z-50 pointer-events-auto"
+            className="absolute top-4 sm:top-4 lg:top-4 right-4 lg:right-4 w-11 h-11 sm:w-12 sm:h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 hover:bg-white/30 transition-all hover:scale-110 active:scale-95 touch-manipulation z-50 pointer-events-auto"
             style={{ pointerEvents: 'auto', WebkitTapHighlightColor: 'transparent' }}
             aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
           >
@@ -789,19 +918,22 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           </div>
         )}
         
-        {/* Content Overlay - Category badge on the top left, aligned with favorite icon */}
-        <div className="absolute top-20 sm:top-20 lg:top-20 left-4 z-10">
-          {/* Category Badge - Top left aligned with same vertical as favorite button */}
+        {/* Content Overlay - Category badge on the top left */}
+        {/* Desktop: aligned with logo column; Mobile: standard left positioning */}
+        <div className="absolute top-4 sm:top-4 lg:top-4 left-4 lg:left-4 z-10">
+          {/* Category Badge */}
           <span className="inline-block px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-[#e35e25] text-xs font-bold uppercase tracking-wider border border-white/30">
             {getMainCategoryLabelFromEvent(event)}
           </span>
         </div>
       </div>
+      </div>{/* Close desktop container wrapper */}
 
       {/* Content Sections - Premium clean design */}
       <div className="bg-white relative">
-        {/* Host Avatar - Overlapping hero/content boundary */}
-        <div className="absolute -top-8 sm:-top-10 left-4 sm:left-6 lg:left-8 xl:left-[calc((100%-1280px)/2+32px)] z-10">
+        {/* Host Avatar - Overlapping hero/content boundary - Mobile/Tablet only */}
+        {/* Desktop: hidden (avatar is now in the Hosted-by card in the right column) */}
+        <div className="absolute -top-8 sm:-top-10 left-4 sm:left-6 z-10 lg:hidden">
           <div 
             className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-[#e35e25] to-[#15383c] overflow-hidden ring-4 ring-white shadow-xl cursor-pointer hover:ring-[#e35e25]/30 transition-all"
             onClick={() => onHostClick?.(displayHostName)}
@@ -824,7 +956,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-14 pb-12 sm:pb-16 md:pb-20 lg:pb-24">
+        {/* Desktop: tighter padding to reduce gap under hero; Mobile: unchanged */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-14 lg:pt-8 pb-12 sm:pb-16 md:pb-20 lg:pb-24">
           {/* Reservation Success Message */}
           {reservationSuccess && (
             <div className="mb-6 bg-green-50 border border-green-200 rounded-2xl p-4 sm:p-5 flex items-center gap-3 animate-fade-in">
@@ -833,168 +966,105 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             </div>
           )}
 
-          {/* Event Info + Host Section - Two Column Layout */}
-          <div className="mb-10 sm:mb-12 md:mb-16">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 items-start">
-              {/* LEFT: Event Info (Title, Date, Location, Attending) */}
-              <div>
-                {/* Title */}
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-bold text-[#15383c] leading-tight mb-4">
-                  {event.title}
-                </h1>
-                
-                {/* Metadata - Compact, clean */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2.5 text-gray-600">
-                    <Calendar size={16} className="text-[#e35e25] shrink-0" />
-                    <span className="text-sm sm:text-base">{formatDate(event.date)} • {event.time}</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 text-gray-600">
-                    <MapPin size={16} className="text-[#e35e25] shrink-0" />
-                    <span className="text-sm sm:text-base truncate">{event.location}</span>
-                  </div>
-                  {reservationCount !== null && (
-                    <div className="flex items-center gap-2.5 text-gray-600">
-                      <User size={16} className="text-[#e35e25] shrink-0" />
-                      <span className="text-sm sm:text-base">
-                        {event.capacity 
-                          ? `${reservationCount}/${event.capacity} attending`
-                          : `${reservationCount} attending`
-                        }
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* RIGHT: Host Info */}
-              <div className="flex flex-col items-start lg:items-end lg:text-right mt-4 lg:mt-0">
-                <p className="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1">{t('event.hostedBy')}</p>
-                <h3 
-                  className="text-lg sm:text-xl font-heading font-bold text-[#15383c] cursor-pointer hover:text-[#e35e25] transition-colors mb-2"
-                  onClick={() => onHostClick?.(displayHostName)}
-                >
-                  {displayHostName}
-                </h3>
-                
-                {/* Rating + Followers - Inline */}
-                <div className="flex items-center gap-3 mb-3">
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (event.hostId) {
-                        setShowHostReviewsModal(true);
-                      }
-                    }} 
-                    className="flex items-center gap-1.5 bg-[#e35e25]/10 hover:bg-[#e35e25]/20 px-3 py-1.5 rounded-full transition-colors border border-[#e35e25]/20 hover:border-[#e35e25]/40 touch-manipulation active:scale-95"
-                  >
-                    <Star size={14} className="text-[#e35e25] fill-[#e35e25]" />
-                    <span className="text-xs font-bold text-[#15383c]">{formatRating(currentRating.rating)}</span>
-                    <span className="text-[10px] text-gray-600">({currentRating.reviewCount})</span>
-                  </button>
-                  
-                  <div className="flex items-center gap-1.5 text-gray-500">
-                    <Users size={14} />
-                    <span className="text-xs">{followersCount} {followersCount === 1 ? 'follower' : 'followers'}</span>
-                  </div>
-                </div>
-                
-                {/* Follow Button - Liquid Glass Style */}
-                {isLoggedIn && user?.uid !== event.hostId && (
-                  <button
-                    onClick={handleFollowToggle}
-                    disabled={followLoading}
-                    aria-label={isFollowingHost ? `Unfollow ${displayHostName}` : `Follow ${displayHostName}`}
-                    className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-1.5 ${
-                      isFollowingHost
-                        ? 'bg-white/80 backdrop-blur-sm text-[#15383c] border border-gray-200/60 hover:bg-white hover:border-gray-300'
-                        : 'bg-[#e35e25] text-white shadow-lg shadow-[#e35e25]/25 hover:shadow-xl hover:shadow-[#e35e25]/30'
-                    } disabled:opacity-50`}
-                  >
-                    {isFollowingHost ? (
-                      <>
-                        <UserCheck size={14} /> {t('event.following')}
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus size={14} /> {t('event.follow')}
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Reservation Sidebar - Desktop only - Liquid Glass */}
-          <div className="mb-10 sm:mb-12 hidden lg:block">
-            <div className="lg:grid lg:grid-cols-12 lg:gap-8">
-              <div className="lg:col-span-7"></div>
-              <div className="lg:col-span-5">
-                <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.05)] border border-white/60 p-5 hover:shadow-[0_6px_24px_rgb(0,0,0,0.08)] transition-shadow">
-                  <div className="flex justify-between items-center mb-5 pb-5 border-b border-gray-100/80">
-                    <div>
-                      <span className="text-3xl font-heading font-bold text-[#15383c]">{event.price}</span>
-                      <p className="text-xs text-gray-500 font-medium mt-1">per person</p>
+          {/* Desktop: Two-column layout with sidebar on right; Mobile: stacked */}
+          <div className="lg:grid lg:grid-cols-12 lg:gap-8">
+            {/* LEFT COLUMN: Event Info + Description */}
+            <div className="lg:col-span-7">
+              {/* Event Info + Host Section */}
+              <div className="mb-8 lg:mb-6">
+                <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 items-start">
+                  {/* Event Info (Title, Date, Location, Attending) */}
+                  <div>
+                    {/* Title */}
+                    <h1 className="text-2xl sm:text-3xl lg:text-3xl font-heading font-bold text-[#15383c] leading-tight mb-4">
+                      {event.title}
+                    </h1>
+                    
+                    {/* Metadata - Compact, clean */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2.5 text-gray-600">
+                        <Calendar size={16} className="text-[#e35e25] shrink-0" />
+                        <span className="text-sm sm:text-base">{formatDate(event.date)} • {event.time}</span>
+                      </div>
+                      <div className="flex items-center gap-2.5 text-gray-600">
+                        <MapPin size={16} className="text-[#e35e25] shrink-0" />
+                        <span className="text-sm sm:text-base truncate">{event.location}</span>
+                      </div>
+                      {reservationCount !== null && (
+                        <div className="flex items-center gap-2.5 text-gray-600">
+                          <User size={16} className="text-[#e35e25] shrink-0" />
+                          <span className="text-sm sm:text-base">
+                            {event.capacity 
+                              ? `${reservationCount}/${event.capacity} attending`
+                              : `${reservationCount} attending`
+                            }
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <div className="space-y-3">
-                    {/* Edit Event Button - Only for host - Glass Style */}
-                    {isLoggedIn && user?.uid === event.hostId && (
-                      <button
-                        onClick={() => setViewState(ViewState.EDIT_EVENT)}
-                        className="w-full py-2.5 bg-white/80 backdrop-blur-sm border border-[#15383c]/30 text-[#15383c] rounded-full text-sm font-semibold hover:bg-white hover:border-[#15383c] transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2"
-                      >
-                        <Edit size={16} /> Edit Event
-                      </button>
-                    )}
-                    {/* Reserve Button - Only for non-hosts (users cannot reserve their own events) */}
-                    {user?.uid !== event.hostId && (
+
+                  {/* Host Info - Mobile/Tablet only (hidden on desktop, shown in right column) */}
+                  <div className="flex flex-col items-start mt-4 lg:hidden">
+                    <p className="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1">{t('event.hostedBy')}</p>
+                    <h3 
+                      className="text-lg sm:text-xl font-heading font-bold text-[#15383c] cursor-pointer hover:text-[#e35e25] transition-colors mb-2"
+                      onClick={() => onHostClick?.(displayHostName)}
+                    >
+                      {displayHostName}
+                    </h3>
+                    
+                    {/* Rating + Followers - Inline */}
+                    <div className="flex items-center gap-3 mb-3">
                       <button 
-                        onClick={handleRSVP}
-                        disabled={isDemo || reserving}
-                        aria-label={hasRSVPed ? "Cancel reservation" : "Reserve spot"}
-                        className={`w-full py-3 font-semibold text-sm rounded-full transition-all touch-manipulation active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
-                          isDemo 
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                            : hasRSVPed
-                            ? 'bg-[#15383c] text-white hover:bg-[#1f4d52]'
-                            : 'bg-[#e35e25] text-white hover:bg-[#cf4d1d]'
-                        }`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (event.hostId) {
+                            setShowHostReviewsModal(true);
+                          }
+                        }} 
+                        className="flex items-center gap-1.5 bg-[#e35e25]/10 hover:bg-[#e35e25]/20 px-3 py-1.5 rounded-full transition-colors border border-[#e35e25]/20 hover:border-[#e35e25]/40 touch-manipulation active:scale-95"
                       >
-                        {reserving ? 'Reserving...' : isDemo ? 'Demo Event (Locked)' : hasRSVPed ? 'Reserved ✓' : 'Reserve Spot'}
+                        <Star size={14} className="text-[#e35e25] fill-[#e35e25]" />
+                        <span className="text-xs font-bold text-[#15383c]">{formatRating(currentRating.rating)}</span>
+                        <span className="text-[10px] text-gray-600">({currentRating.reviewCount})</span>
+                      </button>
+                      
+                      <div className="flex items-center gap-1.5 text-gray-500">
+                        <Users size={14} />
+                        <span className="text-xs">{followersCount} {followersCount === 1 ? 'follower' : 'followers'}</span>
+                      </div>
+                    </div>
+                    
+                    {/* Follow Button - Liquid Glass Style */}
+                    {isLoggedIn && user?.uid !== event.hostId && (
+                      <button
+                        onClick={handleFollowToggle}
+                        disabled={followLoading}
+                        aria-label={isFollowingHost ? `Unfollow ${displayHostName}` : `Follow ${displayHostName}`}
+                        className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-1.5 ${
+                          isFollowingHost
+                            ? 'bg-white/80 backdrop-blur-sm text-[#15383c] border border-gray-200/60 hover:bg-white hover:border-gray-300'
+                            : 'bg-[#e35e25] text-white shadow-lg shadow-[#e35e25]/25 hover:shadow-xl hover:shadow-[#e35e25]/30'
+                        } disabled:opacity-50`}
+                      >
+                        {isFollowingHost ? (
+                          <>
+                            <UserCheck size={14} /> {t('event.following')}
+                          </>
+                        ) : (
+                          <>
+                            <UserPlus size={14} /> {t('event.follow')}
+                          </>
+                        )}
                       </button>
                     )}
-                    <button
-                      onClick={handleShare}
-                      aria-label="Share event"
-                      className="w-full py-2.5 bg-white border border-[#15383c] text-[#15383c] rounded-full text-sm font-semibold hover:bg-[#15383c] hover:text-white transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2"
-                    >
-                      <Share2 size={16} /> Share Event
-                    </button>
-                    <button 
-                      onClick={handleConversationClick}
-                      disabled={isDemo}
-                      className={`w-full py-2.5 font-semibold text-sm rounded-full border flex items-center justify-center gap-2 touch-manipulation active:scale-95 transition-colors ${
-                        isDemo
-                          ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                          : 'bg-white border-[#15383c] text-[#15383c] hover:bg-[#15383c] hover:text-white'
-                      }`}
-                    >
-                      <MessageCircle size={16} /> 
-                      {isDemo ? 'Chat Locked' : 'Join Group Chat'}
-                    </button>
-                  </div>
-                  <div className="mt-5 pt-4 border-t border-gray-100 text-center">
-                    <p className="text-[10px] text-gray-400 leading-relaxed">Secure payment powered by Stripe.</p>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Description Section - Premium spacing */}
-          <div className="mb-16 sm:mb-20 md:mb-24">
+              {/* Description Section - Reduced spacing on desktop */}
+              <div className="mb-12 sm:mb-16 lg:mb-10">
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-6 sm:mb-8">
               {t('event.aboutEvent')}
             </h2>
@@ -1006,12 +1076,12 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             
             {/* Vibes - Subtle display after description */}
             {event.vibes && event.vibes.length > 0 && (
-              <div className="mt-8 sm:mt-10 pt-8 sm:pt-10 border-t border-gray-100">
-                <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+              <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-gray-100">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   {event.vibes.map((vibe, index) => (
                     <span
                       key={index}
-                      className="inline-flex items-center px-4 py-2 rounded-full bg-gray-50 text-gray-600 border border-gray-200 text-sm sm:text-base font-medium hover:border-[#e35e25]/30 hover:text-[#e35e25] transition-colors"
+                      className="inline-flex items-center px-3 py-1.5 rounded-full bg-gray-50 text-gray-600 border border-gray-200 text-xs sm:text-sm font-medium hover:border-[#e35e25]/30 hover:text-[#e35e25] transition-colors"
                     >
                       {vibe}
                     </span>
@@ -1020,26 +1090,179 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               </div>
             )}
           </div>
+            </div>{/* End LEFT COLUMN */}
+
+            {/* RIGHT COLUMN: Hosted-by Card + Reservation Sidebar - Desktop only */}
+            <div className="hidden lg:block lg:col-span-5">
+              <div className="sticky top-28 space-y-4">
+                {/* Hosted-by Card - Desktop only */}
+                <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.05)] border border-white/60 p-4 hover:shadow-[0_6px_24px_rgb(0,0,0,0.08)] transition-shadow">
+                  {/* Host Avatar */}
+                  <div className="flex justify-center mb-3">
+                    <div 
+                      className="w-16 h-16 rounded-full bg-gradient-to-br from-[#e35e25] to-[#15383c] overflow-hidden ring-2 ring-white shadow-lg cursor-pointer hover:ring-[#e35e25]/30 transition-all"
+                      onClick={() => onHostClick?.(displayHostName)}
+                    >
+                      {hostProfilePicture ? (
+                        <img 
+                          src={hostProfilePicture} 
+                          alt={displayHostName} 
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
+                          }} 
+                        />
+                      ) : (
+                        <div className={`w-full h-full flex items-center justify-center ${getAvatarBgColor(displayHostName, event.hostId)} text-white font-bold text-lg`}>
+                          {getInitials(displayHostName)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Hosted by label + name */}
+                  <div className="text-center mb-3">
+                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">{t('event.hostedBy')}</p>
+                    <h3 
+                      className="text-lg font-heading font-bold text-[#15383c] cursor-pointer hover:text-[#e35e25] transition-colors"
+                      onClick={() => onHostClick?.(displayHostName)}
+                    >
+                      {displayHostName}
+                    </h3>
+                  </div>
+                  
+                  {/* Rating + Followers */}
+                  <div className="flex items-center justify-center gap-3 mb-3">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (event.hostId) {
+                          setShowHostReviewsModal(true);
+                        }
+                      }} 
+                      className="flex items-center gap-1.5 bg-[#e35e25]/10 hover:bg-[#e35e25]/20 px-3 py-1.5 rounded-full transition-colors border border-[#e35e25]/20 hover:border-[#e35e25]/40 touch-manipulation active:scale-95"
+                    >
+                      <Star size={14} className="text-[#e35e25] fill-[#e35e25]" />
+                      <span className="text-xs font-bold text-[#15383c]">{formatRating(currentRating.rating)}</span>
+                      <span className="text-[10px] text-gray-600">({currentRating.reviewCount})</span>
+                    </button>
+                    
+                    <div className="flex items-center gap-1.5 text-gray-500">
+                      <Users size={14} />
+                      <span className="text-xs">{followersCount} {followersCount === 1 ? 'follower' : 'followers'}</span>
+                    </div>
+                  </div>
+                  
+                  {/* Follow Button */}
+                  {isLoggedIn && user?.uid !== event.hostId && (
+                    <div className="flex justify-center">
+                      <button
+                        onClick={handleFollowToggle}
+                        disabled={followLoading}
+                        aria-label={isFollowingHost ? `Unfollow ${displayHostName}` : `Follow ${displayHostName}`}
+                        className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-1.5 ${
+                          isFollowingHost
+                            ? 'bg-white/80 backdrop-blur-sm text-[#15383c] border border-gray-200/60 hover:bg-white hover:border-gray-300'
+                            : 'bg-[#e35e25] text-white shadow-lg shadow-[#e35e25]/25 hover:shadow-xl hover:shadow-[#e35e25]/30'
+                        } disabled:opacity-50`}
+                      >
+                        {isFollowingHost ? (
+                          <>
+                            <UserCheck size={14} /> {t('event.following')}
+                          </>
+                        ) : (
+                          <>
+                            <UserPlus size={14} /> {t('event.follow')}
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Action Card - Reserve/Share/Join */}
+                <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.05)] border border-white/60 p-4 hover:shadow-[0_6px_24px_rgb(0,0,0,0.08)] transition-shadow">
+                <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-100/80">
+                  <div>
+                    <span className="text-2xl font-heading font-bold text-[#15383c]">{event.price}</span>
+                    <p className="text-xs text-gray-500 font-medium mt-0.5">per person</p>
+                  </div>
+                </div>
+                <div className="space-y-2.5">
+                  {/* Edit Event Button - Only for host - Glass Style */}
+                  {isLoggedIn && user?.uid === event.hostId && (
+                    <button
+                      onClick={() => setViewState(ViewState.EDIT_EVENT)}
+                      className="w-full py-2 bg-white/80 backdrop-blur-sm border border-[#15383c]/30 text-[#15383c] rounded-full text-sm font-semibold hover:bg-white hover:border-[#15383c] transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      <Edit size={14} /> Edit Event
+                    </button>
+                  )}
+                  {/* Reserve Button - Only for non-hosts (users cannot reserve their own events) */}
+                  {user?.uid !== event.hostId && (
+                    <button 
+                      onClick={handleRSVP}
+                      disabled={isDemo || reserving}
+                      aria-label={hasRSVPed ? "Cancel reservation" : "Reserve spot"}
+                      className={`w-full py-2.5 font-semibold text-sm rounded-full transition-all touch-manipulation active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        isDemo 
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                          : hasRSVPed
+                          ? 'bg-[#15383c] text-white hover:bg-[#1f4d52]'
+                          : 'bg-[#e35e25] text-white hover:bg-[#cf4d1d]'
+                      }`}
+                    >
+                      {reserving ? 'Reserving...' : isDemo ? 'Demo Event (Locked)' : hasRSVPed ? 'Reserved ✓' : 'Reserve Spot'}
+                    </button>
+                  )}
+                  <button
+                    onClick={handleShare}
+                    aria-label="Share event"
+                    className="w-full py-2 bg-white border border-[#15383c] text-[#15383c] rounded-full text-sm font-semibold hover:bg-[#15383c] hover:text-white transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    <Share2 size={14} /> Share Event
+                  </button>
+                  <button 
+                    onClick={handleConversationClick}
+                    disabled={isDemo}
+                    className={`w-full py-2 font-semibold text-sm rounded-full border flex items-center justify-center gap-2 touch-manipulation active:scale-95 transition-colors ${
+                      isDemo
+                        ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                        : 'bg-white border-[#15383c] text-[#15383c] hover:bg-[#15383c] hover:text-white'
+                    }`}
+                  >
+                    <MessageCircle size={14} /> 
+                    {isDemo ? 'Chat Locked' : 'Join Group Chat'}
+                  </button>
+                </div>
+                <div className="mt-4 pt-3 border-t border-gray-100 text-center">
+                  <p className="text-[10px] text-gray-400 leading-relaxed">Secure payment powered by Stripe.</p>
+                </div>
+                </div>{/* End Action Card */}
+              </div>{/* End sticky wrapper */}
+            </div>{/* End RIGHT COLUMN */}
+          </div>{/* End grid */}
 
           {/* What to Expect Section */}
           {event.whatToExpect && (
-            <div className="mb-16 sm:mb-20 md:mb-24">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-6 sm:mb-8 flex items-center gap-3">
-                <Sparkles size={24} className="text-[#e35e25]" /> 
+            <div className="mb-12 sm:mb-16 lg:mb-12">
+              <h2 className="text-xl sm:text-2xl lg:text-2xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6 flex items-center gap-3">
+                <Sparkles size={20} className="text-[#e35e25]" /> 
                 {t('event.whatToExpect')}
               </h2>
-              <div className="bg-[#f8fafb] p-8 sm:p-10 md:p-12 rounded-[32px] md:rounded-[40px] border border-gray-100 text-gray-700 leading-relaxed text-base sm:text-lg font-light">
+              <div className="bg-[#f8fafb] p-6 sm:p-8 lg:p-8 rounded-2xl lg:rounded-3xl border border-gray-100 text-gray-700 leading-relaxed text-sm sm:text-base font-light">
                 <p className="whitespace-pre-line">{event.whatToExpect}</p>
               </div>
             </div>
           )}
 
           {/* Location Section - Premium design */}
-          <div className="mb-16 sm:mb-20 md:mb-24">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-6 sm:mb-8">
+          <div className="mb-12 sm:mb-16 lg:mb-12">
+            <h2 className="text-xl sm:text-2xl lg:text-2xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">
               {t('event.location')}
             </h2>
-            <div className="rounded-[32px] md:rounded-[40px] overflow-hidden h-64 sm:h-80 md:h-96 relative group cursor-pointer shadow-lg border border-gray-200 mb-6">
+            <div className="rounded-2xl lg:rounded-3xl overflow-hidden h-56 sm:h-72 lg:h-64 relative group cursor-pointer shadow-lg border border-gray-200 mb-4">
               <MockMap 
                 lat={event.lat}
                 lng={event.lng}
@@ -1048,8 +1271,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 className="w-full h-full object-cover"
               />
             </div>
-            <p className="text-lg sm:text-xl md:text-2xl text-[#15383c] font-medium flex items-center gap-3">
-              <MapPin size={24} className="text-[#e35e25] shrink-0" /> 
+            <p className="text-base sm:text-lg lg:text-lg text-[#15383c] font-medium flex items-center gap-2">
+              <MapPin size={20} className="text-[#e35e25] shrink-0" /> 
               <span>{event.location}</span>
             </p>
           </div>

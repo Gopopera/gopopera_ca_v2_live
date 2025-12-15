@@ -1,6 +1,7 @@
 import React from 'react';
 import { ViewState } from '../../types';
 import { ChevronLeft, Shield, Users, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { SeoHelmet } from '../../components/seo/SeoHelmet';
 
 interface SafetyPageProps {
   setViewState: (view: ViewState) => void;
@@ -9,6 +10,9 @@ interface SafetyPageProps {
 export const SafetyPage: React.FC<SafetyPageProps> = ({ setViewState }) => {
   return (
     <div className="min-h-screen bg-[#f8fafb] pt-24 pb-12 font-sans">
+      {/* SEO: Safety page meta tags */}
+      <SeoHelmet viewState={ViewState.SAFETY} />
+      
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
         <button 
           onClick={() => setViewState(ViewState.LANDING)} 

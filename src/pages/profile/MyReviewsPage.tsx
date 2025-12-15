@@ -16,7 +16,7 @@ export const MyReviewsPage: React.FC<MyReviewsPageProps> = ({ setViewState }) =>
       date: "Nov 8, 2025",
       rating: 4.2,
       image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1000&auto=format&fit=crop",
-      comment: "The popup and event were well-organized and engaging. The setup attracted good attention, and the flow of activities kept visitors interested throughout. The overall presentation was visually appealing, and the team managed everything efficiently. Attendees appreciated the interactive elements and the professional approach.",
+      comment: "The circle was well-organized and engaging. The setup attracted good attention, and the flow of activities kept participants interested throughout. The overall presentation was visually appealing, and the host managed everything efficiently. Guests appreciated the interactive elements and the professional approach.",
       eventName: "Retro Record Fair Extravaganza"
     },
     {

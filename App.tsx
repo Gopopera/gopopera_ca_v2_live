@@ -39,8 +39,8 @@ import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import { CityInput } from './components/layout/CityInput';
 import { FilterDrawer } from './components/filters/FilterDrawer';
-import { VibeIconButton } from './components/filters/VibeIconButton';
-import { ALL_VIBES } from './utils/vibes';
+import { SeoHelmet } from './components/seo/SeoHelmet';
+import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS, type MainCategory } from './utils/categoryMapper';
 // Route-level code splitting for performance
 const LandingPage = React.lazy(() => import('./src/pages/LandingPage').then(m => ({ default: m.LandingPage })));
 const EventDetailPage = React.lazy(() => import('./src/pages/EventDetailPage').then(m => ({ default: m.EventDetailPage })));
@@ -1925,6 +1925,9 @@ const AppContent: React.FC = () => {
 
             {viewState === ViewState.FEED && (
           <main className="min-h-screen pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-12 sm:pb-16 md:pb-20 lg:pb-24 bg-[#FAFAFA]">
+            {/* SEO: Explore/Feed page meta tags */}
+            <SeoHelmet viewState={ViewState.FEED} />
+            
             {/* Container wrapper for consistent alignment */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             
@@ -1967,10 +1970,10 @@ const AppContent: React.FC = () => {
                         </div>
                      </div>
 
-                     {/* Vibes Section - Scrollable Icons with Filter Button */}
+                     {/* Category Tabs + Filter Button */}
                      <div className="mt-4">
                        <div className="flex items-center justify-between mb-3">
-                         <h3 className="text-sm font-semibold text-gray-600">Filter by Vibes</h3>
+                         <h3 className="text-sm font-semibold text-gray-600">Filter by Category</h3>
                          <button
                            onClick={() => setFilterDrawerOpen(true)}
                            className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border-2 border-[#15383c] text-[#15383c] font-medium hover:bg-[#15383c] hover:text-white transition-colors flex-shrink-0 touch-manipulation active:scale-[0.95] text-xs sm:text-sm"
@@ -1985,21 +1988,31 @@ const AppContent: React.FC = () => {
                          </button>
                        </div>
                        <div className="relative z-10">
-                         <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4 scroll-pr-32 md:scroll-pr-4">
-                           {ALL_VIBES.map(vibe => (
-                             <VibeIconButton
-                               key={vibe}
-                               vibe={vibe}
-                               isActive={filters.vibes.includes(vibe)}
-                               onClick={() => {
-                                 const currentVibes = filters.vibes;
-                                 if (currentVibes.includes(vibe)) {
-                                   setFilter('vibes', currentVibes.filter(v => v !== vibe));
-                                 } else {
-                                   setFilter('vibes', [...currentVibes, vibe]);
-                                 }
-                               }}
-                             />
+                         <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4 scroll-pr-32 md:scroll-pr-4">
+                           {/* All tab */}
+                           <button
+                             onClick={() => setFilter('mainCategory', null)}
+                             className={`shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-bold tracking-wider uppercase transition-all touch-manipulation active:scale-[0.95] ${
+                               filters.mainCategory === null
+                                 ? 'bg-[#e35e25] text-white shadow-md'
+                                 : 'bg-white/20 backdrop-blur-md text-[#15383c] border border-[#15383c]/20 hover:border-[#e35e25] hover:text-[#e35e25]'
+                             }`}
+                           >
+                             All
+                           </button>
+                           {/* Category tabs */}
+                           {MAIN_CATEGORIES.map(category => (
+                             <button
+                               key={category}
+                               onClick={() => setFilter('mainCategory', filters.mainCategory === category ? null : category)}
+                               className={`shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-bold tracking-wider uppercase transition-all touch-manipulation active:scale-[0.95] whitespace-nowrap ${
+                                 filters.mainCategory === category
+                                   ? 'bg-[#e35e25] text-white shadow-md'
+                                   : 'bg-white/20 backdrop-blur-md text-[#15383c] border border-[#15383c]/20 hover:border-[#e35e25] hover:text-[#e35e25]'
+                               }`}
+                             >
+                               {MAIN_CATEGORY_LABELS[category]}
+                             </button>
                            ))}
                          </div>
                          <div className="absolute right-0 top-0 bottom-2 w-6 sm:w-8 bg-gradient-to-l from-[#FAFAFA] to-transparent pointer-events-none md:hidden"></div>
@@ -2193,7 +2206,7 @@ const AppContent: React.FC = () => {
               <button 
                 onClick={() => handleNav(ViewState.CREATE_EVENT)}
                 className="md:hidden fixed bottom-6 right-4 sm:right-6 w-14 h-14 bg-[#e35e25] rounded-full flex items-center justify-center text-white shadow-2xl shadow-orange-900/40 z-40 hover:scale-105 active:scale-95 transition-transform border-4 border-white touch-manipulation safe-area-inset-bottom"
-                aria-label="Create Pop-up"
+                aria-label="Create Circle"
               >
                  <PlusCircle size={28} />
               </button>

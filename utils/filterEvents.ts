@@ -1,12 +1,21 @@
 import { Event } from '../types';
 import { EventFilters } from '../stores/filterStore';
 import { getCircleContinuity, getAvailableSpots } from './eventHelpers';
+import { getMainCategory } from './categoryMapper';
 
 /**
  * Apply filters to events array
  */
 export function applyEventFilters(events: Event[], filters: EventFilters): Event[] {
   let filtered = [...events];
+
+  // Main category filter (uses getMainCategory for fallback derivation)
+  if (filters.mainCategory) {
+    filtered = filtered.filter(event => {
+      const eventCategory = getMainCategory(event);
+      return eventCategory === filters.mainCategory;
+    });
+  }
 
   // Location filters
   if (filters.country) {

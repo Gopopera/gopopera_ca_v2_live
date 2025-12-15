@@ -8,6 +8,7 @@ import { uploadImage } from '../../firebase/storage';
 import { processImageForUpload } from '../../utils/imageProcessing';
 import { geocodeAddress } from '../../utils/geocoding';
 import { ALL_VIBES } from '../../utils/vibes';
+import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS, getVibesForCategory, type MainCategory } from '../../utils/categoryMapper';
 
 interface CreateEventPageProps {
   setViewState: (view: ViewState) => void;
@@ -718,7 +719,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
 
       // Show success message
       if (saveAsDraft) {
-        alert('Event saved as draft! You can find it in the Drafts tab in My Pop-Ups.');
+        alert('Circle saved as draft! You can find it in the Drafts tab in My Circles.');
       } else {
         alert('Event created successfully!');
       }
@@ -812,7 +813,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
             <ChevronLeft size={18} className="sm:w-5 sm:h-5" />
           </button>
           <h1 className="font-heading font-bold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-[#15383c]">
-            Create your next pop-up
+            Create your next circle
           </h1>
         </div>
 
@@ -840,27 +841,33 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
               <div className="relative">
                 <select 
                   value={mainCategory}
-                  onChange={(e) => setMainCategory(e.target.value as typeof mainCategory)}
+                  onChange={(e) => {
+                    const newCategory = e.target.value as typeof mainCategory;
+                    setMainCategory(newCategory);
+                    // Clear vibes when category changes (since they're filtered by category)
+                    setSelectedVibes([]);
+                  }}
                   required
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all appearance-none cursor-pointer"
                 >
                   <option value="">Select...</option>
-                  <option value="curatedSales">Curated Sales</option>
-                  <option value="connectPromote">Connect & Promote</option>
-                  <option value="mobilizeSupport">Mobilize & Support</option>
-                  <option value="learnGrow">Learn & Grow</option>
+                  {MAIN_CATEGORIES.map(cat => (
+                    <option key={cat} value={cat}>{MAIN_CATEGORY_LABELS[cat]}</option>
+                  ))}
                 </select>
               </div>
             </div>
             
-            {/* Vibes / Subcategories - Multi-select */}
+            {/* Vibes / Subcategories - Multi-select, filtered by Main Category */}
             <div className="space-y-2">
               <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
                 Vibes <span className="text-red-500">*</span> <span className="text-gray-400 font-normal text-xs">(Select 1-5)</span>
               </label>
               <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl min-h-[60px]">
                 {selectedVibes.length === 0 ? (
-                  <span className="text-gray-400 text-sm">No vibes selected</span>
+                  <span className="text-gray-400 text-sm">
+                    {mainCategory ? 'No vibes selected' : 'Select a Main Category first'}
+                  </span>
                 ) : (
                   selectedVibes.map((vibe) => (
                     <span
@@ -879,25 +886,32 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                   ))
                 )}
               </div>
-              <div className="flex flex-wrap gap-2">
-                {ALL_VIBES.filter(vibe => !selectedVibes.includes(vibe)).map((vibe) => (
-                  <button
-                    key={vibe}
-                    type="button"
-                    onClick={() => {
-                      if (selectedVibes.length < 5) {
-                        setSelectedVibes([...selectedVibes, vibe]);
-                      } else {
-                        alert('You can select up to 5 vibes.');
-                      }
-                    }}
-                    disabled={selectedVibes.length >= 5}
-                    className="px-3 py-1.5 rounded-full bg-white border border-gray-300 text-gray-700 text-sm font-medium hover:border-[#15383c] hover:text-[#15383c] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {vibe}
-                  </button>
-                ))}
-              </div>
+              {/* Show vibes filtered by selected main category */}
+              {mainCategory ? (
+                <div className="flex flex-wrap gap-2">
+                  {getVibesForCategory(mainCategory as MainCategory)
+                    .filter(vibe => !selectedVibes.includes(vibe))
+                    .map((vibe) => (
+                      <button
+                        key={vibe}
+                        type="button"
+                        onClick={() => {
+                          if (selectedVibes.length < 5) {
+                            setSelectedVibes([...selectedVibes, vibe]);
+                          } else {
+                            alert('You can select up to 5 vibes.');
+                          }
+                        }}
+                        disabled={selectedVibes.length >= 5}
+                        className="px-3 py-1.5 rounded-full bg-white border border-gray-300 text-gray-700 text-sm font-medium hover:border-[#15383c] hover:text-[#15383c] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {vibe}
+                      </button>
+                    ))}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 pl-1">Please select a Main Category above to see available vibes.</p>
+              )}
             </div>
 
             <div className="space-y-2">

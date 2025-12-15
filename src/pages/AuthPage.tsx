@@ -106,7 +106,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
         const errorMessage = error?.message || 'We could not sign you in. Please try again.';
         setEmailError(errorMessage);
         
-        // Show pop-up for password errors
+        // Show modal for password errors
         if (error?.code === 'auth/wrong-password' || error?.code === 'auth/invalid-credential' || error?.code === 'auth/too-many-requests') {
           // Error message is already set with remaining attempts info
           // The error will be displayed in the UI

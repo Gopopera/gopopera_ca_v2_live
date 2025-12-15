@@ -2,6 +2,7 @@ import React from 'react';
 import { ViewState } from '../../types';
 import { ChevronLeft } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { SeoHelmet } from '../../components/seo/SeoHelmet';
 
 interface TermsPageProps {
   setViewState: (view: ViewState) => void;
@@ -11,6 +12,9 @@ export const TermsPage: React.FC<TermsPageProps> = ({ setViewState }) => {
   const { t } = useLanguage();
   return (
     <div className="min-h-screen bg-[#15383c] text-gray-200 font-sans pt-20 sm:pt-24 pb-12 sm:pb-20">
+      {/* SEO: Terms page meta tags */}
+      <SeoHelmet viewState={ViewState.TERMS} />
+      
       <div className="max-w-4xl mx-auto px-4 sm:px-6 mb-6 sm:mb-10">
         <button 
           onClick={() => setViewState(ViewState.LANDING)} 

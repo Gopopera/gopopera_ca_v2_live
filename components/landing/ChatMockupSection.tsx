@@ -79,7 +79,7 @@ export const ChatMockupSection: React.FC = () => {
                 <div className="bg-gradient-to-br from-[#15383c] via-[#1a4549] to-[#15383c] p-5 sm:p-6 md:p-7 pb-6 sm:pb-7 md:pb-8 text-white relative shadow-lg">
                    <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none"></div>
                    <div className="flex justify-between items-center mb-4 sm:mb-5 relative z-10">
-                      <span className="font-heading font-bold text-xs sm:text-sm md:text-base opacity-90">{t('chat.popupsGroupChat')}</span>
+                      <span className="font-heading font-bold text-xs sm:text-sm md:text-base opacity-90">{t('chat.circleGroupChat')}</span>
                    </div>
                    <div className="flex items-center gap-3 sm:gap-4 relative z-10">
                       <div className="w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full overflow-hidden border-2 border-white/30 shadow-lg relative">

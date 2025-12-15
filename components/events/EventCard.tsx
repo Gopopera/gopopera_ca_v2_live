@@ -402,7 +402,7 @@ export const EventCard: React.FC<EventCardProps> = ({
               {event.title}
             </h3>
             
-            {/* Host Name */}
+            {/* Host Name + Rating */}
             <div className="flex items-center gap-2 mb-3 pointer-events-auto">
               <span className="w-6 h-6 sm:w-7 sm:h-7 shrink-0 rounded-full bg-white/20 backdrop-blur-sm overflow-hidden ring-1 ring-white/30">
                 {hostProfilePicture ? (
@@ -427,24 +427,30 @@ export const EventCard: React.FC<EventCardProps> = ({
               <p className="text-xs sm:text-sm font-medium text-white/90 drop-shadow-md truncate">
                 {displayHostName || 'Unknown Host'}
               </p>
+              {/* Host Rating */}
+              {hostOverallRating !== null && hostOverallRating > 0 && (
+                <span className="flex items-center gap-0.5 text-xs sm:text-sm text-white/80 drop-shadow-md">
+                  <Star size={12} className="sm:w-3 sm:h-3 fill-amber-400 text-amber-400 shrink-0" />
+                  <span>{hostOverallRating.toFixed(1)}</span>
+                </span>
+              )}
             </div>
 
-            {/* Metadata - All overlaid on image */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-white/90 pointer-events-auto">
-              <div className="flex items-center gap-1 text-xs sm:text-sm">
-                <Calendar size={12} className="sm:w-3 sm:h-3 shrink-0" />
-                <span className="text-xs sm:text-sm">{formatDate(event.date)} • {event.time}</span>
+            {/* Metadata - Stacked vertically */}
+            <div className="flex flex-col gap-1 text-white/90 pointer-events-auto">
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm">
+                <Calendar size={12} className="sm:w-3 sm:h-3 shrink-0 text-white/70" />
+                <span>{formatDate(event.date)} • {event.time}</span>
               </div>
-              <div className="flex items-center gap-1 text-xs sm:text-sm">
-                <MapPin size={12} className="sm:w-3 sm:h-3 shrink-0" />
-                <span className="text-xs sm:text-sm truncate">{event.city}</span>
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm">
+                <MapPin size={12} className="sm:w-3 sm:h-3 shrink-0 text-white/70" />
+                <span className="truncate">{event.city}</span>
               </div>
-              <div className="flex items-center gap-1 text-xs sm:text-sm">
-                <DollarSign size={12} className="sm:w-3 sm:h-3 shrink-0" />
-                <span className="text-xs sm:text-sm">{formatEventPrice(event)}</span>
-              </div>
-              <div className="flex items-center gap-1 text-xs sm:text-sm">
-                <Users size={12} className="sm:w-3 sm:h-3 shrink-0" />
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm">
+                <DollarSign size={12} className="sm:w-3 sm:h-3 shrink-0 text-white/70" />
+                <span>{formatEventPrice(event)}</span>
+                <span className="text-white/50 mx-1">•</span>
+                <Users size={12} className="sm:w-3 sm:h-3 shrink-0 text-white/70" />
                 <EventAttendeesCount eventId={event.id} capacity={event.capacity} inline={true} />
               </div>
             </div>
@@ -466,7 +472,7 @@ export const EventCard: React.FC<EventCardProps> = ({
               {event.title}
             </h3>
             
-            {/* Host Name - With Starting Soon badge */}
+            {/* Host Name + Rating + Starting Soon badge */}
             <div className="flex items-center justify-between gap-2 mb-2 pointer-events-auto">
               <div className="flex items-center gap-2">
                 <span className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 rounded-full bg-white/20 backdrop-blur-sm overflow-hidden ring-1 ring-white/30">
@@ -492,6 +498,13 @@ export const EventCard: React.FC<EventCardProps> = ({
                 <p className="text-[10px] sm:text-xs font-medium text-white/90 drop-shadow-md truncate">
                   {displayHostName || 'Unknown Host'}
                 </p>
+                {/* Host Rating */}
+                {hostOverallRating !== null && hostOverallRating > 0 && (
+                  <span className="flex items-center gap-0.5 text-[10px] sm:text-xs text-white/80 drop-shadow-md">
+                    <Star size={10} className="fill-amber-400 text-amber-400 shrink-0" />
+                    <span>{hostOverallRating.toFixed(1)}</span>
+                  </span>
+                )}
               </div>
               
               {/* Starting Soon Badge */}
@@ -508,22 +521,21 @@ export const EventCard: React.FC<EventCardProps> = ({
               })()}
             </div>
             
-            {/* Metadata - Date, Location, Price, Capacity */}
-            <div className="flex flex-wrap items-center gap-2 text-white/90 pointer-events-auto">
+            {/* Metadata - Stacked vertically: Date+Time, Location, Price+Capacity */}
+            <div className="flex flex-col gap-0.5 text-white/90 pointer-events-auto">
               <div className="flex items-center gap-1 text-[10px] sm:text-xs">
-                <Calendar size={10} className="shrink-0" />
-                <span>{formatDate(event.date)}</span>
+                <Calendar size={10} className="shrink-0 text-white/70" />
+                <span>{formatDate(event.date)} • {event.time}</span>
               </div>
               <div className="flex items-center gap-1 text-[10px] sm:text-xs">
-                <MapPin size={10} className="shrink-0" />
-                <span className="truncate max-w-[80px]">{event.city}</span>
+                <MapPin size={10} className="shrink-0 text-white/70" />
+                <span className="truncate max-w-[120px]">{event.city}</span>
               </div>
               <div className="flex items-center gap-1 text-[10px] sm:text-xs">
-                <DollarSign size={10} className="shrink-0" />
+                <DollarSign size={10} className="shrink-0 text-white/70" />
                 <span>{formatEventPrice(event)}</span>
-              </div>
-              <div className="flex items-center gap-1 text-[10px] sm:text-xs">
-                <Users size={10} className="shrink-0" />
+                <span className="text-white/50 mx-0.5">•</span>
+                <Users size={10} className="shrink-0 text-white/70" />
                 <EventAttendeesCount eventId={event.id} capacity={event.capacity} inline={true} />
               </div>
             </div>
@@ -545,7 +557,7 @@ export const EventCard: React.FC<EventCardProps> = ({
               {event.title}
             </h3>
             
-            {/* Host Name + Starting Soon Badge - Side by side */}
+            {/* Host Name + Rating + Starting Soon Badge */}
             <div className="flex items-center justify-between gap-2 mb-2 pointer-events-auto">
               <div className="flex items-center gap-2">
                 <span className="w-6 h-6 sm:w-7 sm:h-7 shrink-0 rounded-full bg-white/20 backdrop-blur-sm overflow-hidden ring-1 ring-white/30">
@@ -571,6 +583,13 @@ export const EventCard: React.FC<EventCardProps> = ({
                 <p className="text-xs sm:text-sm font-medium text-white/90 drop-shadow-md">
                   {displayHostName || 'Unknown Host'}
                 </p>
+                {/* Host Rating */}
+                {hostOverallRating !== null && hostOverallRating > 0 && (
+                  <span className="flex items-center gap-0.5 text-xs sm:text-sm text-white/80 drop-shadow-md">
+                    <Star size={12} className="sm:w-3 sm:h-3 fill-amber-400 text-amber-400 shrink-0" />
+                    <span>{hostOverallRating.toFixed(1)}</span>
+                  </span>
+                )}
               </div>
               
               {/* Starting Soon Badge - Right side of host */}
@@ -587,22 +606,21 @@ export const EventCard: React.FC<EventCardProps> = ({
               })()}
             </div>
 
-            {/* Metadata - Date, Location, Price, Capacity */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-white/90 mb-3 pointer-events-auto">
-              <div className="flex items-center gap-1 text-xs sm:text-sm">
-                <Calendar size={12} className="sm:w-3 sm:h-3 shrink-0" />
-                <span className="text-xs sm:text-sm">{formatDate(event.date)} • {event.time}</span>
+            {/* Metadata - Stacked vertically: Date+Time, Location, Price+Capacity */}
+            <div className="flex flex-col gap-1 text-white/90 mb-3 pointer-events-auto">
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm">
+                <Calendar size={12} className="sm:w-3 sm:h-3 shrink-0 text-white/70" />
+                <span>{formatDate(event.date)} • {event.time}</span>
               </div>
-              <div className="flex items-center gap-1 text-xs sm:text-sm">
-                <MapPin size={12} className="sm:w-3 sm:h-3 shrink-0" />
-                <span className="text-xs sm:text-sm truncate">{event.city}</span>
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm">
+                <MapPin size={12} className="sm:w-3 sm:h-3 shrink-0 text-white/70" />
+                <span className="truncate">{event.city}</span>
               </div>
-              <div className="flex items-center gap-1 text-xs sm:text-sm">
-                <DollarSign size={12} className="sm:w-3 sm:h-3 shrink-0" />
-                <span className="text-xs sm:text-sm">{formatEventPrice(event)}</span>
-              </div>
-              <div className="flex items-center gap-1 text-xs sm:text-sm">
-                <Users size={12} className="sm:w-3 sm:h-3 shrink-0" />
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm">
+                <DollarSign size={12} className="sm:w-3 sm:h-3 shrink-0 text-white/70" />
+                <span>{formatEventPrice(event)}</span>
+                <span className="text-white/50 mx-1">•</span>
+                <Users size={12} className="sm:w-3 sm:h-3 shrink-0 text-white/70" />
                 <EventAttendeesCount eventId={event.id} capacity={event.capacity} inline={true} />
               </div>
             </div>

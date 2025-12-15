@@ -2,6 +2,7 @@ import React from 'react';
 import { ViewState } from '../../types';
 import { Check, Users, MessageCircle, MapPin, DollarSign, TrendingUp, ShoppingBag, Heart, Calendar, ChevronLeft, ArrowRight, Sparkles, Bell } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { SeoHelmet } from '../../components/seo/SeoHelmet';
 
 interface AboutPageProps {
   setViewState: (view: ViewState) => void;
@@ -11,6 +12,8 @@ export const AboutPage: React.FC<AboutPageProps> = ({ setViewState }) => {
   const { t } = useLanguage();
   return (
     <div className="min-h-screen bg-[#15383c] text-gray-200 font-sans pt-20 sm:pt-24 pb-12 sm:pb-20">
+      {/* SEO: About page meta tags */}
+      <SeoHelmet viewState={ViewState.ABOUT} />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 mb-6 sm:mb-10"><button onClick={() => setViewState(ViewState.LANDING)} className="w-9 h-9 sm:w-10 sm:h-10 bg-white/10 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-colors touch-manipulation active:scale-95"><ChevronLeft size={20} className="sm:w-6 sm:h-6" /></button></div>
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-12 sm:mb-16 md:mb-20"><h1 className="font-heading font-bold text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-white mb-4 sm:mb-6 md:mb-8 leading-tight px-2">{t('about.title')}</h1><p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-300 font-light max-w-3xl mx-auto leading-relaxed px-4">{t('about.description')}</p></div>

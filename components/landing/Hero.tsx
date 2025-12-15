@@ -51,20 +51,20 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
         </p>
         
         <div className="flex flex-row sm:flex-row items-center justify-center gap-2.5 sm:gap-4 w-full sm:w-auto px-4">
-          {/* First CTA: Get Started - Primary Orange */}
-          <button 
-            onClick={() => handleNav(ViewState.AUTH)}
-            className="flex-1 sm:flex-none sm:w-auto px-6 sm:px-8 md:px-10 py-3.5 sm:py-3 md:py-3.5 min-h-[48px] sm:min-h-0 bg-[#e35e25] text-white rounded-full font-bold text-sm sm:text-base md:text-lg shadow-lg shadow-[#e35e25]/30 hover:shadow-xl hover:shadow-[#e35e25]/40 hover:-translate-y-1 transition-all duration-300 flex items-center justify-center group touch-manipulation active:scale-[0.97]"
-          >
-            {t('hero.getStarted')}
-          </button>
-          
-          {/* Second CTA: Start Browsing - Glass Style */}
+          {/* First CTA: Browse Circles - Primary Orange */}
           <button 
             onClick={() => handleNav(ViewState.FEED)}
+            className="flex-1 sm:flex-none sm:w-auto px-6 sm:px-8 md:px-10 py-3.5 sm:py-3 md:py-3.5 min-h-[48px] sm:min-h-0 bg-[#e35e25] text-white rounded-full font-bold text-sm sm:text-base md:text-lg shadow-lg shadow-[#e35e25]/30 hover:shadow-xl hover:shadow-[#e35e25]/40 hover:-translate-y-1 transition-all duration-300 flex items-center justify-center group touch-manipulation active:scale-[0.97]"
+          >
+            {t('hero.startBrowsing')}
+          </button>
+          
+          {/* Second CTA: Become a Host - Glass Style */}
+          <button 
+            onClick={() => handleNav(ViewState.CREATE_EVENT)}
             className="flex-1 sm:flex-none sm:w-auto px-6 sm:px-8 md:px-10 py-3.5 sm:py-3 md:py-3.5 min-h-[48px] sm:min-h-0 bg-white/10 backdrop-blur-sm border border-white/30 text-white rounded-full font-bold text-sm sm:text-base md:text-lg hover:bg-white/20 transition-all duration-300 flex items-center justify-center gap-2 touch-manipulation active:scale-[0.97] whitespace-nowrap"
           >
-            {t('hero.startBrowsing')} <ArrowRight size={16} className="sm:w-[18px] sm:h-[18px] group-hover:translate-x-1 transition-transform shrink-0" />
+            {t('hero.becomeHost')} <ArrowRight size={16} className="sm:w-[18px] sm:h-[18px] group-hover:translate-x-1 transition-transform shrink-0" />
           </button>
         </div>
       </div>

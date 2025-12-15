@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, ChevronDown, ChevronUp, Filter } from 'lucide-react';
 import { useFilterStore } from '../../stores/filterStore';
 import { ALL_VIBES } from '../../utils/vibes';
+import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS, type MainCategory } from '../../utils/categoryMapper';
 import { createPortal } from 'react-dom';
 
 interface FilterDrawerProps {
@@ -13,6 +14,7 @@ interface FilterDrawerProps {
 export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, events }) => {
   const { filters, setFilter, resetFilters, getActiveFilterCount } = useFilterStore();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    category: true,
     location: true,
     groupSize: true,
     sessionFrequency: true,
@@ -200,6 +202,51 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
 
         {/* Filter Content */}
         <div className="flex-1 px-6 py-6 space-y-6">
+          {/* Category Section - At Top */}
+          <div className="border-b border-gray-200 pb-6">
+            <button
+              onClick={() => toggleSection('category')}
+              className="w-full flex items-center justify-between mb-4"
+            >
+              <h3 className="text-lg font-heading font-bold text-[#15383c]">Category</h3>
+              {expandedSections.category ? (
+                <ChevronUp size={20} className="text-gray-400" />
+              ) : (
+                <ChevronDown size={20} className="text-gray-400" />
+              )}
+            </button>
+            
+            {expandedSections.category && (
+              <div className="space-y-2">
+                {/* All option */}
+                <button
+                  onClick={() => setFilter('mainCategory', null)}
+                  className={`w-full text-left px-4 py-2.5 rounded-lg border transition-colors ${
+                    filters.mainCategory === null
+                      ? 'bg-[#15383c] text-white border-[#15383c]'
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-[#e35e25] hover:text-[#e35e25]'
+                  }`}
+                >
+                  All Categories
+                </button>
+                {/* Main categories */}
+                {MAIN_CATEGORIES.map(category => (
+                  <button
+                    key={category}
+                    onClick={() => setFilter('mainCategory', filters.mainCategory === category ? null : category)}
+                    className={`w-full text-left px-4 py-2.5 rounded-lg border transition-colors ${
+                      filters.mainCategory === category
+                        ? 'bg-[#15383c] text-white border-[#15383c]'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-[#e35e25] hover:text-[#e35e25]'
+                    }`}
+                  >
+                    {MAIN_CATEGORY_LABELS[category]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Location Section */}
           <div className="border-b border-gray-200 pb-6">
             <button

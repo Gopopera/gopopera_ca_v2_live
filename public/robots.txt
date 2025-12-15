@@ -1,0 +1,43 @@
+# robots.txt for gopopera.ca
+# Allows search engine crawling for public pages while blocking private/sensitive routes
+
+User-agent: *
+
+# Allow all public pages
+Allow: /
+Allow: /explore
+Allow: /about
+Allow: /guidelines
+Allow: /terms
+Allow: /privacy
+Allow: /safety
+Allow: /help
+Allow: /careers
+Allow: /contact
+Allow: /press
+Allow: /cancellation
+Allow: /event/*
+
+# Disallow API endpoints (server-side routes)
+Disallow: /api/*
+
+# Disallow private/authenticated user pages
+Disallow: /profile
+Disallow: /my-pops
+Disallow: /favorites
+Disallow: /notifications
+Disallow: /create-event
+Disallow: /edit-event
+Disallow: /auth
+Disallow: /my-calendar
+
+# Disallow chat routes (private group conversations)
+Disallow: /event/*/chat
+
+# Disallow debug/admin routes
+Disallow: /debug-*
+Disallow: /verify-firebase
+
+# Sitemap location
+Sitemap: https://gopopera.ca/sitemap.xml
+
