@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Calendar, MessageCircle, Star, Heart, Edit, Award, Users } from 'lucide-react';
+import { MapPin, Calendar, MessageCircle, Star, Heart, Edit, Award, Users, DollarSign } from 'lucide-react';
 import { Event } from '@/types';
 import { formatDate } from '@/utils/dateFormatter';
 import { formatRating } from '@/utils/formatRating';
@@ -58,6 +58,21 @@ const EventAttendeesCount: React.FC<{ eventId: string; capacity?: number; inline
       </span>
     </div>
   );
+};
+
+// Helper to format event price display
+const formatEventPrice = (event: Event): string => {
+  // Check new payment fields first
+  if (event.hasFee && event.feeAmount && event.feeAmount > 0) {
+    const amount = event.feeAmount / 100; // Convert from cents
+    const currency = event.currency?.toUpperCase() || 'CAD';
+    return `$${amount.toFixed(0)} ${currency}`;
+  }
+  // Fallback to legacy price field
+  if (event.price && event.price !== 'Free' && event.price !== '') {
+    return event.price;
+  }
+  return 'Free';
 };
 
 interface EventCardProps {
@@ -425,6 +440,10 @@ export const EventCard: React.FC<EventCardProps> = ({
                 <span className="text-xs sm:text-sm truncate">{event.city}</span>
               </div>
               <div className="flex items-center gap-1 text-xs sm:text-sm">
+                <DollarSign size={12} className="sm:w-3 sm:h-3 shrink-0" />
+                <span className="text-xs sm:text-sm">{formatEventPrice(event)}</span>
+              </div>
+              <div className="flex items-center gap-1 text-xs sm:text-sm">
                 <Users size={12} className="sm:w-3 sm:h-3 shrink-0" />
                 <EventAttendeesCount eventId={event.id} capacity={event.capacity} inline={true} />
               </div>
@@ -447,8 +466,50 @@ export const EventCard: React.FC<EventCardProps> = ({
               {event.title}
             </h3>
             
-            {/* Metadata - Date, Location, Attendees */}
-            <div className="flex flex-wrap items-center gap-2 text-white/90 mb-2 pointer-events-auto">
+            {/* Host Name - With Starting Soon badge */}
+            <div className="flex items-center justify-between gap-2 mb-2 pointer-events-auto">
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 rounded-full bg-white/20 backdrop-blur-sm overflow-hidden ring-1 ring-white/30">
+                  {hostProfilePicture ? (
+                    <img 
+                      src={hostProfilePicture} 
+                      alt={displayHostName} 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = `https://picsum.photos/seed/${displayHostName}/50/50`;
+                      }}
+                    />
+                  ) : (
+                    <div 
+                      className="w-full h-full flex items-center justify-center text-white font-bold text-[10px]"
+                      style={{ backgroundColor: `${getAvatarColor(displayHostName, event.hostId)}CC` }}
+                    >
+                      {getInitials(displayHostName)}
+                    </div>
+                  )}
+                </span>
+                <p className="text-[10px] sm:text-xs font-medium text-white/90 drop-shadow-md truncate">
+                  {displayHostName || 'Unknown Host'}
+                </p>
+              </div>
+              
+              {/* Starting Soon Badge */}
+              {(() => {
+                const continuity = getCircleContinuityText(event);
+                if (continuity?.type === 'startingSoon') {
+                  return (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-[#e35e25] text-white text-[8px] sm:text-[10px] font-bold uppercase tracking-wider shadow-lg shrink-0">
+                      {continuity.text}
+                    </span>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+            
+            {/* Metadata - Date, Location, Price, Capacity */}
+            <div className="flex flex-wrap items-center gap-2 text-white/90 pointer-events-auto">
               <div className="flex items-center gap-1 text-[10px] sm:text-xs">
                 <Calendar size={10} className="shrink-0" />
                 <span>{formatDate(event.date)}</span>
@@ -458,36 +519,13 @@ export const EventCard: React.FC<EventCardProps> = ({
                 <span className="truncate max-w-[80px]">{event.city}</span>
               </div>
               <div className="flex items-center gap-1 text-[10px] sm:text-xs">
+                <DollarSign size={10} className="shrink-0" />
+                <span>{formatEventPrice(event)}</span>
+              </div>
+              <div className="flex items-center gap-1 text-[10px] sm:text-xs">
                 <Users size={10} className="shrink-0" />
                 <EventAttendeesCount eventId={event.id} capacity={event.capacity} inline={true} />
               </div>
-            </div>
-            
-            {/* Host Name - At bottom of image */}
-            <div className="flex items-center gap-2 pointer-events-auto">
-              <span className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 rounded-full bg-white/20 backdrop-blur-sm overflow-hidden ring-1 ring-white/30">
-                {hostProfilePicture ? (
-                  <img 
-                    src={hostProfilePicture} 
-                    alt={displayHostName} 
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = `https://picsum.photos/seed/${displayHostName}/50/50`;
-                    }}
-                  />
-                ) : (
-                  <div 
-                    className="w-full h-full flex items-center justify-center text-white font-bold text-[10px]"
-                    style={{ backgroundColor: `${getAvatarColor(displayHostName, event.hostId)}CC` }} // Add transparency for overlay
-                  >
-                    {getInitials(displayHostName)}
-                  </div>
-                )}
-              </span>
-              <p className="text-[10px] sm:text-xs font-medium text-white/90 drop-shadow-md truncate">
-                {displayHostName || 'Unknown Host'}
-              </p>
             </div>
           </div>
         ) : (
@@ -507,49 +545,49 @@ export const EventCard: React.FC<EventCardProps> = ({
               {event.title}
             </h3>
             
-            {/* Host Name - Clean, minimal */}
-            <div className="flex items-center gap-2 mb-2 pointer-events-auto">
-              <span className="w-6 h-6 sm:w-7 sm:h-7 shrink-0 rounded-full bg-white/20 backdrop-blur-sm overflow-hidden ring-1 ring-white/30">
-                {hostProfilePicture ? (
-                  <img 
-                    src={hostProfilePicture} 
-                    alt={displayHostName} 
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = `https://picsum.photos/seed/${displayHostName}/50/50`;
-                    }}
-                  />
-                ) : (
-                  <div 
-                    className="w-full h-full flex items-center justify-center text-white font-bold text-xs"
-                    style={{ backgroundColor: `${getAvatarColor(displayHostName, event.hostId)}CC` }} // Add transparency for overlay
-                  >
-                    {getInitials(displayHostName)}
-                  </div>
-                )}
-              </span>
-              <p className="text-xs sm:text-sm font-medium text-white/90 drop-shadow-md">
-                {displayHostName || 'Unknown Host'}
-              </p>
-            </div>
-
-            {/* Circle Continuity Indicator - Starting Soon */}
-            {(() => {
-              const continuity = getCircleContinuityText(event);
-              if (continuity?.type === 'startingSoon') {
-                return (
-                  <div className="mb-2 pointer-events-auto">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#e35e25] text-white text-xs font-bold uppercase tracking-wider shadow-lg">
+            {/* Host Name + Starting Soon Badge - Side by side */}
+            <div className="flex items-center justify-between gap-2 mb-2 pointer-events-auto">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 sm:w-7 sm:h-7 shrink-0 rounded-full bg-white/20 backdrop-blur-sm overflow-hidden ring-1 ring-white/30">
+                  {hostProfilePicture ? (
+                    <img 
+                      src={hostProfilePicture} 
+                      alt={displayHostName} 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = `https://picsum.photos/seed/${displayHostName}/50/50`;
+                      }}
+                    />
+                  ) : (
+                    <div 
+                      className="w-full h-full flex items-center justify-center text-white font-bold text-xs"
+                      style={{ backgroundColor: `${getAvatarColor(displayHostName, event.hostId)}CC` }}
+                    >
+                      {getInitials(displayHostName)}
+                    </div>
+                  )}
+                </span>
+                <p className="text-xs sm:text-sm font-medium text-white/90 drop-shadow-md">
+                  {displayHostName || 'Unknown Host'}
+                </p>
+              </div>
+              
+              {/* Starting Soon Badge - Right side of host */}
+              {(() => {
+                const continuity = getCircleContinuityText(event);
+                if (continuity?.type === 'startingSoon') {
+                  return (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#e35e25] text-white text-[10px] sm:text-xs font-bold uppercase tracking-wider shadow-lg shrink-0">
                       {continuity.text}
                     </span>
-                  </div>
-                );
-              }
-              return null;
-            })()}
+                  );
+                }
+                return null;
+              })()}
+            </div>
 
-            {/* Metadata - Clean, icon-based, minimalist */}
+            {/* Metadata - Date, Location, Price, Capacity */}
             <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-white/90 mb-3 pointer-events-auto">
               <div className="flex items-center gap-1 text-xs sm:text-sm">
                 <Calendar size={12} className="sm:w-3 sm:h-3 shrink-0" />
@@ -558,6 +596,10 @@ export const EventCard: React.FC<EventCardProps> = ({
               <div className="flex items-center gap-1 text-xs sm:text-sm">
                 <MapPin size={12} className="sm:w-3 sm:h-3 shrink-0" />
                 <span className="text-xs sm:text-sm truncate">{event.city}</span>
+              </div>
+              <div className="flex items-center gap-1 text-xs sm:text-sm">
+                <DollarSign size={12} className="sm:w-3 sm:h-3 shrink-0" />
+                <span className="text-xs sm:text-sm">{formatEventPrice(event)}</span>
               </div>
               <div className="flex items-center gap-1 text-xs sm:text-sm">
                 <Users size={12} className="sm:w-3 sm:h-3 shrink-0" />
