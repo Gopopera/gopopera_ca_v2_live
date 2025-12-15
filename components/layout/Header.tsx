@@ -181,10 +181,10 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
   const isLightPage = !isLandingPage || isScrolled;
   const isLandingAtTop = isLandingPage && !isScrolled;
   
-  // Header background: transparent on landing at top, liquid glass otherwise
+  // Header background: transparent on landing at top, solid white otherwise
   const navClasses = isLandingAtTop
     ? 'fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-transparent py-4'
-    : 'fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white/70 backdrop-blur-2xl border-b border-white/60 shadow-[0_4px_32px_rgba(0,0,0,0.06)] py-4';
+    : 'fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white border-b border-gray-100 shadow-sm py-4';
 
   // Header text/icons: white on landing at top, teal otherwise
   const getTextColor = (_isMobile: boolean) => isLandingAtTop ? 'text-white' : 'text-popera-teal';
