@@ -432,7 +432,7 @@ export const EventCard: React.FC<EventCardProps> = ({
             </div>
           </div>
         ) : compact ? (
-          /* Compact variant - Simple overlay with just title and host at bottom */
+          /* Compact variant - Title, host, date, location, attendees */
           <div 
             className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 z-30 pointer-events-none" 
             style={{ 
@@ -444,9 +444,25 @@ export const EventCard: React.FC<EventCardProps> = ({
             }}
           >
             {/* Title - Smaller in compact mode */}
-            <h3 className="text-sm sm:text-base font-heading font-bold text-white mb-2 leading-tight line-clamp-1 drop-shadow-lg pointer-events-auto">
+            <h3 className="text-sm sm:text-base font-heading font-bold text-white mb-1.5 leading-tight line-clamp-1 drop-shadow-lg pointer-events-auto">
               {event.title}
             </h3>
+            
+            {/* Metadata - Date, Location, Attendees */}
+            <div className="flex flex-wrap items-center gap-2 text-white/90 mb-2 pointer-events-auto">
+              <div className="flex items-center gap-1 text-[10px] sm:text-xs">
+                <Calendar size={10} className="shrink-0" />
+                <span>{formatDate(event.date)}</span>
+              </div>
+              <div className="flex items-center gap-1 text-[10px] sm:text-xs">
+                <MapPin size={10} className="shrink-0" />
+                <span className="truncate max-w-[80px]">{event.city}</span>
+              </div>
+              <div className="flex items-center gap-1 text-[10px] sm:text-xs">
+                <Users size={10} className="shrink-0" />
+                <EventAttendeesCount eventId={event.id} capacity={event.capacity} inline={true} />
+              </div>
+            </div>
             
             {/* Host Name - At bottom of image */}
             <div className="flex items-center gap-2 pointer-events-auto">
