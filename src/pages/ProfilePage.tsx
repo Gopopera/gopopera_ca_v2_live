@@ -45,7 +45,17 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
   // REFACTORED: Real-time subscription to /users/{userId} - single source of truth
   // Initialize with null - subscription will provide the real data
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
+  const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string>(userName);
+  
+  // Generate a consistent random color for default cover based on user ID
+  const getDefaultCoverGradient = React.useMemo(() => {
+    if (!user?.uid) return 'linear-gradient(135deg, #15383c 0%, #1a4549 50%, #15383c 100%)';
+    // Use user ID to generate a consistent color
+    const hash = user.uid.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const hue = hash % 360;
+    return `linear-gradient(135deg, hsl(${hue}, 30%, 25%) 0%, hsl(${(hue + 20) % 360}, 35%, 30%) 50%, hsl(${hue}, 30%, 25%) 100%)`;
+  }, [user?.uid]);
   
   // Track if subscription has provided data yet
   const hasSubscriptionDataRef = React.useRef(false);
@@ -53,6 +63,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
   useEffect(() => {
     if (!user?.uid) {
       setProfilePicture(null);
+      setCoverPhoto(null);
       setDisplayName(userName);
       return;
     }
@@ -72,6 +83,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
         hasSubscriptionDataRef.current = true;
         if (userData) {
           setProfilePicture(userData.photoURL || null);
+          setCoverPhoto(userData.coverPhotoURL || null);
           setDisplayName(userData.displayName || userName);
           
           if (import.meta.env.DEV) {
@@ -79,17 +91,20 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
               userId: user.uid,
               displayName: userData.displayName,
               hasPhoto: !!userData.photoURL,
+              hasCoverPhoto: !!userData.coverPhotoURL,
             });
           }
         } else {
           // User document doesn't exist - use fallback
           setProfilePicture(null);
+          setCoverPhoto(null);
           setDisplayName(userName);
         }
       });
     } catch (error) {
       console.error('[PROFILE_PAGE] ❌ Error loading user subscriptions:', error);
       setProfilePicture(null);
+      setCoverPhoto(null);
       setDisplayName(userName);
     }
     
@@ -245,8 +260,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
 
         {/* Hero Section - Cinematic design */}
         <div className="relative mb-12 sm:mb-16 md:mb-20">
-          {/* Large Hero Background */}
-          <div className="h-48 sm:h-56 md:h-64 lg:h-72 bg-gradient-to-br from-[#15383c] via-[#1f4d52] to-[#15383c] rounded-[32px] md:rounded-[40px] overflow-hidden relative">
+          {/* Large Hero Background - Custom cover photo or random gradient */}
+          <div 
+            className="h-48 sm:h-56 md:h-64 lg:h-72 rounded-[32px] md:rounded-[40px] overflow-hidden relative"
+            style={{
+              background: coverPhoto 
+                ? `url(${coverPhoto}) center/cover no-repeat` 
+                : getDefaultCoverGradient
+            }}
+          >
             <div className="absolute inset-0 bg-black/20"></div>
           </div>
           

@@ -26,6 +26,7 @@ export interface User {
   email: string;
   photoURL?: string;
   displayName?: string;
+  coverPhotoURL?: string; // Profile background/cover image
   // Extended fields for backward compatibility
   id?: string; // Alias for uid
   name?: string; // Alias for displayName
@@ -470,12 +471,14 @@ export const useUserStore = create<UserStore>()(
           // Firestore is the single source of truth for profile data
           const photoURL = firestoreUser?.photoURL || firestoreUser?.imageUrl || firebaseUser.photoURL || '';
           const displayName = firestoreUser?.displayName || firestoreUser?.name || firebaseUser.displayName || '';
+          const coverPhotoURL = firestoreUser?.coverPhotoURL || undefined;
           
           const user: User = {
             uid: firebaseUser.uid,
             email: firebaseUser.email || '',
             photoURL,
             displayName,
+            coverPhotoURL,
             id: firebaseUser.uid,
             name: displayName,
             profileImageUrl: photoURL,

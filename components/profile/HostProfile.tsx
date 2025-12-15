@@ -49,6 +49,16 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
   
   // State for host profile picture (synced from Firestore)
   const [hostProfilePicture, setHostProfilePicture] = useState<string | null>(null);
+  const [hostCoverPhoto, setHostCoverPhoto] = useState<string | null>(null);
+  
+  // Generate a consistent random color for default cover based on host ID
+  const getDefaultCoverGradient = useMemo(() => {
+    if (!hostId) return 'linear-gradient(135deg, #e35e25 0%, #15383c 100%)';
+    // Use host ID to generate a consistent color
+    const hash = hostId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const hue = hash % 360;
+    return `linear-gradient(135deg, hsl(${hue}, 40%, 35%) 0%, hsl(${(hue + 40) % 360}, 35%, 25%) 100%)`;
+  }, [hostId]);
   
   // Get real data from profile store - call hooks unconditionally, then use conditionally
   const isFollowing = hostId ? profileStore.isFollowing(currentUser?.id || '', hostId) : false;
@@ -76,21 +86,25 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
       unsubscribe = subscribeToUserProfile(hostId, (hostData) => {
         if (hostData) {
           setHostProfilePicture(hostData.photoURL || null);
+          setHostCoverPhoto(hostData.coverPhotoURL || null);
           
           if (import.meta.env.DEV) {
             console.log('[HOST_PROFILE] ✅ Host profile updated:', {
               hostId,
               displayName: hostData.displayName,
               hasPhoto: !!hostData.photoURL,
+              hasCoverPhoto: !!hostData.coverPhotoURL,
             });
           }
         } else {
           setHostProfilePicture(null);
+          setHostCoverPhoto(null);
         }
       });
     } catch (error) {
       console.error('[HOST_PROFILE] ❌ Error loading user subscriptions:', error);
       setHostProfilePicture(null);
+      setHostCoverPhoto(null);
     }
     
     return () => {
@@ -292,8 +306,15 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEv
 
         {/* Profile Banner with Profile Picture */}
         <div className="relative mb-6 sm:mb-8">
-          {/* Banner Image */}
-          <div className="h-32 sm:h-40 md:h-48 bg-gradient-to-br from-[#e35e25] to-[#15383c] rounded-2xl sm:rounded-3xl overflow-hidden relative">
+          {/* Banner Image - Custom cover photo or random gradient */}
+          <div 
+            className="h-32 sm:h-40 md:h-48 rounded-2xl sm:rounded-3xl overflow-hidden relative"
+            style={{
+              background: hostCoverPhoto 
+                ? `url(${hostCoverPhoto}) center/cover no-repeat` 
+                : getDefaultCoverGradient
+            }}
+          >
             <div className="absolute inset-0 bg-black/10"></div>
           </div>
           

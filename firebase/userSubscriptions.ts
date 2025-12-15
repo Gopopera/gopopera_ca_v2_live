@@ -9,11 +9,11 @@ import type { FirestoreUser } from './types';
 
 /**
  * Subscribe to a user's profile in real-time
- * Returns displayName and photoURL - the only fields needed for UI
+ * Returns displayName, photoURL, and coverPhotoURL
  */
 export function subscribeToUserProfile(
   userId: string,
-  callback: (user: { displayName: string; photoURL?: string } | null) => void
+  callback: (user: { displayName: string; photoURL?: string; coverPhotoURL?: string; bio?: string } | null) => void
 ): Unsubscribe {
   const db = getDbSafe();
   if (!db) {
@@ -37,9 +37,12 @@ export function subscribeToUserProfile(
         // REFACTORED: Use standardized fields only
         // Handle empty strings as null/undefined for photoURL
         const photoURL = data.photoURL || data.imageUrl || undefined;
+        const coverPhotoURL = data.coverPhotoURL || undefined;
         const userData = {
           displayName: data.displayName || data.name || 'Unknown User',
           photoURL: (photoURL && photoURL.trim() !== '') ? photoURL : undefined,
+          coverPhotoURL: (coverPhotoURL && coverPhotoURL.trim() !== '') ? coverPhotoURL : undefined,
+          bio: data.bio || undefined,
         };
         
         if (import.meta.env.DEV) {
@@ -47,6 +50,7 @@ export function subscribeToUserProfile(
             userId,
             displayName: userData.displayName,
             hasPhoto: !!userData.photoURL,
+            hasCoverPhoto: !!userData.coverPhotoURL,
           });
         }
         

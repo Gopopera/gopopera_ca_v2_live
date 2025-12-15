@@ -24,6 +24,11 @@ export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
     userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || null
   );
   
+  // Cover photo for profile background
+  const [coverImage, setCoverImage] = useState<string | null>(
+    userProfile?.coverPhotoURL || user?.coverPhotoURL || null
+  );
+  
   // User name (publicly shown) - editable
   const [userName, setUserName] = useState<string>(
     userProfile?.displayName || userProfile?.name || user?.displayName || user?.name || ''
@@ -42,6 +47,14 @@ export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
     }
   }, [userProfile?.photoURL, userProfile?.imageUrl, user?.photoURL, user?.profileImageUrl]);
   
+  // Sync cover image when userProfile or user changes
+  React.useEffect(() => {
+    const latestCover = userProfile?.coverPhotoURL || user?.coverPhotoURL || null;
+    if (latestCover !== coverImage) {
+      setCoverImage(latestCover);
+    }
+  }, [userProfile?.coverPhotoURL, user?.coverPhotoURL]);
+  
   // Sync userName when userProfile or user changes
   React.useEffect(() => {
     const latestUserName = userProfile?.displayName || userProfile?.name || user?.displayName || user?.name || '';
@@ -51,8 +64,10 @@ export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
   }, [userProfile?.displayName, userProfile?.name, user?.displayName, user?.name]);
   
   const [uploading, setUploading] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -114,6 +129,56 @@ export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
       // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.uid) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 10MB for cover photos)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Image size must be less than 10MB');
+      return;
+    }
+
+    try {
+      setUploadingCover(true);
+      const path = `users/${user.uid}/cover.jpg`;
+      const imageUrl = await uploadImage(path, file);
+      
+      // Update user profile in Firestore
+      await createOrUpdateUserProfile(user.uid, {
+        coverPhotoURL: imageUrl,
+      });
+
+      // Update local state
+      setCoverImage(imageUrl);
+      
+      // Update user store
+      useUserStore.getState().updateUser(user.uid, {
+        coverPhotoURL: imageUrl,
+      });
+      
+      // Refresh user profile to sync across all components
+      await useUserStore.getState().refreshUserProfile();
+      
+      console.log('[PROFILE] Cover photo updated successfully and synced across all components');
+    } catch (error) {
+      console.error('Error uploading cover photo:', error);
+      alert('Failed to upload cover photo. Please try again.');
+    } finally {
+      setUploadingCover(false);
+      // Reset file input
+      if (coverInputRef.current) {
+        coverInputRef.current.value = '';
       }
     }
   };
@@ -195,6 +260,51 @@ export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
         </div>
         <div className="bg-white rounded-2xl sm:rounded-3xl shadow-md border border-gray-100 p-6 sm:p-8">
         <div className="space-y-6 sm:space-y-8">
+           {/* Cover Photo Upload - New */}
+           <div className="space-y-3">
+              <label className="block text-sm font-semibold text-[#15383c]">Cover Photo</label>
+              <p className="text-xs text-gray-500">This image appears behind your profile picture</p>
+              <div className="relative">
+                <div 
+                  className="w-full h-32 sm:h-40 rounded-2xl overflow-hidden shadow-md"
+                  style={{
+                    background: coverImage 
+                      ? `url(${coverImage}) center/cover no-repeat` 
+                      : `linear-gradient(135deg, #15383c 0%, #1a4549 50%, #15383c 100%)`
+                  }}
+                >
+                  {!coverImage && (
+                    <div className="w-full h-full flex items-center justify-center text-white/60 text-sm">
+                      No cover photo set
+                    </div>
+                  )}
+                </div>
+                {uploadingCover && (
+                  <div className="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                    <div className="w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                )}
+                <div className="absolute bottom-3 right-3">
+                  <input
+                    type="file"
+                    ref={coverInputRef}
+                    accept="image/*"
+                    onChange={handleCoverUpload}
+                    className="hidden"
+                    id="cover-photo-input"
+                  />
+                  <label
+                    htmlFor="cover-photo-input"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm text-[#15383c] rounded-xl text-sm font-bold hover:bg-white transition-colors cursor-pointer touch-manipulation active:scale-95 shadow-md border border-gray-200"
+                  >
+                    <Camera size={16} />
+                    {uploadingCover ? 'Uploading...' : (coverImage ? 'Change' : 'Add Cover')}
+                  </label>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">Recommended: 1200x400px, JPG or PNG up to 10MB</p>
+           </div>
+           
            {/* Profile Picture Upload - Enhanced */}
            <div className="space-y-3">
               <label className="block text-sm font-semibold text-[#15383c]">{t('profile.profilePicture')}</label>

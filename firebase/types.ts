@@ -77,6 +77,7 @@ export interface FirestoreUser {
   email: string;
   displayName: string; // Single field for user display name
   photoURL?: string; // Single field for profile picture
+  coverPhotoURL?: string; // Profile background/cover image
   bio?: string | null;
   phoneVerified?: boolean;
   username?: string | null;
