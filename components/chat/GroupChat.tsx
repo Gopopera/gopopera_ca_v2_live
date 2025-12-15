@@ -209,6 +209,7 @@ const compressImage = (file: File, maxWidth: number = 800, quality: number = 0.7
 export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDetails, onHostClick, onReserve, isLoggedIn = false }) => {
   const [message, setMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const [imageUploading, setImageUploading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
@@ -597,6 +598,16 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
     }
   }, [messages.length, isHost, event.id, canAccessChat, viewType]);
 
+  // Auto-scroll to bottom when messages load or change
+  useEffect(() => {
+    if (messagesEndRef.current && canAccessChat && !isDemo && messages.length > 0) {
+      // Use setTimeout to ensure DOM has updated
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      }, 100);
+    }
+  }, [messages.length, canAccessChat, isDemo]);
+
   // Check follow status
   useEffect(() => {
     if (currentUser?.id && event.hostId && !isHost) {
@@ -764,7 +775,8 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
       });
       
       // Send image as message with compressed data URL
-      await addMessage(event.id, currentUser.id, `[Image:${compressedImageUrl}:${file.name}]`, 'message', messageIsHost);
+      // Use | as delimiter instead of : to avoid conflict with data URL colons
+      await addMessage(event.id, currentUser.id, `[Image|${compressedImageUrl}|${file.name}]`, 'message', messageIsHost);
       
       // Clear preview after sending
       setImagePreview(null);
@@ -1317,46 +1329,48 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
             </div>
           )}
 
-          {/* AI Insights - Only visible to attendees (not host) */}
+          {/* AI Insights - Only visible to attendees (not host) - STICKY at top */}
           {canAccessChat && !isDemo && !isHost && (
-            <div className="bg-gradient-to-br from-white to-[#f8fafb] rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-gray-100 shadow-sm max-w-3xl mx-auto w-full">
-              <div className="flex items-center space-x-3 mb-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-[#e35e25]/10 to-[#e35e25]/5 rounded-full flex items-center justify-center text-[#e35e25] shrink-0">
-                  <Sparkles size={20} className="text-[#e35e25]" />
+            <div className="sticky top-0 z-20 bg-gray-50 pb-4">
+              <div className="bg-gradient-to-br from-white to-[#f8fafb] rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-gray-100 shadow-md max-w-3xl mx-auto w-full">
+                <div className="flex items-center space-x-3 mb-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-[#e35e25]/10 to-[#e35e25]/5 rounded-full flex items-center justify-center text-[#e35e25] shrink-0">
+                    <Sparkles size={20} className="text-[#e35e25]" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-sm font-heading font-bold text-[#15383c]">AI Insights</h4>
+                    <p className="text-xs text-gray-600">What's happening in the conversation</p>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <h4 className="text-sm font-heading font-bold text-[#15383c]">AI Insights</h4>
-                  <p className="text-xs text-gray-600">What's happening in the conversation</p>
+                <div className="space-y-3 text-sm">
+                  {aiInsights.loading ? (
+                    <div className="flex items-center gap-2 text-gray-500">
+                      <div className="w-4 h-4 border-2 border-[#e35e25]/30 border-t-[#e35e25] rounded-full animate-spin"></div>
+                      <span className="text-sm">Analyzing conversation...</span>
+                    </div>
+                  ) : (
+                    <p className="font-medium text-[#15383c] leading-relaxed">{aiInsights.summary}</p>
+                  )}
+                  {!aiInsights.loading && aiInsights.highlights.length > 0 && (
+                    <div className="bg-white/60 rounded-lg p-3 border border-gray-100">
+                      <p className="font-semibold text-xs text-gray-600 mb-2 uppercase tracking-wide">Key topics</p>
+                      <ul className="space-y-1.5">
+                        {aiInsights.highlights.map((highlight, idx) => (
+                          <li key={idx} className="text-xs text-gray-700 flex items-start gap-2">
+                            <span className="text-[#e35e25] mt-1">•</span>
+                            <span>{highlight}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {aiInsights.topAnnouncement && (
+                    <div className="bg-[#15383c]/5 rounded-lg p-3 border border-[#15383c]/10">
+                      <p className="font-semibold text-xs text-[#15383c] mb-1.5 uppercase tracking-wide">Latest announcement</p>
+                      <p className="text-xs text-gray-700 leading-relaxed italic">"{aiInsights.topAnnouncement}"</p>
+                    </div>
+                  )}
                 </div>
-              </div>
-              <div className="space-y-3 text-sm">
-                {aiInsights.loading ? (
-                  <div className="flex items-center gap-2 text-gray-500">
-                    <div className="w-4 h-4 border-2 border-[#e35e25]/30 border-t-[#e35e25] rounded-full animate-spin"></div>
-                    <span className="text-sm">Analyzing conversation...</span>
-                  </div>
-                ) : (
-                  <p className="font-medium text-[#15383c] leading-relaxed">{aiInsights.summary}</p>
-                )}
-                {!aiInsights.loading && aiInsights.highlights.length > 0 && (
-                  <div className="bg-white/60 rounded-lg p-3 border border-gray-100">
-                    <p className="font-semibold text-xs text-gray-600 mb-2 uppercase tracking-wide">Key topics</p>
-                    <ul className="space-y-1.5">
-                      {aiInsights.highlights.map((highlight, idx) => (
-                        <li key={idx} className="text-xs text-gray-700 flex items-start gap-2">
-                          <span className="text-[#e35e25] mt-1">•</span>
-                          <span>{highlight}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {aiInsights.topAnnouncement && (
-                  <div className="bg-[#15383c]/5 rounded-lg p-3 border border-[#15383c]/10">
-                    <p className="font-semibold text-xs text-[#15383c] mb-1.5 uppercase tracking-wide">Latest announcement</p>
-                    <p className="text-xs text-gray-700 leading-relaxed italic">"{aiInsights.topAnnouncement}"</p>
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -1413,8 +1427,18 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                       );
                     }
                     
-                    // Check if message contains image (format: [Image:dataUrl:filename])
-                    const imageMatch = msg.message.match(/^\[Image:([^:]+):([^\]]+)\]$/);
+                    // Check if message contains image
+                    // New format uses | delimiter: [Image|dataUrl|filename]
+                    // Old format used : delimiter: [Image:dataUrl:filename] - but this breaks with data URLs
+                    let imageMatch = msg.message.match(/^\[Image\|(.+)\|([^\]|]+)\]$/);
+                    if (!imageMatch) {
+                      // Backward compatibility: try old format by finding the last colon before ]
+                      // This works because filenames typically don't contain colons
+                      const oldMatch = msg.message.match(/^\[Image:(.+):([^:\]]+)\]$/);
+                      if (oldMatch) {
+                        imageMatch = oldMatch;
+                      }
+                    }
                     
                     return (
                       <div key={msg.id} className="flex items-start gap-3">
@@ -1466,6 +1490,9 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                   </div>
                 </div>
               )}
+              
+              {/* Scroll anchor for auto-scroll to bottom */}
+              <div ref={messagesEndRef} />
             </div>
           )}
         </div>

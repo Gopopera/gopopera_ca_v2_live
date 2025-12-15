@@ -29,6 +29,15 @@ service cloud.firestore {
       allow create: if isAuthenticated() && userId == request.auth.uid;
       allow update: if isAuthenticated() && userId == request.auth.uid;
       allow delete: if isAuthenticated() && userId == request.auth.uid;
+      
+      // Notifications subcollection - users can read/write their own notifications
+      // Other authenticated users can CREATE notifications for this user (for sending notifications)
+      match /notifications/{notificationId} {
+        allow read: if isAuthenticated() && userId == request.auth.uid;
+        allow create: if isAuthenticated(); // Any authenticated user can send a notification
+        allow update: if isAuthenticated() && userId == request.auth.uid;
+        allow delete: if isAuthenticated() && userId == request.auth.uid;
+      }
     }
     
     match /reservations/{reservationId} {
@@ -118,6 +127,48 @@ service cloud.firestore {
       allow create: if isAuthenticated() && userId == request.auth.uid;
       allow update: if isAuthenticated() && userId == request.auth.uid;
       allow delete: if isAuthenticated() && userId == request.auth.uid;
+    }
+    
+    // Email logs - authenticated users can create logs, read is restricted
+    match /email_logs/{logId} {
+      allow read: if false; // Admin only - not accessible from client
+      allow create: if isAuthenticated(); // Allow logging email attempts
+      allow update: if false;
+      allow delete: if false;
+    }
+    
+    // SMS logs - authenticated users can create logs, read is restricted
+    match /sms_logs/{logId} {
+      allow read: if false; // Admin only - not accessible from client
+      allow create: if isAuthenticated(); // Allow logging SMS attempts
+      allow update: if false;
+      allow delete: if false;
+    }
+    
+    // Payments collection - for tracking payment records
+    match /payments/{paymentId} {
+      allow read: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || 
+         resource.data.hostId == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update: if false; // Only webhooks can update
+      allow delete: if false;
+    }
+    
+    // Announcements - for event announcements and polls
+    match /announcements/{eventId}/items/{announcementId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+      
+      // Votes subcollection for polls
+      match /votes/{voteId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() && voteId == request.auth.uid;
+        allow update: if false; // No changing votes
+        allow delete: if false;
+      }
     }
   }
 }

@@ -262,6 +262,21 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       return;
     }
     
+    // Validate Stripe account for paid events
+    if (hasFee && feeAmount > 0) {
+      if (!userProfile?.stripeAccountId) {
+        alert('Please set up your Stripe account before creating paid events. Go to Profile → Stripe Payout Settings to connect your account.');
+        setViewState(ViewState.PROFILE_STRIPE);
+        return;
+      }
+      
+      if (userProfile?.stripeOnboardingStatus !== 'complete' || !userProfile?.stripeAccountEnabled) {
+        alert('Your Stripe account setup is incomplete. Please complete the onboarding process to charge fees for events.');
+        setViewState(ViewState.PROFILE_STRIPE);
+        return;
+      }
+    }
+    
     // Validate repeat settings for weekly/monthly (only for non-drafts)
     if (!isDraft) {
       if (sessionFrequency === 'weekly' && weeklyDayOfWeek === undefined) {
@@ -651,7 +666,10 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         whatToExpect: whatToExpect || undefined,
         attendeesCount,
         category: (category || 'Community') as typeof CATEGORIES[number], // Keep for backward compatibility, default to Community
-        price,
+        // Set price field correctly based on hasFee and feeAmount
+        price: hasFee && feeAmount > 0 
+          ? `$${feeAmount.toFixed(2)} ${currency.toUpperCase()}`
+          : (price && price.trim() !== '' ? price : 'Free'),
         rating: 0,
         reviewCount: 0,
         capacity: attendeesCount || undefined,

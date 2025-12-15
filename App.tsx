@@ -1066,8 +1066,25 @@ const AppContent: React.FC = () => {
     window.scrollTo(0, 0);
   };
 
-  const handleCloseChat = () => setViewState(ViewState.FEED);
-  const handleViewDetailsFromChat = () => setViewState(ViewState.DETAIL);
+  const handleCloseChat = () => {
+    // Use browser history to properly go back to the previous page
+    // If no history available (direct URL access), fallback to FEED
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      setViewState(ViewState.FEED);
+      window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
+    }
+  };
+  
+  const handleViewDetailsFromChat = () => {
+    // Navigate to event detail page, updating URL and state
+    if (selectedEvent) {
+      const detailUrl = `/event/${selectedEvent.id}`;
+      window.history.pushState({ viewState: ViewState.DETAIL, eventId: selectedEvent.id }, '', detailUrl);
+    }
+    setViewState(ViewState.DETAIL);
+  };
 
   const handleProtectedNav = (view: ViewState) => {
     // Save current scroll position and view state before navigating to auth

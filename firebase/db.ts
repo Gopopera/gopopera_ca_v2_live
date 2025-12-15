@@ -66,6 +66,10 @@ export const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event 
     weeklyDayOfWeek: typeof firestoreEvent.weeklyDayOfWeek === 'number' ? firestoreEvent.weeklyDayOfWeek : undefined,
     monthlyDayOfMonth: typeof firestoreEvent.monthlyDayOfMonth === 'number' ? firestoreEvent.monthlyDayOfMonth : undefined,
     startDateTime: typeof firestoreEvent.startDateTime === 'number' ? firestoreEvent.startDateTime : undefined,
+    // Payment fields
+    hasFee: firestoreEvent.hasFee === true,
+    feeAmount: typeof firestoreEvent.feeAmount === 'number' ? firestoreEvent.feeAmount : undefined,
+    currency: firestoreEvent.currency || undefined,
   };
   
   return standardizedEvent;
@@ -199,6 +203,10 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
       weeklyDayOfWeek: (eventData as any).weeklyDayOfWeek,
       monthlyDayOfMonth: (eventData as any).monthlyDayOfMonth,
       startDateTime: (eventData as any).startDateTime,
+      // Payment fields
+      hasFee: (eventData as any).hasFee === true,
+      feeAmount: typeof (eventData as any).feeAmount === 'number' ? (eventData as any).feeAmount : undefined,
+      currency: (eventData as any).currency || undefined,
     };
 
     // Validate and remove undefined values

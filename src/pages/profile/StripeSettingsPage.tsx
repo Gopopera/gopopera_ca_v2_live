@@ -22,16 +22,98 @@ export const StripeSettingsPage: React.FC<StripeSettingsPageProps> = ({ setViewS
   const stripeAccountId = userProfile?.stripeAccountId;
   const onboardingStatus = userProfile?.stripeOnboardingStatus;
   const accountEnabled = userProfile?.stripeAccountEnabled;
+  const [verifying, setVerifying] = useState(false);
+  const [verificationSuccess, setVerificationSuccess] = useState(false);
+
+  // Verify Stripe account status directly with Stripe API
+  const verifyStripeAccountStatus = async () => {
+    const accountId = userProfile?.stripeAccountId;
+    if (!accountId || !user?.uid) {
+      console.log('[STRIPE_SETTINGS] No account ID to verify, refreshing profile');
+      await refreshUserProfile();
+      return;
+    }
+    
+    console.log('[STRIPE_SETTINGS] Verifying Stripe account status:', accountId);
+    setVerifying(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/stripe/verify-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accountId }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to verify account');
+      }
+      
+      const { chargesEnabled, payoutsEnabled, detailsSubmitted } = await response.json();
+      
+      console.log('[STRIPE_SETTINGS] Stripe account status:', {
+        chargesEnabled,
+        payoutsEnabled,
+        detailsSubmitted,
+      });
+      
+      // Update Firestore with the verified status
+      const db = getDbSafe();
+      if (db && user.uid) {
+        const newStatus = detailsSubmitted ? 'complete' : 'incomplete';
+        const newEnabled = chargesEnabled && payoutsEnabled;
+        
+        console.log('[STRIPE_SETTINGS] Updating Firestore with status:', { newStatus, newEnabled });
+        
+        await updateDoc(doc(db, 'users', user.uid), {
+          stripeOnboardingStatus: newStatus,
+          stripeAccountEnabled: newEnabled,
+        });
+        
+        // Show success if account is now complete
+        if (newStatus === 'complete' && newEnabled) {
+          setVerificationSuccess(true);
+          setTimeout(() => setVerificationSuccess(false), 3000);
+        }
+      }
+      
+      // Refresh the profile to get updated data
+      await refreshUserProfile();
+      
+    } catch (err: any) {
+      console.error('[STRIPE_SETTINGS] Error verifying Stripe account:', err);
+      setError(err.message || 'Failed to verify Stripe account status');
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   useEffect(() => {
-    // Check if we have an onboarding URL from redirect
+    // Check if we have returned from Stripe onboarding
     const urlParams = new URLSearchParams(window.location.search);
     const returnedFromStripe = urlParams.get('stripe_return');
+    
     if (returnedFromStripe === 'true') {
-      // Refresh profile to get updated status
-      refreshUserProfile();
+      console.log('[STRIPE_SETTINGS] Returned from Stripe, verifying account status...');
+      
+      // Clear the URL parameter to prevent re-verification on refresh
+      window.history.replaceState({}, '', window.location.pathname);
+      
+      // Wait a moment for any webhooks to process, then verify
+      setTimeout(() => {
+        verifyStripeAccountStatus();
+      }, 1000);
     }
-  }, [refreshUserProfile]);
+  }, []); // Run only on mount
+
+  // Also verify when we have an account ID but status is still pending/incomplete
+  useEffect(() => {
+    if (stripeAccountId && (onboardingStatus === 'pending' || onboardingStatus === 'incomplete')) {
+      // Auto-verify on page load if status seems outdated
+      verifyStripeAccountStatus();
+    }
+  }, [stripeAccountId, onboardingStatus]);
 
   const handleCreateAccount = async () => {
     console.log('[STRIPE_SETTINGS] handleCreateAccount called', { 
@@ -191,6 +273,26 @@ export const StripeSettingsPage: React.FC<StripeSettingsPageProps> = ({ setViewS
           </button>
         </div>
 
+        {verifying && (
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
+            <Loader2 className="w-5 h-5 text-blue-600 animate-spin flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-blue-900">Verifying your Stripe account...</p>
+              <p className="text-xs text-blue-700">Please wait while we confirm your account setup.</p>
+            </div>
+          </div>
+        )}
+
+        {verificationSuccess && (
+          <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-green-900">Stripe account verified successfully!</p>
+              <p className="text-xs text-green-700">You can now charge fees for your events.</p>
+            </div>
+          </div>
+        )}
+
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
@@ -231,6 +333,27 @@ export const StripeSettingsPage: React.FC<StripeSettingsPageProps> = ({ setViewS
                   Account ID: {stripeAccountId?.substring(0, 20)}...
                 </p>
               </div>
+            )}
+
+            {/* Show refresh button for pending/incomplete accounts */}
+            {stripeAccountId && (onboardingStatus === 'pending' || onboardingStatus === 'incomplete' || onboardingStatus === undefined) && (
+              <button
+                onClick={verifyStripeAccountStatus}
+                disabled={verifying}
+                className="mb-4 text-sm text-[#635bff] hover:underline flex items-center gap-2 mx-auto"
+              >
+                {verifying ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Checking status...
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink className="w-4 h-4" />
+                    Refresh Account Status
+                  </>
+                )}
+              </button>
             )}
 
             {statusDisplay.action && (
