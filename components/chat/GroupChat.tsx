@@ -1445,19 +1445,21 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                         {/* Profile picture on the left */}
                         <MessageAvatar userId={msg.userId} fallbackName={msg.userName} isHost={msg.isHost} />
                         
-                        {/* Message content */}
-                        <div className="flex flex-col space-y-1 flex-1 min-w-0">
+                        {/* Message content - no flex-1 to prevent stretching, max-w on parent */}
+                        <div className="flex flex-col space-y-1 min-w-0 max-w-[85%]">
                           <div className={`${
                             msg.isHost 
                               ? 'bg-[#e35e25]/10 border-[#e35e25]/30' 
                               : 'bg-white border-gray-100'
-                          } text-gray-800 px-4 py-3 rounded-2xl rounded-tl-none shadow-sm border max-w-[85%] text-sm leading-relaxed`}>
+                          } text-gray-800 px-4 py-3 rounded-2xl rounded-tl-none shadow-sm border w-fit text-sm leading-relaxed`}>
                             {imageMatch ? (
-                              <div className="space-y-2">
+                              <div className="space-y-1">
                                 <img 
                                   src={imageMatch[1]} 
                                   alt={imageMatch[2]} 
-                                  className="rounded-lg max-w-full h-auto max-h-64 object-contain"
+                                  className="rounded-lg max-w-full h-auto max-h-64 object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                                  onClick={() => window.open(imageMatch[1], '_blank')}
+                                  title="Click to view full image"
                                 />
                                 <p className="text-xs text-gray-500">{imageMatch[2]}</p>
                               </div>
