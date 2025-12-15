@@ -466,14 +466,19 @@ export const useUserStore = create<UserStore>()(
           const rsvps = Array.isArray(reservationDocs) ? reservationDocs.map(r => r.eventId).filter(Boolean) : [];
           const hostedEvents = Array.isArray(firestoreUser?.hostedEvents) ? firestoreUser.hostedEvents : [];
           
+          // FIXED: Prioritize Firestore photoURL over Firebase Auth to ensure consistency
+          // Firestore is the single source of truth for profile data
+          const photoURL = firestoreUser?.photoURL || firestoreUser?.imageUrl || firebaseUser.photoURL || '';
+          const displayName = firestoreUser?.displayName || firestoreUser?.name || firebaseUser.displayName || '';
+          
           const user: User = {
             uid: firebaseUser.uid,
             email: firebaseUser.email || '',
-            photoURL: firebaseUser.photoURL || firestoreUser?.photoURL || '',
-            displayName: firebaseUser.displayName || firestoreUser?.displayName || '',
+            photoURL,
+            displayName,
             id: firebaseUser.uid,
-            name: firebaseUser.displayName || firestoreUser?.displayName || '',
-            profileImageUrl: firebaseUser.photoURL || firestoreUser?.photoURL || '',
+            name: displayName,
+            profileImageUrl: photoURL,
             createdAt: firestoreUser?.createdAt ? new Date(firestoreUser.createdAt).toISOString() : new Date().toISOString(),
             preferences: firestoreUser?.preferences || 'both',
             favorites,

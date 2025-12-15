@@ -43,30 +43,22 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
   }, [setViewState]);
   
   // REFACTORED: Real-time subscription to /users/{userId} - single source of truth
+  // Initialize with null - subscription will provide the real data
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string>(userName);
   
+  // Track if subscription has provided data yet
+  const hasSubscriptionDataRef = React.useRef(false);
+  
   useEffect(() => {
-    // Initialize with userProfile from store if available (faster initial load)
-    if (userProfile?.photoURL) {
-      setProfilePicture(userProfile.photoURL);
-    } else if (user?.photoURL) {
-      setProfilePicture(user.photoURL);
-    } else {
-      setProfilePicture(null);
-    }
-    
-    if (userProfile?.displayName) {
-      setDisplayName(userProfile.displayName);
-    } else if (user?.displayName) {
-      setDisplayName(user.displayName);
-    } else {
-      setDisplayName(userName);
-    }
-    
     if (!user?.uid) {
+      setProfilePicture(null);
+      setDisplayName(userName);
       return;
     }
+    
+    // Reset ref when user changes
+    hasSubscriptionDataRef.current = false;
     
     if (import.meta.env.DEV) {
       console.log('[PROFILE_PAGE] 📡 Subscribing to user profile:', { userId: user.uid });
@@ -74,31 +66,31 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
     
     let unsubscribe: (() => void) | null = null;
     
-    // Real-time subscription to user document (overrides initial values)
+    // Real-time subscription to user document - SINGLE SOURCE OF TRUTH
     try {
       unsubscribe = subscribeToUserProfile(user.uid, (userData) => {
+        hasSubscriptionDataRef.current = true;
         if (userData) {
           setProfilePicture(userData.photoURL || null);
           setDisplayName(userData.displayName || userName);
           
           if (import.meta.env.DEV) {
-            console.log('[PROFILE_PAGE] ✅ User profile updated:', {
+            console.log('[PROFILE_PAGE] ✅ User profile updated from Firestore:', {
               userId: user.uid,
               displayName: userData.displayName,
               hasPhoto: !!userData.photoURL,
             });
           }
         } else {
-          // Fallback to user object if subscription returns null
-          setProfilePicture(user?.photoURL || null);
-          setDisplayName(user?.displayName || userName);
+          // User document doesn't exist - use fallback
+          setProfilePicture(null);
+          setDisplayName(userName);
         }
       });
     } catch (error) {
       console.error('[PROFILE_PAGE] ❌ Error loading user subscriptions:', error);
-      // Fallback to user object on error
-      setProfilePicture(user?.photoURL || null);
-      setDisplayName(user?.displayName || userName);
+      setProfilePicture(null);
+      setDisplayName(userName);
     }
     
     return () => {
@@ -109,7 +101,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
         unsubscribe();
       }
     };
-  }, [user?.uid, userName, user?.photoURL, user?.displayName, userProfile?.photoURL, userProfile?.displayName]);
+  }, [user?.uid, userName]); // Only depend on uid and userName - NOT store photoURL values
   const initials = getInitials(displayName);
   
   // Subscribe to ALL real-time metrics updates (no initial async calculation to avoid race conditions)

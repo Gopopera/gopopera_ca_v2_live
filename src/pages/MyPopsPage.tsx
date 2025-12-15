@@ -7,6 +7,7 @@ import { getDbSafe } from '../lib/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { mapFirestoreEventToEvent } from '../../firebase/db';
 import type { FirestoreEvent } from '../../firebase/types';
+import { subscribeToUserProfile } from '../../firebase/userSubscriptions';
 
 interface MyPopsPageProps {
   setViewState: (view: ViewState) => void;
@@ -60,24 +61,39 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
   const user = useUserStore((state) => state.user);
   const [hostProfilePictures, setHostProfilePictures] = useState<Record<string, string | null>>({});
   const [failedProfilePics, setFailedProfilePics] = useState<Set<string>>(new Set());
+  
+  // Real-time subscription to current user's profile picture from Firestore
+  const [currentUserProfilePic, setCurrentUserProfilePic] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (!user?.uid) {
+      setCurrentUserProfilePic(null);
+      return;
+    }
+    
+    // Subscribe to current user's profile from Firestore - single source of truth
+    const unsubscribe = subscribeToUserProfile(user.uid, (userData) => {
+      setCurrentUserProfilePic(userData?.photoURL || null);
+    });
+    
+    return () => unsubscribe();
+  }, [user?.uid]);
 
-  // Fetch host profile pictures for hosting events
+  // Update host profile pictures when currentUserProfilePic changes
   React.useEffect(() => {
     if (!user?.uid) return;
 
-    const fetchProfilePictures = async () => {
+    const updateProfilePictures = async () => {
       const hosting = events.filter(event => 
         event.hostId === user.uid || user.hostedEvents?.includes(event.id)
       );
 
       const pictureMap: Record<string, string | null> = {};
       
-      // Use current user's profile picture for their events
-      const userProfilePic = user?.photoURL || user?.profileImageUrl || null;
-      
       for (const event of hosting) {
         if (event.hostId === user.uid) {
-          pictureMap[event.id] = userProfilePic;
+          // Use real-time profile picture from Firestore subscription
+          pictureMap[event.id] = currentUserProfilePic;
         } else {
           // For other hosts, fetch from Firestore
           try {
@@ -92,8 +108,8 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
       setHostProfilePictures(pictureMap);
     };
 
-    fetchProfilePictures();
-  }, [events, user]);
+    updateProfilePictures();
+  }, [events, user?.uid, user?.hostedEvents, currentUserProfilePic]);
 
   // Filter events by hosting vs attending vs draft vs past
   // Load draft events separately from Firestore (they're filtered out from main event store)
