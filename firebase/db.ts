@@ -973,6 +973,115 @@ export function subscribeToAttendedEventsCount(
 }
 
 /**
+ * Subscribe to all user events categorized by type in real-time
+ * Returns counts for: hosting (upcoming), past, drafts
+ */
+export interface UserEventCounts {
+  hosting: number;    // Upcoming events user is hosting (non-draft)
+  past: number;       // Past events user has hosted
+  drafts: number;     // Draft events
+  total: number;      // Total (hosting + past + drafts)
+}
+
+export function subscribeToUserEventCounts(
+  userId: string,
+  callback: (counts: UserEventCounts) => void
+): Unsubscribe {
+  const db = getDbSafe();
+  if (!db) {
+    callback({ hosting: 0, past: 0, drafts: 0, total: 0 });
+    return () => {};
+  }
+
+  try {
+    const eventsCol = collection(db, "events");
+    const q = query(
+      eventsCol,
+      where("hostId", "==", userId)
+    );
+    
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const now = Date.now();
+        let hosting = 0;
+        let past = 0;
+        let drafts = 0;
+        
+        snapshot.docs.forEach(doc => {
+          const data = doc.data() as FirestoreEvent;
+          
+          // Skip demo and Popera-owned events
+          if (data.isDemo === true || data.isPoperaOwned === true) {
+            return;
+          }
+          
+          // Ensure hostId matches exactly
+          if (data.hostId !== userId) {
+            return;
+          }
+          
+          // Categorize the event
+          if (data.isDraft === true) {
+            drafts++;
+          } else {
+            // Check if event is in the past
+            const eventDate = data.startDateTime || parseEventDateToTimestamp(data.date, data.time);
+            if (eventDate && eventDate < now) {
+              past++;
+            } else {
+              hosting++;
+            }
+          }
+        });
+        
+        callback({ hosting, past, drafts, total: hosting + past + drafts });
+      },
+      (error) => {
+        console.error('Error in user event counts subscription:', error);
+        callback({ hosting: 0, past: 0, drafts: 0, total: 0 });
+      }
+    );
+  } catch (error) {
+    console.error('Error setting up user event counts subscription:', error);
+    callback({ hosting: 0, past: 0, drafts: 0, total: 0 });
+    return () => {};
+  }
+}
+
+/**
+ * Helper to parse event date string to timestamp
+ */
+function parseEventDateToTimestamp(dateStr: string | undefined, timeStr: string | undefined): number | null {
+  if (!dateStr) return null;
+  
+  try {
+    // Try parsing common date formats
+    // Format: "Dec 15, 2025" or "December 15, 2025" or "2025-12-15"
+    let date = new Date(dateStr);
+    
+    // If time is provided, try to add it
+    if (timeStr) {
+      const timeMatch = timeStr.match(/(\d{1,2}):?(\d{2})?\s*(AM|PM)?/i);
+      if (timeMatch) {
+        let hours = parseInt(timeMatch[1], 10);
+        const minutes = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
+        const ampm = timeMatch[3]?.toUpperCase();
+        
+        if (ampm === 'PM' && hours < 12) hours += 12;
+        if (ampm === 'AM' && hours === 12) hours = 0;
+        
+        date.setHours(hours, minutes, 0, 0);
+      }
+    }
+    
+    return date.getTime();
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Subscribe to total attendees count across all hosted events in real-time
  */
 export function subscribeToTotalAttendeesCount(

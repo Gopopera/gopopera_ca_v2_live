@@ -112,9 +112,11 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
   }, [events, user?.uid, user?.hostedEvents, currentUserProfilePic]);
 
   // Filter events by hosting vs attending vs draft vs past
-  // Load draft events separately from Firestore (they're filtered out from main event store)
+  // Load draft and past events separately from Firestore (they may be filtered out from main event store)
   const [draftEventsFromFirestore, setDraftEventsFromFirestore] = useState<Event[]>([]);
+  const [pastEventsFromFirestore, setPastEventsFromFirestore] = useState<Event[]>([]);
   const [draftsLoading, setDraftsLoading] = useState(false);
+  const [pastLoading, setPastLoading] = useState(false);
 
   useEffect(() => {
     const loadDraftEvents = async () => {
@@ -161,6 +163,62 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
     loadDraftEvents();
   }, [user?.uid]);
 
+  // Load past events from Firestore to ensure they're always available
+  useEffect(() => {
+    const loadPastEvents = async () => {
+      if (!user?.uid) {
+        setPastEventsFromFirestore([]);
+        return;
+      }
+
+      setPastLoading(true);
+      try {
+        const db = getDbSafe();
+        if (!db) {
+          setPastEventsFromFirestore([]);
+          return;
+        }
+
+        // Query for all events where user is the host (we'll filter past events client-side)
+        const eventsCol = collection(db, 'events');
+        const hostedQuery = query(
+          eventsCol,
+          where('hostId', '==', user.uid)
+        );
+        const hostedSnapshot = await getDocs(hostedQuery);
+        
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        
+        const pastHosted: Event[] = hostedSnapshot.docs
+          .map((doc) => {
+            const data = doc.data();
+            const firestoreEvent: FirestoreEvent = {
+              id: doc.id,
+              ...(data as Omit<FirestoreEvent, 'id'>),
+            };
+            return mapFirestoreEventToEvent(firestoreEvent);
+          })
+          .filter(event => {
+            if (event.isDraft) return false;
+            if (!event.date) return false;
+            const eventDate = new Date(event.date);
+            eventDate.setHours(0, 0, 0, 0);
+            return eventDate < now;
+          });
+
+        setPastEventsFromFirestore(pastHosted);
+      } catch (error) {
+        console.error('[MY_POPS] Error loading past events:', error);
+        setPastEventsFromFirestore([]);
+      } finally {
+        setPastLoading(false);
+      }
+    };
+
+    loadPastEvents();
+  }, [user?.uid]);
+
   const { hostingEvents, attendingEvents, draftEvents, pastEvents } = useMemo(() => {
     if (!user) {
       return { hostingEvents: [], attendingEvents: [], draftEvents: [], pastEvents: [] };
@@ -184,14 +242,21 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
       index === self.findIndex(e => e.id === event.id)
     );
 
-    const past = events.filter(event => {
+    // Combine past events from main events array with past events loaded from Firestore
+    const pastFromMain = events.filter(event => {
       const isHosted = event.hostId === user.uid || user.hostedEvents?.includes(event.id);
       const isAttending = user.rsvps?.includes(event.id);
       return (isHosted || isAttending) && isEventPast(event) && !event.isDraft;
     });
+    
+    // Merge and deduplicate past events by event ID
+    const allPast = [...pastFromMain, ...pastEventsFromFirestore];
+    const uniquePast = allPast.filter((event, index, self) => 
+      index === self.findIndex(e => e.id === event.id)
+    );
 
-    return { hostingEvents: hosting, attendingEvents: attending, draftEvents: uniqueDrafts, pastEvents: past };
-  }, [events, user, draftEventsFromFirestore]);
+    return { hostingEvents: hosting, attendingEvents: attending, draftEvents: uniqueDrafts, pastEvents: uniquePast };
+  }, [events, user, draftEventsFromFirestore, pastEventsFromFirestore]);
 
   const currentEvents = 
     activeTab === 'hosting' ? hostingEvents :

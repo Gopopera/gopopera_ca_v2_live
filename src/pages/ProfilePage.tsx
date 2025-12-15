@@ -8,7 +8,9 @@ import {
   subscribeToAttendedEventsCount,
   subscribeToTotalAttendeesCount,
   subscribeToReviewsCount,
-  subscribeToHostRevenue
+  subscribeToHostRevenue,
+  subscribeToUserEventCounts,
+  type UserEventCounts
 } from '../../firebase/db';
 // REFACTORED: Using real-time subscriptions for all metrics
 import { 
@@ -30,7 +32,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
   const userProfile = useUserStore((state) => state.userProfile);
   const refreshUserProfile = useUserStore((state) => state.refreshUserProfile);
   const allEvents = useEventStore((state) => state.events);
-  const [stats, setStats] = useState({ revenue: 0, hosted: 0, attendees: 0, following: 0, attended: 0, reviews: 0, followers: 0 });
+  const [stats, setStats] = useState({ 
+    revenue: 0, 
+    hosted: 0, 
+    attendees: 0, 
+    following: 0, 
+    attended: 0, 
+    reviews: 0, 
+    followers: 0,
+    eventCounts: { hosting: 0, past: 0, drafts: 0, total: 0 } as UserEventCounts
+  });
   const [loading, setLoading] = useState(true);
   
   // Auto-navigate to Stripe settings if returning from Stripe onboarding
@@ -125,7 +136,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
   useEffect(() => {
     if (!user?.uid) {
       setLoading(false);
-      setStats({ revenue: 0, hosted: 0, attendees: 0, following: 0, attended: 0, reviews: 0, followers: 0 });
+      setStats({ 
+        revenue: 0, 
+        hosted: 0, 
+        attendees: 0, 
+        following: 0, 
+        attended: 0, 
+        reviews: 0, 
+        followers: 0,
+        eventCounts: { hosting: 0, past: 0, drafts: 0, total: 0 }
+      });
       return;
     }
     
@@ -133,7 +153,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
     
     // Track how many subscriptions have fired at least once
     let subscriptionsFired = 0;
-    const totalSubscriptions = 7; // followers, following, hosted, attended, attendees, reviews, revenue
+    const totalSubscriptions = 8; // followers, following, hosted, attended, attendees, reviews, revenue, eventCounts
     
     const checkLoadingComplete = () => {
       subscriptionsFired++;
@@ -195,6 +215,13 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
       checkLoadingComplete();
     });
     unsubscribes.push(unsubscribeRevenue);
+    
+    // Subscribe to comprehensive event counts (hosting, past, drafts) - STATIC IMPORT
+    const unsubscribeEventCounts = subscribeToUserEventCounts(user.uid, (counts: UserEventCounts) => {
+      setStats(prev => ({ ...prev, eventCounts: counts }));
+      checkLoadingComplete();
+    });
+    unsubscribes.push(unsubscribeEventCounts);
     
     // Fallback: if subscriptions don't fire within 3 seconds, stop loading
     const loadingTimeout = setTimeout(() => {
@@ -343,101 +370,140 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
           </button>
         </div>
 
-        {/* Stats Section - Liquid Glass Style */}
-        <div className="mb-12 sm:mb-16 md:mb-20">
-          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 md:gap-14">
-            {/* Following */}
-            <button
-              onClick={() => setViewState(ViewState.PROFILE_FOLLOWING)}
-              className="flex flex-col items-center gap-2 cursor-pointer touch-manipulation active:scale-95 group"
-            >
-              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/80 backdrop-blur-sm border border-gray-200/60 rounded-full flex items-center justify-center group-hover:bg-white group-hover:border-[#e35e25]/30 transition-all shadow-sm">
-                <Users size={20} className="text-[#e35e25]" />
-              </div>
-              <div className="text-center">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c]">{loading ? '...' : stats.following}</div>
-                <div className="text-xs sm:text-sm text-gray-500 uppercase tracking-wide mt-1">Following</div>
-              </div>
-            </button>
-            
-            {/* Events Hosted */}
-            <button
-              onClick={() => setViewState(ViewState.MY_POPS)}
-              className="flex flex-col items-center gap-2 cursor-pointer touch-manipulation active:scale-95 group"
-            >
-              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/80 backdrop-blur-sm border border-gray-200/60 rounded-full flex items-center justify-center group-hover:bg-white group-hover:border-[#e35e25]/30 transition-all shadow-sm">
-                <Calendar size={20} className="text-[#e35e25]" />
-              </div>
-              <div className="text-center">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c]">{loading ? '...' : stats.hosted}</div>
-                <div className="text-xs sm:text-sm text-gray-500 uppercase tracking-wide mt-1">Events</div>
-              </div>
-            </button>
-            
-            {/* Attendees */}
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/80 backdrop-blur-sm border border-gray-200/60 rounded-full flex items-center justify-center shadow-sm">
-                <Users size={20} className="text-[#e35e25]" />
-              </div>
-              <div className="text-center">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c]">{loading ? '...' : stats.attendees}</div>
-                <div className="text-xs sm:text-sm text-gray-500 uppercase tracking-wide mt-1">Attendees</div>
-              </div>
+        {/* Stats Cards - Liquid Glass Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-8 sm:mb-10">
+          {/* Community Card */}
+          <div className="bg-white/90 backdrop-blur-xl rounded-[24px] sm:rounded-[28px] shadow-lg border border-gray-100/80 p-5 sm:p-6 hover:shadow-xl transition-all">
+            <h3 className="text-xs sm:text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Community</h3>
+            <div className="space-y-4">
+              {/* Followers */}
+              <button
+                onClick={() => setViewState(ViewState.PROFILE_FOLLOWERS)}
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50/80 transition-all group touch-manipulation active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-[#e35e25]/10 rounded-full flex items-center justify-center">
+                    <Users size={18} className="text-[#e35e25]" />
+                  </div>
+                  <span className="text-sm sm:text-base text-gray-600 font-medium">Followers</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl sm:text-2xl font-heading font-bold text-[#15383c]">{loading ? '...' : stats.followers}</span>
+                  <ChevronRight size={16} className="text-gray-300 group-hover:text-[#e35e25] transition-colors" />
+                </div>
+              </button>
+              
+              {/* Following */}
+              <button
+                onClick={() => setViewState(ViewState.PROFILE_FOLLOWING)}
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50/80 transition-all group touch-manipulation active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-[#15383c]/10 rounded-full flex items-center justify-center">
+                    <Heart size={18} className="text-[#15383c]" />
+                  </div>
+                  <span className="text-sm sm:text-base text-gray-600 font-medium">Following</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl sm:text-2xl font-heading font-bold text-[#15383c]">{loading ? '...' : stats.following}</span>
+                  <ChevronRight size={16} className="text-gray-300 group-hover:text-[#e35e25] transition-colors" />
+                </div>
+              </button>
+              
+              {/* Reviews */}
+              <button
+                onClick={() => setViewState(ViewState.PROFILE_REVIEWS)}
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50/80 transition-all group touch-manipulation active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-yellow-50 rounded-full flex items-center justify-center">
+                    <Star size={18} className="text-yellow-500 fill-yellow-500" />
+                  </div>
+                  <span className="text-sm sm:text-base text-gray-600 font-medium">Reviews</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl sm:text-2xl font-heading font-bold text-[#15383c]">{loading ? '...' : stats.reviews}</span>
+                  <ChevronRight size={16} className="text-gray-300 group-hover:text-[#e35e25] transition-colors" />
+                </div>
+              </button>
             </div>
-            
-            {/* Reviews */}
-            <button
-              onClick={() => setViewState(ViewState.PROFILE_REVIEWS)}
-              className="flex flex-col items-center gap-2 cursor-pointer touch-manipulation active:scale-95 group"
-            >
-              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/80 backdrop-blur-sm border border-gray-200/60 rounded-full flex items-center justify-center group-hover:bg-white group-hover:border-[#e35e25]/30 transition-all shadow-sm">
-                <Star size={20} className="text-[#e35e25] fill-[#e35e25]" />
+          </div>
+          
+          {/* Performance Card */}
+          <div className="bg-white/90 backdrop-blur-xl rounded-[24px] sm:rounded-[28px] shadow-lg border border-gray-100/80 p-5 sm:p-6 hover:shadow-xl transition-all">
+            <h3 className="text-xs sm:text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Performance</h3>
+            <div className="space-y-4">
+              {/* My Events - Combined count (hosting + attending + drafts + past) */}
+              <button
+                onClick={() => setViewState(ViewState.MY_POPS)}
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50/80 transition-all group touch-manipulation active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-[#e35e25]/10 rounded-full flex items-center justify-center">
+                    <Calendar size={18} className="text-[#e35e25]" />
+                  </div>
+                  <span className="text-sm sm:text-base text-gray-600 font-medium">My Events</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl sm:text-2xl font-heading font-bold text-[#15383c]">{loading ? '...' : (stats.eventCounts.total + stats.attended)}</span>
+                  <ChevronRight size={16} className="text-gray-300 group-hover:text-[#e35e25] transition-colors" />
+                </div>
+              </button>
+              
+              {/* Total Attendees */}
+              <div className="flex items-center justify-between p-3 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-[#15383c]/10 rounded-full flex items-center justify-center">
+                    <Users size={18} className="text-[#15383c]" />
+                  </div>
+                  <span className="text-sm sm:text-base text-gray-600 font-medium">Total Attendees</span>
+                </div>
+                <span className="text-xl sm:text-2xl font-heading font-bold text-[#15383c]">{loading ? '...' : stats.attendees}</span>
               </div>
-              <div className="text-center">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c]">{loading ? '...' : stats.reviews}</div>
-                <div className="text-xs sm:text-sm text-gray-500 uppercase tracking-wide mt-1">Reviews</div>
-              </div>
-            </button>
-            
-            {/* Followers */}
-            <button
-              onClick={() => setViewState(ViewState.PROFILE_FOLLOWERS)}
-              className="flex flex-col items-center gap-2 cursor-pointer touch-manipulation active:scale-95 group"
-            >
-              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/80 backdrop-blur-sm border border-gray-200/60 rounded-full flex items-center justify-center group-hover:bg-white group-hover:border-[#e35e25]/30 transition-all shadow-sm">
-                <Users size={20} className="text-[#e35e25]" />
-              </div>
-              <div className="text-center">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c]">{loading ? '...' : stats.followers}</div>
-                <div className="text-xs sm:text-sm text-gray-500 uppercase tracking-wide mt-1">Followers</div>
-              </div>
-            </button>
+              
+              {/* Hosting - Upcoming events only */}
+              <button
+                onClick={() => setViewState(ViewState.MY_POPS)}
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50/80 transition-all group touch-manipulation active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center">
+                    <Calendar size={18} className="text-green-600" />
+                  </div>
+                  <span className="text-sm sm:text-base text-gray-600 font-medium">Hosting</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl sm:text-2xl font-heading font-bold text-[#15383c]">{loading ? '...' : stats.eventCounts.hosting}</span>
+                  <ChevronRight size={16} className="text-gray-300 group-hover:text-[#e35e25] transition-colors" />
+                </div>
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Total Revenue Card - Liquid Glass Dark */}
         <div 
-          className="bg-[#15383c]/90 backdrop-blur-xl p-7 sm:p-9 rounded-[28px] md:rounded-[36px] shadow-xl border border-[#15383c]/50 flex justify-between items-center mb-12 sm:mb-16 cursor-pointer hover:shadow-2xl transition-all touch-manipulation active:scale-95 group" 
+          className="bg-gradient-to-r from-[#15383c] to-[#1a4549] backdrop-blur-xl p-6 sm:p-7 rounded-[24px] sm:rounded-[28px] shadow-xl border border-[#15383c]/50 flex justify-between items-center mb-8 sm:mb-10 cursor-pointer hover:shadow-2xl hover:scale-[1.01] transition-all touch-manipulation active:scale-[0.98] group" 
           onClick={() => setViewState(ViewState.PROFILE_STRIPE)}
         >
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-white/15 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:bg-white/25 transition-all border border-white/20">
-              <span className="text-white font-bold text-xl">$</span>
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/15 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:bg-white/25 transition-all border border-white/20">
+              <span className="text-white font-bold text-lg sm:text-xl">$</span>
             </div>
             <div>
-              <span className="text-white/80 font-medium text-sm sm:text-base block mb-1">Total Revenue</span>
-              <span className="text-3xl sm:text-4xl md:text-5xl font-heading font-bold text-white">${stats.revenue}</span>
+              <span className="text-white/70 font-medium text-xs sm:text-sm block mb-0.5">Total Revenue</span>
+              <span className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-white">${stats.revenue}</span>
             </div>
           </div>
-          <ChevronRight size={24} className="text-white/60 group-hover:text-white transition-colors" />
+          <ChevronRight size={22} className="text-white/50 group-hover:text-white transition-colors" />
         </div>
 
         {/* Events Section - Premium grid */}
         {hostedEvents.length > 0 && (
-          <div className="mb-12 sm:mb-16 md:mb-20">
-            <div className="flex items-center justify-between mb-6 sm:mb-8">
-              <h2 className="font-heading font-bold text-2xl sm:text-3xl md:text-4xl text-[#15383c]">
-                {stats.hosted} Events
+          <div className="mb-8 sm:mb-10">
+            <div className="flex items-center justify-between mb-5 sm:mb-6">
+              <h2 className="font-heading font-bold text-xl sm:text-2xl md:text-3xl text-[#15383c]">
+                My Events
               </h2>
               <button
                 onClick={() => setViewState(ViewState.MY_POPS)}
@@ -473,30 +539,29 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
         )}
 
         {/* Settings Menu - Liquid Glass Style */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-[28px] md:rounded-[36px] shadow-lg border border-white/60 overflow-hidden">
+        <div className="bg-white/90 backdrop-blur-xl rounded-[24px] sm:rounded-[28px] shadow-lg border border-gray-100/80 overflow-hidden">
+          <h3 className="text-xs sm:text-sm font-bold text-gray-400 uppercase tracking-wider px-5 sm:px-6 pt-5 sm:pt-6 pb-2">Settings</h3>
           {settingsLinks.map((item, idx) => {
             const Icon = item.icon || Settings;
             return (
               <button
                 key={idx}
                 onClick={item.action}
-                className={`w-full flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-gray-100/80 last:border-0 hover:bg-white/80 transition-all text-left touch-manipulation active:scale-95 ${
+                className={`w-full flex items-center justify-between px-5 sm:px-6 py-3.5 sm:py-4 border-b border-gray-100/60 last:border-0 hover:bg-gray-50/80 transition-all text-left touch-manipulation active:scale-[0.98] ${
                   item.isLogout ? 'text-gray-500 hover:text-red-500' : 'text-[#15383c]'
                 }`}
               >
-                <div className="flex items-center gap-3 sm:gap-4">
-                  <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center backdrop-blur-sm ${
-                    item.isLogout ? 'bg-gray-100/80 border border-gray-200/60' : 'bg-white/80 border border-gray-200/60'
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    item.isLogout ? 'bg-gray-100/80' : 'bg-[#e35e25]/10'
                   }`}>
-                    <Icon size={18} className={`sm:w-5 sm:h-5 ${
-                      item.isLogout ? 'text-gray-500' : 'text-[#e35e25]'
-                    }`} />
+                    <Icon size={18} className={item.isLogout ? 'text-gray-500' : 'text-[#e35e25]'} />
                   </div>
-                  <span className={`text-base sm:text-lg ${item.isLogout ? '' : 'font-medium'}`}>
+                  <span className={`text-sm sm:text-base ${item.isLogout ? '' : 'font-medium'}`}>
                     {item.label}
                   </span>
                 </div>
-                <ChevronRight size={18} className="sm:w-5 sm:h-5 text-gray-400" />
+                <ChevronRight size={16} className="text-gray-300" />
               </button>
             );
           })}
