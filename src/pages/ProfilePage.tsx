@@ -7,7 +7,8 @@ import {
   subscribeToHostedEventsCount,
   subscribeToAttendedEventsCount,
   subscribeToTotalAttendeesCount,
-  subscribeToReviewsCount
+  subscribeToReviewsCount,
+  subscribeToHostRevenue
 } from '../../firebase/db';
 // REFACTORED: Using real-time subscriptions for all metrics
 import { 
@@ -29,7 +30,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
   const userProfile = useUserStore((state) => state.userProfile);
   const refreshUserProfile = useUserStore((state) => state.refreshUserProfile);
   const allEvents = useEventStore((state) => state.events);
-  const [stats, setStats] = useState({ revenue: 30, hosted: 0, attendees: 0, following: 0, attended: 0, reviews: 0, followers: 0 });
+  const [stats, setStats] = useState({ revenue: 0, hosted: 0, attendees: 0, following: 0, attended: 0, reviews: 0, followers: 0 });
   const [loading, setLoading] = useState(true);
   
   // Auto-navigate to Stripe settings if returning from Stripe onboarding
@@ -132,7 +133,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
     
     // Track how many subscriptions have fired at least once
     let subscriptionsFired = 0;
-    const totalSubscriptions = 6; // followers, following, hosted, attended, attendees, reviews
+    const totalSubscriptions = 7; // followers, following, hosted, attended, attendees, reviews, revenue
     
     const checkLoadingComplete = () => {
       subscriptionsFired++;
@@ -159,6 +160,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
     unsubscribes.push(unsubscribeFollowing);
     
     // Subscribe to hosted events count (real-time) - STATIC IMPORT
+    // Note: This now excludes demo and Popera-owned events
     const unsubscribeHosted = subscribeToHostedEventsCount(user.uid, (count: number) => {
       setStats(prev => ({ ...prev, hosted: count }));
       checkLoadingComplete();
@@ -185,6 +187,14 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
       checkLoadingComplete();
     });
     unsubscribes.push(unsubscribeReviews);
+    
+    // Subscribe to host revenue (real-time) - STATIC IMPORT
+    // Calculates total revenue from successful payments on hosted events
+    const unsubscribeRevenue = subscribeToHostRevenue(user.uid, (revenue: number) => {
+      setStats(prev => ({ ...prev, revenue: revenue }));
+      checkLoadingComplete();
+    });
+    unsubscribes.push(unsubscribeRevenue);
     
     // Fallback: if subscriptions don't fire within 3 seconds, stop loading
     const loadingTimeout = setTimeout(() => {
@@ -224,10 +234,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
   }, [user?.email, user?.uid, refreshUserProfile]);
   
   // Get user's hosted events for preview
+  // Filter criteria matches subscribeToHostedEventsCount: exclude drafts, demos, and Popera-owned events
   const hostedEvents = useMemo(() => {
     if (!user?.uid) return [];
     return allEvents
-      .filter(e => e.hostId === user.uid && e.isDraft !== true)
+      .filter(e => 
+        e.hostId === user.uid && 
+        e.isDraft !== true && 
+        e.isDemo !== true && 
+        e.isPoperaOwned !== true
+      )
       .slice(0, 6); // Show up to 6 events
   }, [allEvents, user?.uid]);
 

@@ -799,13 +799,18 @@ export function subscribeToHostedEventsCount(
     return onSnapshot(
       q,
       (snapshot) => {
-        // Count only non-draft events AND validate hostId matches exactly
-        // This prevents counting events with corrupted or incorrect hostId values
+        // Count only valid events:
+        // - hostId matches exactly (defense against data corruption)
+        // - Not a draft
+        // - Not a demo event
+        // - Not a Popera-owned event (unless user is the Popera account)
         const count = snapshot.docs.filter(doc => {
           const data = doc.data() as FirestoreEvent;
           // Ensure hostId matches exactly (defense against data corruption)
           const isValidHost = data.hostId === hostId;
           const isNotDraft = data.isDraft !== true;
+          const isNotDemo = data.isDemo !== true;
+          const isNotPoperaOwned = data.isPoperaOwned !== true;
           
           if (!isValidHost) {
             console.warn('[HOSTED_EVENTS_COUNT] Event has mismatched hostId:', {
@@ -816,7 +821,7 @@ export function subscribeToHostedEventsCount(
             });
           }
           
-          return isValidHost && isNotDraft;
+          return isValidHost && isNotDraft && isNotDemo && isNotPoperaOwned;
         }).length;
         
         callback(count);
@@ -828,6 +833,90 @@ export function subscribeToHostedEventsCount(
     );
   } catch (error) {
     console.error('Error setting up hosted events count subscription:', error);
+    callback(0);
+    return () => {};
+  }
+}
+
+/**
+ * Subscribe to host revenue in real-time
+ * Calculates total revenue from reservations for events hosted by this user
+ */
+export function subscribeToHostRevenue(
+  hostId: string,
+  callback: (revenue: number) => void
+): Unsubscribe {
+  const db = getDbSafe();
+  if (!db) {
+    callback(0);
+    return () => {};
+  }
+
+  try {
+    // First, get all events for this host
+    const eventsCol = collection(db, "events");
+    const eventsQuery = query(
+      eventsCol,
+      where("hostId", "==", hostId)
+    );
+
+    return onSnapshot(
+      eventsQuery,
+      async (eventsSnapshot) => {
+        // Get all event IDs for this host (excluding drafts and demo events)
+        const eventIds = eventsSnapshot.docs
+          .filter(doc => {
+            const data = doc.data() as FirestoreEvent;
+            return data.hostId === hostId && 
+                   data.isDraft !== true && 
+                   data.isDemo !== true && 
+                   data.isPoperaOwned !== true;
+          })
+          .map(doc => doc.id);
+
+        if (eventIds.length === 0) {
+          callback(0);
+          return;
+        }
+
+        // Query reservations for these events with successful payments
+        // Note: Firestore doesn't support 'in' queries with more than 10 items
+        // So we need to batch if there are many events
+        let totalRevenue = 0;
+        const batchSize = 10;
+        
+        for (let i = 0; i < eventIds.length; i += batchSize) {
+          const batchEventIds = eventIds.slice(i, i + batchSize);
+          const reservationsCol = collection(db, "reservations");
+          const reservationsQuery = query(
+            reservationsCol,
+            where("eventId", "in", batchEventIds),
+            where("status", "==", "reserved")
+          );
+          
+          const reservationsSnapshot = await getDocs(reservationsQuery);
+          
+          reservationsSnapshot.docs.forEach(doc => {
+            const data = doc.data() as FirestoreReservation;
+            // Only count reservations with successful payments
+            if (data.totalAmount && data.totalAmount > 0) {
+              // Check if payment was successful (has paymentIntentId or paymentStatus is succeeded)
+              if (data.paymentIntentId || data.paymentStatus === 'succeeded') {
+                totalRevenue += data.totalAmount;
+              }
+            }
+          });
+        }
+
+        callback(totalRevenue);
+      },
+      (error) => {
+        console.error('Error in host revenue subscription:', error);
+        callback(0);
+      }
+    );
+  } catch (error) {
+    console.error('Error setting up host revenue subscription:', error);
     callback(0);
     return () => {};
   }
