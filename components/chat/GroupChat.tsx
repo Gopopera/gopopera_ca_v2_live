@@ -25,9 +25,68 @@ import { subscribeToUserProfile } from '../../firebase/userSubscriptions';
 import { useProfileStore } from '../../stores/profileStore';
 import { notifyAttendeesOfNewMessage, notifyAttendeesOfPoll, notifyAttendeesOfAnnouncement } from '../../utils/notificationHelpers';
 
+// REFACTORED: Component to fetch sender avatar in real-time from /users/{senderId}
+const MessageAvatar: React.FC<{ userId: string; fallbackName: string; isHost: boolean }> = React.memo(({ userId, fallbackName, isHost }) => {
+  const [photoURL, setPhotoURL] = React.useState<string | null>(null);
+  const [displayName, setDisplayName] = React.useState<string>(fallbackName);
+  
+  React.useEffect(() => {
+    if (!userId) {
+      setPhotoURL(null);
+      setDisplayName(fallbackName);
+      return;
+    }
+    
+    let unsubscribe: (() => void) | null = null;
+    
+    try {
+      unsubscribe = subscribeToUserProfile(userId, (userData) => {
+        if (userData) {
+          setPhotoURL(userData.photoURL || null);
+          setDisplayName(userData.displayName || fallbackName);
+        } else {
+          setPhotoURL(null);
+          setDisplayName(fallbackName);
+        }
+      });
+    } catch (error) {
+      console.error('[MESSAGE_AVATAR] ❌ Error loading user profile:', error);
+    }
+    
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [userId, fallbackName]);
+  
+  // Get initials for fallback
+  const initials = displayName?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
+  
+  return (
+    <div className={`w-8 h-8 rounded-full shrink-0 overflow-hidden ${isHost ? 'ring-2 ring-[#e35e25]' : ''}`}>
+      {photoURL ? (
+        <img 
+          src={photoURL} 
+          alt={displayName} 
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.style.display = 'none';
+          }}
+        />
+      ) : (
+        <div className={`w-full h-full flex items-center justify-center text-white text-xs font-bold ${isHost ? 'bg-[#e35e25]' : 'bg-[#15383c]'}`}>
+          {initials}
+        </div>
+      )}
+    </div>
+  );
+});
+
+MessageAvatar.displayName = 'MessageAvatar';
+
 // REFACTORED: Component to fetch sender info in real-time from /users/{senderId}
 // Memoized to prevent unnecessary re-renders when multiple messages from same sender
-const MessageSenderName: React.FC<{ userId: string; fallbackName: string; timeString: string }> = React.memo(({ userId, fallbackName, timeString }) => {
+const MessageSenderName: React.FC<{ userId: string; fallbackName: string; timeString: string; isHost?: boolean }> = React.memo(({ userId, fallbackName, timeString, isHost }) => {
   const [senderName, setSenderName] = React.useState<string>(fallbackName);
   
   React.useEffect(() => {
@@ -61,7 +120,8 @@ const MessageSenderName: React.FC<{ userId: string; fallbackName: string; timeSt
   
   return (
     <span className="text-[10px] text-gray-400">
-      {senderName} - {timeString}
+      {isHost && <span className="font-bold text-[#e35e25]">Host • </span>}
+      {senderName} • {timeString}
     </span>
   );
 });
@@ -847,72 +907,113 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
     URL.revokeObjectURL(url);
   };
 
-  // AI Insights - Only for attendees (not host), positive and encouraging
-  const aiInsights = useMemo(() => {
-    if (messages.length === 0) {
-      return {
-        summary: 'The conversation is just getting started! Be the first to say hello and connect with others.',
-        highlights: [],
-        topAnnouncement: null,
-        vibe: 'starting',
-      };
-    }
-
-    const recentMessages = messages.slice(-20);
-    const announcements = recentMessages.filter(m => m.type === 'announcement');
-    const participantMessages = recentMessages.filter(m => !m.isHost);
+  // AI Insights - Fetched from OpenAI API for real analysis
+  const [aiInsights, setAiInsights] = useState<{
+    summary: string;
+    highlights: string[];
+    topAnnouncement: string | null;
+    loading: boolean;
+  }>({
+    summary: 'Analyzing the conversation...',
+    highlights: [],
+    topAnnouncement: null,
+    loading: true,
+  });
+  
+  // Track last fetch to debounce API calls
+  const lastAiFetchRef = useRef<number>(0);
+  const aiFetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Fetch AI insights when messages change (debounced)
+  useEffect(() => {
+    // Don't fetch if host (insights only for attendees) or demo
+    if (isHost || isDemo || !canAccessChat) return;
     
-    // Positive, encouraging summary
-    let summary = '';
-    if (recentMessages.length >= 15) {
-      summary = `Great energy! The community is buzzing with ${recentMessages.length} recent messages. Keep the momentum going!`;
-    } else if (recentMessages.length >= 8) {
-      summary = `The conversation is picking up! ${recentMessages.length} people have shared their thoughts. Join in!`;
-    } else if (participantMessages.length > 0) {
-      summary = `People are connecting! ${participantMessages.length} attendees have joined the conversation.`;
-    } else {
-      summary = 'The conversation is starting. Share your thoughts and connect with others!';
+    // Debounce: wait 3 seconds after last message before fetching
+    if (aiFetchTimeoutRef.current) {
+      clearTimeout(aiFetchTimeoutRef.current);
     }
-
-    // Positive highlights (questions, excitement, engagement)
-    const highlights: string[] = [];
-    const positiveWords = ['excited', 'love', 'great', 'amazing', 'awesome', 'can\'t wait', 'looking forward', 'thank', 'appreciate'];
-    const questionWords = ['?', 'how', 'what', 'when', 'where'];
     
-    recentMessages.forEach(msg => {
-      const lowerMsg = msg.message.toLowerCase();
-      // Find positive engagement
-      if (positiveWords.some(word => lowerMsg.includes(word))) {
-        const highlight = msg.message.slice(0, 60);
-        if (highlight && !highlights.includes(highlight)) {
-          highlights.push(highlight + (msg.message.length > 60 ? '...' : ''));
-        }
-      }
-      // Find questions (showing interest)
-      if (questionWords.some(word => lowerMsg.includes(word)) && msg.message.includes('?')) {
-        const highlight = msg.message.slice(0, 60);
-        if (highlight && !highlights.includes(highlight) && highlights.length < 3) {
-          highlights.push(highlight + (msg.message.length > 60 ? '...' : ''));
-        }
-      }
-    });
-
+    // Get top announcement for display
+    const announcements = messages.filter(m => m.type === 'announcement');
     const topAnnouncement = announcements.length > 0
-      ? announcements[announcements.length - 1].message.slice(0, 120)
+      ? announcements[announcements.length - 1].message.replace(/^(Announcement:\s*)/i, '').slice(0, 120)
       : null;
-
-    let vibe = 'active';
-    if (recentMessages.length < 5) vibe = 'growing';
-    else if (participantMessages.length > recentMessages.length / 2) vibe = 'community-driven';
-    else if (recentMessages.length > 15) vibe = 'vibrant';
-
-    return {
-      summary,
-      highlights: highlights.slice(0, 3),
-      topAnnouncement,
-      vibe,
+    
+    // If no messages, show default
+    if (messages.length === 0) {
+      setAiInsights({
+        summary: 'The conversation is just getting started. Be the first to share your thoughts!',
+        highlights: [],
+        topAnnouncement,
+        loading: false,
+      });
+      return;
+    }
+    
+    // Set loading state
+    setAiInsights(prev => ({ ...prev, loading: true, topAnnouncement }));
+    
+    aiFetchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const recentMessages = messages.slice(-30).map(m => ({
+          message: m.message,
+          userName: m.userName,
+          isHost: m.isHost,
+          timestamp: m.timestamp,
+        }));
+        
+        const eventContext = {
+          title: event.title,
+          description: event.description,
+          category: event.category,
+          date: event.date,
+          location: event.location,
+        };
+        
+        const response = await fetch('/api/chat-insights', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: recentMessages, event: eventContext }),
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setAiInsights({
+            summary: data.insight || 'The conversation is active.',
+            highlights: data.highlights || [],
+            topAnnouncement,
+            loading: false,
+          });
+        } else {
+          // Fallback to simple message count
+          setAiInsights({
+            summary: `${messages.length} messages in this conversation.`,
+            highlights: [],
+            topAnnouncement,
+            loading: false,
+          });
+        }
+      } catch (error) {
+        console.error('[AI_INSIGHTS] Error fetching insights:', error);
+        // Fallback on error
+        setAiInsights({
+          summary: `${messages.length} messages in this conversation.`,
+          highlights: [],
+          topAnnouncement,
+          loading: false,
+        });
+      }
+      
+      lastAiFetchRef.current = Date.now();
+    }, 2000); // 2 second debounce
+    
+    return () => {
+      if (aiFetchTimeoutRef.current) {
+        clearTimeout(aiFetchTimeoutRef.current);
+      }
     };
-  }, [messages]);
+  }, [messages.length, isHost, isDemo, canAccessChat, event.title, event.description, event.category, event.date, event.location]);
   
   // Calculate real member count from RSVPs (for Popera events) or use static for demo events
   const memberCount = isPoperaOwned 
@@ -1129,10 +1230,17 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                 </div>
               </div>
               <div className="space-y-3 text-sm">
-                <p className="font-medium text-[#15383c] leading-relaxed">{aiInsights.summary}</p>
-                {aiInsights.highlights.length > 0 && (
+                {aiInsights.loading ? (
+                  <div className="flex items-center gap-2 text-gray-500">
+                    <div className="w-4 h-4 border-2 border-[#e35e25]/30 border-t-[#e35e25] rounded-full animate-spin"></div>
+                    <span className="text-sm">Analyzing conversation...</span>
+                  </div>
+                ) : (
+                  <p className="font-medium text-[#15383c] leading-relaxed">{aiInsights.summary}</p>
+                )}
+                {!aiInsights.loading && aiInsights.highlights.length > 0 && (
                   <div className="bg-white/60 rounded-lg p-3 border border-gray-100">
-                    <p className="font-semibold text-xs text-gray-600 mb-2 uppercase tracking-wide">Recent highlights</p>
+                    <p className="font-semibold text-xs text-gray-600 mb-2 uppercase tracking-wide">Key topics</p>
                     <ul className="space-y-1.5">
                       {aiInsights.highlights.map((highlight, idx) => (
                         <li key={idx} className="text-xs text-gray-700 flex items-start gap-2">
@@ -1149,10 +1257,6 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                     <p className="text-xs text-gray-700 leading-relaxed italic">"{aiInsights.topAnnouncement}"</p>
                   </div>
                 )}
-                <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
-                  <span className="text-xs text-gray-500">Community vibe:</span>
-                  <span className="text-xs font-semibold text-[#e35e25] capitalize">{aiInsights.vibe}</span>
-                </div>
               </div>
             </div>
           )}
@@ -1191,6 +1295,8 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                     const timeString = messageDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
                     
                     if (msg.type === 'announcement') {
+                      // Remove "Announcement:" prefix if message starts with it (since title already says it)
+                      const cleanMessage = msg.message.replace(/^(Announcement:\s*)/i, '');
                       return (
                         <div key={msg.id} className="bg-[#15383c] rounded-2xl p-6 text-white shadow-xl shadow-[#15383c]/10 relative overflow-hidden">
                           <div className="relative z-10">
@@ -1198,9 +1304,9 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                               <div className="w-8 h-8 rounded-full bg-[#e35e25] flex items-center justify-center shrink-0">
                                 <Megaphone size={16} className="text-white" />
                               </div>
-                              <h3 className="font-bold text-sm md:text-base">Host Announcement</h3>
+                              <h3 className="font-bold text-sm md:text-base">Announcement</h3>
                             </div>
-                            <p className="text-gray-200 text-sm mb-4 leading-relaxed">{msg.message}</p>
+                            <p className="text-gray-200 text-sm mb-4 leading-relaxed">{cleanMessage}</p>
                             <MessageSenderName userId={msg.userId} fallbackName={msg.userName} timeString={timeString} />
                           </div>
                         </div>
@@ -1211,29 +1317,32 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                     const imageMatch = msg.message.match(/^\[Image:([^:]+):([^\]]+)\]$/);
                     
                     return (
-                      <div key={msg.id} className={`flex flex-col space-y-1 ${msg.isHost ? 'items-end' : 'items-start'}`}>
-                        <div className={`${
-                          msg.isHost 
-                            ? 'bg-[#e35e25]/10 border-[#e35e25]/30' 
-                            : 'bg-white border-gray-100'
-                        } text-gray-800 px-5 py-3.5 rounded-2xl ${msg.isHost ? 'rounded-tr-none' : 'rounded-tl-none'} shadow-sm border max-w-[85%] text-sm leading-relaxed`}>
-                          {imageMatch ? (
-                            <div className="space-y-2">
-                              <img 
-                                src={imageMatch[1]} 
-                                alt={imageMatch[2]} 
-                                className="rounded-lg max-w-full h-auto max-h-64 object-contain"
-                              />
-                              <p className="text-xs text-gray-500">{imageMatch[2]}</p>
-                            </div>
-                          ) : (
-                            msg.message
-                          )}
+                      <div key={msg.id} className="flex items-start gap-3">
+                        {/* Profile picture on the left */}
+                        <MessageAvatar userId={msg.userId} fallbackName={msg.userName} isHost={msg.isHost} />
+                        
+                        {/* Message content */}
+                        <div className="flex flex-col space-y-1 flex-1 min-w-0">
+                          <div className={`${
+                            msg.isHost 
+                              ? 'bg-[#e35e25]/10 border-[#e35e25]/30' 
+                              : 'bg-white border-gray-100'
+                          } text-gray-800 px-4 py-3 rounded-2xl rounded-tl-none shadow-sm border max-w-[85%] text-sm leading-relaxed`}>
+                            {imageMatch ? (
+                              <div className="space-y-2">
+                                <img 
+                                  src={imageMatch[1]} 
+                                  alt={imageMatch[2]} 
+                                  className="rounded-lg max-w-full h-auto max-h-64 object-contain"
+                                />
+                                <p className="text-xs text-gray-500">{imageMatch[2]}</p>
+                              </div>
+                            ) : (
+                              msg.message
+                            )}
+                          </div>
+                          <MessageSenderName userId={msg.userId} fallbackName={msg.userName} timeString={timeString} isHost={msg.isHost} />
                         </div>
-                        <span className={`text-[10px] text-gray-400 ${msg.isHost ? 'mr-2' : 'ml-2'}`}>
-                          {msg.isHost && <span className="font-bold text-[#e35e25]">Host </span>}
-                          <MessageSenderName userId={msg.userId} fallbackName={msg.userName} timeString={timeString} />
-                        </span>
                       </div>
                     );
                   })
