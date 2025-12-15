@@ -137,9 +137,81 @@ interface GroupChatProps {
   isLoggedIn?: boolean;
 }
 
+// Compress image to ensure it fits in Firestore (max ~800KB for safety)
+const compressImage = (file: File, maxWidth: number = 800, quality: number = 0.7): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        // Scale down if larger than maxWidth
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Could not get canvas context'));
+          return;
+        }
+        
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Convert to JPEG for better compression
+        let compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+        
+        // If still too large (> 500KB), reduce quality further
+        const maxSize = 500 * 1024; // 500KB
+        let currentQuality = quality;
+        
+        while (compressedDataUrl.length > maxSize && currentQuality > 0.1) {
+          currentQuality -= 0.1;
+          compressedDataUrl = canvas.toDataURL('image/jpeg', currentQuality);
+        }
+        
+        // If still too large, reduce dimensions
+        if (compressedDataUrl.length > maxSize) {
+          const smallerCanvas = document.createElement('canvas');
+          const scale = 0.5;
+          smallerCanvas.width = width * scale;
+          smallerCanvas.height = height * scale;
+          const smallCtx = smallerCanvas.getContext('2d');
+          if (smallCtx) {
+            smallCtx.drawImage(img, 0, 0, smallerCanvas.width, smallerCanvas.height);
+            compressedDataUrl = smallerCanvas.toDataURL('image/jpeg', 0.6);
+          }
+        }
+        
+        console.log('[IMAGE_COMPRESS] Compressed:', {
+          originalSize: file.size,
+          compressedSize: compressedDataUrl.length,
+          reduction: `${((1 - compressedDataUrl.length / file.size) * 100).toFixed(1)}%`,
+        });
+        
+        resolve(compressedDataUrl);
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+};
+
 export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDetails, onHostClick, onReserve, isLoggedIn = false }) => {
   const [message, setMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
   const [showAttendeeList, setShowAttendeeList] = useState(false);
   const [chatLocked, setChatLocked] = useState(false);
   const [muteAll, setMuteAll] = useState(false);
@@ -642,78 +714,106 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
     });
   };
   
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-      // CRITICAL: Only host and attendees can send images
-      if (!currentUser || !canSendMessages) {
-        console.warn('[GROUP_CHAT] Unauthorized image upload attempt blocked');
-        return;
-      }
-      
-      // Additional validation: Ensure user is either host or has reserved (using enhanced check)
-      if (!isHost && !hasReservedEnhanced) {
-        console.warn('[GROUP_CHAT] Unauthorized image upload attempt blocked');
-        return;
-      }
-      
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const imageUrl = reader.result as string;
-        // CRITICAL: Ensure isHost flag is correctly set when sending image messages
-        const messageIsHost = currentUser.id === event.hostId;
-        console.log('[GROUP_CHAT] 📤 Sending image message:', {
-          eventId: event.id,
-          userId: currentUser.id,
-          userName: currentUser.name,
-          isHost: messageIsHost,
-          hostId: event.hostId,
-          filename: file.name,
-        });
-        // Send image as message with data URL (format: [Image:dataUrl:filename])
-        // Message will be saved to Firestore and synced in real-time
-        // REFACTORED: Only pass senderId - sender info fetched from /users/{senderId}
-        await addMessage(event.id, currentUser.id, `[Image:${imageUrl}:${file.name}]`, 'message', messageIsHost);
-        
-        // Notify attendees and host of new image message (same as text messages)
-        (async () => {
-          const db = getDbSafe();
-          
-          if (db && currentUser) {
-            try {
-              const rsvpsRef = collection(db, 'reservations');
-              const rsvpsQuery = query(
-                rsvpsRef, 
-                where('eventId', '==', event.id),
-                where('status', '==', 'reserved')
-              );
-              const rsvpsSnapshot = await getDocs(rsvpsQuery);
-              const attendeeIds = rsvpsSnapshot.docs
-                .map(doc => doc.data().userId)
-                .filter((userId): userId is string => Boolean(userId) && userId !== currentUser.id);
-              
-              const allRecipients = [...new Set([...attendeeIds, event.hostId].filter(Boolean))];
-
-              await notifyAttendeesOfNewMessage(
-                event.id,
-                event.title,
-                currentUser.id,
-                currentUser.name || currentUser.displayName || 'Someone',
-                `[Image: ${file.name}]`,
-                allRecipients
-              );
-            } catch (error) {
-              console.error('[GROUP_CHAT] Error sending image message notifications:', error);
-            }
-          }
-        })().catch((error) => {
-          console.error('[GROUP_CHAT] Error in notification helper for image message:', error);
-        });
-      };
-      reader.readAsDataURL(file);
+    if (!file || !file.type.startsWith('image/')) {
+      return;
     }
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    
+    // CRITICAL: Only host and attendees can send images
+    if (!currentUser || !canSendMessages) {
+      setImageError('You must be logged in and have access to send images');
+      setTimeout(() => setImageError(null), 3000);
+      return;
+    }
+    
+    // Additional validation: Ensure user is either host or has reserved
+    if (!isHost && !hasReservedEnhanced) {
+      setImageError('You must be an attendee to send images');
+      setTimeout(() => setImageError(null), 3000);
+      return;
+    }
+    
+    // Show loading state
+    setImageUploading(true);
+    setImageError(null);
+    
+    try {
+      // Compress the image
+      console.log('[GROUP_CHAT] 🖼️ Compressing image:', {
+        originalName: file.name,
+        originalSize: `${(file.size / 1024).toFixed(1)}KB`,
+        type: file.type,
+      });
+      
+      const compressedImageUrl = await compressImage(file);
+      
+      // Show preview briefly
+      setImagePreview(compressedImageUrl);
+      
+      // CRITICAL: Ensure isHost flag is correctly set when sending image messages
+      const messageIsHost = currentUser.id === event.hostId;
+      console.log('[GROUP_CHAT] 📤 Sending compressed image message:', {
+        eventId: event.id,
+        userId: currentUser.id,
+        userName: currentUser.name,
+        isHost: messageIsHost,
+        hostId: event.hostId,
+        filename: file.name,
+        compressedSize: `${(compressedImageUrl.length / 1024).toFixed(1)}KB`,
+      });
+      
+      // Send image as message with compressed data URL
+      await addMessage(event.id, currentUser.id, `[Image:${compressedImageUrl}:${file.name}]`, 'message', messageIsHost);
+      
+      // Clear preview after sending
+      setImagePreview(null);
+      
+      // Notify attendees and host of new image message
+      (async () => {
+        const db = getDbSafe();
+        
+        if (db && currentUser) {
+          try {
+            const rsvpsRef = collection(db, 'reservations');
+            const rsvpsQuery = query(
+              rsvpsRef, 
+              where('eventId', '==', event.id),
+              where('status', '==', 'reserved')
+            );
+            const rsvpsSnapshot = await getDocs(rsvpsQuery);
+            const attendeeIds = rsvpsSnapshot.docs
+              .map(doc => doc.data().userId)
+              .filter((userId): userId is string => Boolean(userId) && userId !== currentUser.id);
+            
+            const allRecipients = [...new Set([...attendeeIds, event.hostId].filter(Boolean))];
+
+            await notifyAttendeesOfNewMessage(
+              event.id,
+              event.title,
+              currentUser.id,
+              currentUser.name || currentUser.displayName || 'Someone',
+              `[Image: ${file.name}]`,
+              allRecipients
+            );
+          } catch (error) {
+            console.error('[GROUP_CHAT] Error sending image message notifications:', error);
+          }
+        }
+      })().catch((error) => {
+        console.error('[GROUP_CHAT] Error in notification helper for image message:', error);
+      });
+      
+    } catch (error) {
+      console.error('[GROUP_CHAT] ❌ Image upload failed:', error);
+      setImageError('Failed to send image. Please try again.');
+      setTimeout(() => setImageError(null), 3000);
+    } finally {
+      setImageUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
   
@@ -1372,11 +1472,50 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
 
         {canSendMessages && !chatLocked && (
           <div className="bg-white p-3 sm:p-4 md:p-6 border-t border-gray-100 shrink-0 z-10 safe-area-inset-bottom">
+             {/* Image Upload Status */}
+             {imageUploading && (
+               <div className="max-w-3xl mx-auto mb-3 flex items-center gap-2 text-sm text-gray-600">
+                 <div className="w-4 h-4 border-2 border-[#15383c]/30 border-t-[#15383c] rounded-full animate-spin"></div>
+                 <span>Compressing and sending image...</span>
+               </div>
+             )}
+             
+             {/* Image Preview */}
+             {imagePreview && !imageUploading && (
+               <div className="max-w-3xl mx-auto mb-3">
+                 <div className="relative inline-block">
+                   <img 
+                     src={imagePreview} 
+                     alt="Preview" 
+                     className="h-20 rounded-lg border border-gray-200 shadow-sm"
+                   />
+                   <button
+                     onClick={() => setImagePreview(null)}
+                     className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
+                   >
+                     ×
+                   </button>
+                 </div>
+               </div>
+             )}
+             
+             {/* Error Message */}
+             {imageError && (
+               <div className="max-w-3xl mx-auto mb-3 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
+                 {imageError}
+               </div>
+             )}
+             
              <div className="max-w-3xl mx-auto relative flex items-center gap-2">
                 {/* Image Upload Button - Only for host and participants */}
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center text-gray-400 hover:text-[#15383c] transition-colors rounded-full hover:bg-gray-100 shrink-0 touch-manipulation active:scale-95"
+                  disabled={imageUploading}
+                  className={`w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center transition-colors rounded-full shrink-0 touch-manipulation active:scale-95 ${
+                    imageUploading 
+                      ? 'text-gray-300 cursor-not-allowed' 
+                      : 'text-gray-400 hover:text-[#15383c] hover:bg-gray-100'
+                  }`}
                   aria-label="Upload image"
                 >
                   <ImageIcon size={20} className="sm:w-5 sm:h-5" />
@@ -1388,17 +1527,18 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                   onChange={handleImageUpload}
                   className="hidden"
                 />
-                <input 
-                  type="text" 
-                  placeholder="Message the group..." 
-                  value={message} 
+                <input
+                  type="text"
+                  placeholder="Message the group..."
+                  value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                  className="flex-1 pl-4 sm:pl-6 pr-12 sm:pr-14 py-3 sm:py-4 bg-gray-50 border border-gray-200 rounded-full text-sm sm:text-base focus:outline-none focus:border-[#15383c] focus:ring-1 focus:ring-[#15383c] focus:bg-white shadow-sm transition-all" 
+                  disabled={imageUploading}
+                  className="flex-1 pl-4 sm:pl-6 pr-12 sm:pr-14 py-3 sm:py-4 bg-gray-50 border border-gray-200 rounded-full text-sm sm:text-base focus:outline-none focus:border-[#15383c] focus:ring-1 focus:ring-[#15383c] focus:bg-white shadow-sm transition-all disabled:opacity-50"
                 />
-                <button 
+                <button
                   onClick={handleSendMessage}
-                  disabled={!message.trim()}
+                  disabled={!message.trim() || imageUploading}
                   className="absolute right-1.5 sm:right-2 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-11 sm:h-11 bg-[#15383c] rounded-full flex items-center justify-center text-white hover:bg-[#e35e25] transition-colors shadow-md touch-manipulation active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send size={16} className="sm:w-[18px] sm:h-[18px]" />
