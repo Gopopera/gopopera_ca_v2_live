@@ -856,7 +856,12 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   {reservationCount !== null && (
                     <div className="flex items-center gap-2.5 text-gray-600">
                       <User size={16} className="text-[#e35e25] shrink-0" />
-                      <span className="text-sm sm:text-base">{reservationCount} attending</span>
+                      <span className="text-sm sm:text-base">
+                        {event.capacity 
+                          ? `${reservationCount}/${event.capacity} attending`
+                          : `${reservationCount} attending`
+                        }
+                      </span>
                     </div>
                   )}
                 </div>

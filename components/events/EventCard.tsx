@@ -37,14 +37,13 @@ const EventAttendeesCount: React.FC<{ eventId: string; capacity?: number; inline
   }, [eventId]);
   
   const capacityNum = typeof capacity === 'number' ? capacity : null;
-  const availableSpots = capacityNum ? capacityNum - attendeesCount : null;
   
   if (inline) {
     return (
       <span className="text-xs sm:text-sm">
-        {!capacityNum
-          ? `${attendeesCount} joined`
-          : `${attendeesCount}/${capacityNum} joined — ${availableSpots ?? 0} spot${availableSpots !== 1 ? 's' : ''} left`}
+        {capacityNum
+          ? `${attendeesCount}/${capacityNum}`
+          : `${attendeesCount}`}
       </span>
     );
   }
@@ -53,9 +52,9 @@ const EventAttendeesCount: React.FC<{ eventId: string; capacity?: number; inline
     <div className="flex items-center text-gray-600 text-sm">
       <Users size={16} className="sm:w-4 sm:h-4 mr-2 text-popera-orange shrink-0" />
       <span className="truncate leading-relaxed">
-        {!capacityNum
-          ? `${attendeesCount} joined`
-          : `${attendeesCount}/${capacityNum} joined — ${availableSpots ?? 0} spot${availableSpots !== 1 ? 's' : ''} left`}
+        {capacityNum
+          ? `${attendeesCount}/${capacityNum} joined`
+          : `${attendeesCount} joined`}
       </span>
     </div>
   );
