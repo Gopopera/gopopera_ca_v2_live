@@ -1581,10 +1581,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 <MessageCircle size={32} className="text-[#e35e25]" />
               </div>
               <h2 className="text-2xl font-heading font-bold text-[#15383c] mb-2">
-                {t('event.signInToJoinConversations')}
+                {t('ui.signInToJoin')}
               </h2>
               <p className="text-gray-600 text-sm">
-                {t('event.conversationsOnlyAvailable')}
+                {t('ui.conversationsAvailable')}
               </p>
             </div>
 
@@ -1599,7 +1599,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 }}
                 className="w-full px-6 py-3 bg-[#e35e25] text-white rounded-full font-medium hover:bg-[#d14e1a] transition-colors"
               >
-                {t('event.signInSignUp')}
+                {t('ui.signInSignUp')}
               </button>
               <button
                 onClick={() => setShowAuthModal(false)}
