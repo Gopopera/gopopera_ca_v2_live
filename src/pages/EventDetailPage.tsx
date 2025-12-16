@@ -1404,19 +1404,40 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
 
 
 
-      <section className="bg-[#15383c] py-6 sm:py-8 md:py-12 lg:py-16 relative overflow-hidden">
-         <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-10">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6">
-               <div className="text-center sm:text-left flex-1">
-                  <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-heading font-bold text-white mb-2 sm:mb-3 leading-tight">Inspired? Host your own event.</h2>
-                  <p className="text-sm sm:text-base text-white/80 font-light hidden sm:block">Create memorable experiences and connect with your community</p>
+      {/* Host CTA Section - Liquid Glass Style */}
+      <section className="bg-gradient-to-br from-[#15383c] via-[#1a4347] to-[#15383c] py-8 sm:py-10 md:py-14 lg:py-16 relative overflow-hidden">
+         {/* Decorative background elements */}
+         <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute -top-20 -right-20 w-64 h-64 bg-[#e35e25]/10 rounded-full blur-3xl" />
+            <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-white/5 rounded-full blur-2xl" />
+         </div>
+         
+         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            {/* Glass card container */}
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8 md:p-10 lg:p-12">
+               <div className="flex flex-col lg:flex-row items-center justify-between gap-6 lg:gap-10">
+                  <div className="text-center lg:text-left flex-1">
+                     <span className="inline-block px-3 py-1 mb-3 sm:mb-4 text-[10px] sm:text-xs font-bold tracking-widest uppercase text-[#e35e25] bg-[#e35e25]/10 rounded-full border border-[#e35e25]/20">
+                        Become a Host
+                     </span>
+                     <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-white mb-3 sm:mb-4 leading-tight">
+                        Ready to host your own circle?
+                     </h2>
+                     <p className="text-sm sm:text-base md:text-lg text-white/70 font-light max-w-xl mx-auto lg:mx-0">
+                        Create intimate 3–10 person sessions and earn from what you know. It's free to start.
+                     </p>
+                  </div>
+                  <div className="flex flex-col items-center gap-3">
+                     <button 
+                        className="group px-8 sm:px-10 md:px-12 py-3.5 sm:py-4 bg-[#e35e25] text-white rounded-full font-bold text-base sm:text-lg md:text-xl hover:bg-[#cf4d1d] transition-all shadow-lg shadow-[#e35e25]/30 hover:shadow-xl hover:shadow-[#e35e25]/40 hover:-translate-y-1 touch-manipulation active:scale-95 whitespace-nowrap flex items-center gap-2" 
+                        onClick={() => setViewState(ViewState.CREATE_EVENT)}
+                     >
+                        Start Hosting
+                        <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                     </button>
+                     <span className="text-xs text-white/50 font-medium">No upfront costs • Keep 85% of earnings</span>
+                  </div>
                </div>
-               <button 
-                  className="px-6 sm:px-8 md:px-10 py-2.5 sm:py-3 md:py-3.5 bg-[#e35e25] text-white rounded-full font-bold text-sm sm:text-base md:text-lg hover:bg-[#cf4d1d] transition-all shadow-xl shadow-orange-900/30 hover:-translate-y-0.5 touch-manipulation active:scale-95 whitespace-nowrap shrink-0" 
-                  onClick={() => setViewState(ViewState.CREATE_EVENT)}
-               >
-                  Start Hosting
-               </button>
             </div>
          </div>
       </section>
