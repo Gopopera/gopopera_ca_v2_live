@@ -703,7 +703,8 @@ export function subscribeToUserRSVPs(
 ): Unsubscribe {
   const db = getDbSafe();
   if (!db) {
-    callback([]);
+    // CRITICAL: Defer callback to prevent React Error #310
+    queueMicrotask(() => callback([]));
     return () => {};
   }
 
@@ -733,7 +734,8 @@ export function subscribeToUserRSVPs(
     return unsubscribe;
   } catch (error) {
     console.error('[subscribeToUserRSVPs] Error setting up subscription:', error);
-    callback([]);
+    // CRITICAL: Defer callback to prevent React Error #310
+    queueMicrotask(() => callback([]));
     return () => {};
   }
 }
@@ -794,7 +796,8 @@ export function subscribeToHostedEventsCount(
 ): Unsubscribe {
   const db = getDbSafe();
   if (!db) {
-    callback(0);
+    // CRITICAL: Defer callback to prevent React Error #310
+    queueMicrotask(() => callback(0));
     return () => {};
   }
 
@@ -844,7 +847,8 @@ export function subscribeToHostedEventsCount(
     );
   } catch (error) {
     console.error('Error setting up hosted events count subscription:', error);
-    callback(0);
+    // CRITICAL: Defer callback to prevent React Error #310
+    queueMicrotask(() => callback(0));
     return () => {};
   }
 }
@@ -859,7 +863,8 @@ export function subscribeToHostRevenue(
 ): Unsubscribe {
   const db = getDbSafe();
   if (!db) {
-    callback(0);
+    // CRITICAL: Defer callback to prevent React Error #310
+    queueMicrotask(() => callback(0));
     return () => {};
   }
 
@@ -928,7 +933,8 @@ export function subscribeToHostRevenue(
     );
   } catch (error) {
     console.error('Error setting up host revenue subscription:', error);
-    callback(0);
+    // CRITICAL: Defer callback to prevent React Error #310
+    queueMicrotask(() => callback(0));
     return () => {};
   }
 }
@@ -942,7 +948,8 @@ export function subscribeToAttendedEventsCount(
 ): Unsubscribe {
   const db = getDbSafe();
   if (!db) {
-    callback(0);
+    // CRITICAL: Defer callback to prevent React Error #310
+    queueMicrotask(() => callback(0));
     return () => {};
   }
 
@@ -970,7 +977,8 @@ export function subscribeToAttendedEventsCount(
     );
   } catch (error) {
     console.error('Error setting up attended events count subscription:', error);
-    callback(0);
+    // CRITICAL: Defer callback to prevent React Error #310
+    queueMicrotask(() => callback(0));
     return () => {};
   }
 }
@@ -992,7 +1000,8 @@ export function subscribeToUserEventCounts(
 ): Unsubscribe {
   const db = getDbSafe();
   if (!db) {
-    callback({ hosting: 0, past: 0, drafts: 0, total: 0 });
+    // CRITICAL: Defer callback to prevent React Error #310
+    queueMicrotask(() => callback({ hosting: 0, past: 0, drafts: 0, total: 0 }));
     return () => {};
   }
 
@@ -1047,7 +1056,8 @@ export function subscribeToUserEventCounts(
     );
   } catch (error) {
     console.error('Error setting up user event counts subscription:', error);
-    callback({ hosting: 0, past: 0, drafts: 0, total: 0 });
+    // CRITICAL: Defer callback to prevent React Error #310
+    queueMicrotask(() => callback({ hosting: 0, past: 0, drafts: 0, total: 0 }));
     return () => {};
   }
 }
@@ -1093,7 +1103,8 @@ export function subscribeToTotalAttendeesCount(
 ): Unsubscribe {
   const db = getDbSafe();
   if (!db) {
-    callback(0);
+    // CRITICAL: Defer callback to prevent React Error #310
+    queueMicrotask(() => callback(0));
     return () => {};
   }
 
@@ -1194,7 +1205,8 @@ export function subscribeToTotalAttendeesCount(
     };
   } catch (error) {
     console.error('Error setting up total attendees count subscription:', error);
-    callback(0);
+    // CRITICAL: Defer callback to prevent React Error #310
+    queueMicrotask(() => callback(0));
     return () => {};
   }
 }
@@ -1212,7 +1224,8 @@ export function subscribeToReviewsCount(
 ): Unsubscribe {
   const db = getDbSafe();
   if (!db) {
-    callback(0);
+    // CRITICAL: Defer callback to prevent React Error #310
+    queueMicrotask(() => callback(0));
     return () => {};
   }
 
@@ -1293,7 +1306,8 @@ export function subscribeToReviewsCount(
     }, 10000);
   } catch (error) {
     console.error('Error setting up reviews count subscription:', error);
-    callback(0);
+    // CRITICAL: Defer callback to prevent React Error #310
+    queueMicrotask(() => callback(0));
   }
 
   // Return unsubscribe function

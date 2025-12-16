@@ -22,7 +22,8 @@ export function attachAuthListener(onChange: (user: FirebaseUser | null) => void
     if (import.meta.env.DEV) {
       console.warn('[FIREBASE] Auth not available, returning no-op unsubscribe');
     }
-    onChange(null);
+    // CRITICAL: Defer callback to prevent React Error #310
+    queueMicrotask(() => onChange(null));
     return () => {};
   }
   return onAuthStateChanged(auth, onChange);
@@ -45,7 +46,8 @@ export function subscribeToChat(
     if (import.meta.env.DEV) {
       console.warn('[FIREBASE] Firestore not available, returning no-op unsubscribe');
     }
-    cb([]);
+    // CRITICAL: Defer callback to prevent React Error #310
+    queueMicrotask(() => cb([]));
     return () => {};
   }
   

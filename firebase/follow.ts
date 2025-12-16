@@ -185,7 +185,8 @@ export function subscribeToFollowingCount(
 ): Unsubscribe {
   const db = getDbSafe();
   if (!db) {
-    callback(0);
+    // CRITICAL: Defer callback to prevent React Error #310
+    queueMicrotask(() => callback(0));
     return () => {};
   }
 
@@ -205,7 +206,8 @@ export function subscribeToFollowingCount(
     );
   } catch (error) {
     console.error('Error setting up following count subscription:', error);
-    callback(0);
+    // CRITICAL: Defer callback to prevent React Error #310
+    queueMicrotask(() => callback(0));
     return () => {};
   }
 }
