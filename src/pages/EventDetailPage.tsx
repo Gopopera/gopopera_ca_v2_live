@@ -136,7 +136,7 @@ interface EventDetailPageProps {
   event: Event;
   setViewState: (view: ViewState) => void;
   onReviewsClick: (e: React.MouseEvent, event: Event) => void;
-  onHostClick: (hostName: string) => void;
+  onHostClick: (hostName: string, hostId?: string) => void;
   allEvents: Event[];
   onEventClick: (event: Event) => void;
   isLoggedIn?: boolean;
@@ -935,7 +935,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         <div className="absolute -top-8 sm:-top-10 left-4 sm:left-6 z-10 lg:hidden">
           <div 
             className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-[#e35e25] to-[#15383c] overflow-hidden ring-4 ring-white shadow-xl cursor-pointer hover:ring-[#e35e25]/30 transition-all"
-            onClick={() => onHostClick?.(displayHostName)}
+            onClick={() => onHostClick?.(displayHostName, event.hostId)}
           >
             {hostProfilePicture ? (
               <img 
@@ -1018,7 +1018,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                     <p className="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1">{t('event.hostedBy')}</p>
                     <h3 
                       className="text-lg sm:text-xl font-heading font-bold text-[#15383c] cursor-pointer hover:text-[#e35e25] transition-colors mb-2"
-                      onClick={() => onHostClick?.(displayHostName)}
+                      onClick={() => onHostClick?.(displayHostName, event.hostId)}
                     >
                       {displayHostName}
                     </h3>
@@ -1110,7 +1110,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   <div className="flex justify-center mb-3">
                     <div 
                       className="w-16 h-16 rounded-full bg-gradient-to-br from-[#e35e25] to-[#15383c] overflow-hidden ring-2 ring-white shadow-lg cursor-pointer hover:ring-[#e35e25]/30 transition-all"
-                      onClick={() => onHostClick?.(displayHostName)}
+                      onClick={() => onHostClick?.(displayHostName, event.hostId)}
                     >
                       {hostProfilePicture ? (
                         <img 
@@ -1135,7 +1135,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                     <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">{t('event.hostedBy')}</p>
                     <h3 
                       className="text-lg font-heading font-bold text-[#15383c] cursor-pointer hover:text-[#e35e25] transition-colors"
-                      onClick={() => onHostClick?.(displayHostName)}
+                      onClick={() => onHostClick?.(displayHostName, event.hostId)}
                     >
                       {displayHostName}
                     </h3>
@@ -1634,7 +1634,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           onClose={() => setShowHostReviewsModal(false)}
           onReviewerClick={(userId, userName) => {
             setShowHostReviewsModal(false);
-            onHostClick(userName);
+            onHostClick(userName, userId);
           }}
         />
       )}

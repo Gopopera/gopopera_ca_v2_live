@@ -24,7 +24,7 @@ interface LandingPageProps {
   onEventClick: (event: Event) => void;
   onChatClick: (e: React.MouseEvent, event: Event) => void;
   onReviewsClick: (e: React.MouseEvent, event: Event) => void;
-  onHostClick: (hostName: string) => void;
+  onHostClick: (hostName: string, hostId?: string) => void;
   isLoggedIn?: boolean;
   favorites?: string[];
   onToggleFavorite?: (e: React.MouseEvent, eventId: string) => void;

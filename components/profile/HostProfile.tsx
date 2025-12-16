@@ -16,6 +16,7 @@ import { getInitials, getAvatarBgColor } from '@/utils/avatarUtils';
 
 interface HostProfileProps {
   hostName: string;
+  hostId?: string; // Pass hostId directly for reliable profile picture sync
   onBack: () => void;
   onEventClick: (event: Event) => void;
   allEvents: Event[];
@@ -24,17 +25,17 @@ interface HostProfileProps {
   onToggleFavorite?: (e: React.MouseEvent, eventId: string) => void;
 }
 
-export const HostProfile: React.FC<HostProfileProps> = ({ hostName, onBack, onEventClick, allEvents, isLoggedIn, favorites = [], onToggleFavorite }) => {
+export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: propHostId, onBack, onEventClick, allEvents, isLoggedIn, favorites = [], onToggleFavorite }) => {
   const [activeTab, setActiveTab] = useState<'events' | 'reviews'>('events');
   const [error, setError] = useState<string | null>(null);
   const currentUser = useUserStore((state) => state.getCurrentUser());
   const userProfile = useUserStore((state) => state.userProfile);
   const isPoperaProfile = hostName === POPERA_HOST_NAME;
   
-  // REFACTORED: Get host ID from events (first event with this hostName or hostId)
-  // Note: hostName prop is still used for backward compatibility, but we prefer hostId
+  // REFACTORED: Prefer passed hostId prop for reliable profile picture sync
+  // Fall back to looking up from events if not provided (backward compatibility)
   const hostEvent = allEvents.find(e => e.hostId && (e.hostName === hostName || e.host === hostName));
-  const hostId = hostEvent?.hostId || (isPoperaProfile ? POPERA_HOST_ID : null);
+  const hostId = propHostId || hostEvent?.hostId || (isPoperaProfile ? POPERA_HOST_ID : null);
   
   // Safe fallback if hostName is missing
   const displayName = hostName || 'Unknown Host';

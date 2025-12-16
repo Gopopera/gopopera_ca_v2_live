@@ -7,6 +7,7 @@ import { getUserProfile } from '../../firebase/db';
 interface ConfirmReservationPageProps {
   event: Event;
   setViewState: (view: ViewState) => void;
+  onHostClick?: (hostName: string, hostId?: string) => void;
   onConfirm: (attendeeCount: number, supportContribution: number, paymentMethod: string) => Promise<string>;
 }
 
@@ -168,7 +169,7 @@ export const ConfirmReservationPage: React.FC<ConfirmReservationPageProps> = ({
                 <button
                   onClick={() => {
                     if (onHostClick) {
-                      onHostClick(hostName);
+                      onHostClick(hostName, event.hostId);
                     } else {
                       setViewState(ViewState.HOST_PROFILE);
                     }

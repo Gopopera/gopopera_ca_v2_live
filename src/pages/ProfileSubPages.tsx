@@ -881,7 +881,7 @@ export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => 
 };
 
 // --- My Reviews Page ---
-export const MyReviewsPage: React.FC<SubPageProps & { onHostClick?: (hostName: string) => void }> = ({ setViewState, onHostClick }) => {
+export const MyReviewsPage: React.FC<SubPageProps & { onHostClick?: (hostName: string, hostId?: string) => void }> = ({ setViewState, onHostClick }) => {
   const user = useUserStore((state) => state.user);
   const [reviews, setReviews] = useState<Array<{
     id: string;
@@ -957,7 +957,7 @@ export const MyReviewsPage: React.FC<SubPageProps & { onHostClick?: (hostName: s
 
   const handleReviewerClick = (userId: string, userName: string) => {
     if (onHostClick) {
-      onHostClick(userName);
+      onHostClick(userName, userId);
     }
   };
 
@@ -1227,7 +1227,7 @@ export const MyReviewsPage: React.FC<SubPageProps & { onHostClick?: (hostName: s
 };
 
 // --- Following Page ---
-export const FollowingPage: React.FC<SubPageProps & { onHostClick?: (hostName: string) => void }> = ({ setViewState, onHostClick }) => {
+export const FollowingPage: React.FC<SubPageProps & { onHostClick?: (hostName: string, hostId?: string) => void }> = ({ setViewState, onHostClick }) => {
   const user = useUserStore((state) => state.user);
   const [following, setFollowing] = useState<Array<{ id: string; name: string; photoURL?: string; imageUrl?: string }>>([]);
   const [loading, setLoading] = useState(true);
@@ -1282,9 +1282,9 @@ export const FollowingPage: React.FC<SubPageProps & { onHostClick?: (hostName: s
     }
   };
 
-  const handleProfileClick = (hostName: string) => {
+  const handleProfileClick = (hostName: string, hostId?: string) => {
     if (onHostClick) {
-      onHostClick(hostName);
+      onHostClick(hostName, hostId);
     }
   };
 
@@ -1318,7 +1318,7 @@ export const FollowingPage: React.FC<SubPageProps & { onHostClick?: (hostName: s
                 <div key={host.id} className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                   <div 
                     className="flex items-center gap-4 flex-1 cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => handleProfileClick(host.name)}
+                    onClick={() => handleProfileClick(host.name, host.id)}
                   >
                     <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-[#e35e25] flex items-center justify-center overflow-hidden shrink-0">
                       {photo ? (
@@ -1348,7 +1348,7 @@ export const FollowingPage: React.FC<SubPageProps & { onHostClick?: (hostName: s
 };
 
 // --- Followers Page ---
-export const FollowersPage: React.FC<SubPageProps & { onHostClick?: (hostName: string) => void }> = ({ setViewState, onHostClick }) => {
+export const FollowersPage: React.FC<SubPageProps & { onHostClick?: (hostName: string, hostId?: string) => void }> = ({ setViewState, onHostClick }) => {
   const user = useUserStore((state) => state.user);
   const [followers, setFollowers] = useState<Array<{ id: string; name: string; photoURL?: string; imageUrl?: string }>>([]);
   const [loading, setLoading] = useState(true);
@@ -1390,9 +1390,9 @@ export const FollowersPage: React.FC<SubPageProps & { onHostClick?: (hostName: s
     loadFollowers();
   }, [user?.uid]);
 
-  const handleProfileClick = (hostName: string) => {
+  const handleProfileClick = (hostName: string, hostId?: string) => {
     if (onHostClick) {
-      onHostClick(hostName);
+      onHostClick(hostName, hostId);
     }
   };
 
@@ -1426,7 +1426,7 @@ export const FollowersPage: React.FC<SubPageProps & { onHostClick?: (hostName: s
                 <div key={follower.id} className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100">
                   <div 
                     className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => handleProfileClick(follower.name)}
+                    onClick={() => handleProfileClick(follower.name, follower.id)}
                   >
                     <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-[#e35e25] flex items-center justify-center overflow-hidden shrink-0">
                       {photo ? (

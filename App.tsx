@@ -454,7 +454,8 @@ const AppContent: React.FC = () => {
   const [viewState, setViewState] = useState<ViewState>(getInitialViewState());
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [reviewEvent, setReviewEvent] = useState<Event | null>(null); 
-  const [selectedHost, setSelectedHost] = useState<string | null>(null); 
+  const [selectedHost, setSelectedHost] = useState<string | null>(null);
+  const [selectedHostId, setSelectedHostId] = useState<string | null>(null); 
   const [searchQuery, setSearchQuery] = useState('');
   const setCity = useSetCity();
   const location = city;
@@ -1067,12 +1068,13 @@ const AppContent: React.FC = () => {
     window.scrollTo(0, 0);
   };
 
-  const handleHostClick = (hostName: string) => {
+  const handleHostClick = (hostName: string, hostId?: string) => {
     setSelectedHost(hostName);
+    setSelectedHostId(hostId || null);
     setViewState(ViewState.HOST_PROFILE);
     // Use pushState to create history entry for back button navigation
     const hostProfileUrl = `/host/${encodeURIComponent(hostName)}`;
-    window.history.pushState({ viewState: ViewState.HOST_PROFILE, hostName }, '', hostProfileUrl);
+    window.history.pushState({ viewState: ViewState.HOST_PROFILE, hostName, hostId }, '', hostProfileUrl);
     window.scrollTo(0, 0);
   };
 
@@ -1923,6 +1925,7 @@ const AppContent: React.FC = () => {
               <React.Suspense fallback={<PageSkeleton />}>
                 <HostProfile 
                   hostName={selectedHost}
+                  hostId={selectedHostId || undefined}
                   onBack={() => setViewState(ViewState.FEED)}
                   onEventClick={handleEventClick}
                   allEvents={allEvents}
