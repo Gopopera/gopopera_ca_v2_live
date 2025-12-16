@@ -46,7 +46,7 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
           </span>
         </h1>
         
-        <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-300 mb-8 sm:mb-10 md:mb-12 lg:mb-14 max-w-2xl mx-auto font-light leading-[1.6] sm:leading-relaxed opacity-90 px-4 sm:px-6 md:whitespace-nowrap">
+        <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-300 mb-8 sm:mb-10 md:mb-12 lg:mb-14 max-w-3xl mx-auto font-light leading-[1.6] sm:leading-relaxed opacity-90 text-center">
           {t('hero.description')}
         </p>
         
