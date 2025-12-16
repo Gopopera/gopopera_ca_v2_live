@@ -1311,8 +1311,15 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         </div>
       </div>
 
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 md:py-12 border-t border-gray-100">
-         <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-6 sm:mb-8 text-center">Other circles you might be interested in</h2>
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12 md:py-16 border-t border-gray-100">
+         <div className="text-center mb-8 sm:mb-10">
+           <span className="inline-flex items-center gap-2 px-4 py-1.5 mb-4 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] text-[10px] sm:text-xs font-bold tracking-widest uppercase">
+             <Sparkles size={12} className="sm:w-3.5 sm:h-3.5" />
+             Discover More
+           </span>
+           <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c]">Other circles you might love</h2>
+           <p className="mt-2 text-sm sm:text-base text-gray-500 font-light">Explore similar experiences happening near you</p>
+         </div>
          {/* Desktop: Horizontal scroll with better spacing */}
          <div className="hidden md:block">
            <div className="relative group px-12">
