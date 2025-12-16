@@ -51,8 +51,33 @@ export const MockMap: React.FC<MockMapProps> = ({
   ) : null;
 
   // PRIORITY 1: If we have API key and coordinates, use Static Maps (best quality)
+  // Custom styling: cool blue/grey/white theme, hide POIs, only show our orange marker
   if (hasCoordinates && apiKey && !imageError) {
-    const staticMapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=15&size=600x400&scale=2&maptype=roadmap&markers=color:0xe35e25%7C${lat},${lng}&key=${apiKey}`;
+    // Custom map styles for a clean, minimal look
+    const mapStyles = [
+      // Base map - light grey/white
+      'feature:all|element:geometry|color:0xf5f5f5',
+      'feature:all|element:labels.icon|visibility:off',
+      'feature:all|element:labels.text.fill|color:0x616161',
+      'feature:all|element:labels.text.stroke|color:0xf5f5f5',
+      // Water - cool blue (our brand blue tint)
+      'feature:water|element:geometry|color:0xc9d6da',
+      'feature:water|element:labels.text.fill|color:0x9e9e9e',
+      // Roads - subtle grey
+      'feature:road|element:geometry|color:0xffffff',
+      'feature:road.highway|element:geometry|color:0xdadada',
+      'feature:road.arterial|element:labels.text.fill|color:0x757575',
+      // Parks/nature - very subtle green-grey
+      'feature:poi.park|element:geometry|color:0xe5e5e5',
+      // Hide all POI icons and labels
+      'feature:poi|visibility:off',
+      'feature:poi.business|visibility:off',
+      'feature:transit|visibility:off',
+      // Buildings - light
+      'feature:landscape.man_made|element:geometry|color:0xeeeeee',
+    ].map(s => `style=${encodeURIComponent(s)}`).join('&');
+    
+    const staticMapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=15&size=600x400&scale=2&maptype=roadmap&markers=color:0xe35e25%7C${lat},${lng}&${mapStyles}&key=${apiKey}`;
     
     return (
       <div className={`relative overflow-hidden ${className}`}>
@@ -68,22 +93,31 @@ export const MockMap: React.FC<MockMapProps> = ({
   }
 
   // PRIORITY 2: Use Google Maps iframe embed (works without API key)
+  // Apply a subtle desaturation filter for a cooler look
   if (hasValidQuery && !iframeError) {
     // Simple embed URL - works without any API key
     const simpleEmbedUrl = `https://maps.google.com/maps?q=${embedQuery}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
     
     return (
       <div className={`relative overflow-hidden ${className}`}>
+        {/* Desaturation overlay for cooler color scheme */}
+        <div className="absolute inset-0 pointer-events-none z-[1] mix-blend-color" style={{ backgroundColor: 'rgba(21, 56, 60, 0.08)' }} />
         <iframe
           src={simpleEmbedUrl}
           className="w-full h-full border-0"
+          style={{ minHeight: '200px', filter: 'saturate(0.7) contrast(1.05)' }}
           allowFullScreen
           loading="lazy"
           referrerPolicy="no-referrer-when-downgrade"
           title={`Map showing ${fullAddress || 'event location'}`}
           onError={() => setIframeError(true)}
-          style={{ minHeight: '200px' }}
         />
+        {/* Custom marker overlay */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full z-[2] pointer-events-none">
+          <div className="flex flex-col items-center">
+            <MapPin size={32} className="text-[#e35e25] drop-shadow-lg" fill="#e35e25" />
+          </div>
+        </div>
         <OpenInMapsButton />
       </div>
     );
