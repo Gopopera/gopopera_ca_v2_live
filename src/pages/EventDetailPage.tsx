@@ -809,8 +809,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
 
 
       {/* Hero Section - Premium cinematic design */}
-      {/* Desktop: contained width for less full-width feel; Mobile/Tablet: full width */}
-      <div className="lg:max-w-7xl lg:mx-auto lg:px-8 lg:pt-4">
+      {/* Desktop: contained width for less full-width feel; Mobile/Tablet: full width with top padding for header */}
+      <div className="pt-16 sm:pt-0 lg:max-w-7xl lg:mx-auto lg:px-8 lg:pt-4">
       <div className="relative h-[50vh] sm:h-[55vh] md:h-[60vh] lg:h-[55vh] xl:h-[60vh] w-full overflow-hidden lg:rounded-2xl">
         {event.imageUrls && event.imageUrls.length > 1 ? (
           // Multiple images - horizontal scrollable gallery
@@ -897,7 +897,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               e.preventDefault();
             }}
             type="button"
-            className="absolute top-16 sm:top-4 lg:top-4 right-4 lg:right-4 w-11 h-11 sm:w-12 sm:h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 hover:bg-white/30 transition-all hover:scale-110 active:scale-95 touch-manipulation z-50 pointer-events-auto"
+            className="absolute top-4 right-4 w-11 h-11 sm:w-12 sm:h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 hover:bg-white/30 transition-all hover:scale-110 active:scale-95 touch-manipulation z-50 pointer-events-auto"
             style={{ pointerEvents: 'auto', WebkitTapHighlightColor: 'transparent' }}
             aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
           >
@@ -919,8 +919,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         )}
         
         {/* Content Overlay - Category badge on the top left */}
-        {/* Mobile: pushed down to avoid header overlap; Desktop: standard top positioning */}
-        <div className="absolute top-16 sm:top-4 lg:top-4 left-4 lg:left-4 z-10">
+        <div className="absolute top-4 left-4 z-10">
           {/* Category Badge */}
           <span className="inline-block px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-[#e35e25] text-xs font-bold uppercase tracking-wider border border-white/30">
             {getMainCategoryLabelFromEvent(event)}
