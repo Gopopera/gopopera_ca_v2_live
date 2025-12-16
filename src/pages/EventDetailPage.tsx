@@ -897,7 +897,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               e.preventDefault();
             }}
             type="button"
-            className="absolute top-4 sm:top-4 lg:top-4 right-4 lg:right-4 w-11 h-11 sm:w-12 sm:h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 hover:bg-white/30 transition-all hover:scale-110 active:scale-95 touch-manipulation z-50 pointer-events-auto"
+            className="absolute top-16 sm:top-4 lg:top-4 right-4 lg:right-4 w-11 h-11 sm:w-12 sm:h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 hover:bg-white/30 transition-all hover:scale-110 active:scale-95 touch-manipulation z-50 pointer-events-auto"
             style={{ pointerEvents: 'auto', WebkitTapHighlightColor: 'transparent' }}
             aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
           >
@@ -919,8 +919,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         )}
         
         {/* Content Overlay - Category badge on the top left */}
-        {/* Desktop: aligned with logo column; Mobile: standard left positioning */}
-        <div className="absolute top-4 sm:top-4 lg:top-4 left-4 lg:left-4 z-10">
+        {/* Mobile: pushed down to avoid header overlap; Desktop: standard top positioning */}
+        <div className="absolute top-16 sm:top-4 lg:top-4 left-4 lg:left-4 z-10">
           {/* Category Badge */}
           <span className="inline-block px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-[#e35e25] text-xs font-bold uppercase tracking-wider border border-white/30">
             {getMainCategoryLabelFromEvent(event)}
