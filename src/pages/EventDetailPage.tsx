@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Event, ViewState } from '../../types';
-import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info, Star, Sparkles, X, UserPlus, UserCheck, ChevronRight, CheckCircle2, Edit, Users } from 'lucide-react';
+import { Calendar, MapPin, User, Share2, MessageCircle, ChevronLeft, Heart, Info, Star, Sparkles, X, UserPlus, UserCheck, ChevronRight, CheckCircle2, Edit, Users, DollarSign } from 'lucide-react';
 import { followHost, unfollowHost, isFollowing } from '../../firebase/follow';
 import { useUserStore } from '../../stores/userStore';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -1001,6 +1001,16 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                           </span>
                         </div>
                       )}
+                      {/* Cost */}
+                      <div className="flex items-center gap-2.5 text-gray-600">
+                        <DollarSign size={16} className="text-[#e35e25] shrink-0" />
+                        <span className="text-sm sm:text-base">
+                          {event.hasFee && event.feeAmount && event.feeAmount > 0
+                            ? `$${(event.feeAmount / 100).toFixed(0)} ${(event.currency || 'CAD').toUpperCase()}`
+                            : 'Free'
+                          }
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -1185,7 +1195,12 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.05)] border border-white/60 p-4 hover:shadow-[0_6px_24px_rgb(0,0,0,0.08)] transition-shadow">
                 <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-100/80">
                   <div>
-                    <span className="text-2xl font-heading font-bold text-[#15383c]">{event.price}</span>
+                    <span className="text-2xl font-heading font-bold text-[#15383c]">
+                      {event.hasFee && event.feeAmount && event.feeAmount > 0
+                        ? `$${(event.feeAmount / 100).toFixed(0)}`
+                        : 'Free'
+                      }
+                    </span>
                     <p className="text-xs text-gray-500 font-medium mt-0.5">per person</p>
                   </div>
                 </div>
@@ -1466,7 +1481,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                {/* Price pill - Liquid glass style */}
                <div className="shrink-0 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-sm border border-gray-200/60 shadow-sm">
                  <span className="text-sm font-bold text-[#15383c] uppercase tracking-wide">
-                   {event.price === 'Free' || event.price === '$0' || event.price === '0' ? 'Free' : event.price}
+                   {event.hasFee && event.feeAmount && event.feeAmount > 0
+                     ? `$${(event.feeAmount / 100).toFixed(0)}`
+                     : 'Free'
+                   }
                  </span>
                </div>
                
