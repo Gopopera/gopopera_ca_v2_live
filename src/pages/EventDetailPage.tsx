@@ -162,13 +162,6 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   onRSVP,
   rsvps = []
 }) => {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventDetailPage.tsx:render',message:'EventDetailPage RENDER START',data:{eventId:event?.id,hasEvent:!!event},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
-  
-  // #region agent log - checkpoint 1: before useState hooks
-  fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventDetailPage.tsx:checkpoint1',message:'Before useState hooks',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
   // CRITICAL: All hooks must be called unconditionally and in the same order every render
   // Call ALL hooks first, before any conditional logic or early returns
   
@@ -191,16 +184,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const [followersCount, setFollowersCount] = useState<number>(0);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   
-  // #region agent log - checkpoint 2: before store hooks
-  fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventDetailPage.tsx:checkpoint2',message:'Before store hooks',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
   // Store hooks - always called
   const user = useUserStore((state) => state.user);
   const userProfile = useUserStore((state) => state.userProfile);
   const { t } = useLanguage();
-  // #region agent log - checkpoint 3: after store hooks
-  fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventDetailPage.tsx:checkpoint3',message:'After store hooks',data:{hasUser:!!user},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
   
   // CRITICAL: Extract primitive values from event object to stabilize dependencies
   // Use event.id as the primary key - only extract values when event.id changes
@@ -260,16 +247,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   
   // REFACTORED: No longer using eventHostPhotoURL - fetch from /users/{hostId} in real-time
   
-  // #region agent log - checkpoint 4: before favorites store
-  fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventDetailPage.tsx:checkpoint4',message:'Before favorites store',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
   // Get favorites directly from user store for reactive updates
   // This ensures the UI updates immediately when favorites change
   // Use stable fallback to avoid useSyncExternalStore warning/infinite loop
   const storeFavorites = useUserStore((state) => state.user?.favorites ?? EMPTY_ARRAY);
-  // #region agent log - checkpoint 5: after favorites store
-  fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventDetailPage.tsx:checkpoint5',message:'After favorites store',data:{favoritesCount:storeFavorites.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
   
   // Check if this event is favorited - directly reactive to store changes
   // Use store favorites first (most up-to-date), fallback to prop favorites
@@ -412,9 +393,6 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   // REFACTORED: Real-time subscription to /users/{hostId} - single source of truth
   // No polling, no fallbacks to stale event data - always fresh from Firestore
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventDetailPage.tsx:hostProfileEffect',message:'Host profile useEffect START',data:{eventHostId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     if (!eventHostId) {
       setHostProfilePicture(null);
       setDisplayHostName('Unknown Host');
@@ -429,9 +407,6 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     
     // Real-time subscription to host user document
     import('../../firebase/userSubscriptions').then(({ subscribeToUserProfile }) => {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventDetailPage.tsx:hostProfileEffect',message:'subscribeToUserProfile imported, setting up',data:{eventHostId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
       unsubscribe = subscribeToUserProfile(eventHostId, (hostData) => {
         if (hostData) {
           setHostProfilePicture(hostData.photoURL || null);
@@ -471,9 +446,6 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   
   // Subscribe to followers count in real-time
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventDetailPage.tsx:followersEffect',message:'Followers count useEffect START',data:{eventHostId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     if (!eventHostId) {
       setFollowersCount(0);
       return;
@@ -483,9 +455,6 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     
     try {
       unsubscribe = subscribeToFollowersCount(eventHostId, (count: number) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventDetailPage.tsx:followersCallback',message:'Followers count callback fired',data:{eventHostId,count},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
         setFollowersCount(count);
       });
     } catch (error) {
@@ -502,9 +471,6 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   
   // REFACTORED: Real-time subscription to reservation count - computed from reservations
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventDetailPage.tsx:reservationEffect',message:'Reservation count useEffect START',data:{eventId,isDemo},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     if (!eventId || isDemo) {
       setReservationCount(0);
       return () => {}; // No-op cleanup
@@ -518,13 +484,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     let unsubscribe: (() => void) | null = null;
     
     import('../../firebase/db').then(({ subscribeToReservationCount }) => {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventDetailPage.tsx:reservationCallback',message:'subscribeToReservationCount callback setup',data:{eventId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
       unsubscribe = subscribeToReservationCount(eventId, (count: number) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventDetailPage.tsx:reservationCallback',message:'Reservation count callback fired',data:{eventId,count},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
         setReservationCount(count);
         if (import.meta.env.DEV) {
           console.log('[EVENT_DETAIL] ✅ Real-time reservation count updated:', {
@@ -708,10 +668,6 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
 
   // Build Event JSON-LD for structured data (only when event is loaded)
   const eventJsonLd = useMemo(() => buildEventJsonLd(event, reservationCount), [event, reservationCount]);
-
-  // #region agent log - checkpoint FINAL: about to return JSX
-  fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventDetailPage.tsx:checkpointFINAL',message:'About to return JSX - render complete',data:{eventId:event?.id},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
 
   return (
     <div className="min-h-screen bg-white pt-0">

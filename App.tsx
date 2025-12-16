@@ -1011,27 +1011,11 @@ const AppContent: React.FC = () => {
 
 
   const handleEventClick = (event: Event) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:handleEventClick',message:'Event click START',data:{eventId:event.id,eventTitle:event.title},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
-    try {
-      setSelectedEvent(event);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:handleEventClick',message:'After setSelectedEvent',data:{eventId:event.id},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-      // Use pushState to create history entry for back button navigation
-      window.history.pushState({ viewState: ViewState.DETAIL, eventId: event.id }, '', `/event/${event.id}`);
-      setViewState(ViewState.DETAIL);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:handleEventClick',message:'After setViewState DETAIL',data:{eventId:event.id},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-      window.scrollTo(0, 0);
-    } catch (err: any) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:handleEventClick',message:'ERROR in handleEventClick',data:{eventId:event.id,error:err?.message,stack:err?.stack?.substring(0,500)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-      throw err;
-    }
+    setSelectedEvent(event);
+    // Use pushState to create history entry for back button navigation
+    window.history.pushState({ viewState: ViewState.DETAIL, eventId: event.id }, '', `/event/${event.id}`);
+    setViewState(ViewState.DETAIL);
+    window.scrollTo(0, 0);
   };
 
   // Listen for custom event to select event from ProfilePage
