@@ -71,14 +71,16 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
   // CRITICAL: Always fetch host profile picture from Firestore (source of truth)
   // This ensures profile pictures are synchronized across all views for ALL users
   // REFACTORED: Real-time subscription to /users/{hostId} - single source of truth
+  // FIX: Removed isPoperaProfile check to allow custom photos for Popera profile
   useEffect(() => {
-    if (!hostId || isPoperaProfile) {
+    if (!hostId) {
       setHostProfilePicture(null);
+      setHostCoverPhoto(null);
       return;
     }
     
     if (import.meta.env.DEV) {
-      console.log('[HOST_PROFILE] 📡 Subscribing to host profile:', { hostId });
+      console.log('[HOST_PROFILE] 📡 Subscribing to host profile:', { hostId, isPoperaProfile });
     }
     
     let unsubscribe: (() => void) | null = null;
@@ -117,7 +119,7 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
         unsubscribe();
       }
     };
-  }, [hostId, isPoperaProfile]);
+  }, [hostId]);
   
   // Subscribe to real-time followers count
   useEffect(() => {
@@ -329,12 +331,15 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
           </div>
           
           {/* Profile Picture - Centered on Banner */}
+          {/* FIX: Show Popera logo only as fallback when no custom photo is uploaded */}
           <div className="absolute -bottom-12 sm:-bottom-16 left-1/2 transform -translate-x-1/2">
-            {isPoperaProfile ? (
+            {isPoperaProfile && !hostProfilePicture ? (
+              // Popera profile with no custom photo: show branded "P" logo
               <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32">
                 <PoperaProfilePicture size="md" className="w-full h-full rounded-2xl sm:rounded-3xl shadow-xl shadow-orange-900/30 border-4 border-white" />
               </div>
             ) : (
+              // All other profiles OR Popera with custom photo: show uploaded image or initials
               <div className="relative">
                 <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 bg-[#e35e25] rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-xl shadow-orange-900/30 border-4 border-white overflow-hidden">
                   {hostProfilePicture ? (
