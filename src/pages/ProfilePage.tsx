@@ -3,6 +3,7 @@ import { ViewState, Event } from '../../types';
 import { ChevronRight, ChevronLeft, Calendar, Users, Star, Heart, Settings } from 'lucide-react';
 import { useUserStore } from '../../stores/userStore';
 import { useEventStore } from '../../stores/eventStore';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   subscribeToHostedEventsCount,
   subscribeToAttendedEventsCount,
@@ -28,6 +29,7 @@ interface ProfilePageProps {
 }
 
 export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName, onLogout }) => {
+  const { t } = useLanguage();
   const user = useUserStore((state) => state.user);
   const userProfile = useUserStore((state) => state.userProfile);
   const refreshUserProfile = useUserStore((state) => state.refreshUserProfile);
@@ -278,14 +280,14 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
   const userBio = userProfile?.bio || '';
 
   const settingsLinks = [
-    { label: 'My Circles', action: () => setViewState(ViewState.MY_POPS), icon: Calendar },
-    { label: 'Basic Details', action: () => setViewState(ViewState.PROFILE_BASIC), icon: Users },
-    { label: 'Notification Preferences', action: () => setViewState(ViewState.PROFILE_NOTIFICATIONS), icon: Settings },
-    { label: 'Privacy Settings', action: () => setViewState(ViewState.PROFILE_PRIVACY), icon: Settings },
-    { label: 'Get Help', action: () => setViewState(ViewState.HELP), icon: Settings },
-    { label: 'Stripe Payout Settings', action: () => setViewState(ViewState.PROFILE_STRIPE), icon: Settings },
-    { label: 'Reviews', action: () => setViewState(ViewState.PROFILE_REVIEWS), icon: Star },
-    { label: 'Logout', action: onLogout, isLogout: true, icon: Settings },
+    { label: t('profile.myCircles'), action: () => setViewState(ViewState.MY_POPS), icon: Calendar },
+    { label: t('profile.basicDetails'), action: () => setViewState(ViewState.PROFILE_BASIC), icon: Users },
+    { label: t('profile.notificationPreferences'), action: () => setViewState(ViewState.PROFILE_NOTIFICATIONS), icon: Settings },
+    { label: t('profile.privacySettings'), action: () => setViewState(ViewState.PROFILE_PRIVACY), icon: Settings },
+    { label: t('profile.getHelp'), action: () => setViewState(ViewState.HELP), icon: Settings },
+    { label: t('profile.stripePayoutSettings'), action: () => setViewState(ViewState.PROFILE_STRIPE), icon: Settings },
+    { label: t('profile.reviews'), action: () => setViewState(ViewState.PROFILE_REVIEWS), icon: Star },
+    { label: t('common.logout'), action: onLogout, isLogout: true, icon: Settings },
   ];
 
   return (
@@ -297,7 +299,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
             onClick={() => setViewState(ViewState.FEED)} 
             className="flex items-center text-gray-400 hover:text-[#15383c] transition-colors font-medium text-sm sm:text-base touch-manipulation active:scale-95"
           >
-            <ChevronLeft size={18} className="sm:w-5 sm:h-5 mr-1" /> Back
+            <ChevronLeft size={18} className="sm:w-5 sm:h-5 mr-1" /> {t('common.back')}
           </button>
         </div>
 
@@ -351,7 +353,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
           </h1>
           <div className="flex items-center justify-center gap-2 mb-6">
             <Star size={18} className="text-[#e35e25] fill-[#e35e25]" />
-            <span className="text-gray-500 text-sm sm:text-base">Member since Nov '23</span>
+            <span className="text-gray-500 text-sm sm:text-base">{t('profile.memberSince')}</span>
           </div>
           
           {/* Bio Section - Clean layout */}
@@ -366,7 +368,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
             onClick={() => setViewState(ViewState.PROFILE_BASIC)} 
             className="px-7 py-2.5 rounded-full bg-white/80 backdrop-blur-sm border border-[#15383c]/30 text-[#15383c] text-sm sm:text-base font-semibold hover:bg-white hover:border-[#15383c] transition-all shadow-sm touch-manipulation active:scale-95"
           >
-            Edit Profile
+            {t('profile.editProfile')}
           </button>
         </div>
 
@@ -374,7 +376,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-8 sm:mb-10">
           {/* Community Card */}
           <div className="bg-white/90 backdrop-blur-xl rounded-[24px] sm:rounded-[28px] shadow-lg border border-gray-100/80 p-5 sm:p-6 hover:shadow-xl transition-all">
-            <h3 className="text-xs sm:text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Community</h3>
+            <h3 className="text-xs sm:text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">{t('profile.community')}</h3>
             <div className="space-y-4">
               {/* Followers */}
               <button
@@ -385,7 +387,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
                   <div className="w-10 h-10 bg-[#e35e25]/10 rounded-full flex items-center justify-center">
                     <Users size={18} className="text-[#e35e25]" />
                   </div>
-                  <span className="text-sm sm:text-base text-gray-600 font-medium">Followers</span>
+                  <span className="text-sm sm:text-base text-gray-600 font-medium">{t('profile.followers')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xl sm:text-2xl font-heading font-bold text-[#15383c]">{loading ? '...' : stats.followers}</span>
@@ -402,7 +404,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
                   <div className="w-10 h-10 bg-[#15383c]/10 rounded-full flex items-center justify-center">
                     <Heart size={18} className="text-[#15383c]" />
                   </div>
-                  <span className="text-sm sm:text-base text-gray-600 font-medium">Following</span>
+                  <span className="text-sm sm:text-base text-gray-600 font-medium">{t('profile.following')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xl sm:text-2xl font-heading font-bold text-[#15383c]">{loading ? '...' : stats.following}</span>
@@ -419,7 +421,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
                   <div className="w-10 h-10 bg-yellow-50 rounded-full flex items-center justify-center">
                     <Star size={18} className="text-yellow-500 fill-yellow-500" />
                   </div>
-                  <span className="text-sm sm:text-base text-gray-600 font-medium">Reviews</span>
+                  <span className="text-sm sm:text-base text-gray-600 font-medium">{t('profile.reviews')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xl sm:text-2xl font-heading font-bold text-[#15383c]">{loading ? '...' : stats.reviews}</span>
@@ -431,7 +433,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
           
           {/* Performance Card */}
           <div className="bg-white/90 backdrop-blur-xl rounded-[24px] sm:rounded-[28px] shadow-lg border border-gray-100/80 p-5 sm:p-6 hover:shadow-xl transition-all">
-            <h3 className="text-xs sm:text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Performance</h3>
+            <h3 className="text-xs sm:text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">{t('profile.performance')}</h3>
             <div className="space-y-4">
               {/* My Events - Combined count (hosting + attending + drafts + past) */}
               <button
@@ -442,7 +444,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
                   <div className="w-10 h-10 bg-[#e35e25]/10 rounded-full flex items-center justify-center">
                     <Calendar size={18} className="text-[#e35e25]" />
                   </div>
-                  <span className="text-sm sm:text-base text-gray-600 font-medium">My Events</span>
+                  <span className="text-sm sm:text-base text-gray-600 font-medium">{t('profile.myEvents')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xl sm:text-2xl font-heading font-bold text-[#15383c]">{loading ? '...' : (stats.eventCounts.total + stats.attended)}</span>
@@ -456,7 +458,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
                   <div className="w-10 h-10 bg-[#15383c]/10 rounded-full flex items-center justify-center">
                     <Users size={18} className="text-[#15383c]" />
                   </div>
-                  <span className="text-sm sm:text-base text-gray-600 font-medium">Total Attendees</span>
+                  <span className="text-sm sm:text-base text-gray-600 font-medium">{t('profile.totalAttendees')}</span>
                 </div>
                 <span className="text-xl sm:text-2xl font-heading font-bold text-[#15383c]">{loading ? '...' : stats.attendees}</span>
               </div>
@@ -470,7 +472,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
                   <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center">
                     <Calendar size={18} className="text-green-600" />
                   </div>
-                  <span className="text-sm sm:text-base text-gray-600 font-medium">Hosting</span>
+                  <span className="text-sm sm:text-base text-gray-600 font-medium">{t('profile.hosting')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xl sm:text-2xl font-heading font-bold text-[#15383c]">{loading ? '...' : stats.eventCounts.hosting}</span>
@@ -491,7 +493,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
               <span className="text-white font-bold text-lg sm:text-xl">$</span>
             </div>
             <div>
-              <span className="text-white/70 font-medium text-xs sm:text-sm block mb-0.5">Total Revenue</span>
+              <span className="text-white/70 font-medium text-xs sm:text-sm block mb-0.5">{t('profile.totalRevenue')}</span>
               <span className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-white">${stats.revenue}</span>
             </div>
           </div>
@@ -503,13 +505,13 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
           <div className="mb-8 sm:mb-10">
             <div className="flex items-center justify-between mb-5 sm:mb-6">
               <h2 className="font-heading font-bold text-xl sm:text-2xl md:text-3xl text-[#15383c]">
-                My Events
+                {t('profile.myEvents')}
               </h2>
               <button
                 onClick={() => setViewState(ViewState.MY_POPS)}
                 className="text-sm sm:text-base text-gray-600 hover:text-[#15383c] font-medium transition-colors flex items-center gap-2"
               >
-                See All
+                {t('profile.seeAll')}
                 <ChevronRight size={18} />
               </button>
             </div>
@@ -540,7 +542,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
 
         {/* Settings Menu - Liquid Glass Style */}
         <div className="bg-white/90 backdrop-blur-xl rounded-[24px] sm:rounded-[28px] shadow-lg border border-gray-100/80 overflow-hidden">
-          <h3 className="text-xs sm:text-sm font-bold text-gray-400 uppercase tracking-wider px-5 sm:px-6 pt-5 sm:pt-6 pb-2">Settings</h3>
+          <h3 className="text-xs sm:text-sm font-bold text-gray-400 uppercase tracking-wider px-5 sm:px-6 pt-5 sm:pt-6 pb-2">{t('profile.settings')}</h3>
           {settingsLinks.map((item, idx) => {
             const Icon = item.icon || Settings;
             return (

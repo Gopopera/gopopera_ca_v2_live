@@ -3,6 +3,7 @@ import { ViewState } from '../../types';
 import { ChevronLeft, Upload, MapPin, Calendar, Clock, X, ArrowUp, ArrowDown, Sparkles } from 'lucide-react';
 import { useEventStore } from '../../stores/eventStore';
 import { useUserStore } from '../../stores/userStore';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { HostPhoneVerificationModal } from '../../components/auth/HostPhoneVerificationModal';
 import { uploadImage } from '../../firebase/storage';
 import { processImageForUpload } from '../../utils/imageProcessing';
@@ -21,6 +22,7 @@ const POPULAR_CITIES = [
 ];
 
 export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }) => {
+  const { t } = useLanguage();
   const addEvent = useEventStore((state) => state.addEvent);
   const user = useUserStore((state) => state.user);
   const userProfile = useUserStore((state) => state.userProfile);
@@ -813,7 +815,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
             <ChevronLeft size={18} className="sm:w-5 sm:h-5" />
           </button>
           <h1 className="font-heading font-bold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-[#15383c]">
-            Create your next circle
+            {t('createEvent.createYourNextCircle')}
           </h1>
         </div>
 
@@ -822,11 +824,11 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
           <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 lg:p-10 border border-gray-100 shadow-sm mb-6 sm:mb-8 space-y-4 sm:space-y-5 md:space-y-6">
             <div className="space-y-2">
               <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
-                Event Title <span className="text-red-500">*</span>
+                {t('createEvent.eventTitle')} <span className="text-red-500">*</span>
               </label>
               <input 
                 type="text" 
-                placeholder="Enter Event Title Here" 
+                placeholder={t('createEvent.enterEventTitleHere')}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
@@ -836,7 +838,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
 
             <div className="space-y-2">
               <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
-                Main Category <span className="text-red-500">*</span>
+                {t('createEvent.mainCategory')} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <select 
@@ -850,7 +852,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                   required
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all appearance-none cursor-pointer"
                 >
-                  <option value="">Select...</option>
+                  <option value="">{t('createEvent.select')}</option>
                   {MAIN_CATEGORIES.map(cat => (
                     <option key={cat} value={cat}>{MAIN_CATEGORY_LABELS[cat]}</option>
                   ))}
@@ -861,12 +863,12 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
             {/* Vibes / Subcategories - Multi-select, filtered by Main Category */}
             <div className="space-y-2">
               <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
-                Vibes <span className="text-red-500">*</span> <span className="text-gray-400 font-normal text-xs">(Select 1-5)</span>
+                {t('createEvent.vibes')} <span className="text-red-500">*</span> <span className="text-gray-400 font-normal text-xs">{t('createEvent.selectVibesHint')}</span>
               </label>
               <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl min-h-[60px]">
                 {selectedVibes.length === 0 ? (
                   <span className="text-gray-400 text-sm">
-                    {mainCategory ? 'No vibes selected' : 'Select a Main Category first'}
+                    {mainCategory ? t('createEvent.noVibesSelected') : t('createEvent.selectMainCategoryFirst')}
                   </span>
                 ) : (
                   selectedVibes.map((vibe) => (
@@ -899,7 +901,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                           if (selectedVibes.length < 5) {
                             setSelectedVibes([...selectedVibes, vibe]);
                           } else {
-                            alert('You can select up to 5 vibes.');
+                            alert(t('createEvent.youCanSelectUpTo'));
                           }
                         }}
                         disabled={selectedVibes.length >= 5}
@@ -910,17 +912,17 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                     ))}
                 </div>
               ) : (
-                <p className="text-xs text-gray-400 pl-1">Please select a Main Category above to see available vibes.</p>
+                <p className="text-xs text-gray-400 pl-1">{t('createEvent.selectMainCategoryFirst')}</p>
               )}
             </div>
 
             <div className="space-y-2">
               <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
-                Event Description <span className="text-red-500">*</span>
+                {t('createEvent.eventDescription')} <span className="text-red-500">*</span>
               </label>
               <textarea 
                 rows={4} 
-                placeholder="Enter Description Here" 
+                placeholder={t('createEvent.enterDescriptionHere')}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 required
@@ -932,11 +934,11 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
             <div className="space-y-2">
               <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1 flex items-center gap-2">
                 <Sparkles size={16} className="text-popera-orange" />
-                What to Expect <span className="text-gray-400 font-normal">(Optional)</span>
+                {t('createEvent.whatToExpect')} <span className="text-gray-400 font-normal">{t('createEvent.whatToExpectOptional')}</span>
               </label>
               <textarea 
                 rows={4} 
-                placeholder="Describe what attendees can expect at your event..." 
+                placeholder={t('createEvent.describeWhatAttendeesCanExpect')}
                 value={whatToExpect}
                 onChange={(e) => setWhatToExpect(e.target.value)}
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl sm:rounded-2xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all resize-none" 
@@ -946,17 +948,17 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
 
           {/* Location */}
           <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 lg:p-10 border border-gray-100 shadow-sm mb-6 sm:mb-8 space-y-4 sm:space-y-5 md:space-y-6">
-            <h3 className="text-base sm:text-lg font-medium text-[#15383c] mb-4">Location</h3>
+            <h3 className="text-base sm:text-lg font-medium text-[#15383c] mb-4">{t('createEvent.location')}</h3>
             
             <div className="space-y-2">
               <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
-                City <span className="text-red-500">*</span>
+                {t('createEvent.city')} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input 
                   type="text" 
-                  placeholder="Enter City" 
+                  placeholder={t('createEvent.enterCity')}
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   onFocus={() => setShowCitySuggestions(true)}
@@ -986,11 +988,11 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
 
             <div className="space-y-2">
               <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
-                Address (Optional)
+                {t('createEvent.addressOptional')}
               </label>
               <input 
                 type="text" 
-                placeholder="Enter Street Address" 
+                placeholder={t('createEvent.enterStreetAddress')}
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all" 
@@ -1000,12 +1002,12 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
 
           {/* Date & Time */}
           <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 lg:p-10 border border-gray-100 shadow-sm mb-6 sm:mb-8 space-y-4 sm:space-y-5 md:space-y-6">
-            <h3 className="text-base sm:text-lg font-medium text-[#15383c] mb-4">Date & Time</h3>
+            <h3 className="text-base sm:text-lg font-medium text-[#15383c] mb-4">{t('createEvent.dateAndTime')}</h3>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
               <div className="space-y-2">
                 <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
-                  Date <span className="text-red-500">*</span>
+                  {t('createEvent.date')} <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -1022,7 +1024,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
 
               <div className="space-y-2">
                 <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
-                  Time <span className="text-red-500">*</span>
+                  {t('createEvent.time')} <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -1040,12 +1042,12 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
 
           {/* Session Details */}
           <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 lg:p-10 border border-gray-100 shadow-sm mb-6 sm:mb-8 space-y-4 sm:space-y-5 md:space-y-6">
-            <h3 className="text-base sm:text-lg font-medium text-[#15383c] mb-4">Session Details</h3>
+            <h3 className="text-base sm:text-lg font-medium text-[#15383c] mb-4">{t('createEvent.sessionDetails')}</h3>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
               <div className="space-y-2">
                 <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
-                  Session Frequency <span className="text-red-500">*</span>
+                  {t('createEvent.sessionFrequency')} <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <select 
@@ -1062,17 +1064,17 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                     required
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all appearance-none cursor-pointer"
                   >
-                    <option value="">Select...</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
-                    <option value="oneTime">One-Time Session</option>
+                    <option value="">{t('createEvent.select')}</option>
+                    <option value="weekly">{t('createEvent.weekly')}</option>
+                    <option value="monthly">{t('createEvent.monthly')}</option>
+                    <option value="oneTime">{t('createEvent.oneTimeSession')}</option>
                   </select>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
-                  Session Mode <span className="text-red-500">*</span>
+                  {t('createEvent.sessionMode')} <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <select 
@@ -1081,9 +1083,9 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                     required
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all appearance-none cursor-pointer"
                   >
-                    <option value="">Select...</option>
-                    <option value="inPerson">In-Person Session</option>
-                    <option value="remote">Remote Session</option>
+                    <option value="">{t('createEvent.select')}</option>
+                    <option value="inPerson">{t('createEvent.inPersonSession')}</option>
+                    <option value="remote">{t('createEvent.remoteSession')}</option>
                   </select>
                 </div>
               </div>
@@ -1093,24 +1095,24 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
             {sessionFrequency === 'weekly' && date && time && (
               <div className="space-y-2 p-4 bg-[#eef4f5] rounded-xl border border-[#15383c]/10">
                 <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
-                  Weekly Repeat Schedule
+                  {t('createEvent.weeklyRepeatSchedule')}
                 </label>
                 <div className="flex items-center gap-3 flex-wrap">
-                  <span className="text-sm text-gray-600">Repeats every</span>
+                  <span className="text-sm text-gray-600">{t('createEvent.repeatsEvery')}</span>
                   <select
                     value={weeklyDayOfWeek !== undefined ? weeklyDayOfWeek : (date ? new Date(date).getDay() : 0)}
                     onChange={(e) => setWeeklyDayOfWeek(parseInt(e.target.value))}
                     className="bg-white border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-[#15383c]"
                   >
-                    <option value="0">Sunday</option>
-                    <option value="1">Monday</option>
-                    <option value="2">Tuesday</option>
-                    <option value="3">Wednesday</option>
-                    <option value="4">Thursday</option>
-                    <option value="5">Friday</option>
-                    <option value="6">Saturday</option>
+                    <option value="0">{t('common.sunday')}</option>
+                    <option value="1">{t('common.monday')}</option>
+                    <option value="2">{t('common.tuesday')}</option>
+                    <option value="3">{t('common.wednesday')}</option>
+                    <option value="4">{t('common.thursday')}</option>
+                    <option value="5">{t('common.friday')}</option>
+                    <option value="6">{t('common.saturday')}</option>
                   </select>
-                  <span className="text-sm text-gray-600">at</span>
+                  <span className="text-sm text-gray-600">{t('createEvent.at')}</span>
                   <input
                     type="time"
                     value={time}
@@ -1125,10 +1127,10 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
             {sessionFrequency === 'monthly' && date && time && (
               <div className="space-y-2 p-4 bg-[#eef4f5] rounded-xl border border-[#15383c]/10">
                 <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
-                  Monthly Repeat Schedule
+                  {t('createEvent.monthlyRepeatSchedule')}
                 </label>
                 <div className="flex items-center gap-3 flex-wrap">
-                  <span className="text-sm text-gray-600">Repeats every</span>
+                  <span className="text-sm text-gray-600">{t('createEvent.repeatsEvery')}</span>
                   <select
                     value={monthlyDayOfMonth !== undefined ? monthlyDayOfMonth : (date ? new Date(date).getDate() : 1)}
                     onChange={(e) => setMonthlyDayOfMonth(parseInt(e.target.value))}
@@ -1138,7 +1140,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                       <option key={day} value={day}>{day}</option>
                     ))}
                   </select>
-                  <span className="text-sm text-gray-600">of the month at</span>
+                  <span className="text-sm text-gray-600">{t('createEvent.ofTheMonthAt')}</span>
                   <input
                     type="time"
                     value={time}
@@ -1153,7 +1155,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
           {/* Image Upload - Multiple Images */}
           <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 lg:p-10 border border-gray-100 shadow-sm mb-6 sm:mb-8">
             <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1 mb-3 sm:mb-4 md:mb-5">
-              Add Event Pictures <span className="text-gray-400 font-normal">(First image is the main photo)</span>
+              {t('createEvent.addEventPictures')} <span className="text-gray-400 font-normal">{t('createEvent.firstImageIsMainPhoto')}</span>
             </label>
             
             {/* Image Gallery Preview */}
@@ -1223,13 +1225,13 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
               {uploadingImage ? (
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#15383c] mx-auto mb-2"></div>
-                  <p className="text-xs sm:text-sm text-gray-600">Uploading images...</p>
+                  <p className="text-xs sm:text-sm text-gray-600">{t('createEvent.uploadingImages')}</p>
                 </div>
               ) : (
                 <>
                   <Upload size={24} className="sm:w-7 sm:h-7 md:w-8 md:h-8 text-gray-400 mb-2" />
-                  <p className="text-xs sm:text-sm md:text-base text-gray-600 font-medium">Click to upload or drag and drop</p>
-                  <p className="text-[10px] sm:text-xs text-gray-400 mt-1">PNG, JPG, GIF up to 5MB each (multiple images supported)</p>
+                  <p className="text-xs sm:text-sm md:text-base text-gray-600 font-medium">{t('createEvent.clickToUploadOrDragAndDrop')}</p>
+                  <p className="text-[10px] sm:text-xs text-gray-400 mt-1">{t('createEvent.imageUploadHint')}</p>
                 </>
               )}
             </div>
@@ -1239,11 +1241,11 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
           <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 lg:p-10 border border-gray-100 shadow-sm mb-6 sm:mb-8 space-y-4 sm:space-y-5 md:space-y-6">
             <div className="space-y-2">
               <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
-                Attendees Limit (Optional)
+                {t('createEvent.attendeesLimitOptional')}
               </label>
               <input 
                 type="number" 
-                placeholder="Enter Event Limit Here" 
+                placeholder={t('createEvent.enterEventLimitHere')}
                 value={attendeesCount || ''}
                 onChange={(e) => setAttendeesCount(parseInt(e.target.value) || 0)}
                 min="0"
@@ -1253,11 +1255,11 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
 
             <div className="space-y-2">
               <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
-                Price
+                {t('createEvent.price')}
               </label>
               <input 
                 type="text" 
-                placeholder="e.g., Free, $25.00, Donation" 
+                placeholder={t('createEvent.pricePlaceholder')}
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all" 
@@ -1280,7 +1282,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                   className="w-5 h-5 text-[#15383c] border-gray-300 rounded focus:ring-[#15383c]"
                 />
                 <label htmlFor="hasFee" className="text-sm font-medium text-gray-700 cursor-pointer">
-                  Charge a fee for this event
+                  {t('createEvent.chargeFeeForThisEvent')}
                 </label>
               </div>
               
@@ -1308,20 +1310,20 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                         />
                       </div>
                       <p className="text-xs text-gray-500">
-                        Platform fee: 10% (includes Stripe fees). You'll receive payouts 24 hours after the event.
+                        {t('createEvent.platformFee')}
                       </p>
                     </>
                   ) : (
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                       <p className="text-sm text-yellow-800 mb-2">
-                        You need to set up Stripe to charge fees. Click below to complete your Stripe account setup.
+                        {t('createEvent.needToSetupStripe')}
                       </p>
                       <button
                         type="button"
                         onClick={() => setViewState(ViewState.PROFILE_STRIPE)}
                         className="text-sm font-semibold text-[#e35e25] hover:underline"
                       >
-                        Set up Stripe Account →
+                        {t('createEvent.setUpStripeAccount')}
                       </button>
                     </div>
                   )}
@@ -1337,7 +1339,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
               disabled={isSubmitting || uploadingImage}
               className="w-full py-3.5 sm:py-4 md:py-4.5 bg-[#15383c] text-white font-bold rounded-full hover:bg-[#1f4d52] transition-colors shadow-lg touch-manipulation active:scale-95 text-sm sm:text-base md:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {uploadingImage ? 'Uploading Images...' : isSubmitting ? 'Creating Event...' : 'Host Event'}
+              {uploadingImage ? t('createEvent.uploadingImages') : isSubmitting ? t('createEvent.creatingEvent') : t('createEvent.hostEvent')}
             </button>
             <button 
               type="button"
@@ -1348,7 +1350,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
               disabled={isSubmitting || uploadingImage}
               className="w-full py-3.5 sm:py-4 md:py-4.5 bg-white border-2 border-[#15383c] text-[#15383c] font-bold rounded-full hover:bg-gray-50 transition-colors touch-manipulation active:scale-95 text-sm sm:text-base md:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Saving...' : 'Save as Draft'}
+              {isSubmitting ? t('createEvent.saving') : t('createEvent.saveAsDraft')}
             </button>
           </div>
         </form>

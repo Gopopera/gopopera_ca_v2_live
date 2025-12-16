@@ -772,10 +772,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 <MessageCircle size={32} className="text-[#e35e25]" />
               </div>
               <h2 className="text-2xl font-heading font-bold text-[#15383c] mb-2">
-                Sign In to Join Conversations
+                {t('ui.signInToJoin')}
               </h2>
               <p className="text-gray-600 text-sm">
-                Conversations are only available after signing up or logging in.
+                {t('ui.conversationsAvailable')}
               </p>
             </div>
 
@@ -790,13 +790,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 }}
                 className="w-full px-6 py-3 bg-[#e35e25] text-white rounded-full font-medium hover:bg-[#d14e1a] transition-colors"
               >
-                Sign In / Sign Up
+                {t('ui.signInSignUp')}
               </button>
               <button
                 onClick={() => setShowAuthModal(false)}
                 className="w-full px-6 py-3 bg-gray-100 text-[#15383c] rounded-full font-medium hover:bg-gray-200 transition-colors"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
             </div>
           </div>
@@ -804,7 +804,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       )}
 
       <div className="hidden lg:block max-w-7xl mx-auto px-6 py-6 mt-20">
-        <button onClick={() => window.history.back()} className="flex items-center text-gray-500 hover:text-popera-teal transition-colors font-medium"><ChevronLeft size={20} className="mr-1" /> Back to Events</button>
+        <button onClick={() => window.history.back()} className="flex items-center text-gray-500 hover:text-popera-teal transition-colors font-medium"><ChevronLeft size={20} className="mr-1" /> {t('ui.backToEvents')}</button>
       </div>
 
 
@@ -1041,7 +1041,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                       
                       <div className="flex items-center gap-1.5 text-gray-500">
                         <Users size={14} />
-                        <span className="text-xs">{followersCount} {followersCount === 1 ? 'follower' : 'followers'}</span>
+                        <span className="text-xs">{followersCount} {followersCount === 1 ? t('ui.follower') : t('ui.followers')}</span>
                       </div>
                     </div>
                     
@@ -1159,7 +1159,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                     
                     <div className="flex items-center gap-1.5 text-gray-500">
                       <Users size={14} />
-                      <span className="text-xs">{followersCount} {followersCount === 1 ? 'follower' : 'followers'}</span>
+                      <span className="text-xs">{followersCount} {followersCount === 1 ? t('ui.follower') : t('ui.followers')}</span>
                     </div>
                   </div>
                   
@@ -1197,10 +1197,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                     <span className="text-2xl font-heading font-bold text-[#15383c]">
                       {event.hasFee && event.feeAmount && event.feeAmount > 0
                         ? `$${(event.feeAmount / 100).toFixed(0)}`
-                        : 'Free'
+                        : t('event.free')
                       }
                     </span>
-                    <p className="text-xs text-gray-500 font-medium mt-0.5">per person</p>
+                    <p className="text-xs text-gray-500 font-medium mt-0.5">{t('ui.perPerson')}</p>
                   </div>
                 </div>
                 <div className="space-y-2.5">
@@ -1210,7 +1210,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                       onClick={() => setViewState(ViewState.EDIT_EVENT)}
                       className="w-full py-2 bg-white/80 backdrop-blur-sm border border-[#15383c]/30 text-[#15383c] rounded-full text-sm font-semibold hover:bg-white hover:border-[#15383c] transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2"
                     >
-                      <Edit size={14} /> Edit Event
+                      <Edit size={14} /> {t('eventDetail.editEvent')}
                     </button>
                   )}
                   {/* Reserve Button - Only for non-hosts (users cannot reserve their own events) */}
@@ -1227,7 +1227,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                           : 'bg-[#e35e25] text-white hover:bg-[#cf4d1d]'
                       }`}
                     >
-                      {reserving ? 'Reserving...' : isDemo ? 'Demo Event (Locked)' : hasRSVPed ? 'Reserved ✓' : 'Reserve Spot'}
+                      {reserving ? t('ui.reserving') : isDemo ? t('ui.demoEvent') : hasRSVPed ? t('event.reserved') : t('ui.reserveSpot')}
                     </button>
                   )}
                   <button
@@ -1235,7 +1235,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                     aria-label="Share event"
                     className="w-full py-2 bg-white border border-[#15383c] text-[#15383c] rounded-full text-sm font-semibold hover:bg-[#15383c] hover:text-white transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2"
                   >
-                    <Share2 size={14} /> Share Event
+                    <Share2 size={14} /> {t('ui.shareEvent')}
                   </button>
                   <button 
                     onClick={handleConversationClick}
@@ -1247,11 +1247,11 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                     }`}
                   >
                     <MessageCircle size={14} /> 
-                    {isDemo ? 'Chat Locked' : 'Join Group Chat'}
+                    {isDemo ? t('ui.chatLocked') : t('ui.joinGroupChat')}
                   </button>
                 </div>
                 <div className="mt-4 pt-3 border-t border-gray-100 text-center">
-                  <p className="text-[10px] text-gray-400 leading-relaxed">Secure payment powered by Stripe.</p>
+                  <p className="text-[10px] text-gray-400 leading-relaxed">{t('ui.securePayment')}</p>
                 </div>
                 </div>{/* End Action Card */}
               </div>{/* End sticky wrapper */}
@@ -1276,13 +1276,23 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             <h2 className="text-xl sm:text-2xl lg:text-2xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">
               {t('event.location')}
             </h2>
-            <div className="rounded-2xl lg:rounded-3xl overflow-hidden h-56 sm:h-72 lg:h-64 relative group cursor-pointer shadow-lg border border-gray-200 mb-4">
+            <div className="rounded-2xl lg:rounded-3xl overflow-hidden h-56 sm:h-72 lg:h-80 relative group shadow-lg border border-gray-200 mb-4">
               <MockMap 
                 lat={event.lat}
                 lng={event.lng}
                 address={event.address}
                 city={event.city}
-                className="w-full h-full object-cover"
+                className="w-full h-full"
+                nearbyEvents={allEvents.map(e => ({
+                  id: e.id,
+                  title: e.title,
+                  lat: e.lat,
+                  lng: e.lng,
+                  date: e.date,
+                  city: e.city
+                }))}
+                currentEventId={event.id}
+                onEventClick={(e) => onEventClick(allEvents.find(ev => ev.id === e.id) as Event)}
               />
             </div>
             <p className="text-base sm:text-lg lg:text-lg text-[#15383c] font-medium flex items-center gap-2">
@@ -1294,17 +1304,17 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           {/* Cancellation Policy Section - Compact */}
           <div className="mb-10 sm:mb-12 md:mb-16 pt-6 sm:pt-8 border-t border-gray-100">
             <h2 className="text-lg sm:text-xl font-heading font-bold text-[#15383c] mb-3 sm:mb-4">
-              Cancellation / Expulsion Policy
+              {t('eventDetail.cancellationPolicy')}
             </h2>
             <div className="space-y-2 text-gray-600 text-xs sm:text-sm leading-relaxed">
               <p>
-                <strong className="text-[#15383c]">Cancellation:</strong> Full refund 48+ hours before, 50% refund 24-48 hours before, no refund within 24 hours or no-shows.
+                <strong className="text-[#15383c]">{t('event.cancel')}:</strong> {t('eventDetail.cancellationDesc')}
               </p>
               <p>
-                <strong className="text-[#15383c]">Expulsion:</strong> Hosts may expel rule-violating attendees without refunds; repeat offenders may be banned.
+                <strong className="text-[#15383c]">Expulsion:</strong> {t('eventDetail.expulsionDesc')}
               </p>
               <p className="text-gray-400 text-xs italic">
-                For complete details, review our <button onClick={() => setViewState(ViewState.CANCELLATION)} className="text-[#e35e25] hover:underline font-medium">Cancellation Policy</button>.
+                {t('eventDetail.forDetails')} <button onClick={() => setViewState(ViewState.CANCELLATION)} className="text-[#e35e25] hover:underline font-medium">{t('eventDetail.cancellationPolicyLink')}</button>.
               </p>
             </div>
           </div>
@@ -1315,10 +1325,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
          <div className="text-center mb-8 sm:mb-10">
            <span className="inline-flex items-center gap-2 px-4 py-1.5 mb-4 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] text-[10px] sm:text-xs font-bold tracking-widest uppercase">
              <Sparkles size={12} className="sm:w-3.5 sm:h-3.5" />
-             Discover More
+             {t('ui.discover')}
            </span>
-           <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c]">Other circles you might love</h2>
-           <p className="mt-2 text-sm sm:text-base text-gray-500 font-light">Explore similar experiences happening near you</p>
+           <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c]">{t('ui.otherCircles')}</h2>
+           <p className="mt-2 text-sm sm:text-base text-gray-500 font-light">{t('ui.exploreNearby')}</p>
          </div>
          {/* Desktop: Horizontal scroll with better spacing */}
          <div className="hidden md:block">
@@ -1424,13 +1434,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                <div className="flex flex-col lg:flex-row items-center justify-between gap-6 lg:gap-10">
                   <div className="text-center lg:text-left flex-1">
                      <span className="inline-block px-3 py-1 mb-3 sm:mb-4 text-[10px] sm:text-xs font-bold tracking-widest uppercase text-[#e35e25] bg-[#e35e25]/10 rounded-full border border-[#e35e25]/20">
-                        Become a Host
+                        {t('ui.becomeAHost')}
                      </span>
                      <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-white mb-3 sm:mb-4 leading-tight">
-                        Ready to host your own circle?
+                        {t('ui.readyToHost')}
                      </h2>
                      <p className="text-sm sm:text-base md:text-lg text-white/70 font-light max-w-xl mx-auto lg:mx-0">
-                        Create intimate 3–10 person sessions and earn from what you know. It's free to start.
+                        {t('ui.createSessions')}
                      </p>
                   </div>
                   <div className="flex flex-col items-center gap-3">
@@ -1438,10 +1448,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                         className="group px-8 sm:px-10 md:px-12 py-3.5 sm:py-4 bg-[#e35e25] text-white rounded-full font-bold text-base sm:text-lg md:text-xl hover:bg-[#cf4d1d] transition-all shadow-lg shadow-[#e35e25]/30 hover:shadow-xl hover:shadow-[#e35e25]/40 hover:-translate-y-1 touch-manipulation active:scale-95 whitespace-nowrap flex items-center gap-2" 
                         onClick={() => setViewState(ViewState.CREATE_EVENT)}
                      >
-                        Start Hosting
+                        {t('ui.startHosting')}
                         <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
                      </button>
-                     <span className="text-xs text-white/50 font-medium">No upfront costs • Keep 90% of earnings</span>
+                     <span className="text-xs text-white/50 font-medium">{t('ui.noUpfrontCosts')}</span>
                   </div>
                </div>
             </div>
@@ -1471,7 +1481,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                  className="flex-1 h-11 font-semibold text-[15px] rounded-full bg-[#15383c] text-white shadow-lg shadow-[#15383c]/20 flex items-center justify-center touch-manipulation px-5 gap-2"
                >
                  <CheckCircle2 size={16} />
-                 Attending
+                 {t('ui.attending')}
                </button>
              </>
            )}
@@ -1497,7 +1507,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                  aria-label="Open Chat"
                >
                  <MessageCircle size={16} />
-                 Manage Event
+                 {t('ui.manageEvent')}
                </button>
              </>
            )}
@@ -1548,7 +1558,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                      : 'bg-[#15383c] text-white shadow-[#15383c]/25 hover:bg-[#1f4d52]'
                  }`}
                >
-                 {isDemo ? 'Locked' : 'Attend'}
+                 {isDemo ? t('ui.locked') : t('ui.attend')}
                </button>
              </>
            )}
@@ -1571,10 +1581,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 <MessageCircle size={32} className="text-[#e35e25]" />
               </div>
               <h2 className="text-2xl font-heading font-bold text-[#15383c] mb-2">
-                Sign In to Join Conversations
+                {t('event.signInToJoinConversations')}
               </h2>
               <p className="text-gray-600 text-sm">
-                Conversations are only available after signing up or logging in.
+                {t('event.conversationsOnlyAvailable')}
               </p>
             </div>
 
@@ -1589,13 +1599,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 }}
                 className="w-full px-6 py-3 bg-[#e35e25] text-white rounded-full font-medium hover:bg-[#d14e1a] transition-colors"
               >
-                Sign In / Sign Up
+                {t('event.signInSignUp')}
               </button>
               <button
                 onClick={() => setShowAuthModal(false)}
                 className="w-full px-6 py-3 bg-gray-100 text-[#15383c] rounded-full font-medium hover:bg-gray-200 transition-colors"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
             </div>
           </div>

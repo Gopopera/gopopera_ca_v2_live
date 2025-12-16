@@ -411,7 +411,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
             aria-label="Close menu"
           >
             <ArrowLeft size={20} className="sm:w-6 sm:h-6" />
-            <span>Back</span>
+            <span>{t('ui.back')}</span>
           </button>
           
           <nav className="flex flex-col space-y-1 sm:space-y-2 md:space-y-3 text-lg sm:text-xl md:text-2xl font-heading font-bold text-popera-teal flex-1 overflow-y-auto pb-8 sm:pb-10 md:pb-12">
