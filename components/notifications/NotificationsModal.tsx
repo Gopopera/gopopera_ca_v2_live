@@ -36,7 +36,17 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
   const [markingAllRead, setMarkingAllRead] = useState(false);
 
   useEffect(() => {
-    if (!isOpen || !user?.uid) return;
+    if (!isOpen || !user?.uid) {
+      if (isOpen) {
+        console.log('[NOTIFICATIONS_MODAL] ⚠️ Modal opened but no user:', { isOpen, userId: user?.uid });
+      }
+      return;
+    }
+    
+    console.log('[NOTIFICATIONS_MODAL] 🚀 Modal opened, setting up notifications:', {
+      userId: user.uid,
+      path: `users/${user.uid}/notifications`,
+    });
     
     // Load initial notifications
     loadNotifications();
@@ -51,9 +61,12 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
         
         const db = getDbSafe();
         if (!db) {
-          console.warn('[NOTIFICATIONS] Firestore not available for real-time subscription');
+          console.warn('[NOTIFICATIONS_MODAL] ⚠️ Firestore not available for real-time subscription');
           return;
         }
+        
+        const path = `users/${user.uid}/notifications`;
+        console.log('[NOTIFICATIONS_MODAL] 📡 Setting up real-time subscription:', { path });
         
         const notificationsRef = collection(db, 'users', user.uid, 'notifications');
         const q = query(notificationsRef, orderBy('timestamp', 'desc'), limit(50));
@@ -61,6 +74,13 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
         unsubscribe = onSnapshot(
           q,
           (snapshot) => {
+            console.log('[NOTIFICATIONS_MODAL] 📊 Real-time update received:', {
+              userId: user.uid,
+              path,
+              count: snapshot.size,
+              docIds: snapshot.docs.map(d => d.id).slice(0, 5),
+            });
+            
             const notifs = snapshot.docs.map((doc) => ({
               id: doc.id,
               ...doc.data(),
@@ -69,14 +89,22 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
             setNotifications(notifs);
             setLoading(false);
           },
-          (error) => {
-            console.error('Error in notification subscription:', error);
+          (error: any) => {
+            console.error('[NOTIFICATIONS_MODAL] ❌ Error in notification subscription:', {
+              userId: user.uid,
+              path,
+              error: error?.message || error,
+              code: error?.code,
+            });
             // Fallback to manual load
             loadNotifications();
           }
         );
-      } catch (error) {
-        console.error('Error setting up real-time notification subscription:', error);
+      } catch (error: any) {
+        console.error('[NOTIFICATIONS_MODAL] ❌ Error setting up real-time subscription:', {
+          userId: user.uid,
+          error: error?.message || error,
+        });
         // Fallback to manual load
         loadNotifications();
       }
@@ -86,20 +114,36 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
     
     return () => {
       if (unsubscribe) {
+        console.log('[NOTIFICATIONS_MODAL] 🧹 Cleaning up subscription for user:', user.uid);
         unsubscribe();
       }
     };
   }, [isOpen, user?.uid]);
 
   const loadNotifications = async () => {
-    if (!user?.uid) return;
+    if (!user?.uid) {
+      console.log('[NOTIFICATIONS_MODAL] ⚠️ No user ID, skipping load');
+      return;
+    }
 
+    console.log('[NOTIFICATIONS_MODAL] 📖 Loading notifications for user:', user.uid);
     setLoading(true);
     try {
       const notifs = await getUserNotifications(user.uid);
+      console.log('[NOTIFICATIONS_MODAL] ✅ Notifications loaded:', {
+        userId: user.uid,
+        count: notifs.length,
+        notifications: notifs.map(n => ({
+          id: n.id,
+          type: n.type,
+          title: n.title,
+          read: n.read,
+          timestamp: new Date(n.timestamp).toISOString(),
+        })),
+      });
       setNotifications(notifs);
     } catch (error) {
-      console.error('Error loading notifications:', error);
+      console.error('[NOTIFICATIONS_MODAL] ❌ Error loading notifications:', error);
     } finally {
       setLoading(false);
     }

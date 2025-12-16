@@ -108,18 +108,51 @@ export async function sendComprehensiveNotification(
   emailContent?: { subject: string; body: string },
   smsContent?: { message: string }
 ): Promise<void> {
+  console.log('[NOTIFICATION_HELPERS] 📨 sendComprehensiveNotification called:', {
+    userId,
+    type: notification.type,
+    title: notification.title,
+    eventId: notification.eventId,
+    hasEmailContent: !!emailContent,
+    hasSmsContent: !!smsContent,
+  });
+
   const preferences = await getUserNotificationPreferences(userId);
   const contactInfo = await getUserContactInfo(userId);
+
+  console.log('[NOTIFICATION_HELPERS] 👤 User info retrieved:', {
+    userId,
+    hasEmail: !!contactInfo.email,
+    hasPhone: !!contactInfo.phone,
+    preferences: {
+      email_opt_in: preferences.email_opt_in,
+      sms_opt_in: preferences.sms_opt_in,
+      notification_opt_in: preferences.notification_opt_in,
+    },
+  });
 
   // ALWAYS create in-app notification (cannot be disabled for better UX)
   // In-app notifications are essential for user engagement and should always be sent
   try {
+    console.log('[NOTIFICATION_HELPERS] 📝 Creating in-app notification:', {
+      userId,
+      path: `users/${userId}/notifications`,
+      type: notification.type,
+    });
     await createNotification(userId, {
       ...notification,
       userId: userId,
     });
-  } catch (error) {
-    console.error('Error creating in-app notification:', error);
+    console.log('[NOTIFICATION_HELPERS] ✅ In-app notification created successfully');
+  } catch (error: any) {
+    console.error('[NOTIFICATION_HELPERS] ❌ Error creating in-app notification:', {
+      userId,
+      path: `users/${userId}/notifications`,
+      type: notification.type,
+      error: error?.message || error,
+      code: error?.code,
+      stack: error?.stack,
+    });
     // Don't throw - continue with email/SMS even if in-app fails
   }
 

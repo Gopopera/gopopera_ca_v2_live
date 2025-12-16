@@ -32,30 +32,111 @@ export async function createNotification(
   userId: string,
   notification: Omit<FirestoreNotification, 'id' | 'timestamp' | 'read' | 'createdAt'>
 ): Promise<string> {
-  const db = getDbSafe();
-  if (!db) throw new Error('Database not available');
-
-  // Use subcollection under user document: users/{userId}/notifications
-  const notificationsRef = collection(db, 'users', userId, 'notifications');
-  const docRef = await addDoc(notificationsRef, {
-    ...notification,
-    timestamp: serverTimestamp(),
-    read: false,
-    createdAt: Date.now(),
+  const path = `users/${userId}/notifications`;
+  
+  console.log('[NOTIFICATIONS] 📝 Creating notification:', {
+    userId,
+    path,
+    type: notification.type,
+    title: notification.title,
+    eventId: notification.eventId,
   });
 
-  return docRef.id;
+  const db = getDbSafe();
+  if (!db) {
+    console.error('[NOTIFICATIONS] ❌ Database not available for notification creation:', {
+      userId,
+      path,
+      type: notification.type,
+    });
+    throw new Error('Database not available');
+  }
+
+  // Check if user is authenticated
+  try {
+    const auth = getAuthInstance();
+    if (!auth?.currentUser) {
+      console.error('[NOTIFICATIONS] ❌ User not authenticated when creating notification:', {
+        userId,
+        path,
+        type: notification.type,
+      });
+      throw new Error('User not authenticated - cannot create notification');
+    }
+    console.log('[NOTIFICATIONS] ✅ Auth verified, current user:', auth.currentUser.uid);
+  } catch (authError) {
+    console.error('[NOTIFICATIONS] ❌ Auth check failed:', authError);
+    throw authError;
+  }
+
+  try {
+    // Use subcollection under user document: users/{userId}/notifications
+    const notificationsRef = collection(db, 'users', userId, 'notifications');
+    const notificationData = {
+      ...notification,
+      timestamp: serverTimestamp(),
+      read: false,
+      createdAt: Date.now(),
+    };
+    
+    console.log('[NOTIFICATIONS] 📤 Writing to Firestore:', {
+      path,
+      data: {
+        type: notificationData.type,
+        title: notificationData.title,
+        body: notificationData.body?.substring(0, 50),
+        read: notificationData.read,
+        createdAt: notificationData.createdAt,
+      },
+    });
+
+    const docRef = await addDoc(notificationsRef, notificationData);
+
+    console.log('[NOTIFICATIONS] ✅ Notification created successfully:', {
+      notificationId: docRef.id,
+      path: `${path}/${docRef.id}`,
+      type: notification.type,
+      userId,
+    });
+
+    return docRef.id;
+  } catch (writeError: any) {
+    console.error('[NOTIFICATIONS] ❌ Firestore write failed:', {
+      userId,
+      path,
+      type: notification.type,
+      error: writeError?.message || writeError,
+      code: writeError?.code,
+      stack: writeError?.stack,
+    });
+    throw writeError;
+  }
 }
+
+// 120 hours in milliseconds (5 days)
+const NOTIFICATION_TTL_MS = 120 * 60 * 60 * 1000;
 
 /**
  * Get notifications for a user
+ * Also triggers background cleanup of expired notifications (older than 120 hours)
  */
 export async function getUserNotifications(
   userId: string,
   limitCount: number = 50
 ): Promise<FirestoreNotification[]> {
+  const path = `users/${userId}/notifications`;
+  
+  console.log('[NOTIFICATIONS] 📖 Fetching notifications:', {
+    userId,
+    path,
+    limit: limitCount,
+  });
+
   const db = getDbSafe();
-  if (!db) return [];
+  if (!db) {
+    console.warn('[NOTIFICATIONS] ⚠️ Database not available for fetching notifications');
+    return [];
+  }
 
   try {
     const notificationsRef = collection(db, 'users', userId, 'notifications');
@@ -66,13 +147,73 @@ export async function getUserNotifications(
     );
     const snapshot = await getDocs(q);
     
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      timestamp: doc.data().timestamp?.toMillis?.() || doc.data().timestamp || Date.now(),
-    })) as FirestoreNotification[];
-  } catch (error) {
-    console.error('Error fetching notifications:', error);
+    console.log('[NOTIFICATIONS] 📊 Notifications fetched:', {
+      userId,
+      path,
+      count: snapshot.size,
+      docIds: snapshot.docs.map(d => d.id).slice(0, 5), // First 5 IDs for debugging
+    });
+
+    const now = Date.now();
+    const cutoffTime = now - NOTIFICATION_TTL_MS;
+    
+    const notifications: FirestoreNotification[] = [];
+    const expiredIds: string[] = [];
+    
+    snapshot.docs.forEach(docSnapshot => {
+      const data = docSnapshot.data();
+      const timestamp = data.timestamp?.toMillis?.() || data.timestamp || data.createdAt || now;
+      
+      if (timestamp < cutoffTime) {
+        // Mark for deletion (older than 120 hours)
+        expiredIds.push(docSnapshot.id);
+      } else {
+        notifications.push({
+          id: docSnapshot.id,
+          ...data,
+          timestamp,
+        } as FirestoreNotification);
+      }
+    });
+    
+    // Clean up expired notifications in background (fire and forget)
+    if (expiredIds.length > 0) {
+      console.log('[NOTIFICATIONS] 🧹 Cleaning up expired notifications:', {
+        userId,
+        count: expiredIds.length,
+        ids: expiredIds.slice(0, 5),
+      });
+      
+      // Fire and forget - don't await
+      Promise.all(
+        expiredIds.map(id => {
+          const notificationRef = doc(db, 'users', userId, 'notifications', id);
+          return import('firebase/firestore').then(({ deleteDoc }) => deleteDoc(notificationRef));
+        })
+      ).then(() => {
+        console.log('[NOTIFICATIONS] ✅ Expired notifications cleaned up:', expiredIds.length);
+      }).catch(error => {
+        console.warn('[NOTIFICATIONS] ⚠️ Error cleaning up expired notifications:', error);
+      });
+    }
+    
+    if (notifications.length === 0) {
+      console.log('[NOTIFICATIONS] ⚠️ No notifications found for user:', {
+        userId,
+        path,
+        message: 'This could indicate notifications are not being created or path is wrong',
+        expiredCount: expiredIds.length,
+      });
+    }
+    
+    return notifications;
+  } catch (error: any) {
+    console.error('[NOTIFICATIONS] ❌ Error fetching notifications:', {
+      userId,
+      path,
+      error: error?.message || error,
+      code: error?.code,
+    });
     return [];
   }
 }
@@ -147,8 +288,16 @@ export function subscribeToUnreadNotificationCount(
   userId: string,
   callback: (count: number) => void
 ): Unsubscribe {
+  const path = `users/${userId}/notifications`;
+  
+  console.log('[NOTIFICATIONS] 🔔 Setting up unread count subscription:', {
+    userId,
+    path,
+  });
+
   const db = getDbSafe();
   if (!db) {
+    console.warn('[NOTIFICATIONS] ⚠️ Database not available for unread count subscription');
     callback(0);
     return () => {};
   }
@@ -157,10 +306,13 @@ export function subscribeToUnreadNotificationCount(
   try {
     const auth = getAuthInstance();
     if (!auth?.currentUser) {
+      console.warn('[NOTIFICATIONS] ⚠️ User not authenticated for unread count subscription');
       callback(0);
       return () => {};
     }
+    console.log('[NOTIFICATIONS] ✅ Auth verified for subscription, user:', auth.currentUser.uid);
   } catch {
+    console.warn('[NOTIFICATIONS] ⚠️ Auth check failed for subscription');
     callback(0);
     return () => {};
   }
@@ -173,23 +325,46 @@ export function subscribeToUnreadNotificationCount(
       limit(100) // Cap at 100 for performance
     );
 
+    console.log('[NOTIFICATIONS] 📡 Subscribing to unread notifications at:', path);
+
     return onSnapshot(
       q,
       (snapshot) => {
+        console.log('[NOTIFICATIONS] 📊 Unread count updated:', {
+          userId,
+          path,
+          count: snapshot.size,
+          docIds: snapshot.docs.map(d => d.id).slice(0, 3), // First 3 IDs
+        });
         callback(snapshot.size);
       },
       (error: any) => {
         // Silently handle permission errors
         if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+          console.warn('[NOTIFICATIONS] ⚠️ Permission denied for unread count:', {
+            userId,
+            path,
+            error: error?.message,
+          });
           callback(0);
           return;
         }
-        console.warn('Error in unread notification count subscription:', error);
+        console.error('[NOTIFICATIONS] ❌ Error in unread count subscription:', {
+          userId,
+          path,
+          error: error?.message || error,
+          code: error?.code,
+        });
         callback(0);
       }
     );
   } catch (error: any) {
-    console.warn('Error setting up unread notification count subscription:', error);
+    console.error('[NOTIFICATIONS] ❌ Error setting up unread count subscription:', {
+      userId,
+      path,
+      error: error?.message || error,
+      code: error?.code,
+    });
     callback(0);
     return () => {};
   }
@@ -309,5 +484,131 @@ export async function hasUserVoted(
   const voteRef = doc(db, 'announcements', eventId, 'items', announcementId, 'votes', userId);
   const voteDoc = await getDoc(voteRef);
   return voteDoc.exists();
+}
+
+/**
+ * DEBUG FUNCTION: Test notification creation
+ * Call from browser console: debugTestNotification()
+ * 
+ * This function creates a test notification for the current user
+ * and verifies it was written successfully.
+ */
+export async function debugTestNotification(): Promise<{ success: boolean; details: any }> {
+  console.log('[DEBUG] 🧪 Starting notification test...');
+  
+  // Check auth
+  let currentUserId: string | null = null;
+  try {
+    const auth = getAuthInstance();
+    if (!auth?.currentUser) {
+      console.error('[DEBUG] ❌ Not authenticated');
+      return { success: false, details: { error: 'Not authenticated' } };
+    }
+    currentUserId = auth.currentUser.uid;
+    console.log('[DEBUG] ✅ Authenticated as:', currentUserId);
+  } catch (error: any) {
+    console.error('[DEBUG] ❌ Auth error:', error);
+    return { success: false, details: { error: 'Auth error', message: error?.message } };
+  }
+
+  // Check database
+  const db = getDbSafe();
+  if (!db) {
+    console.error('[DEBUG] ❌ Database not available');
+    return { success: false, details: { error: 'Database not available' } };
+  }
+  console.log('[DEBUG] ✅ Database available');
+
+  // Create test notification
+  const testNotification = {
+    type: 'new-event' as const,
+    title: '🧪 Test Notification',
+    body: `This is a test notification created at ${new Date().toISOString()}`,
+    userId: currentUserId,
+  };
+
+  console.log('[DEBUG] 📝 Creating test notification:', testNotification);
+
+  try {
+    const notificationId = await createNotification(currentUserId, testNotification);
+    console.log('[DEBUG] ✅ Notification created with ID:', notificationId);
+
+    // Verify it was written
+    const notifications = await getUserNotifications(currentUserId, 10);
+    const foundNotification = notifications.find(n => n.id === notificationId);
+    
+    if (foundNotification) {
+      console.log('[DEBUG] ✅ Notification verified in database:', foundNotification);
+      return { 
+        success: true, 
+        details: { 
+          notificationId, 
+          notification: foundNotification,
+          path: `users/${currentUserId}/notifications/${notificationId}`,
+          totalNotifications: notifications.length,
+        } 
+      };
+    } else {
+      console.error('[DEBUG] ⚠️ Notification created but not found in query');
+      return { 
+        success: false, 
+        details: { 
+          error: 'Notification created but not found',
+          notificationId,
+          totalNotifications: notifications.length,
+        } 
+      };
+    }
+  } catch (error: any) {
+    console.error('[DEBUG] ❌ Error creating notification:', error);
+    return { 
+      success: false, 
+      details: { 
+        error: 'Create failed',
+        message: error?.message,
+        code: error?.code,
+        stack: error?.stack,
+      } 
+    };
+  }
+}
+
+/**
+ * DEBUG FUNCTION: List all notifications for current user
+ * Call from browser console: debugListNotifications()
+ */
+export async function debugListNotifications(): Promise<{ success: boolean; notifications: any[] }> {
+  console.log('[DEBUG] 📖 Listing all notifications...');
+  
+  try {
+    const auth = getAuthInstance();
+    if (!auth?.currentUser) {
+      console.error('[DEBUG] ❌ Not authenticated');
+      return { success: false, notifications: [] };
+    }
+    
+    const userId = auth.currentUser.uid;
+    console.log('[DEBUG] User ID:', userId);
+    console.log('[DEBUG] Path:', `users/${userId}/notifications`);
+    
+    const notifications = await getUserNotifications(userId, 100);
+    
+    console.log('[DEBUG] ✅ Found', notifications.length, 'notifications:');
+    notifications.forEach((n, i) => {
+      console.log(`  [${i + 1}] ${n.type}: "${n.title}" - ${n.read ? '✓ read' : '○ unread'} - ${new Date(n.timestamp).toLocaleString()}`);
+    });
+    
+    return { success: true, notifications };
+  } catch (error: any) {
+    console.error('[DEBUG] ❌ Error listing notifications:', error);
+    return { success: false, notifications: [] };
+  }
+}
+
+// Expose debug functions to window for console access
+if (typeof window !== 'undefined') {
+  (window as any).debugTestNotification = debugTestNotification;
+  (window as any).debugListNotifications = debugListNotifications;
+  console.log('[NOTIFICATIONS] 🔧 Debug functions available: debugTestNotification(), debugListNotifications()');
 }
 

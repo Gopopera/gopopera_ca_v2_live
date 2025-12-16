@@ -271,7 +271,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
                {/* Profile Button */}
                <button 
                 onClick={onProfileClick}
-                className="w-9 h-9 rounded-full bg-[#e35e25] flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-[#e35e25]/25 hover:scale-105 transition-transform ring-2 ring-white/80 overflow-hidden"
+                className="w-9 h-9 rounded-full bg-[#15383c] flex items-center justify-center text-white font-bold text-sm hover:scale-105 transition-transform ring-2 ring-white/80 overflow-hidden"
               >
                 {userPhoto ? (
                   <img 
@@ -334,7 +334,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
           {isLoggedIn && (
              <button 
                onClick={onProfileClick}
-               className="w-10 h-10 rounded-full bg-[#e35e25] flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-[#e35e25]/25 active:scale-[0.95] touch-manipulation ring-2 ring-white/80 overflow-hidden"
+               className="w-10 h-10 rounded-full bg-[#15383c] flex items-center justify-center text-white font-bold text-sm active:scale-[0.95] touch-manipulation ring-2 ring-white/80 overflow-hidden"
              >
                {userPhoto ? (
                  <img 
