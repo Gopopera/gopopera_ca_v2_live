@@ -144,6 +144,7 @@ export const StripeSettingsPage: React.FC<StripeSettingsPageProps> = ({ setViewS
         userId: user.uid,
         email: user.email,
         returnUrl: `${window.location.origin}/profile?stripe_return=true`,
+        existingAccountId: userProfile?.stripeAccountId || undefined, // Pass existing account if available
       };
 
       console.log('[STRIPE_SETTINGS] Calling API:', {

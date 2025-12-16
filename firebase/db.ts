@@ -1508,6 +1508,15 @@ export async function getUserProfile(uid: string): Promise<FirestoreUser | null>
       isVerified: data.isVerified || false,
       isPoperaDemoHost: data.isPoperaDemoHost || false,
       
+      // Stripe Connect fields for host payouts
+      stripeAccountId: data.stripeAccountId || undefined,
+      stripeOnboardingStatus: data.stripeOnboardingStatus || undefined,
+      stripeOnboardingUrl: data.stripeOnboardingUrl || undefined,
+      stripeAccountEnabled: data.stripeAccountEnabled || false,
+      
+      // Cover photo
+      coverPhotoURL: data.coverPhotoURL || undefined,
+      
       // Backward compatibility (will be removed after migration)
       name: data.displayName || data.name || '',
       imageUrl: data.photoURL || data.imageUrl || undefined,
