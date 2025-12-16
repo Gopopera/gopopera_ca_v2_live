@@ -1064,11 +1064,6 @@ export const translations = {
       cancellationPolicyLink: 'Cancellation Policy',
       editEvent: 'Edit Event',
     },
-    // Monetize section
-    chatMockup: {
-      monetizeCircles: 'Monetize your circles',
-      monetizeCirclesDesc: 'Charge a commit fee when you want and monetize circles.',
-    },
   },
   fr: {
     // Header
@@ -2130,11 +2125,6 @@ export const translations = {
       forDetails: 'Pour les détails complets, consultez notre',
       cancellationPolicyLink: 'Politique d\'annulation',
       editEvent: 'Modifier l\'événement',
-    },
-    // Monetize section
-    chatMockup: {
-      monetizeCircles: 'Monétisez vos cercles',
-      monetizeCirclesDesc: 'Facturez des frais d\'engagement quand vous le souhaitez.',
     },
   },
 };
