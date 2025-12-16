@@ -23,9 +23,16 @@ const EventAttendeesCount: React.FC<{ eventId: string; capacity?: number; inline
   React.useEffect(() => {
     if (!eventId) return;
     
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventCard.tsx:EventAttendeesCount',message:'EventAttendeesCount subscription START',data:{eventId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
+    
     console.log('[EVENT_CARD] 📡 Subscribing to reservation count:', { eventId });
     
     const unsubscribe = subscribeToReservationCount(eventId, (count) => {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventCard.tsx:EventAttendeesCount',message:'EventAttendeesCount callback FIRED',data:{eventId,count},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
       setAttendeesCount(count);
       console.log('[EVENT_CARD] ✅ Reservation count updated:', { eventId, count });
     });

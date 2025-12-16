@@ -162,6 +162,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   onRSVP,
   rsvps = []
 }) => {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventDetailPage.tsx:render',message:'EventDetailPage RENDER START',data:{eventId:event?.id,hasEvent:!!event},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
+  // #endregion
   // CRITICAL: All hooks must be called unconditionally and in the same order every render
   // Call ALL hooks first, before any conditional logic or early returns
   
@@ -393,6 +396,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   // REFACTORED: Real-time subscription to /users/{hostId} - single source of truth
   // No polling, no fallbacks to stale event data - always fresh from Firestore
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventDetailPage.tsx:hostProfileEffect',message:'Host profile useEffect START',data:{eventHostId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     if (!eventHostId) {
       setHostProfilePicture(null);
       setDisplayHostName('Unknown Host');
@@ -407,6 +413,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     
     // Real-time subscription to host user document
     import('../../firebase/userSubscriptions').then(({ subscribeToUserProfile }) => {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventDetailPage.tsx:hostProfileEffect',message:'subscribeToUserProfile imported, setting up',data:{eventHostId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
       unsubscribe = subscribeToUserProfile(eventHostId, (hostData) => {
         if (hostData) {
           setHostProfilePicture(hostData.photoURL || null);
@@ -446,6 +455,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   
   // Subscribe to followers count in real-time
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventDetailPage.tsx:followersEffect',message:'Followers count useEffect START',data:{eventHostId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     if (!eventHostId) {
       setFollowersCount(0);
       return;
@@ -455,6 +467,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     
     try {
       unsubscribe = subscribeToFollowersCount(eventHostId, (count: number) => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventDetailPage.tsx:followersCallback',message:'Followers count callback fired',data:{eventHostId,count},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
         setFollowersCount(count);
       });
     } catch (error) {
@@ -471,6 +486,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   
   // REFACTORED: Real-time subscription to reservation count - computed from reservations
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventDetailPage.tsx:reservationEffect',message:'Reservation count useEffect START',data:{eventId,isDemo},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     if (!eventId || isDemo) {
       setReservationCount(0);
       return () => {}; // No-op cleanup
@@ -484,7 +502,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     let unsubscribe: (() => void) | null = null;
     
     import('../../firebase/db').then(({ subscribeToReservationCount }) => {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventDetailPage.tsx:reservationCallback',message:'subscribeToReservationCount callback setup',data:{eventId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
       unsubscribe = subscribeToReservationCount(eventId, (count: number) => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventDetailPage.tsx:reservationCallback',message:'Reservation count callback fired',data:{eventId,count},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
         setReservationCount(count);
         if (import.meta.env.DEV) {
           console.log('[EVENT_DETAIL] ✅ Real-time reservation count updated:', {
