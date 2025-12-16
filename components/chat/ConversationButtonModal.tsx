@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, MessageCircle } from 'lucide-react';
-import { ViewState } from '../types';
+import { ViewState } from '../../types';
 
 interface ConversationButtonModalProps {
   isOpen: boolean;

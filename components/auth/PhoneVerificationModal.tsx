@@ -48,7 +48,6 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
       // Reset state when modal closes
       setPhoneNumber('');
       setVerificationCode('');
-      setVerificationId(null);
       setMfaVerificationId(null);
       setConfirmationResult(null);
       setStep('phone');

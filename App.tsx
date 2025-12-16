@@ -2092,7 +2092,7 @@ const AppContent: React.FC = () => {
                         onClick={() => { 
                           setSearchQuery(''); 
                           setCity('montreal'); 
-                          setActiveCategory('All');
+                          setFilter('mainCategory', null);
                         }}
                         className="mt-4 text-[#e35e25] font-bold hover:underline"
                       >
