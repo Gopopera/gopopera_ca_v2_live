@@ -221,6 +221,20 @@ export const translations = {
       chatLocked: 'Chat Locked',
       editEvent: 'Edit Event',
     },
+    // Favorites
+    favorites: {
+      myFavorites: 'My Favorites',
+      searchPlaceholder: 'Search your favorites...',
+      allCities: 'All Cities',
+      sortByDate: 'Sort by Date',
+      sortByRating: 'Sort by Rating',
+      sortByName: 'Sort by Name',
+      noMatchingFavorites: 'No favorites match your filters',
+      noFavoritesYet: 'No favorites yet',
+      tryAdjusting: 'Try adjusting your search or filters to see more results.',
+      startFavoriting: "Start favoriting events you're interested in and they'll appear here!",
+      clearFilters: 'Clear Filters',
+    },
     // Profile
     profile: {
       myProfile: 'My Profile',
@@ -1276,6 +1290,20 @@ export const translations = {
       chatLocked: 'Chat verrouillé',
       editEvent: 'Modifier l\'événement',
     },
+    // Favorites
+    favorites: {
+      myFavorites: 'Mes favoris',
+      searchPlaceholder: 'Rechercher vos favoris...',
+      allCities: 'Toutes les villes',
+      sortByDate: 'Trier par date',
+      sortByRating: 'Trier par note',
+      sortByName: 'Trier par nom',
+      noMatchingFavorites: 'Aucun favori ne correspond',
+      noFavoritesYet: 'Pas de favoris',
+      tryAdjusting: 'Essayez d\'ajuster votre recherche ou vos filtres.',
+      startFavoriting: 'Commencez à ajouter des événements en favoris!',
+      clearFilters: 'Effacer les filtres',
+    },
     // Profile
     profile: {
       myProfile: 'Mon profil',
@@ -1285,6 +1313,7 @@ export const translations = {
       privacySettings: 'Paramètres de confidentialité',
       stripePayoutSettings: 'Paramètres de paiement Stripe',
       myPops: 'Mes Cercles',
+      myCircles: 'Mes Cercles',
       myFavorites: 'Mes favoris',
       myReviews: 'Mes avis',
       following: 'Abonnements',
@@ -1314,6 +1343,17 @@ export const translations = {
       changePhoto: 'Changer la photo',
       uploading: 'Téléchargement...',
       saveChanges: 'Enregistrer les modifications',
+      // New keys for ProfilePage
+      community: 'Communauté',
+      performance: 'Performance',
+      myEvents: 'Mes événements',
+      totalAttendees: 'Participants totaux',
+      hosting: 'J\'organise',
+      seeAll: 'Voir tout',
+      settings: 'Paramètres',
+      editProfile: 'Modifier le profil',
+      reviews: 'Avis',
+      getHelp: 'Aide',
     },
     // Create/Edit Event
     createEvent: {

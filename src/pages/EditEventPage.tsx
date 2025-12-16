@@ -134,8 +134,13 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
     setIsSubmitting(true);
 
     try {
-      // Upload new images if any
-      let finalImageUrls = imageUrls;
+      // Store ORIGINAL image URLs from the event (before any user modifications)
+      // This ensures we can fall back to original images if upload fails
+      const originalImageUrl = initialEvent?.imageUrl || eventToEdit?.imageUrl || '';
+      const originalImageUrls = initialEvent?.imageUrls || eventToEdit?.imageUrls || [];
+      
+      // Start with remaining existing URLs (after user removed some)
+      let finalImageUrls = [...imageUrls];
       let finalImageUrl = imageUrl;
 
       if (imageFiles.length > 0 && user?.uid) {
@@ -149,13 +154,16 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
           }
           
           const processAndUploadImage = async (file: File, path: string): Promise<string> => {
-            // Process image (HEIC conversion + compression)
-            const processedFile = await processImageForUpload(file, {
+            // Process image (HEIC conversion + compression) - ensures images are never too large
+            const processed = await processImageForUpload(file, {
               maxWidth: 1600,
               maxHeight: 1600,
-              quality: 0.80,
-              maxSizeMB: 2
+              quality: 0.75, // Slightly lower quality for better compression
+              maxSizeMB: 1.5 // Target 1.5MB max for faster uploads
             });
+            
+            const processedFile = processed.file;
+            console.log(`[EDIT_EVENT] Processed image: ${file.name} → ${(processedFile.size / 1024 / 1024).toFixed(2)}MB${processed.wasConverted ? ' (converted from HEIC)' : ''}`);
             
             // Verify path format matches storage rules: events/{userId}/{imageName}
             if (!path.startsWith(`events/${user.uid}/`)) {
@@ -164,36 +172,99 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
             
             console.log('[EDIT_EVENT] Uploading image to path:', path);
             return await uploadImage(path, processedFile, { 
-              retries: 2,
-              maxUploadTime: 120000 // 120 seconds (2 minutes) - enough for large compressed images
+              retries: 3, // More retries for reliability
+              maxUploadTime: 180000 // 180 seconds (3 minutes) - generous timeout
             });
           };
           
           const timestamp = Date.now();
-          const uploadPromises = imageFiles.map(async (file, i) => {
-            // Ensure path matches storage rules: events/{userId}/{imageName}
+          
+          // Upload images one by one for better error handling and progress
+          const newImageUrls: string[] = [];
+          for (let i = 0; i < imageFiles.length; i++) {
+            const file = imageFiles[i];
             const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
             const imagePath = `events/${user.uid}/${timestamp}_${i}_${sanitizedFileName}`;
-            console.log('[EDIT_EVENT] Image upload path:', imagePath, 'for user:', user.uid);
-            return await processAndUploadImage(file, imagePath);
-          });
+            
+            console.log(`[EDIT_EVENT] Uploading image ${i + 1}/${imageFiles.length}: ${file.name}`);
+            
+            try {
+              const uploadedUrl = await processAndUploadImage(file, imagePath);
+              newImageUrls.push(uploadedUrl);
+              console.log(`[EDIT_EVENT] ✅ Image ${i + 1}/${imageFiles.length} uploaded successfully`);
+            } catch (singleUploadError: any) {
+              console.error(`[EDIT_EVENT] Failed to upload image ${i + 1}:`, singleUploadError);
+              // Continue trying other images
+            }
+          }
           
-          const newImageUrls = await Promise.all(uploadPromises);
-          finalImageUrls = [...imageUrls, ...newImageUrls];
-          finalImageUrl = finalImageUrls[0] || finalImageUrl;
-          console.log('[EDIT_EVENT] ✅ Successfully uploaded', newImageUrls.length, 'image(s)');
+          if (newImageUrls.length > 0) {
+            // At least some images uploaded successfully
+            finalImageUrls = [...imageUrls, ...newImageUrls];
+            finalImageUrl = finalImageUrls[0] || finalImageUrl;
+            console.log('[EDIT_EVENT] ✅ Successfully uploaded', newImageUrls.length, 'of', imageFiles.length, 'image(s)');
+            
+            if (newImageUrls.length < imageFiles.length) {
+              alert(`Note: ${newImageUrls.length} of ${imageFiles.length} images uploaded successfully. Some images failed but the event will be saved.`);
+            }
+          } else {
+            // ALL uploads failed - ask user what to do
+            console.error('[EDIT_EVENT] ❌ All image uploads failed');
+            const keepOriginal = confirm(
+              'Failed to upload new images.\n\n' +
+              'Click OK to keep the original event images.\n' +
+              'Click Cancel to go back and try again.'
+            );
+            
+            if (keepOriginal) {
+              // Restore original images
+              finalImageUrls = originalImageUrls.length > 0 ? [...originalImageUrls] : [];
+              finalImageUrl = originalImageUrl || '';
+              console.log('[EDIT_EVENT] Restoring original images:', finalImageUrls);
+            } else {
+              // User wants to retry - abort the save
+              setIsSubmitting(false);
+              setUploadingImage(false);
+              return;
+            }
+          }
         } catch (uploadError: any) {
           console.error('[EDIT_EVENT] Image upload failed:', uploadError);
           const errorMessage = uploadError?.message || 'Unknown error';
           
-          // Provide more helpful error message for permission errors
-          if (errorMessage.includes('permission') || errorMessage.includes('unauthorized')) {
-            alert(`Permission denied: ${errorMessage}\n\nPlease ensure:\n1. You are logged in\n2. Firebase Storage rules are deployed\n3. You are the host of this event\n\nThe event will be updated without new images.`);
+          // Ask user what to do
+          const keepOriginal = confirm(
+            `Image upload failed: ${errorMessage}\n\n` +
+            'Click OK to keep the original event images.\n' +
+            'Click Cancel to go back and try again.'
+          );
+          
+          if (keepOriginal) {
+            // Restore original images
+            finalImageUrls = originalImageUrls.length > 0 ? [...originalImageUrls] : [];
+            finalImageUrl = originalImageUrl || '';
+            console.log('[EDIT_EVENT] Restoring original images after error');
           } else {
-            alert(`Failed to upload images: ${errorMessage}\n\nThe event will be updated without new images.`);
+            // User wants to retry - abort the save
+            setIsSubmitting(false);
+            setUploadingImage(false);
+            return;
           }
         } finally {
           setUploadingImage(false);
+        }
+      }
+      
+      // SAFETY CHECK: Ensure we always have at least ONE image
+      // If somehow we ended up with no images, restore originals
+      if (finalImageUrls.length === 0 && !finalImageUrl) {
+        console.warn('[EDIT_EVENT] No images after processing, restoring originals');
+        if (originalImageUrls.length > 0) {
+          finalImageUrls = [...originalImageUrls];
+          finalImageUrl = originalImageUrls[0];
+        } else if (originalImageUrl) {
+          finalImageUrl = originalImageUrl;
+          finalImageUrls = [originalImageUrl];
         }
       }
 

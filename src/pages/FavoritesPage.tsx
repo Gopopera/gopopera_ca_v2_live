@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { ViewState, Event } from '../../types';
 import { ChevronLeft, Heart, Filter, Calendar, MapPin, Search } from 'lucide-react';
 import { EventCard } from '../../components/events/EventCard';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface FavoritesPageProps {
   setViewState: (view: ViewState) => void;
@@ -24,6 +25,7 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
   favorites, 
   onToggleFavorite 
 }) => {
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('date');
   const [selectedCity, setSelectedCity] = useState<string>('all');
@@ -89,7 +91,7 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
               <ChevronLeft size={20} />
             </button>
             <div className="flex items-center gap-2 sm:gap-3">
-              <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c]">My Favorites</h1>
+              <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c]">{t('favorites.myFavorites')}</h1>
               <Heart className="text-[#e35e25] fill-[#e35e25]" size={24} />
               {favoriteEvents.length > 0 && (
                 <span className="px-3 py-1 bg-[#e35e25]/10 text-[#e35e25] rounded-full text-sm font-bold">
@@ -110,7 +112,7 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
               </div>
               <input
                 type="text"
-                placeholder="Search your favorites..."
+                placeholder={t('favorites.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#15383c] focus:ring-2 focus:ring-[#15383c]/10 shadow-sm"
@@ -127,7 +129,7 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
                   onChange={(e) => setSelectedCity(e.target.value)}
                   className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#15383c] focus:ring-2 focus:ring-[#15383c]/10 shadow-sm cursor-pointer"
                 >
-                  <option value="all">All Cities</option>
+                  <option value="all">{t('favorites.allCities')}</option>
                   {cities.map(city => (
                     <option key={city} value={city}>{city}</option>
                   ))}
@@ -142,9 +144,9 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
                   onChange={(e) => setSortBy(e.target.value as SortOption)}
                   className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#15383c] focus:ring-2 focus:ring-[#15383c]/10 shadow-sm cursor-pointer"
                 >
-                  <option value="date">Sort by Date</option>
-                  <option value="rating">Sort by Rating</option>
-                  <option value="name">Sort by Name</option>
+                  <option value="date">{t('favorites.sortByDate')}</option>
+                  <option value="rating">{t('favorites.sortByRating')}</option>
+                  <option value="name">{t('favorites.sortByName')}</option>
                 </select>
               </div>
             </div>
@@ -174,12 +176,12 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
               <Heart size={40} className="text-[#e35e25]" />
             </div>
             <h3 className="text-xl sm:text-2xl font-heading font-bold text-[#15383c] mb-2">
-              {searchQuery || selectedCity !== 'all' ? 'No favorites match your filters' : 'No favorites yet'}
+              {searchQuery || selectedCity !== 'all' ? t('favorites.noMatchingFavorites') : t('favorites.noFavoritesYet')}
             </h3>
             <p className="text-gray-500 text-sm sm:text-base max-w-md mb-6">
               {searchQuery || selectedCity !== 'all' 
-                ? 'Try adjusting your search or filters to see more results.'
-                : 'Start favoriting events you\'re interested in and they\'ll appear here!'}
+                ? t('favorites.tryAdjusting')
+                : t('favorites.startFavoriting')}
             </p>
             {(searchQuery || selectedCity !== 'all') && (
               <button
@@ -189,7 +191,7 @@ export const FavoritesPage: React.FC<FavoritesPageProps> = ({
                 }}
                 className="px-6 py-3 bg-[#e35e25] text-white rounded-full font-medium hover:bg-[#cf4d1d] transition-colors shadow-md shadow-orange-900/20"
               >
-                Clear Filters
+                {t('favorites.clearFilters')}
               </button>
             )}
           </div>
