@@ -278,7 +278,12 @@ export const EventCard: React.FC<EventCardProps> = ({
 
   return (
     <div 
-      onClick={() => onClick(event)}
+      onClick={() => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'EventCard.tsx:onClick',message:'EventCard CLICKED - calling parent onClick',data:{eventId:event.id,eventTitle:event.title},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
+        onClick(event);
+      }}
       role="button"
       tabIndex={0}
       aria-label={`View event: ${event.title}`}
