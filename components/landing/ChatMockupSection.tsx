@@ -84,7 +84,7 @@ export const ChatMockupSection: React.FC = () => {
                    <div className="flex items-center gap-3 sm:gap-4 relative z-10">
                       <div className="w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full overflow-hidden border-2 border-white/30 shadow-lg relative">
                         <img 
-                          src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face" 
+                          src="https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop&crop=face" 
                           alt="Host profile"
                           className="w-full h-full object-cover"
                         />
