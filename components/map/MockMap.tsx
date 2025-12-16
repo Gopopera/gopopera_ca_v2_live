@@ -159,8 +159,74 @@ export const MockMap: React.FC<MockMapProps> = ({
     );
   }
 
-  // Error or no API key - show fallback
+  // Build static map URL for fallback (uses coordinates or address)
+  const staticMapUrl = useMemo(() => {
+    if (!apiKey) return null;
+    
+    // Custom map styling for static maps (simplified version of our branded style)
+    const staticStyle = [
+      'feature:poi|visibility:off',
+      'feature:transit|visibility:off',
+      'feature:water|color:0xc9d6d9',
+      'feature:road|element:geometry.fill|color:0xffffff',
+      'feature:road|element:geometry.stroke|color:0xe5e7eb',
+      'feature:landscape|color:0xf0f3f4',
+    ].map(s => `&style=${encodeURIComponent(s)}`).join('');
+    
+    const marker = `&markers=color:0xe35e25|${hasCoordinates ? `${lat},${lng}` : encodedAddress}`;
+    const center = hasCoordinates ? `${lat},${lng}` : encodedAddress;
+    
+    if (!center || center === '') return null;
+    
+    return `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(center)}&zoom=15&size=800x400&scale=2&maptype=roadmap${marker}${staticStyle}&key=${apiKey}`;
+  }, [apiKey, lat, lng, hasCoordinates, encodedAddress]);
+
+  // Error or no API key - show static map fallback or placeholder
   if (loadError || !apiKey || !hasCoordinates) {
+    // If we have an API key and address, try static map
+    if (apiKey && (fullAddress || hasCoordinates) && staticMapUrl) {
+      return (
+        <div className={`relative overflow-hidden rounded-xl ${className}`}>
+          {/* Static Map Image */}
+          <img 
+            src={staticMapUrl}
+            alt={`Map showing ${fullAddress || 'event location'}`}
+            className="w-full h-full object-cover"
+            style={{ minHeight: '250px' }}
+            onError={(e) => {
+              // If static map fails, hide image and show fallback gradient
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+            }}
+          />
+          
+          {/* Address pill - top left */}
+          {fullAddress && (
+            <div className="absolute top-3 left-3 z-10 max-w-[calc(100%-120px)]">
+              <div className="inline-flex items-center gap-1.5 px-3 py-2 bg-white/95 backdrop-blur-sm rounded-xl text-xs font-medium text-[#15383c] shadow-lg border border-gray-100">
+                <MapPin size={14} className="text-[#e35e25] shrink-0" />
+                <span className="truncate">{fullAddress}</span>
+              </div>
+            </div>
+          )}
+          
+          {/* Get Directions button - bottom right */}
+          {googleMapsUrl && (
+            <a 
+              href={googleMapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="absolute bottom-3 right-3 flex items-center gap-2 px-4 py-2.5 bg-[#e35e25] rounded-xl text-sm font-semibold text-white hover:bg-[#cf4d1d] transition-all shadow-lg z-10"
+            >
+              <Navigation size={16} />
+              Directions
+            </a>
+          )}
+        </div>
+      );
+    }
+    
+    // No API key or address - show branded placeholder
     return (
       <div className={`relative overflow-hidden rounded-xl ${className}`}>
         {/* Branded map-like background */}
