@@ -90,7 +90,7 @@ export default defineConfig(({ mode }) => {
         // Increase build timeout for large chunks
         chunkSizeWarningLimit: 1000, // Increase limit to 1000KB
         rollupOptions: {
-          external: ['@react-google-maps/api'], // Exclude Google Maps from bundle
+          // Note: Do NOT externalize packages - they need to be bundled for production
           output: {
             entryFileNames: `assets/[name].[hash].js`,
             chunkFileNames: `assets/[name].[hash].js`,
