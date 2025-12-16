@@ -1434,7 +1434,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                         Start Hosting
                         <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
                      </button>
-                     <span className="text-xs text-white/50 font-medium">No upfront costs • Keep 85% of earnings</span>
+                     <span className="text-xs text-white/50 font-medium">No upfront costs • Keep 90% of earnings</span>
                   </div>
                </div>
             </div>
