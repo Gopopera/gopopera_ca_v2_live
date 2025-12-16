@@ -298,7 +298,8 @@ export function subscribeToUnreadNotificationCount(
   const db = getDbSafe();
   if (!db) {
     console.warn('[NOTIFICATIONS] ⚠️ Database not available for unread count subscription');
-    callback(0);
+    // CRITICAL: Defer callback to prevent React Error #310
+    queueMicrotask(() => callback(0));
     return () => {};
   }
 
@@ -307,13 +308,15 @@ export function subscribeToUnreadNotificationCount(
     const auth = getAuthInstance();
     if (!auth?.currentUser) {
       console.warn('[NOTIFICATIONS] ⚠️ User not authenticated for unread count subscription');
-      callback(0);
+      // CRITICAL: Defer callback to prevent React Error #310
+      queueMicrotask(() => callback(0));
       return () => {};
     }
     console.log('[NOTIFICATIONS] ✅ Auth verified for subscription, user:', auth.currentUser.uid);
   } catch {
     console.warn('[NOTIFICATIONS] ⚠️ Auth check failed for subscription');
-    callback(0);
+    // CRITICAL: Defer callback to prevent React Error #310
+    queueMicrotask(() => callback(0));
     return () => {};
   }
 
@@ -365,7 +368,8 @@ export function subscribeToUnreadNotificationCount(
       error: error?.message || error,
       code: error?.code,
     });
-    callback(0);
+    // CRITICAL: Defer callback to prevent React Error #310
+    queueMicrotask(() => callback(0));
     return () => {};
   }
 }

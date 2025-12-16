@@ -148,7 +148,9 @@ export function subscribeToFollowersCount(
 ): Unsubscribe {
   const db = getDbSafe();
   if (!db) {
-    callback(0);
+    // CRITICAL: Defer callback to prevent React Error #310
+    // (Cannot update a component while rendering a different component)
+    queueMicrotask(() => callback(0));
     return () => {};
   }
 
@@ -168,7 +170,8 @@ export function subscribeToFollowersCount(
     );
   } catch (error) {
     console.error('Error setting up followers count subscription:', error);
-    callback(0);
+    // CRITICAL: Defer callback to prevent React Error #310
+    queueMicrotask(() => callback(0));
     return () => {};
   }
 }

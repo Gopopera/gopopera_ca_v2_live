@@ -63,9 +63,7 @@ async function getUserNotificationPreferences(userId: string): Promise<UserNotif
       notification_opt_in: settings.notification_opt_in !== undefined ? settings.notification_opt_in : true,
     };
   } catch (error) {
-    if (import.meta.env.DEV) {
-      console.error('Error fetching notification preferences:', error);
-    }
+    console.error('[NOTIFICATION_HELPERS] Error fetching notification preferences:', error);
     // Default to opt-in on error (all enabled by default)
     return { email_opt_in: true, sms_opt_in: true, notification_opt_in: true };
   }
@@ -231,9 +229,7 @@ export async function notifyFollowersOfNewEvent(
       });
     } catch (error) {
       // Don't throw - continue with email/SMS
-      if (import.meta.env.DEV) {
-        console.error('Error creating follow event notification:', error);
-      }
+      console.error('[NOTIFICATION_HELPERS] ❌ Error creating follow event notification:', error);
     }
 
     // Email
@@ -316,9 +312,7 @@ export async function notifyAttendeesOfAnnouncement(
         eventId,
       });
     } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error('Error creating announcement notification:', error);
-      }
+      console.error('[NOTIFICATION_HELPERS] ❌ Error creating announcement notification:', error);
     }
 
     // Email
@@ -342,9 +336,7 @@ export async function notifyAttendeesOfAnnouncement(
           skippedByPreference: false,
         });
       } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Error sending announcement email:', error);
-        }
+        console.error('[NOTIFICATION_HELPERS] ❌ Error sending announcement email:', error);
       }
     } else if (contactInfo.email) {
       // Log skipped email due to preference
@@ -396,9 +388,7 @@ export async function notifyAttendeesOfPoll(
         eventId,
       });
     } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error('Error creating poll notification:', error);
-      }
+      console.error('[NOTIFICATION_HELPERS] ❌ Error creating poll notification:', error);
     }
 
     // Email
@@ -578,9 +568,7 @@ export async function notifyUserOfReservationConfirmation(
         eventId,
       });
     } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error('Error creating reservation confirmation notification:', error);
-      }
+      console.error('[NOTIFICATION_HELPERS] ❌ Error creating reservation confirmation notification:', error);
     }
 
     // Email notification
@@ -609,9 +597,7 @@ export async function notifyUserOfReservationConfirmation(
           skippedByPreference: false,
         });
       } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Error sending reservation confirmation email:', error);
-        }
+        console.error('[NOTIFICATION_HELPERS] ❌ Error sending reservation confirmation email:', error);
       }
     } else if (userInfo.email) {
       // Log skipped email due to preference
@@ -638,15 +624,11 @@ export async function notifyUserOfReservationConfirmation(
           message: `🎉 Reservation confirmed! ${eventTitle} on ${eventDate} at ${eventTime}. Order ID: ${orderId}. View details: ${eventUrl}`,
         });
       } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Error sending reservation confirmation SMS:', error);
-        }
+        console.error('[NOTIFICATION_HELPERS] ❌ Error sending reservation confirmation SMS:', error);
       }
     }
   } catch (error) {
-    if (import.meta.env.DEV) {
-      console.error('Error notifying user of reservation confirmation:', error);
-    }
+    console.error('[NOTIFICATION_HELPERS] ❌ Error notifying user of reservation confirmation:', error);
     // Don't throw - reservation should succeed even if notification fails
   }
 }
@@ -716,9 +698,7 @@ export async function notifyHostOfRSVP(
           skippedByPreference: false,
         });
       } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Error sending RSVP email to host:', error);
-        }
+        console.error('[NOTIFICATION_HELPERS] ❌ Error sending RSVP email to host:', error);
       }
     } else if (hostInfo.email) {
       // Log skipped email due to preference
@@ -745,15 +725,11 @@ export async function notifyHostOfRSVP(
           message: `New RSVP: ${attendeeInfo.name || 'Someone'} joined ${eventTitle}`,
         });
       } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Error sending RSVP SMS to host:', error);
-        }
+        console.error('[NOTIFICATION_HELPERS] ❌ Error sending RSVP SMS to host:', error);
       }
     }
   } catch (error) {
-    if (import.meta.env.DEV) {
-      console.error('Error notifying host of RSVP:', error);
-    }
+    console.error('[NOTIFICATION_HELPERS] ❌ Error notifying host of RSVP:', error);
     // Don't throw - RSVP should succeed even if notification fails
   }
 }
@@ -781,9 +757,7 @@ export async function notifyUserOfFirstEvent(
         eventId,
       });
     } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error('Error creating first event notification:', error);
-      }
+      console.error('[NOTIFICATION_HELPERS] ❌ Error creating first event notification:', error);
     }
 
     // Email notification
@@ -805,9 +779,7 @@ export async function notifyUserOfFirstEvent(
           skippedByPreference: false,
         });
       } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Error sending first event welcome email:', error);
-        }
+        console.error('[NOTIFICATION_HELPERS] ❌ Error sending first event welcome email:', error);
       }
     } else if (userInfo.email) {
       // Log skipped email due to preference
@@ -834,15 +806,11 @@ export async function notifyUserOfFirstEvent(
           message: `🎉 Welcome to Popera! Your first event "${eventTitle}" is now live. Thank you for joining our community of creators. Questions? Contact us at support@gopopera.ca`,
         });
       } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Error sending first event welcome SMS:', error);
-        }
+        console.error('[NOTIFICATION_HELPERS] ❌ Error sending first event welcome SMS:', error);
       }
     }
   } catch (error) {
-    if (import.meta.env.DEV) {
-      console.error('Error notifying user of first event:', error);
-    }
+    console.error('[NOTIFICATION_HELPERS] ❌ Error notifying user of first event:', error);
     // Don't throw - event creation should succeed even if notification fails
   }
 }
@@ -919,9 +887,7 @@ export async function notifyHostOfNewFollower(
           templateName: 'new-follower',
         });
       } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Error sending new follower email:', error);
-        }
+        console.error('[NOTIFICATION_HELPERS] ❌ Error sending new follower email:', error);
       }
     }
 
@@ -933,15 +899,11 @@ export async function notifyHostOfNewFollower(
           message: `🎉 New follower! ${followerInfo.name || 'Someone'} started following you on Popera.`,
         });
       } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Error sending new follower SMS:', error);
-        }
+        console.error('[NOTIFICATION_HELPERS] ❌ Error sending new follower SMS:', error);
       }
     }
   } catch (error) {
-    if (import.meta.env.DEV) {
-      console.error('Error notifying host of new follower:', error);
-    }
+    console.error('[NOTIFICATION_HELPERS] ❌ Error notifying host of new follower:', error);
     // Don't throw - follow should succeed even if notification fails
   }
 }
@@ -970,9 +932,7 @@ export async function notifyHostOfNewFavorite(
         eventId,
       });
     } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error('Error creating new favorite notification:', error);
-      }
+      console.error('[NOTIFICATION_HELPERS] ❌ Error creating new favorite notification:', error);
     }
 
     // Email notification (based on preferences)
@@ -1010,9 +970,7 @@ export async function notifyHostOfNewFavorite(
           notificationType: 'favorite_event',
         });
       } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Error sending new favorite email:', error);
-        }
+        console.error('[NOTIFICATION_HELPERS] ❌ Error sending new favorite email:', error);
       }
     }
 
@@ -1024,15 +982,11 @@ export async function notifyHostOfNewFavorite(
           message: `⭐ ${favoriterInfo.name || 'Someone'} favorited your event "${eventTitle}" on Popera!`,
         });
       } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Error sending new favorite SMS:', error);
-        }
+        console.error('[NOTIFICATION_HELPERS] ❌ Error sending new favorite SMS:', error);
       }
     }
   } catch (error) {
-    if (import.meta.env.DEV) {
-      console.error('Error notifying host of new favorite:', error);
-    }
+    console.error('[NOTIFICATION_HELPERS] ❌ Error notifying host of new favorite:', error);
     // Don't throw - favorite should succeed even if notification fails
   }
 }
@@ -1062,9 +1016,7 @@ export async function notifyUsersEventGettingFull(
         eventId,
       });
     } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error('Error creating event getting full notification:', error);
-      }
+      console.error('[NOTIFICATION_HELPERS] ❌ Error creating event getting full notification:', error);
     }
 
     // Email
@@ -1101,9 +1053,7 @@ export async function notifyUsersEventGettingFull(
           skippedByPreference: false,
         });
       } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Error sending event getting full email:', error);
-        }
+        console.error('[NOTIFICATION_HELPERS] ❌ Error sending event getting full email:', error);
       }
     }
 
@@ -1115,9 +1065,7 @@ export async function notifyUsersEventGettingFull(
           message: `Popera: ${eventTitle} is ${capacityPercentage}% full! Reserve now: ${BASE_URL}/event/${eventId}`,
         });
       } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Error sending event getting full SMS:', error);
-        }
+        console.error('[NOTIFICATION_HELPERS] ❌ Error sending event getting full SMS:', error);
       }
     }
   });
@@ -1148,9 +1096,7 @@ export async function notifyHostEventTrending(
         eventId,
       });
     } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error('Error creating event trending notification:', error);
-      }
+      console.error('[NOTIFICATION_HELPERS] ❌ Error creating event trending notification:', error);
     }
 
     // Email
@@ -1190,9 +1136,7 @@ export async function notifyHostEventTrending(
           skippedByPreference: false,
         });
       } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Error sending event trending email:', error);
-        }
+        console.error('[NOTIFICATION_HELPERS] ❌ Error sending event trending email:', error);
       }
     }
 
@@ -1204,15 +1148,11 @@ export async function notifyHostEventTrending(
           message: `🔥 Popera: Your event "${eventTitle}" is trending! ${trendingReason}`,
         });
       } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Error sending event trending SMS:', error);
-        }
+        console.error('[NOTIFICATION_HELPERS] ❌ Error sending event trending SMS:', error);
       }
     }
   } catch (error) {
-    if (import.meta.env.DEV) {
-      console.error('Error notifying host of trending event:', error);
-    }
+    console.error('[NOTIFICATION_HELPERS] ❌ Error notifying host of trending event:', error);
     // Don't throw - analytics notification shouldn't break anything
   }
 }
@@ -1249,9 +1189,7 @@ export async function suggestFollowingHost(
         hostId,
       });
     } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error('Error creating follow host suggestion notification:', error);
-      }
+      console.error('[NOTIFICATION_HELPERS] ❌ Error creating follow host suggestion notification:', error);
     }
 
     // Email (optional)
@@ -1282,17 +1220,13 @@ export async function suggestFollowingHost(
           skippedByPreference: false,
         });
       } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('Error sending follow host suggestion email:', error);
-        }
+        console.error('[NOTIFICATION_HELPERS] ❌ Error sending follow host suggestion email:', error);
       }
     }
 
     // SMS disabled (social, not urgent)
   } catch (error) {
-    if (import.meta.env.DEV) {
-      console.error('Error suggesting follow host:', error);
-    }
+    console.error('[NOTIFICATION_HELPERS] ❌ Error suggesting follow host:', error);
     // Don't throw - suggestion shouldn't break anything
   }
 }

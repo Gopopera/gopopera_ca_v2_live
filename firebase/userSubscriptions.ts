@@ -17,7 +17,9 @@ export function subscribeToUserProfile(
 ): Unsubscribe {
   const db = getDbSafe();
   if (!db) {
-    callback(null);
+    // CRITICAL: Defer callback to prevent React Error #310
+    // (Cannot update a component while rendering a different component)
+    queueMicrotask(() => callback(null));
     return () => {};
   }
 
@@ -70,7 +72,8 @@ export function subscribeToUserProfile(
       userId,
       error: error.message,
     });
-    callback(null);
+    // CRITICAL: Defer callback to prevent React Error #310
+    queueMicrotask(() => callback(null));
     return () => {};
   }
 }
@@ -85,7 +88,8 @@ export function subscribeToMultipleUserProfiles(
 ): Unsubscribe {
   const db = getDbSafe();
   if (!db) {
-    callback({});
+    // CRITICAL: Defer callback to prevent React Error #310
+    queueMicrotask(() => callback({}));
     return () => {};
   }
 
