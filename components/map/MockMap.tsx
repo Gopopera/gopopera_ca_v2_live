@@ -145,21 +145,8 @@ export const MockMap: React.FC<MockMapProps> = ({
     onEventClick?.(event);
   }, [onEventClick]);
 
-  // Loading state
-  if (!isLoaded && apiKey) {
-    return (
-      <div className={`relative overflow-hidden rounded-xl bg-gradient-to-br from-[#e8ecee] to-[#d5dcdf] ${className}`}>
-        <div className="absolute inset-0 flex items-center justify-center" style={{ minHeight: '250px' }}>
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-8 h-8 border-3 border-[#e35e25] border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm text-gray-500">Loading map...</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // Build static map URL for fallback (uses coordinates or address)
+  // CRITICAL: This useMemo must be BEFORE any early returns to maintain consistent hook count
   const staticMapUrl = useMemo(() => {
     if (!apiKey) return null;
     
@@ -180,6 +167,20 @@ export const MockMap: React.FC<MockMapProps> = ({
     
     return `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(center)}&zoom=15&size=800x400&scale=2&maptype=roadmap${marker}${staticStyle}&key=${apiKey}`;
   }, [apiKey, lat, lng, hasCoordinates, encodedAddress]);
+
+  // Loading state
+  if (!isLoaded && apiKey) {
+    return (
+      <div className={`relative overflow-hidden rounded-xl bg-gradient-to-br from-[#e8ecee] to-[#d5dcdf] ${className}`}>
+        <div className="absolute inset-0 flex items-center justify-center" style={{ minHeight: '250px' }}>
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-3 border-[#e35e25] border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm text-gray-500">Loading map...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Error or no API key - show static map fallback or placeholder
   if (loadError || !apiKey || !hasCoordinates) {
