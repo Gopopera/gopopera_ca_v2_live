@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ViewState, Event } from '../../types';
-import { ChevronRight, ChevronLeft, Calendar, Users, Star, Heart, Settings } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Calendar, Users, Star, Heart, Settings, Bell, Shield, HelpCircle, CreditCard, LogOut, User } from 'lucide-react';
 import { useUserStore } from '../../stores/userStore';
 import { useEventStore } from '../../stores/eventStore';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -281,13 +281,13 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
 
   const settingsLinks = [
     { label: t('profile.myCircles'), action: () => setViewState(ViewState.MY_POPS), icon: Calendar },
-    { label: t('profile.basicDetails'), action: () => setViewState(ViewState.PROFILE_BASIC), icon: Users },
-    { label: t('profile.notificationPreferences'), action: () => setViewState(ViewState.PROFILE_NOTIFICATIONS), icon: Settings },
-    { label: t('profile.privacySettings'), action: () => setViewState(ViewState.PROFILE_PRIVACY), icon: Settings },
-    { label: t('profile.getHelp'), action: () => setViewState(ViewState.HELP), icon: Settings },
-    { label: t('profile.stripePayoutSettings'), action: () => setViewState(ViewState.PROFILE_STRIPE), icon: Settings },
+    { label: t('profile.basicDetails'), action: () => setViewState(ViewState.PROFILE_BASIC), icon: User },
+    { label: t('profile.notificationPreferences'), action: () => setViewState(ViewState.PROFILE_NOTIFICATIONS), icon: Bell },
+    { label: t('profile.privacySettings'), action: () => setViewState(ViewState.PROFILE_PRIVACY), icon: Shield },
+    { label: t('profile.getHelp'), action: () => setViewState(ViewState.HELP), icon: HelpCircle },
+    { label: t('profile.stripePayoutSettings'), action: () => setViewState(ViewState.PROFILE_STRIPE), icon: CreditCard },
     { label: t('profile.reviews'), action: () => setViewState(ViewState.PROFILE_REVIEWS), icon: Star },
-    { label: t('common.logout'), action: onLogout, isLogout: true, icon: Settings },
+    { label: 'Logout', action: onLogout, isLogout: true, icon: LogOut },
   ];
 
   return (
@@ -540,33 +540,61 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
           </div>
         )}
 
-        {/* Settings Menu - Liquid Glass Style */}
-        <div className="bg-white/90 backdrop-blur-xl rounded-[24px] sm:rounded-[28px] shadow-lg border border-gray-100/80 overflow-hidden">
-          <h3 className="text-xs sm:text-sm font-bold text-gray-400 uppercase tracking-wider px-5 sm:px-6 pt-5 sm:pt-6 pb-2">{t('profile.settings')}</h3>
-          {settingsLinks.map((item, idx) => {
-            const Icon = item.icon || Settings;
-            return (
-              <button
-                key={idx}
-                onClick={item.action}
-                className={`w-full flex items-center justify-between px-5 sm:px-6 py-3.5 sm:py-4 border-b border-gray-100/60 last:border-0 hover:bg-gray-50/80 transition-all text-left touch-manipulation active:scale-[0.98] ${
-                  item.isLogout ? 'text-gray-500 hover:text-red-500' : 'text-[#15383c]'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    item.isLogout ? 'bg-gray-100/80' : 'bg-[#e35e25]/10'
-                  }`}>
-                    <Icon size={18} className={item.isLogout ? 'text-gray-500' : 'text-[#e35e25]'} />
+        {/* Settings Menu - Enhanced Liquid Glass Style */}
+        <div className="relative overflow-hidden rounded-[24px] sm:rounded-[28px]">
+          {/* Glass background layers */}
+          <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-white/90 to-white/85" />
+          <div className="absolute inset-0 backdrop-blur-xl" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[#15383c]/3 via-transparent to-[#e35e25]/3" />
+          <div className="absolute inset-0 border border-white/60 rounded-[24px] sm:rounded-[28px]" />
+          <div className="absolute inset-0 shadow-lg" />
+          
+          <div className="relative">
+            <h3 className="text-xs sm:text-sm font-bold text-[#15383c]/50 uppercase tracking-wider px-5 sm:px-6 pt-5 sm:pt-6 pb-3">{t('profile.settings')}</h3>
+            {settingsLinks.map((item, idx) => {
+              const Icon = item.icon || Settings;
+              const isLast = idx === settingsLinks.length - 1;
+              return (
+                <button
+                  key={idx}
+                  onClick={item.action}
+                  className={`w-full flex items-center justify-between px-5 sm:px-6 py-4 sm:py-4.5 transition-all text-left touch-manipulation active:scale-[0.98] group ${
+                    !isLast ? 'border-b border-gray-100/40' : ''
+                  } ${
+                    item.isLogout 
+                      ? 'hover:bg-red-50/50' 
+                      : 'hover:bg-[#15383c]/5'
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                      item.isLogout 
+                        ? 'bg-gray-100/80 group-hover:bg-red-100' 
+                        : 'bg-[#15383c]/8 group-hover:bg-[#15383c]/12'
+                    }`}>
+                      <Icon size={18} className={`transition-colors ${
+                        item.isLogout 
+                          ? 'text-gray-400 group-hover:text-red-500' 
+                          : 'text-[#15383c]/70 group-hover:text-[#15383c]'
+                      }`} />
+                    </div>
+                    <span className={`text-sm sm:text-base font-medium transition-colors ${
+                      item.isLogout 
+                        ? 'text-gray-500 group-hover:text-red-500' 
+                        : 'text-[#15383c] group-hover:text-[#15383c]'
+                    }`}>
+                      {item.label}
+                    </span>
                   </div>
-                  <span className={`text-sm sm:text-base ${item.isLogout ? '' : 'font-medium'}`}>
-                    {item.label}
-                  </span>
-                </div>
-                <ChevronRight size={16} className="text-gray-300" />
-              </button>
-            );
-          })}
+                  <ChevronRight size={16} className={`transition-all ${
+                    item.isLogout 
+                      ? 'text-gray-300 group-hover:text-red-400' 
+                      : 'text-gray-300 group-hover:text-[#15383c]/50 group-hover:translate-x-0.5'
+                  }`} />
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
