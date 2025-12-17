@@ -8,12 +8,24 @@ import { getDbSafe } from '../src/lib/firebase';
 import type { FirestoreUser } from './types';
 
 /**
+ * User profile data returned from subscription
+ */
+export interface UserProfileData {
+  displayName: string;
+  photoURL?: string;
+  coverPhotoURL?: string;
+  bio?: string;
+  followers?: string[];
+  following?: string[];
+}
+
+/**
  * Subscribe to a user's profile in real-time
- * Returns displayName, photoURL, and coverPhotoURL
+ * Returns displayName, photoURL, coverPhotoURL, bio, followers, and following
  */
 export function subscribeToUserProfile(
   userId: string,
-  callback: (user: { displayName: string; photoURL?: string; coverPhotoURL?: string; bio?: string } | null) => void
+  callback: (user: UserProfileData | null) => void
 ): Unsubscribe {
   const db = getDbSafe();
   if (!db) {
@@ -40,11 +52,13 @@ export function subscribeToUserProfile(
         // Handle empty strings as null/undefined for photoURL
         const photoURL = data.photoURL || data.imageUrl || undefined;
         const coverPhotoURL = data.coverPhotoURL || undefined;
-        const userData = {
+        const userData: UserProfileData = {
           displayName: data.displayName || data.name || 'Unknown User',
           photoURL: (photoURL && photoURL.trim() !== '') ? photoURL : undefined,
           coverPhotoURL: (coverPhotoURL && coverPhotoURL.trim() !== '') ? coverPhotoURL : undefined,
           bio: data.bio || undefined,
+          followers: Array.isArray(data.followers) ? data.followers : [],
+          following: Array.isArray(data.following) ? data.following : [],
         };
         
         if (import.meta.env.DEV) {
@@ -53,6 +67,8 @@ export function subscribeToUserProfile(
             displayName: userData.displayName,
             hasPhoto: !!userData.photoURL,
             hasCoverPhoto: !!userData.coverPhotoURL,
+            followersCount: userData.followers?.length || 0,
+            followingCount: userData.following?.length || 0,
           });
         }
         

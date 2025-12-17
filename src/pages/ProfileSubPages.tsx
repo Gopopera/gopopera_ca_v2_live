@@ -1474,41 +1474,70 @@ export const FollowingPage: React.FC<SubPageProps & { onHostClick?: (hostName: s
   const [following, setFollowing] = useState<Array<{ id: string; name: string; photoURL?: string; imageUrl?: string }>>([]);
   const [loading, setLoading] = useState(true);
 
+  // Real-time subscription to following list
   useEffect(() => {
-    const loadFollowing = async () => {
-      if (!user?.uid) {
-        setLoading(false);
-        return;
-      }
+    if (!user?.uid) {
+      setLoading(false);
+      setFollowing([]);
+      return;
+    }
 
+    let unsubscribe: (() => void) | null = null;
+    let isMounted = true;
+
+    const setupSubscription = async () => {
       try {
         setLoading(true);
-        const { getFollowingHosts } = await import('../../firebase/follow');
+        const { subscribeToUserProfile } = await import('../../firebase/userSubscriptions');
         const { getUserProfile } = await import('../../firebase/db');
-        const followingIds = await getFollowingHosts(user.uid);
         
-        const followingProfiles = await Promise.all(
-          followingIds.map(async (hostId) => {
-            const profile = await getUserProfile(hostId);
-            return {
-              id: hostId,
-              name: profile?.name || profile?.displayName || 'Unknown',
-              photoURL: profile?.photoURL,
-              imageUrl: profile?.imageUrl,
-            };
-          })
-        );
-        
-        setFollowing(followingProfiles);
+        // Subscribe to current user's profile to get real-time following list
+        unsubscribe = subscribeToUserProfile(user.uid, async (userData) => {
+          if (!isMounted) return;
+          
+          const followingIds = userData?.following || [];
+          
+          if (followingIds.length === 0) {
+            setFollowing([]);
+            setLoading(false);
+            return;
+          }
+          
+          // Fetch profiles for all following users
+          const followingProfiles = await Promise.all(
+            followingIds.map(async (hostId: string) => {
+              const profile = await getUserProfile(hostId);
+              return {
+                id: hostId,
+                name: profile?.name || profile?.displayName || 'Unknown',
+                photoURL: profile?.photoURL,
+                imageUrl: profile?.imageUrl,
+              };
+            })
+          );
+          
+          if (isMounted) {
+            setFollowing(followingProfiles);
+            setLoading(false);
+          }
+        });
       } catch (error) {
-        console.error('Error loading following:', error);
-        setFollowing([]);
-      } finally {
-        setLoading(false);
+        console.error('Error setting up following subscription:', error);
+        if (isMounted) {
+          setFollowing([]);
+          setLoading(false);
+        }
       }
     };
 
-    loadFollowing();
+    setupSubscription();
+
+    return () => {
+      isMounted = false;
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [user?.uid]);
 
   const handleUnfollow = async (hostId: string) => {
@@ -1595,41 +1624,70 @@ export const FollowersPage: React.FC<SubPageProps & { onHostClick?: (hostName: s
   const [followers, setFollowers] = useState<Array<{ id: string; name: string; photoURL?: string; imageUrl?: string }>>([]);
   const [loading, setLoading] = useState(true);
 
+  // Real-time subscription to followers list
   useEffect(() => {
-    const loadFollowers = async () => {
-      if (!user?.uid) {
-        setLoading(false);
-        return;
-      }
+    if (!user?.uid) {
+      setLoading(false);
+      setFollowers([]);
+      return;
+    }
 
+    let unsubscribe: (() => void) | null = null;
+    let isMounted = true;
+
+    const setupSubscription = async () => {
       try {
         setLoading(true);
-        const { getHostFollowers } = await import('../../firebase/follow');
+        const { subscribeToUserProfile } = await import('../../firebase/userSubscriptions');
         const { getUserProfile } = await import('../../firebase/db');
-        const followersIds = await getHostFollowers(user.uid);
         
-        const followersProfiles = await Promise.all(
-          followersIds.map(async (followerId) => {
-            const profile = await getUserProfile(followerId);
-            return {
-              id: followerId,
-              name: profile?.name || profile?.displayName || 'Unknown',
-              photoURL: profile?.photoURL,
-              imageUrl: profile?.imageUrl,
-            };
-          })
-        );
-        
-        setFollowers(followersProfiles);
+        // Subscribe to current user's profile to get real-time followers list
+        unsubscribe = subscribeToUserProfile(user.uid, async (userData) => {
+          if (!isMounted) return;
+          
+          const followersIds = userData?.followers || [];
+          
+          if (followersIds.length === 0) {
+            setFollowers([]);
+            setLoading(false);
+            return;
+          }
+          
+          // Fetch profiles for all followers
+          const followersProfiles = await Promise.all(
+            followersIds.map(async (followerId: string) => {
+              const profile = await getUserProfile(followerId);
+              return {
+                id: followerId,
+                name: profile?.name || profile?.displayName || 'Unknown',
+                photoURL: profile?.photoURL,
+                imageUrl: profile?.imageUrl,
+              };
+            })
+          );
+          
+          if (isMounted) {
+            setFollowers(followersProfiles);
+            setLoading(false);
+          }
+        });
       } catch (error) {
-        console.error('Error loading followers:', error);
-        setFollowers([]);
-      } finally {
-        setLoading(false);
+        console.error('Error setting up followers subscription:', error);
+        if (isMounted) {
+          setFollowers([]);
+          setLoading(false);
+        }
       }
     };
 
-    loadFollowers();
+    setupSubscription();
+
+    return () => {
+      isMounted = false;
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [user?.uid]);
 
   const handleProfileClick = (hostName: string, hostId?: string) => {
