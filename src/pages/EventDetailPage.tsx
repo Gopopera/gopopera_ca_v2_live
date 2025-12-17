@@ -634,18 +634,32 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   };
   
   const handleRSVP = async () => {
+    console.log('[EVENT_DETAIL] 🎯 handleRSVP called', {
+      isDemo,
+      isLoggedIn,
+      hasUser: !!user?.uid,
+      hasRSVPed,
+      eventHasFee: event?.hasFee,
+      eventFeeAmount: event?.feeAmount,
+      eventPrice: event?.price,
+      hostStripeStatus,
+    });
+    
     if (isDemo) {
       // Show modal for demo events instead of reserving
+      console.log('[EVENT_DETAIL] Demo event - showing fake modal');
       setShowFakeEventModal(true);
       return;
     }
     
     if (!isLoggedIn) {
+      console.log('[EVENT_DETAIL] Not logged in - showing auth modal');
       setShowAuthModal(true);
       return;
     }
     
     if (!user?.uid) {
+      console.log('[EVENT_DETAIL] No user uid - showing auth modal');
       setShowAuthModal(true);
       return;
     }
@@ -656,6 +670,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       
       if (hasRSVPed) {
         // Cancel reservation
+        console.log('[EVENT_DETAIL] Cancelling existing reservation');
         await removeRSVP(user.uid, event.id);
         setReservationSuccess(false);
         // Update local count
@@ -665,9 +680,19 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       } else {
         // Check if event is free (using consistent helper that checks both new and legacy price fields)
         const isFree = isEventFree(event);
+        const hasFee = hasEventFee(event);
+        
+        console.log('[EVENT_DETAIL] Event payment check:', {
+          isFree,
+          hasFee,
+          hasFeeField: event?.hasFee,
+          feeAmount: event?.feeAmount,
+          price: event?.price,
+        });
         
         if (isFree) {
           // For free events, go directly to reservation
+          console.log('[EVENT_DETAIL] Free event - creating reservation');
           const reservationId = await addRSVP(user.uid, event.id);
           setReservationSuccess(true);
           // Update local count
@@ -684,7 +709,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           }, 500);
         } else {
           // Check if event has Stripe fee (new payment system)
-          if (hasEventFee(event)) {
+          if (hasFee) {
+            console.log('[EVENT_DETAIL] Stripe payment event - checking host status');
             // Verify host has Stripe account enabled
             if (!hostStripeStatus.checked) {
               console.log('[EVENT_DETAIL] Host Stripe status not checked yet, waiting...');
@@ -694,23 +720,24 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             }
             
             if (!hostStripeStatus.enabled) {
-              console.log('[EVENT_DETAIL] Host does not have Stripe enabled');
+              console.log('[EVENT_DETAIL] ⚠️ Host does not have Stripe enabled - showing error modal');
               setShowHostPaymentSetupError(true);
               setReserving(false);
               return;
             }
             
             // Show payment modal for Stripe payments
-            console.log('[EVENT_DETAIL] Opening payment modal');
+            console.log('[EVENT_DETAIL] ✅ Opening payment modal');
             setShowPaymentModal(true);
           } else {
             // For legacy paid events, navigate to Confirm & Pay page
+            console.log('[EVENT_DETAIL] Legacy paid event - navigating to confirm page');
             setViewState(ViewState.CONFIRM_RESERVATION);
           }
         }
       }
     } catch (error) {
-      console.error('Error handling RSVP:', error);
+      console.error('[EVENT_DETAIL] ❌ Error handling RSVP:', error);
       alert('Failed to reserve spot. Please try again.');
     } finally {
       setReserving(false);
