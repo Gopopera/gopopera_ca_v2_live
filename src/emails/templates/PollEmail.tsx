@@ -1,8 +1,9 @@
 /**
  * Poll Email Template
+ * Modern liquid glass UI design
  */
 
-import { getBaseEmailTemplate } from './base';
+import { getBaseEmailTemplate, getGlassPanel, getInfoRow } from './base';
 
 export function PollEmailTemplate(data: {
   userName: string;
@@ -12,27 +13,63 @@ export function PollEmailTemplate(data: {
   eventUrl?: string;
 }): string {
   const content = `
-    <h2 style="margin: 0 0 8px 0; color: #15383c; font-size: 24px; font-weight: bold;">New Poll in Your Pop-up</h2>
-    <p style="margin: 0 0 24px 0; color: #6b7280; font-size: 16px;">Hello ${data.userName},</p>
+    <!-- Header Section -->
+    <table role="presentation" style="width: 100%; margin-bottom: 28px;">
+      <tr>
+        <td>
+          <!-- Notification badge -->
+          <table role="presentation" style="margin-bottom: 16px;">
+            <tr>
+              <td>
+                <span style="display: inline-block; background: linear-gradient(135deg, rgba(236, 72, 153, 0.2) 0%, rgba(236, 72, 153, 0.1) 100%); border: 1px solid rgba(236, 72, 153, 0.3); border-radius: 50px; padding: 8px 16px; color: #f472b6; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px;">
+                  📊 New Poll
+                </span>
+              </td>
+            </tr>
+          </table>
+          <h1 style="margin: 0 0 12px 0; color: #ffffff; font-size: 24px; font-weight: 700; line-height: 1.3;">New Poll in Your Pop-up</h1>
+          <p style="margin: 0; color: rgba(255, 255, 255, 0.6); font-size: 15px;">Hello ${data.userName},</p>
+        </td>
+      </tr>
+    </table>
     
-    <div style="background-color: #f8fafb; padding: 24px; border-radius: 12px; margin-bottom: 24px;">
-      <p style="margin: 0 0 12px 0; color: #374151; font-size: 16px; line-height: 1.6;">
-        <strong style="color: #15383c;">Event:</strong> ${data.eventTitle}
-      </p>
-    </div>
+    <!-- Event Info -->
+    ${getGlassPanel(`
+      ${getInfoRow('Event', data.eventTitle)}
+    `)}
     
-    <div style="background-color: #ffffff; padding: 24px; border-left: 4px solid #e35e25; border-radius: 8px; margin-bottom: 24px;">
-      <h3 style="margin: 0 0 16px 0; color: #15383c; font-size: 20px; font-weight: bold;">${data.pollQuestion}</h3>
+    <!-- Poll Question & Options -->
+    ${getGlassPanel(`
+      <h2 style="margin: 0 0 20px 0; color: #ffffff; font-size: 20px; font-weight: 600;">${data.pollQuestion}</h2>
       ${data.pollOptions && data.pollOptions.length > 0 ? `
-      <ul style="margin: 0; padding-left: 20px; color: #374151; font-size: 16px; line-height: 1.8;">
-        ${data.pollOptions.map(option => `<li>${option}</li>`).join('')}
-      </ul>
+      <table role="presentation" style="width: 100%;">
+        ${data.pollOptions.map((option, index) => `
+        <tr>
+          <td style="padding: 8px 0;">
+            <table role="presentation" style="width: 100%; background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px;">
+              <tr>
+                <td style="padding: 14px 18px;">
+                  <span style="color: rgba(255, 255, 255, 0.4); font-size: 13px; font-weight: 600; margin-right: 12px;">${String.fromCharCode(65 + index)}</span>
+                  <span style="color: rgba(255, 255, 255, 0.9); font-size: 15px;">${option}</span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        `).join('')}
+      </table>
       ` : ''}
-    </div>
+    `, 'rgba(236, 72, 153, 0.25)')}
     
-    <p style="margin: 0; color: #6b7280; font-size: 14px; text-align: center;">Vote now in the event chat!</p>
+    <!-- Call to action hint -->
+    <table role="presentation" style="width: 100%; margin-top: 20px;">
+      <tr>
+        <td align="center">
+          <p style="margin: 0; color: rgba(255, 255, 255, 0.5); font-size: 14px;">Vote now in the event chat!</p>
+        </td>
+      </tr>
+    </table>
   `;
 
   return getBaseEmailTemplate(content, 'View Event & Vote', data.eventUrl || '#');
 }
-

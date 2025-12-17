@@ -1,8 +1,9 @@
 /**
  * Reservation Confirmation Email Template
+ * Modern liquid glass UI design
  */
 
-import { getBaseEmailTemplate } from './base';
+import { getBaseEmailTemplate, getGlassPanel, getInfoRow, getTipBox } from './base';
 
 export function ReservationConfirmationEmailTemplate(data: {
   userName: string;
@@ -18,55 +19,65 @@ export function ReservationConfirmationEmailTemplate(data: {
   totalAmount?: number;
 }): string {
   const content = `
-    <div style="text-align: center; margin-bottom: 32px;">
-      <div style="display: inline-block; width: 80px; height: 80px; background: linear-gradient(135deg, #e35e25 0%, #d14e1a 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 24px;">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-      <h2 style="margin: 0 0 8px 0; color: #15383c; font-size: 28px; font-weight: bold;">You're All Set! 🎉</h2>
-      <p style="margin: 0; color: #6b7280; font-size: 16px;">Your reservation has been confirmed</p>
-    </div>
+    <!-- Success Header -->
+    <table role="presentation" style="width: 100%; margin-bottom: 32px;">
+      <tr>
+        <td align="center">
+          <!-- Success icon with glow -->
+          <table role="presentation" style="margin-bottom: 20px;">
+            <tr>
+              <td align="center">
+                <div style="width: 64px; height: 64px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(16, 185, 129, 0.1) 100%); border-radius: 50%; border: 2px solid rgba(16, 185, 129, 0.4); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 30px rgba(16, 185, 129, 0.3);">
+                  <span style="font-size: 28px; line-height: 64px;">✓</span>
+                </div>
+              </td>
+            </tr>
+          </table>
+          <h1 style="margin: 0 0 8px 0; color: #ffffff; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;">You're All Set! 🎉</h1>
+          <p style="margin: 0; color: rgba(255, 255, 255, 0.6); font-size: 15px;">Your reservation has been confirmed</p>
+        </td>
+      </tr>
+    </table>
     
     ${data.eventImageUrl ? `
-    <div style="margin-bottom: 24px; text-align: center;">
-      <img src="${data.eventImageUrl}" alt="${data.eventTitle}" style="width: 100%; max-width: 500px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);" />
-    </div>
+    <!-- Event Image -->
+    <table role="presentation" style="width: 100%; margin-bottom: 24px;">
+      <tr>
+        <td align="center">
+          <img src="${data.eventImageUrl}" alt="${data.eventTitle}" style="width: 100%; max-width: 100%; border-radius: 16px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1);" />
+        </td>
+      </tr>
+    </table>
     ` : ''}
     
-    <div style="background-color: #f8fafb; padding: 24px; border-radius: 12px; margin-bottom: 24px;">
-      <h3 style="margin: 0 0 16px 0; color: #15383c; font-size: 22px; font-weight: bold;">${data.eventTitle}</h3>
+    <!-- Event Details Glass Card -->
+    ${getGlassPanel(`
+      <h2 style="margin: 0 0 24px 0; color: #ffffff; font-size: 20px; font-weight: 600;">${data.eventTitle}</h2>
       
-      <div style="margin-bottom: 16px;">
-        <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Date & Time</p>
-        <p style="margin: 0; color: #15383c; font-size: 16px; font-weight: 600;">${data.eventDate} • ${data.eventTime}</p>
-      </div>
+      ${getInfoRow('Date & Time', `${data.eventDate} • ${data.eventTime}`)}
+      ${getInfoRow('Location', data.eventLocation)}
       
-      <div style="margin-bottom: 16px;">
-        <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Location</p>
-        <p style="margin: 0; color: #15383c; font-size: 16px; font-weight: 600;">${data.eventLocation}</p>
-      </div>
-      
-      <div style="border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 16px;">
-        <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Reservation ID</p>
-        <p style="margin: 0; color: #15383c; font-size: 18px; font-weight: bold; font-family: monospace;">${data.orderId}</p>
-      </div>
+      <table role="presentation" style="width: 100%; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 16px; margin-top: 8px;">
+        <tr>
+          <td>
+            ${getInfoRow('Reservation ID', `<span style="font-family: 'SF Mono', Monaco, 'Courier New', monospace; background: rgba(255, 255, 255, 0.1); padding: 6px 12px; border-radius: 8px; font-size: 15px;">#${data.orderId}</span>`)}
+          </td>
+        </tr>
+      </table>
       
       ${data.attendeeCount && data.attendeeCount > 1 ? `
-      <div style="margin-top: 16px;">
-        <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Attendees</p>
-        <p style="margin: 0; color: #15383c; font-size: 16px; font-weight: 600;">${data.attendeeCount} ${data.attendeeCount === 1 ? 'person' : 'people'}</p>
-      </div>
+      <table role="presentation" style="width: 100%; margin-top: 8px;">
+        <tr>
+          <td>
+            ${getInfoRow('Attendees', `${data.attendeeCount} ${data.attendeeCount === 1 ? 'person' : 'people'}`)}
+          </td>
+        </tr>
+      </table>
       ` : ''}
-    </div>
+    `)}
     
-    <div style="background-color: #fff7ed; border-left: 4px solid #e35e25; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
-      <p style="margin: 0; color: #15383c; font-size: 14px; line-height: 1.6;">
-        <strong style="color: #e35e25;">💡 Tip:</strong> Show your QR code at the event entrance for quick check-in! You can view your reservation details in the app.
-      </p>
-    </div>
+    ${getTipBox('Show your QR code at the event entrance for quick check-in! You can view your reservation details in the app.')}
   `;
 
   return getBaseEmailTemplate(content, 'View Reservation Details', data.eventUrl || '#');
 }
-

@@ -1,8 +1,9 @@
 /**
  * Announcement Email Template
+ * Modern liquid glass UI design
  */
 
-import { getBaseEmailTemplate } from './base';
+import { getBaseEmailTemplate, getGlassPanel, getInfoRow } from './base';
 
 export function AnnouncementEmailTemplate(data: {
   userName: string;
@@ -13,27 +14,48 @@ export function AnnouncementEmailTemplate(data: {
   imageUrl?: string;
 }): string {
   const content = `
-    <h2 style="margin: 0 0 8px 0; color: #15383c; font-size: 24px; font-weight: bold;">New Announcement</h2>
-    <p style="margin: 0 0 24px 0; color: #6b7280; font-size: 16px;">Hello ${data.userName},</p>
+    <!-- Header Section -->
+    <table role="presentation" style="width: 100%; margin-bottom: 28px;">
+      <tr>
+        <td>
+          <!-- Notification badge -->
+          <table role="presentation" style="margin-bottom: 16px;">
+            <tr>
+              <td>
+                <span style="display: inline-block; background: linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(168, 85, 247, 0.1) 100%); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 50px; padding: 8px 16px; color: #c084fc; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px;">
+                  📢 Announcement
+                </span>
+              </td>
+            </tr>
+          </table>
+          <h1 style="margin: 0 0 12px 0; color: #ffffff; font-size: 24px; font-weight: 700; line-height: 1.3;">New Announcement</h1>
+          <p style="margin: 0; color: rgba(255, 255, 255, 0.6); font-size: 15px;">Hello ${data.userName},</p>
+        </td>
+      </tr>
+    </table>
     
-    <div style="background-color: #f8fafb; padding: 24px; border-radius: 12px; margin-bottom: 24px;">
-      <p style="margin: 0 0 12px 0; color: #374151; font-size: 16px; line-height: 1.6;">
-        <strong style="color: #15383c;">Event:</strong> ${data.eventTitle}
-      </p>
-    </div>
+    <!-- Event Info -->
+    ${getGlassPanel(`
+      ${getInfoRow('Event', data.eventTitle)}
+    `)}
     
     ${data.imageUrl ? `
-    <div style="margin-bottom: 24px; text-align: center;">
-      <img src="${data.imageUrl}" alt="${data.announcementTitle}" style="max-width: 100%; height: auto; border-radius: 12px;" />
-    </div>
+    <!-- Announcement Image -->
+    <table role="presentation" style="width: 100%; margin-bottom: 24px;">
+      <tr>
+        <td>
+          <img src="${data.imageUrl}" alt="${data.announcementTitle}" style="width: 100%; border-radius: 16px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1);" />
+        </td>
+      </tr>
+    </table>
     ` : ''}
     
-    <div style="background-color: #ffffff; padding: 24px; border-left: 4px solid #e35e25; border-radius: 8px; margin-bottom: 24px;">
-      <h3 style="margin: 0 0 16px 0; color: #15383c; font-size: 20px; font-weight: bold;">${data.announcementTitle}</h3>
-      <p style="margin: 0; color: #374151; font-size: 16px; line-height: 1.8; white-space: pre-wrap;">${data.announcementMessage}</p>
-    </div>
+    <!-- Announcement Content -->
+    ${getGlassPanel(`
+      <h2 style="margin: 0 0 16px 0; color: #ffffff; font-size: 20px; font-weight: 600;">${data.announcementTitle}</h2>
+      <p style="margin: 0; color: rgba(255, 255, 255, 0.8); font-size: 15px; line-height: 1.8; white-space: pre-wrap;">${data.announcementMessage}</p>
+    `, 'rgba(168, 85, 247, 0.25)')}
   `;
 
   return getBaseEmailTemplate(content, 'View Event', data.eventUrl || '#');
 }
-

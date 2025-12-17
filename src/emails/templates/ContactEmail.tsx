@@ -1,8 +1,9 @@
 /**
  * Contact Form Email Template
+ * Modern liquid glass UI design
  */
 
-import { getBaseEmailTemplate } from './base';
+import { getBaseEmailTemplate, getGlassPanel, getInfoRow } from './base';
 
 export function ContactEmailTemplate(data: {
   name: string;
@@ -11,26 +12,45 @@ export function ContactEmailTemplate(data: {
   timestamp: string;
 }): string {
   const content = `
-    <h2 style="margin: 0 0 24px 0; color: #15383c; font-size: 24px; font-weight: bold;">New Contact Form Submission</h2>
+    <!-- Header Section -->
+    <table role="presentation" style="width: 100%; margin-bottom: 28px;">
+      <tr>
+        <td>
+          <!-- Notification badge -->
+          <table role="presentation" style="margin-bottom: 16px;">
+            <tr>
+              <td>
+                <span style="display: inline-block; background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0.1) 100%); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 50px; padding: 8px 16px; color: #60a5fa; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px;">
+                  ✉️ Contact Form
+                </span>
+              </td>
+            </tr>
+          </table>
+          <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700; line-height: 1.3;">New Contact Form Submission</h1>
+        </td>
+      </tr>
+    </table>
     
-    <div style="background-color: #f8fafb; padding: 24px; border-radius: 12px; margin-bottom: 24px;">
-      <p style="margin: 0 0 12px 0; color: #374151; font-size: 16px; line-height: 1.6;">
-        <strong style="color: #15383c;">Name:</strong> ${data.name}
-      </p>
-      <p style="margin: 0 0 12px 0; color: #374151; font-size: 16px; line-height: 1.6;">
-        <strong style="color: #15383c;">Email:</strong> <a href="mailto:${data.email}" style="color: #e35e25; text-decoration: none;">${data.email}</a>
-      </p>
-      <p style="margin: 0 0 12px 0; color: #374151; font-size: 16px; line-height: 1.6;">
-        <strong style="color: #15383c;">Submitted:</strong> ${data.timestamp}
-      </p>
-    </div>
+    <!-- Contact Details -->
+    ${getGlassPanel(`
+      ${getInfoRow('Name', data.name)}
+      <table role="presentation" style="width: 100%; margin-bottom: 16px;">
+        <tr>
+          <td>
+            <p style="margin: 0 0 4px 0; color: rgba(255, 255, 255, 0.5); font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600;">Email</p>
+            <p style="margin: 0;"><a href="mailto:${data.email}" style="color: #f97316; text-decoration: none; font-size: 16px;">${data.email}</a></p>
+          </td>
+        </tr>
+      </table>
+      ${getInfoRow('Submitted', data.timestamp)}
+    `)}
     
-    <div style="background-color: #ffffff; padding: 24px; border-left: 4px solid #e35e25; border-radius: 8px;">
-      <h3 style="margin: 0 0 16px 0; color: #15383c; font-size: 18px; font-weight: bold;">Message</h3>
-      <p style="margin: 0; color: #374151; font-size: 16px; line-height: 1.8; white-space: pre-wrap;">${data.message}</p>
-    </div>
+    <!-- Message Content -->
+    ${getGlassPanel(`
+      <h3 style="margin: 0 0 16px 0; color: rgba(255, 255, 255, 0.5); font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600;">Message</h3>
+      <p style="margin: 0; color: rgba(255, 255, 255, 0.9); font-size: 15px; line-height: 1.8; white-space: pre-wrap;">${data.message}</p>
+    `, 'rgba(59, 130, 246, 0.25)')}
   `;
 
   return getBaseEmailTemplate(content);
 }
-

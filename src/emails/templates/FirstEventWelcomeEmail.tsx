@@ -1,9 +1,10 @@
 /**
  * First Event Welcome Email Template
  * Sent when a user creates their first event on Popera
+ * Modern liquid glass UI design
  */
 
-import { getBaseEmailTemplate } from './base';
+import { getBaseEmailTemplate, getGlassPanel, getTipBox } from './base';
 
 export function FirstEventWelcomeEmailTemplate(data: {
   userName: string;
@@ -11,43 +12,47 @@ export function FirstEventWelcomeEmailTemplate(data: {
   eventUrl?: string;
 }): string {
   const content = `
-    <div style="text-align: center; margin-bottom: 32px;">
-      <div style="display: inline-block; width: 80px; height: 80px; background: linear-gradient(135deg, #e35e25 0%, #d14e1a 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 24px;">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M2 17L12 22L22 17" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M2 12L12 17L22 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-      <h2 style="margin: 0 0 8px 0; color: #15383c; font-size: 28px; font-weight: bold;">Welcome to Popera! 🎉</h2>
-      <p style="margin: 0; color: #6b7280; font-size: 16px;">You've created your first event</p>
-    </div>
+    <!-- Welcome Header -->
+    <table role="presentation" style="width: 100%; margin-bottom: 32px;">
+      <tr>
+        <td align="center">
+          <!-- Celebration icon with glow -->
+          <table role="presentation" style="margin-bottom: 20px;">
+            <tr>
+              <td align="center">
+                <div style="width: 64px; height: 64px; background: linear-gradient(135deg, rgba(249, 115, 22, 0.25) 0%, rgba(249, 115, 22, 0.1) 100%); border-radius: 50%; border: 2px solid rgba(249, 115, 22, 0.4); box-shadow: 0 0 30px rgba(249, 115, 22, 0.3);">
+                  <span style="font-size: 28px; line-height: 64px; display: block; text-align: center;">🚀</span>
+                </div>
+              </td>
+            </tr>
+          </table>
+          <h1 style="margin: 0 0 8px 0; color: #ffffff; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;">Welcome to Popera! 🎉</h1>
+          <p style="margin: 0; color: rgba(255, 255, 255, 0.6); font-size: 15px;">You've created your first event</p>
+        </td>
+      </tr>
+    </table>
     
-    <div style="background-color: #f8fafb; padding: 24px; border-radius: 12px; margin-bottom: 24px;">
-      <p style="margin: 0 0 16px 0; color: #374151; font-size: 16px; line-height: 1.7;">
+    <!-- Welcome Message Glass Card -->
+    ${getGlassPanel(`
+      <p style="margin: 0 0 20px 0; color: rgba(255, 255, 255, 0.9); font-size: 16px; line-height: 1.7;">
         Hi ${data.userName},
       </p>
-      <p style="margin: 0 0 16px 0; color: #374151; font-size: 16px; line-height: 1.7;">
+      <p style="margin: 0 0 20px 0; color: rgba(255, 255, 255, 0.8); font-size: 15px; line-height: 1.8;">
         Thank you for joining Popera and taking the first step in creating meaningful experiences for your community. We're thrilled to have you as part of our platform where local creators, hosts, and community members come together to share authentic moments.
       </p>
-      <p style="margin: 0 0 16px 0; color: #374151; font-size: 16px; line-height: 1.7;">
-        Your event <strong style="color: #15383c;">"${data.eventTitle}"</strong> is now live and ready to welcome attendees. We hope this is the first of many experiences you'll create that bring people together and foster genuine connections.
+      <p style="margin: 0 0 20px 0; color: rgba(255, 255, 255, 0.8); font-size: 15px; line-height: 1.8;">
+        Your event <span style="color: #f97316; font-weight: 600;">"${data.eventTitle}"</span> is now live and ready to welcome attendees. We hope this is the first of many experiences you'll create that bring people together and foster genuine connections.
       </p>
-      <p style="margin: 0 0 16px 0; color: #374151; font-size: 16px; line-height: 1.7;">
-        At Popera, we believe that the best experiences happen when passionate hosts meet curious attendees. Your dedication to creating these moments is what makes our community special, and we're here to support you every step of the way.
+      <p style="margin: 0 0 20px 0; color: rgba(255, 255, 255, 0.8); font-size: 15px; line-height: 1.8;">
+        At Popera, we believe that the best experiences happen when passionate hosts meet curious attendees. Your dedication to creating these moments is what makes our community special.
       </p>
-      <p style="margin: 0; color: #374151; font-size: 16px; line-height: 1.7;">
-        Your experience matters to us. If you have any questions, need assistance, or want to share feedback, please don't hesitate to reach out to us at <a href="mailto:support@gopopera.ca" style="color: #e35e25; text-decoration: none; font-weight: 600;">support@gopopera.ca</a>. We're always here to help.
+      <p style="margin: 0; color: rgba(255, 255, 255, 0.8); font-size: 15px; line-height: 1.8;">
+        Questions or feedback? Reach out anytime at <a href="mailto:support@gopopera.ca" style="color: #f97316; text-decoration: none; font-weight: 600;">support@gopopera.ca</a>
       </p>
-    </div>
+    `)}
     
-    <div style="background-color: #fff7ed; border-left: 4px solid #e35e25; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
-      <p style="margin: 0; color: #15383c; font-size: 14px; line-height: 1.6;">
-        <strong style="color: #e35e25;">💡 Tip:</strong> Share your event with your network to maximize attendance! You can use the share button on your event page to spread the word on social media.
-      </p>
-    </div>
+    ${getTipBox('Share your event with your network to maximize attendance! Use the share button on your event page to spread the word on social media.')}
   `;
 
   return getBaseEmailTemplate(content, 'View Your Event', data.eventUrl || '#');
 }
-

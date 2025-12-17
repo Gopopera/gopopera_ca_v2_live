@@ -882,17 +882,14 @@ export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => 
 
   const statusDisplay = getStatusDisplay();
 
-  // Stripe logo SVG
-  const StripeLogo = ({ className = "h-6" }: { className?: string }) => (
-    <svg className={className} viewBox="0 0 60 25" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path fillRule="evenodd" clipRule="evenodd" d="M59.64 14.28C59.64 9.42 57.24 5.64 52.56 5.64C47.88 5.64 45 9.42 45 14.22C45 19.86 48.42 22.8 53.22 22.8C55.56 22.8 57.36 22.26 58.74 21.48V17.58C57.36 18.3 55.8 18.72 53.82 18.72C51.9 18.72 50.22 18.06 49.98 15.72H59.58C59.58 15.42 59.64 14.7 59.64 14.28ZM49.92 12.18C49.92 9.96 51.24 9.06 52.56 9.06C53.88 9.06 55.08 9.96 55.08 12.18H49.92Z" fill="#635BFF"/>
-      <path fillRule="evenodd" clipRule="evenodd" d="M38.94 5.64C36.96 5.64 35.7 6.54 34.98 7.2L34.74 5.94H30.48V24.96L35.1 24.06V21.66C35.82 22.14 36.9 22.8 38.82 22.8C42.66 22.8 46.02 19.8 46.02 13.98C46.02 8.7 42.6 5.64 38.94 5.64ZM37.74 18.6C36.42 18.6 35.64 18.12 35.1 17.58L35.04 10.68C35.58 10.08 36.36 9.6 37.74 9.6C39.9 9.6 41.4 11.94 41.4 14.1C41.4 16.32 39.9 18.6 37.74 18.6Z" fill="#635BFF"/>
-      <path d="M25.56 4.08L30.24 3.18V-0.72L25.56 0.18V4.08Z" fill="#635BFF"/>
-      <path d="M30.24 5.94H25.56V22.5H30.24V5.94Z" fill="#635BFF"/>
-      <path fillRule="evenodd" clipRule="evenodd" d="M21.36 7.44L21.06 5.94H16.86V22.5H21.48V11.28C22.56 9.84 24.48 10.14 25.08 10.32V5.94C24.42 5.7 22.44 5.28 21.36 7.44Z" fill="#635BFF"/>
-      <path fillRule="evenodd" clipRule="evenodd" d="M12.06 2.04L7.56 2.94L7.5 17.88C7.5 20.76 9.6 22.8 12.48 22.8C14.04 22.8 15.18 22.5 15.78 22.14V18.18C15.24 18.42 12.06 19.38 12.06 16.5V10.02H15.78V5.94H12.06V2.04Z" fill="#635BFF"/>
-      <path fillRule="evenodd" clipRule="evenodd" d="M2.82 10.68C2.82 9.84 3.54 9.48 4.74 9.48C6.48 9.48 8.7 10.02 10.44 11.04V6.54C8.52 5.76 6.66 5.46 4.74 5.46C1.56 5.46 -0.66 7.26 -0.66 10.26C-0.66 14.88 5.7 14.16 5.7 16.2C5.7 17.22 4.8 17.58 3.54 17.58C1.62 17.58 -0.84 16.8 -2.76 15.66V20.22C-0.6 21.18 1.56 21.6 3.54 21.6C6.84 21.6 9.24 19.86 9.24 16.8C9.24 11.76 2.82 12.66 2.82 10.68Z" fill="#635BFF" transform="translate(3.42)"/>
-    </svg>
+  // Stripe text component (using official Stripe purple color)
+  const StripeText = ({ className = "", opacity = 1 }: { className?: string; opacity?: number }) => (
+    <span 
+      className={`font-bold text-[#635BFF] ${className}`} 
+      style={{ fontFamily: 'system-ui, -apple-system, sans-serif', opacity }}
+    >
+      stripe
+    </span>
   );
 
   return (
@@ -1006,7 +1003,7 @@ export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => 
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/60 backdrop-blur-sm border border-gray-200/60 text-gray-700 hover:bg-white hover:border-gray-300 transition-all text-sm font-medium group"
                 >
-                  <StripeLogo className="h-4" />
+                  <StripeText className="text-sm" />
                   <span>Manage on Stripe</span>
                   <ExternalLink size={14} className="opacity-50 group-hover:opacity-100 transition-opacity" />
                 </a>
@@ -1087,7 +1084,7 @@ export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => 
               <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
                 <Lock size={12} />
                 <span>Secured by</span>
-                <StripeLogo className="h-4 opacity-60" />
+                <StripeText className="text-sm" opacity={0.6} />
               </div>
               <p className="text-[10px] text-gray-400 mt-2">
                 Stripe is a certified PCI Level 1 Service Provider
