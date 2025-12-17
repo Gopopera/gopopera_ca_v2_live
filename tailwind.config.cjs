@@ -24,7 +24,16 @@ module.exports = {
       borderRadius: {
         'xl': '1rem',
         '2xl': '1.5rem',
-      }
+      },
+      animation: {
+        'shimmer': 'shimmer 2s ease-in-out infinite',
+      },
+      keyframes: {
+        shimmer: {
+          '0%, 100%': { backgroundPosition: '200% 0' },
+          '50%': { backgroundPosition: '-200% 0' },
+        },
+      },
     },
   },
   plugins: [],

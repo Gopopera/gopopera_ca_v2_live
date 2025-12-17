@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ViewState } from '../../types';
-import { X, DollarSign, ArrowRight, Star, Camera, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { X, DollarSign, ArrowRight, Star, Camera, CheckCircle2, AlertCircle, Loader2, Clock, Lock, ExternalLink, HelpCircle } from 'lucide-react';
 import { useUserStore } from '../../stores/userStore';
 import { uploadImage } from '../../firebase/storage';
 import { createOrUpdateUserProfile } from '../../firebase/db';
@@ -882,95 +882,231 @@ export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => 
 
   const statusDisplay = getStatusDisplay();
 
+  // Stripe logo SVG
+  const StripeLogo = ({ className = "h-6" }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 60 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path fillRule="evenodd" clipRule="evenodd" d="M59.64 14.28C59.64 9.42 57.24 5.64 52.56 5.64C47.88 5.64 45 9.42 45 14.22C45 19.86 48.42 22.8 53.22 22.8C55.56 22.8 57.36 22.26 58.74 21.48V17.58C57.36 18.3 55.8 18.72 53.82 18.72C51.9 18.72 50.22 18.06 49.98 15.72H59.58C59.58 15.42 59.64 14.7 59.64 14.28ZM49.92 12.18C49.92 9.96 51.24 9.06 52.56 9.06C53.88 9.06 55.08 9.96 55.08 12.18H49.92Z" fill="#635BFF"/>
+      <path fillRule="evenodd" clipRule="evenodd" d="M38.94 5.64C36.96 5.64 35.7 6.54 34.98 7.2L34.74 5.94H30.48V24.96L35.1 24.06V21.66C35.82 22.14 36.9 22.8 38.82 22.8C42.66 22.8 46.02 19.8 46.02 13.98C46.02 8.7 42.6 5.64 38.94 5.64ZM37.74 18.6C36.42 18.6 35.64 18.12 35.1 17.58L35.04 10.68C35.58 10.08 36.36 9.6 37.74 9.6C39.9 9.6 41.4 11.94 41.4 14.1C41.4 16.32 39.9 18.6 37.74 18.6Z" fill="#635BFF"/>
+      <path d="M25.56 4.08L30.24 3.18V-0.72L25.56 0.18V4.08Z" fill="#635BFF"/>
+      <path d="M30.24 5.94H25.56V22.5H30.24V5.94Z" fill="#635BFF"/>
+      <path fillRule="evenodd" clipRule="evenodd" d="M21.36 7.44L21.06 5.94H16.86V22.5H21.48V11.28C22.56 9.84 24.48 10.14 25.08 10.32V5.94C24.42 5.7 22.44 5.28 21.36 7.44Z" fill="#635BFF"/>
+      <path fillRule="evenodd" clipRule="evenodd" d="M12.06 2.04L7.56 2.94L7.5 17.88C7.5 20.76 9.6 22.8 12.48 22.8C14.04 22.8 15.18 22.5 15.78 22.14V18.18C15.24 18.42 12.06 19.38 12.06 16.5V10.02H15.78V5.94H12.06V2.04Z" fill="#635BFF"/>
+      <path fillRule="evenodd" clipRule="evenodd" d="M2.82 10.68C2.82 9.84 3.54 9.48 4.74 9.48C6.48 9.48 8.7 10.02 10.44 11.04V6.54C8.52 5.76 6.66 5.46 4.74 5.46C1.56 5.46 -0.66 7.26 -0.66 10.26C-0.66 14.88 5.7 14.16 5.7 16.2C5.7 17.22 4.8 17.58 3.54 17.58C1.62 17.58 -0.84 16.8 -2.76 15.66V20.22C-0.6 21.18 1.56 21.6 3.54 21.6C6.84 21.6 9.24 19.86 9.24 16.8C9.24 11.76 2.82 12.66 2.82 10.68Z" fill="#635BFF" transform="translate(3.42)"/>
+    </svg>
+  );
+
   return (
-    <div className="min-h-screen bg-[#f8fafb] pt-20 sm:pt-24 pb-8 sm:pb-12 font-sans">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between mb-6 sm:mb-8">
+    <div className="min-h-screen bg-gradient-to-br from-[#f0f4f8] via-[#f8fafb] to-[#eef2f6] pt-20 sm:pt-24 pb-8 sm:pb-12 font-sans">
+      {/* Subtle background pattern */}
+      <div className="fixed inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(99,91,255,0.03),transparent_50%),radial-gradient(circle_at_70%_80%,rgba(227,94,37,0.03),transparent_50%)] pointer-events-none" />
+      
+      <div className="relative max-w-2xl mx-auto px-4 sm:px-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c] mb-2">Stripe Payout Settings</h1>
+            <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c] mb-1">Stripe Payout Settings</h1>
             <p className="text-sm text-gray-500">Manage your payment and payout preferences</p>
           </div>
           <button 
             onClick={() => setViewState(ViewState.PROFILE)} 
-            className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-[#15383c] hover:bg-gray-50 transition-colors touch-manipulation active:scale-95 shadow-sm"
+            className="w-10 h-10 bg-white/80 backdrop-blur-sm border border-white/60 rounded-xl flex items-center justify-center text-gray-600 hover:bg-white hover:text-[#15383c] transition-all shadow-sm"
           >
-            <X size={18} className="sm:w-5 sm:h-5" />
+            <X size={18} />
           </button>
         </div>
 
+        {/* Error Alert */}
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-red-900 mb-1">Error</p>
-              <p className="text-sm text-red-800">{error}</p>
+          <div className="mb-6 relative overflow-hidden rounded-2xl">
+            <div className="absolute inset-0 bg-red-50/90 backdrop-blur-sm" />
+            <div className="absolute inset-0 border border-red-200/50 rounded-2xl" />
+            <div className="relative p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-900 mb-0.5">Error</p>
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
             </div>
           </div>
         )}
 
-        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-md border border-gray-100 p-8 sm:p-12 text-center">
-          <div className={`w-24 h-24 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg ${
-            statusDisplay.status === 'complete' 
-              ? 'bg-green-100' 
-              : statusDisplay.status === 'verifying' || statusDisplay.status === 'pending_verification'
-              ? 'bg-yellow-100'
-              : 'bg-gradient-to-br from-[#635bff] to-[#544dc9]'
-          }`}>
-            {statusDisplay.status === 'complete' ? (
-              <CheckCircle2 size={48} className="text-green-600" />
-            ) : statusDisplay.status === 'verifying' ? (
-              <Loader2 size={48} className="text-yellow-600 animate-spin" />
-            ) : statusDisplay.status === 'pending_verification' ? (
-              <AlertCircle size={48} className="text-yellow-600" />
-            ) : (
-              <DollarSign size={48} className="text-white" />
-            )}
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-heading font-bold text-[#15383c] mb-4">
-            {statusDisplay.title}
-          </h2>
-          <p className="text-gray-600 max-w-lg mx-auto mb-8 text-base leading-relaxed">
-            {statusDisplay.description}
-          </p>
-
-          {statusDisplay.status === 'complete' && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 max-w-md mx-auto mb-6">
-              <div className="flex items-center gap-2 text-green-800 justify-center">
-                <CheckCircle2 className="w-5 h-5" />
-                <p className="text-sm font-semibold">Account Active</p>
-              </div>
-              <p className="text-xs text-green-700 mt-2">
-                Account ID: {stripeAccountId?.substring(0, 20)}...
-              </p>
-            </div>
-          )}
-
-          {statusDisplay.action && (
-            <button 
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('[STRIPE_SETTINGS] Button clicked', { loading, action: statusDisplay.action });
-                if (!loading) {
-                  handleCompleteOnboarding();
-                }
-              }}
-              disabled={loading}
-              type="button"
-              className="px-8 py-4 bg-[#635bff] text-white font-bold rounded-xl hover:bg-[#544dc9] transition-all flex items-center gap-2 mx-auto shadow-lg shadow-indigo-900/20 hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation active:scale-95"
-            >
-              {loading ? (
+        {/* Main Card - Liquid Glass Effect */}
+        <div className="relative overflow-hidden rounded-3xl">
+          {/* Layered glass background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-white/90 to-white/85" />
+          <div className="absolute inset-0 backdrop-blur-2xl" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[#635bff]/5 via-transparent to-[#e35e25]/5" />
+          <div className="absolute inset-0 border border-white/60 rounded-3xl" />
+          <div className="absolute inset-0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8)]" />
+          
+          <div className="relative p-8 sm:p-12 text-center">
+            {/* Status Icon */}
+            <div className="relative inline-flex mb-6">
+              {statusDisplay.status === 'complete' ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Processing...
+                  <div className="absolute inset-0 bg-green-500/20 rounded-3xl blur-xl animate-pulse" />
+                  <div className="relative w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-3xl flex items-center justify-center shadow-lg shadow-green-500/30">
+                    <CheckCircle2 size={48} className="text-white" />
+                  </div>
+                </>
+              ) : statusDisplay.status === 'verifying' ? (
+                <>
+                  <div className="absolute inset-0 bg-amber-500/20 rounded-3xl blur-xl animate-pulse" />
+                  <div className="relative w-24 h-24 bg-gradient-to-br from-amber-400 to-amber-600 rounded-3xl flex items-center justify-center shadow-lg shadow-amber-500/30">
+                    <Loader2 size={48} className="text-white animate-spin" />
+                  </div>
+                </>
+              ) : statusDisplay.status === 'pending_verification' ? (
+                <>
+                  <div className="absolute inset-0 bg-amber-500/20 rounded-3xl blur-xl" />
+                  <div className="relative w-24 h-24 bg-gradient-to-br from-amber-400 to-orange-500 rounded-3xl flex items-center justify-center shadow-lg shadow-amber-500/30">
+                    <Clock size={48} className="text-white" />
+                  </div>
                 </>
               ) : (
                 <>
-                  {statusDisplay.action} <ArrowRight size={20} />
+                  <div className="absolute inset-0 bg-[#635bff]/20 rounded-3xl blur-xl" />
+                  <div className="relative w-24 h-24 bg-gradient-to-br from-[#635bff] to-[#544dc9] rounded-3xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                    <DollarSign size={48} className="text-white" />
+                  </div>
                 </>
               )}
-            </button>
-          )}
+            </div>
+
+            {/* Title & Description */}
+            <h2 className="text-2xl sm:text-3xl font-heading font-bold text-[#15383c] mb-3">
+              {statusDisplay.title}
+            </h2>
+            <p className="text-gray-600 max-w-md mx-auto mb-8 text-base leading-relaxed">
+              {statusDisplay.description}
+            </p>
+
+            {/* Complete Status - Success Card */}
+            {statusDisplay.status === 'complete' && (
+              <div className="space-y-4 mb-8">
+                {/* Success Badge */}
+                <div className="relative overflow-hidden rounded-2xl max-w-sm mx-auto">
+                  <div className="absolute inset-0 bg-gradient-to-r from-green-50/90 to-emerald-50/90 backdrop-blur-sm" />
+                  <div className="absolute inset-0 border border-green-200/50 rounded-2xl" />
+                  <div className="relative p-4">
+                    <div className="flex items-center gap-2 text-green-700 justify-center mb-2">
+                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                      <p className="text-sm font-semibold">Account Active & Ready</p>
+                    </div>
+                    <p className="text-xs text-green-600/80">
+                      ID: {stripeAccountId?.substring(0, 16)}...
+                    </p>
+                  </div>
+                </div>
+
+                {/* Stripe Dashboard Link */}
+                <a 
+                  href="https://dashboard.stripe.com/express"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/60 backdrop-blur-sm border border-gray-200/60 text-gray-700 hover:bg-white hover:border-gray-300 transition-all text-sm font-medium group"
+                >
+                  <StripeLogo className="h-4" />
+                  <span>Manage on Stripe</span>
+                  <ExternalLink size={14} className="opacity-50 group-hover:opacity-100 transition-opacity" />
+                </a>
+
+                {/* Help Text */}
+                <p className="text-xs text-gray-500 max-w-xs mx-auto">
+                  View your payouts, update bank details, and access tax documents on the Stripe Dashboard.
+                </p>
+              </div>
+            )}
+
+            {/* Pending Verification Status */}
+            {statusDisplay.status === 'pending_verification' && (
+              <div className="space-y-4 mb-8">
+                <div className="relative overflow-hidden rounded-2xl max-w-sm mx-auto">
+                  <div className="absolute inset-0 bg-gradient-to-r from-amber-50/90 to-orange-50/90 backdrop-blur-sm" />
+                  <div className="absolute inset-0 border border-amber-200/50 rounded-2xl" />
+                  <div className="relative p-4">
+                    <div className="flex items-center gap-2 text-amber-700 justify-center mb-2">
+                      <Loader2 size={14} className="animate-spin" />
+                      <p className="text-sm font-semibold">Stripe is reviewing your details</p>
+                    </div>
+                    <p className="text-xs text-amber-600/80">
+                      This usually takes a few minutes but can take up to 24 hours.
+                    </p>
+                  </div>
+                </div>
+
+                <a 
+                  href="https://dashboard.stripe.com/express"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/60 backdrop-blur-sm border border-gray-200/60 text-gray-700 hover:bg-white hover:border-gray-300 transition-all text-sm font-medium group"
+                >
+                  <span>Check status on Stripe</span>
+                  <ExternalLink size={14} className="opacity-50 group-hover:opacity-100 transition-opacity" />
+                </a>
+              </div>
+            )}
+
+            {/* Action Button */}
+            {statusDisplay.action && (
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('[STRIPE_SETTINGS] Button clicked', { loading, action: statusDisplay.action });
+                  if (!loading) {
+                    handleCompleteOnboarding();
+                  }
+                }}
+                disabled={loading}
+                type="button"
+                className="relative px-8 py-4 rounded-2xl font-bold text-white overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 mx-auto"
+              >
+                {/* Button background */}
+                <div className="absolute inset-0 bg-gradient-to-r from-[#635bff] via-[#7c75ff] to-[#635bff] bg-[length:200%_100%] group-hover:animate-shimmer" />
+                {/* Glow effect */}
+                <div className="absolute -inset-1 bg-[#635bff]/30 blur-lg rounded-2xl -z-10 group-hover:bg-[#635bff]/40 transition-colors" />
+                
+                <span className="relative flex items-center gap-2">
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      {statusDisplay.action} <ArrowRight size={20} />
+                    </>
+                  )}
+                </span>
+              </button>
+            )}
+
+            {/* Trust Badge */}
+            <div className="mt-8 pt-6 border-t border-gray-100/50">
+              <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
+                <Lock size={12} />
+                <span>Secured by</span>
+                <StripeLogo className="h-4 opacity-60" />
+              </div>
+              <p className="text-[10px] text-gray-400 mt-2">
+                Stripe is a certified PCI Level 1 Service Provider
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Help Link - Outside main card */}
+        <div className="mt-6 text-center">
+          <a 
+            href="https://support.stripe.com/express"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#635bff] transition-colors"
+          >
+            <HelpCircle size={14} />
+            <span>Need help with Stripe?</span>
+          </a>
         </div>
       </div>
     </div>
