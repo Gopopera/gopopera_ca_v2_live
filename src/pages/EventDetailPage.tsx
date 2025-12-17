@@ -22,7 +22,7 @@ import { getSessionFrequencyText, getSessionModeText } from '../../utils/eventHe
 import { getInitials, getAvatarBgColor } from '../../utils/avatarUtils';
 import { subscribeToFollowersCount } from '../../firebase/follow';
 import { PaymentModal } from '../../components/payments/PaymentModal';
-import { hasEventFee, isRecurringEvent } from '../../utils/stripeHelpers';
+import { hasEventFee, isRecurringEvent, getEventFeeAmount } from '../../utils/stripeHelpers';
 
 /**
  * Helper to format event price display - matches EventCard logic exactly
@@ -518,10 +518,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   // FIX: Use specific event fields in dependency, not the whole event object (prevents infinite re-renders)
   const eventHasFee = event?.hasFee;
   const eventFeeAmount = event?.feeAmount;
+  const eventPrice = event?.price;
   
   useEffect(() => {
-    // Only check if the event has a fee (check the specific fields, not hasEventFee which uses the whole object)
-    const isPaidEvent = eventHasFee && eventFeeAmount && eventFeeAmount > 0;
+    // Check if event has a fee - check new fields first, then legacy price field
+    const hasNewFee = eventHasFee && eventFeeAmount && eventFeeAmount > 0;
+    const hasLegacyFee = eventPrice && eventPrice !== 'Free' && eventPrice !== '' && eventPrice !== '$0' && eventPrice !== '0';
+    const isPaidEvent = hasNewFee || hasLegacyFee;
     
     if (!isPaidEvent || !eventHostId) {
       setHostStripeStatus({ enabled: true, checked: true }); // Default to enabled for free events
@@ -553,7 +556,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     };
     
     checkHostStripeStatus();
-  }, [eventHostId, eventHasFee, eventFeeAmount]);
+  }, [eventHostId, eventHasFee, eventFeeAmount, eventPrice]);
   
   // REFACTORED: Real-time subscription to reservation count - computed from reservations
   useEffect(() => {
@@ -709,12 +712,12 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           }, 500);
         } else {
           // Check if event has Stripe fee (new payment system)
+          console.log('[EVENT_DETAIL] 🔥 NOT FREE - hasFee=', hasFee, 'hostStripeStatus=', hostStripeStatus);
           if (hasFee) {
             console.log('[EVENT_DETAIL] Stripe payment event - checking host status');
             // Verify host has Stripe account enabled
             if (!hostStripeStatus.checked) {
               console.log('[EVENT_DETAIL] Host Stripe status not checked yet, waiting...');
-              alert('Please wait while we verify payment availability.');
               setReserving(false);
               return;
             }
@@ -727,8 +730,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             }
             
             // Show payment modal for Stripe payments
-            console.log('[EVENT_DETAIL] ✅ Opening payment modal');
+            console.log('[EVENT_DETAIL] ✅ Opening payment modal - feeAmount:', getEventFeeAmount(event));
             setShowPaymentModal(true);
+            setReserving(false); // Stop loading state since we're showing the modal
           } else {
             // For legacy paid events, navigate to Confirm & Pay page
             console.log('[EVENT_DETAIL] Legacy paid event - navigating to confirm page');
@@ -823,7 +827,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           onClose={() => setShowPaymentModal(false)}
           onSuccess={handlePaymentSuccess}
           eventTitle={event.title}
-          feeAmount={event.feeAmount || 0}
+          feeAmount={getEventFeeAmount(event)}
           currency={event.currency || 'cad'}
           attendeeCount={1}
           isRecurring={isRecurringEvent(event)}

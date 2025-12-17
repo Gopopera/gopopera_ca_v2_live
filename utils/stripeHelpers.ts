@@ -39,12 +39,42 @@ export function isRecurringEvent(event: Event): boolean {
 }
 
 /**
- * Check if event has a fee
+ * Check if event has a fee (checks both new and legacy payment fields)
  * @param event Event object
  * @returns True if event charges a fee
  */
 export function hasEventFee(event: Event): boolean {
-  return event.hasFee === true && (event.feeAmount ?? 0) > 0;
+  // Check new payment fields first
+  if (event.hasFee === true && (event.feeAmount ?? 0) > 0) {
+    return true;
+  }
+  // Also check legacy price field for backwards compatibility
+  if (event.price && event.price !== 'Free' && event.price !== '' && event.price !== '$0' && event.price !== '0') {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Get the fee amount in cents (from either new or legacy fields)
+ * @param event Event object
+ * @returns Fee amount in cents, or 0 if free
+ */
+export function getEventFeeAmount(event: Event): number {
+  // Check new payment fields first
+  if (event.hasFee === true && (event.feeAmount ?? 0) > 0) {
+    return event.feeAmount!;
+  }
+  // Convert legacy price field to cents
+  if (event.price && event.price !== 'Free' && event.price !== '' && event.price !== '$0' && event.price !== '0') {
+    // Parse the price string (e.g., "5", "$5", "5.00")
+    const priceStr = event.price.toString().replace(/[$,]/g, '');
+    const priceNum = parseFloat(priceStr);
+    if (!isNaN(priceNum) && priceNum > 0) {
+      return Math.round(priceNum * 100); // Convert dollars to cents
+    }
+  }
+  return 0;
 }
 
 /**
