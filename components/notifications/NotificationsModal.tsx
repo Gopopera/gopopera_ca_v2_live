@@ -17,15 +17,15 @@ const getNotificationIcon = (type: FirestoreNotification['type']) => {
     case 'followed-host-event':
       return <Calendar size={20} className="text-[#e35e25]" />;
     case 'new-message':
-      return <MessageCircle size={20} className="text-[#15383c]" />;
+      return <MessageCircle size={20} className="text-[#e35e25]" />;
     case 'announcement':
       return <Megaphone size={20} className="text-[#e35e25]" />;
     case 'poll':
-      return <BarChart2 size={20} className="text-[#15383c]" />;
+      return <BarChart2 size={20} className="text-[#e35e25]" />;
     case 'new-rsvp':
       return <Users size={20} className="text-[#e35e25]" />;
     default:
-      return <Bell size={20} className="text-gray-400" />;
+      return <Bell size={20} className="text-[#e35e25]" />;
   }
 };
 
@@ -193,7 +193,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
         {/* Header */}
         <div className="flex items-center justify-between p-5 sm:p-6 border-b border-gray-100/80">
           <div className="flex items-center gap-3">
-            <Bell size={22} className="text-[#15383c]" />
+            <Bell size={22} className="text-[#e35e25]" />
             <h2 className="text-xl sm:text-2xl font-heading font-bold text-[#15383c]">Notifications</h2>
             {unreadCount > 0 && (
               <span className="px-2 py-0.5 bg-[#e35e25] text-white text-xs font-bold rounded-full shadow-sm shadow-[#e35e25]/30">
@@ -229,7 +229,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
             </div>
           ) : notifications.length === 0 ? (
             <div className="text-center py-12">
-              <Bell size={48} className="text-gray-300 mx-auto mb-4" />
+              <Bell size={48} className="text-[#e35e25] mx-auto mb-4" />
               <p className="text-gray-500">No notifications yet</p>
             </div>
           ) : (

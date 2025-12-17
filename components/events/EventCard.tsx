@@ -61,7 +61,7 @@ const EventAttendeesCount: React.FC<{ eventId: string; capacity?: number; inline
   );
 };
 
-// Helper to format event price display
+// Helper to format event price display - ALWAYS ensures $ prefix for paid events
 const formatEventPrice = (event: Event): string => {
   // Check new payment fields first
   if (event.hasFee && event.feeAmount && event.feeAmount > 0) {
@@ -69,9 +69,13 @@ const formatEventPrice = (event: Event): string => {
     const currency = event.currency?.toUpperCase() || 'CAD';
     return `$${amount.toFixed(0)} ${currency}`;
   }
-  // Fallback to legacy price field
-  if (event.price && event.price !== 'Free' && event.price !== '') {
-    return event.price;
+  // Fallback to legacy price field - ALWAYS ensure $ prefix
+  if (event.price && event.price !== 'Free' && event.price !== '' && event.price !== '$0' && event.price !== '0') {
+    const priceStr = event.price.toString();
+    if (priceStr.startsWith('$')) {
+      return priceStr;
+    }
+    return `$${priceStr}`;
   }
   return 'Free';
 };

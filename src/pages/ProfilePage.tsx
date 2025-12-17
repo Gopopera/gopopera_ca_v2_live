@@ -401,8 +401,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
                 className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50/80 transition-all group touch-manipulation active:scale-[0.98]"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[#15383c]/10 rounded-full flex items-center justify-center">
-                    <Heart size={18} className="text-[#15383c]" />
+                  <div className="w-10 h-10 bg-[#e35e25]/10 rounded-full flex items-center justify-center">
+                    <Heart size={18} className="text-[#e35e25]" />
                   </div>
                   <span className="text-sm sm:text-base text-gray-600 font-medium">{t('profile.following')}</span>
                 </div>
@@ -418,8 +418,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
                 className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50/80 transition-all group touch-manipulation active:scale-[0.98]"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-yellow-50 rounded-full flex items-center justify-center">
-                    <Star size={18} className="text-yellow-500 fill-yellow-500" />
+                  <div className="w-10 h-10 bg-[#e35e25]/10 rounded-full flex items-center justify-center">
+                    <Star size={18} className="text-[#e35e25] fill-[#e35e25]" />
                   </div>
                   <span className="text-sm sm:text-base text-gray-600 font-medium">{t('profile.reviews')}</span>
                 </div>
@@ -455,8 +455,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
               {/* Total Attendees */}
               <div className="flex items-center justify-between p-3 rounded-xl">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[#15383c]/10 rounded-full flex items-center justify-center">
-                    <Users size={18} className="text-[#15383c]" />
+                  <div className="w-10 h-10 bg-[#e35e25]/10 rounded-full flex items-center justify-center">
+                    <Users size={18} className="text-[#e35e25]" />
                   </div>
                   <span className="text-sm sm:text-base text-gray-600 font-medium">{t('profile.totalAttendees')}</span>
                 </div>
@@ -469,8 +469,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
                 className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50/80 transition-all group touch-manipulation active:scale-[0.98]"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center">
-                    <Calendar size={18} className="text-green-600" />
+                  <div className="w-10 h-10 bg-[#e35e25]/10 rounded-full flex items-center justify-center">
+                    <Calendar size={18} className="text-[#e35e25]" />
                   </div>
                   <span className="text-sm sm:text-base text-gray-600 font-medium">{t('profile.hosting')}</span>
                 </div>

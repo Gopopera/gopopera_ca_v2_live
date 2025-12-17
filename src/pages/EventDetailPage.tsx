@@ -14,8 +14,9 @@ import { ShareModal } from '../../components/share/ShareModal';
 import { SeoHelmet } from '../../components/seo/SeoHelmet';
 import { formatDate } from '../../utils/dateFormatter';
 import { formatRating } from '../../utils/formatRating';
-import { getReservationCountForEvent, listHostReviews, subscribeToReservationCount } from '../../firebase/db';
-// REFACTORED: No longer using getUserProfile - using real-time subscriptions instead
+import { getReservationCountForEvent, listHostReviews, subscribeToReservationCount, getUserProfile } from '../../firebase/db';
+// REFACTORED: No longer using getUserProfile for host display - using real-time subscriptions instead
+// But we use getUserProfile to check host Stripe status for payments
 import { getMainCategoryLabelFromEvent } from '../../utils/categoryMapper';
 import { getSessionFrequencyText, getSessionModeText } from '../../utils/eventHelpers';
 import { getInitials, getAvatarBgColor } from '../../utils/avatarUtils';
@@ -37,9 +38,14 @@ const formatEventPrice = (event: Event, showCurrency: boolean = true): string =>
     }
     return `$${amount.toFixed(0)}`;
   }
-  // Fallback to legacy price field
+  // Fallback to legacy price field - ALWAYS ensure $ prefix
   if (event.price && event.price !== 'Free' && event.price !== '' && event.price !== '$0' && event.price !== '0') {
-    return event.price;
+    // Ensure the price always starts with $
+    const priceStr = event.price.toString();
+    if (priceStr.startsWith('$')) {
+      return priceStr;
+    }
+    return `$${priceStr}`;
   }
   return 'Free';
 };
@@ -220,6 +226,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const [hostBio, setHostBio] = useState<string | null>(null);
   const [followersCount, setFollowersCount] = useState<number>(0);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [hostStripeStatus, setHostStripeStatus] = useState<{ enabled: boolean; checked: boolean }>({ enabled: false, checked: false });
+  const [showHostPaymentSetupError, setShowHostPaymentSetupError] = useState(false);
   
   // Store hooks - always called
   const user = useUserStore((state) => state.user);
@@ -506,6 +514,41 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     };
   }, [eventHostId]);
   
+  // Check if host has Stripe enabled (for paid events)
+  useEffect(() => {
+    // Only check if the event has a fee
+    if (!hasEventFee(event) || !eventHostId) {
+      setHostStripeStatus({ enabled: true, checked: true }); // Default to enabled for free events
+      return;
+    }
+    
+    const checkHostStripeStatus = async () => {
+      try {
+        console.log('[EVENT_DETAIL] Checking host Stripe status for:', eventHostId);
+        const hostProfile = await getUserProfile(eventHostId);
+        
+        if (hostProfile) {
+          const isEnabled = hostProfile.stripeAccountEnabled === true;
+          console.log('[EVENT_DETAIL] Host Stripe status:', {
+            hostId: eventHostId,
+            stripeAccountId: hostProfile.stripeAccountId ? 'set' : 'not set',
+            stripeOnboardingStatus: hostProfile.stripeOnboardingStatus,
+            stripeAccountEnabled: isEnabled,
+          });
+          setHostStripeStatus({ enabled: isEnabled, checked: true });
+        } else {
+          console.warn('[EVENT_DETAIL] Could not fetch host profile for Stripe check');
+          setHostStripeStatus({ enabled: false, checked: true });
+        }
+      } catch (error) {
+        console.error('[EVENT_DETAIL] Error checking host Stripe status:', error);
+        setHostStripeStatus({ enabled: false, checked: true });
+      }
+    };
+    
+    checkHostStripeStatus();
+  }, [eventHostId, event]);
+  
   // REFACTORED: Real-time subscription to reservation count - computed from reservations
   useEffect(() => {
     if (!eventId || isDemo) {
@@ -636,7 +679,23 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         } else {
           // Check if event has Stripe fee (new payment system)
           if (hasEventFee(event)) {
+            // Verify host has Stripe account enabled
+            if (!hostStripeStatus.checked) {
+              console.log('[EVENT_DETAIL] Host Stripe status not checked yet, waiting...');
+              alert('Please wait while we verify payment availability.');
+              setReserving(false);
+              return;
+            }
+            
+            if (!hostStripeStatus.enabled) {
+              console.log('[EVENT_DETAIL] Host does not have Stripe enabled');
+              setShowHostPaymentSetupError(true);
+              setReserving(false);
+              return;
+            }
+            
             // Show payment modal for Stripe payments
+            console.log('[EVENT_DETAIL] Opening payment modal');
             setShowPaymentModal(true);
           } else {
             // For legacy paid events, navigate to Confirm & Pay page
@@ -741,6 +800,50 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           userEmail={user?.email}
           subscriptionInterval={event.sessionFrequency === 'weekly' ? 'week' : event.sessionFrequency === 'monthly' ? 'month' : undefined}
         />
+      )}
+      
+      {/* Host Payment Setup Error Modal */}
+      {showHostPaymentSetupError && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowHostPaymentSetupError(false)}>
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 sm:p-8 animate-fade-in" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setShowHostPaymentSetupError(false)}
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <DollarSign size={32} className="text-yellow-600" />
+              </div>
+              <h2 className="text-2xl font-heading font-bold text-[#15383c] mb-2">
+                Payment Not Available
+              </h2>
+              <p className="text-gray-600 text-sm">
+                The host hasn't completed their payment setup yet. You can contact them through the group chat or check back later.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  setShowHostPaymentSetupError(false);
+                  handleConversationClick();
+                }}
+                className="w-full px-6 py-3 bg-[#e35e25] text-white rounded-full font-medium hover:bg-[#d14e1a] transition-colors"
+              >
+                Contact Host
+              </button>
+              <button
+                onClick={() => setShowHostPaymentSetupError(false)}
+                className="w-full px-6 py-3 bg-gray-100 text-[#15383c] rounded-full font-medium hover:bg-gray-200 transition-colors"
+              >
+                {t('common.cancel')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       <div className="fixed top-0 left-0 right-0 z-40 p-4 sm:p-4 flex items-center justify-between lg:hidden pointer-events-none safe-area-inset-top">
          <button onClick={() => window.history.back()} className="w-11 h-11 sm:w-10 sm:h-10 bg-white/95 backdrop-blur-md rounded-full flex items-center justify-center text-popera-teal shadow-lg pointer-events-auto hover:scale-105 active:scale-[0.92] transition-transform touch-manipulation border border-white/50"><ChevronLeft size={22} className="sm:w-6 sm:h-6" /></button>

@@ -15,7 +15,9 @@ import {
 import { formatPaymentAmount, calculateTotalAmount, calculatePlatformFee } from '../../utils/stripeHelpers';
 
 // Initialize Stripe (you'll need to set VITE_STRIPE_PUBLISHABLE_KEY in your .env)
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
+const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
+console.log('[PAYMENT_MODAL] Stripe publishable key configured:', stripeKey ? `${stripeKey.substring(0, 12)}...` : 'NOT SET');
+const stripePromise = stripeKey ? loadStripe(stripeKey) : null;
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -73,8 +75,19 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('[PAYMENT_FORM] Submit clicked', { 
+      hasStripe: !!stripe, 
+      hasElements: !!elements,
+      totalAmount,
+      isRecurring,
+      eventId,
+      hostId,
+      userId,
+    });
 
     if (!stripe || !elements) {
+      console.error('[PAYMENT_FORM] Stripe or elements not loaded - cannot process payment');
+      setError('Payment system not loaded. Please refresh and try again.');
       return;
     }
 
@@ -84,6 +97,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
     try {
       // For recurring events, create subscription; otherwise create payment intent
       const endpoint = isRecurring ? '/api/stripe/create-subscription' : '/api/stripe/create-payment-intent';
+      console.log('[PAYMENT_FORM] Calling endpoint:', endpoint);
       
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -104,10 +118,16 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('[PAYMENT_FORM] API error:', errorData);
         throw new Error(errorData.error || 'Failed to create payment');
       }
 
       const data = await response.json();
+      console.log('[PAYMENT_FORM] API response:', { 
+        hasClientSecret: !!data.clientSecret, 
+        paymentIntentId: data.paymentIntentId,
+        subscriptionId: data.subscriptionId 
+      });
       const { clientSecret, paymentIntentId, subscriptionId } = data;
 
       // Confirm payment with Stripe
@@ -265,12 +285,54 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      console.log('[PAYMENT_MODAL] Modal opened', {
+        eventTitle,
+        feeAmount,
+        currency,
+        eventId,
+        hostId,
+        userId,
+        isRecurring,
+        stripeConfigured: !!stripePromise,
+      });
+    } else {
       setPaymentSuccess(false);
     }
-  }, [isOpen]);
+  }, [isOpen, eventTitle, feeAmount, currency, eventId, hostId, userId, isRecurring]);
 
   if (!isOpen) return null;
+
+  // Check if Stripe is configured
+  if (!stripePromise) {
+    return (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-heading font-bold text-[#15383c]">Payment Error</h2>
+            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100">
+              <X className="w-5 h-5 text-gray-600" />
+            </button>
+          </div>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-red-900 mb-1">Payment system not configured</p>
+              <p className="text-sm text-red-800">
+                The payment system is not available. Please contact support or try again later.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-full mt-4 py-3 bg-gray-100 text-gray-700 font-semibold rounded-full hover:bg-gray-200 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handleSuccess = (paymentIntentId: string, subscriptionId?: string) => {
     setPaymentSuccess(true);
