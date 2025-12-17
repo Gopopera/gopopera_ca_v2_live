@@ -515,9 +515,15 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   }, [eventHostId]);
   
   // Check if host has Stripe enabled (for paid events)
+  // FIX: Use specific event fields in dependency, not the whole event object (prevents infinite re-renders)
+  const eventHasFee = event?.hasFee;
+  const eventFeeAmount = event?.feeAmount;
+  
   useEffect(() => {
-    // Only check if the event has a fee
-    if (!hasEventFee(event) || !eventHostId) {
+    // Only check if the event has a fee (check the specific fields, not hasEventFee which uses the whole object)
+    const isPaidEvent = eventHasFee && eventFeeAmount && eventFeeAmount > 0;
+    
+    if (!isPaidEvent || !eventHostId) {
       setHostStripeStatus({ enabled: true, checked: true }); // Default to enabled for free events
       return;
     }
@@ -547,7 +553,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     };
     
     checkHostStripeStatus();
-  }, [eventHostId, event]);
+  }, [eventHostId, eventHasFee, eventFeeAmount]);
   
   // REFACTORED: Real-time subscription to reservation count - computed from reservations
   useEffect(() => {
@@ -805,7 +811,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       {/* Host Payment Setup Error Modal */}
       {showHostPaymentSetupError && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowHostPaymentSetupError(false)}>
-          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 sm:p-8 animate-fade-in" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 sm:p-8 animate-fade-in relative" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => setShowHostPaymentSetupError(false)}
               className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
