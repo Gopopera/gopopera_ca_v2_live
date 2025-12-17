@@ -758,7 +758,9 @@ export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => 
         body: JSON.stringify({
           userId: user.uid,
           email: user.email,
-          returnUrl: `${window.location.origin}/profile?stripe_return=true`,
+          returnUrl: `${window.location.origin}/profile`,
+          // Pass existing account ID to avoid creating duplicate accounts
+          existingAccountId: stripeAccountId || undefined,
         }),
       });
 
