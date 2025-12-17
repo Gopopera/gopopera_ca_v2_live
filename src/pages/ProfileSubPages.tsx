@@ -650,14 +650,84 @@ export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => 
   const stripeAccountId = userProfile?.stripeAccountId;
   const onboardingStatus = userProfile?.stripeOnboardingStatus;
   const accountEnabled = userProfile?.stripeAccountEnabled;
+  
+  // State for verification process
+  const [verifying, setVerifying] = useState(false);
 
+  // Handle return from Stripe onboarding - verify and update account status
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const returnedFromStripe = urlParams.get('stripe_return');
+    
     if (returnedFromStripe === 'true') {
-      refreshUserProfile();
+      // Clear the URL parameter to prevent re-verification on refresh
+      window.history.replaceState({}, '', window.location.pathname);
+      
+      // Verify and update account status
+      const verifyAndUpdateAccount = async () => {
+        const accountId = stripeAccountId;
+        if (!accountId || !user?.uid) {
+          // No account ID yet - just refresh profile (account creation might still be in progress)
+          await refreshUserProfile();
+          return;
+        }
+        
+        setVerifying(true);
+        
+        try {
+          console.log('[STRIPE_SETTINGS] Verifying account status after return:', accountId);
+          const response = await fetch('/api/stripe/verify-account', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accountId }),
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log('[STRIPE_SETTINGS] Account verification result:', data);
+            
+            // Update Firestore based on verification result
+            const db = getDbSafe();
+            if (db) {
+              if (data.chargesEnabled && data.payoutsEnabled) {
+                // Account is fully enabled - can accept payments
+                await updateDoc(doc(db, 'users', user.uid), {
+                  stripeOnboardingStatus: 'complete',
+                  stripeAccountEnabled: true,
+                });
+                console.log('[STRIPE_SETTINGS] ✅ Updated Firestore: account enabled');
+              } else if (data.detailsSubmitted) {
+                // Details submitted but not yet enabled (pending Stripe verification)
+                await updateDoc(doc(db, 'users', user.uid), {
+                  stripeOnboardingStatus: 'pending_verification',
+                  stripeAccountEnabled: false,
+                });
+                console.log('[STRIPE_SETTINGS] ⏳ Updated Firestore: pending verification');
+              } else {
+                // Onboarding incomplete
+                await updateDoc(doc(db, 'users', user.uid), {
+                  stripeOnboardingStatus: 'incomplete',
+                  stripeAccountEnabled: false,
+                });
+                console.log('[STRIPE_SETTINGS] ⚠️ Updated Firestore: incomplete');
+              }
+            }
+          } else {
+            console.error('[STRIPE_SETTINGS] Verification API error:', response.status);
+          }
+        } catch (error) {
+          console.error('[STRIPE_SETTINGS] Error verifying account:', error);
+        } finally {
+          setVerifying(false);
+        }
+        
+        // Refresh profile to get updated data
+        await refreshUserProfile();
+      };
+      
+      verifyAndUpdateAccount();
     }
-  }, [refreshUserProfile]);
+  }, [refreshUserProfile, stripeAccountId, user?.uid]);
 
   const handleCreateAccount = async () => {
     console.log('[STRIPE_SETTINGS] handleCreateAccount called', { 
@@ -754,6 +824,16 @@ export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => 
   };
 
   const getStatusDisplay = () => {
+    // Show verifying state while checking account status
+    if (verifying) {
+      return {
+        status: 'verifying',
+        title: 'Verifying Account...',
+        description: 'We\'re checking your Stripe account status. This will only take a moment.',
+        action: null,
+      };
+    }
+    
     if (!stripeAccountId) {
       return {
         status: 'not_setup',
@@ -769,6 +849,15 @@ export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => 
         title: 'Complete Stripe Setup',
         description: 'You\'ve started setting up your Stripe account. Complete the onboarding process to start receiving payouts.',
         action: 'Complete Setup',
+      };
+    }
+    
+    if (onboardingStatus === 'pending_verification') {
+      return {
+        status: 'pending_verification',
+        title: 'Verification in Progress',
+        description: 'Your details have been submitted to Stripe. They\'re reviewing your account - this usually takes a few minutes but can take up to 24 hours.',
+        action: null,
       };
     }
 
@@ -821,10 +910,16 @@ export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => 
           <div className={`w-24 h-24 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg ${
             statusDisplay.status === 'complete' 
               ? 'bg-green-100' 
+              : statusDisplay.status === 'verifying' || statusDisplay.status === 'pending_verification'
+              ? 'bg-yellow-100'
               : 'bg-gradient-to-br from-[#635bff] to-[#544dc9]'
           }`}>
             {statusDisplay.status === 'complete' ? (
               <CheckCircle2 size={48} className="text-green-600" />
+            ) : statusDisplay.status === 'verifying' ? (
+              <Loader2 size={48} className="text-yellow-600 animate-spin" />
+            ) : statusDisplay.status === 'pending_verification' ? (
+              <AlertCircle size={48} className="text-yellow-600" />
             ) : (
               <DollarSign size={48} className="text-white" />
             )}
