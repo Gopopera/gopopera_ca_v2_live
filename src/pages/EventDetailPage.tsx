@@ -24,6 +24,43 @@ import { PaymentModal } from '../../components/payments/PaymentModal';
 import { hasEventFee, isRecurringEvent } from '../../utils/stripeHelpers';
 
 /**
+ * Helper to format event price display - matches EventCard logic exactly
+ * Checks new payment fields first, then falls back to legacy price field
+ */
+const formatEventPrice = (event: Event, showCurrency: boolean = true): string => {
+  // Check new payment fields first (hasFee + feeAmount)
+  if (event.hasFee && event.feeAmount && event.feeAmount > 0) {
+    const amount = event.feeAmount / 100; // Convert from cents
+    if (showCurrency) {
+      const currency = event.currency?.toUpperCase() || 'CAD';
+      return `$${amount.toFixed(0)} ${currency}`;
+    }
+    return `$${amount.toFixed(0)}`;
+  }
+  // Fallback to legacy price field
+  if (event.price && event.price !== 'Free' && event.price !== '' && event.price !== '$0' && event.price !== '0') {
+    return event.price;
+  }
+  return 'Free';
+};
+
+/**
+ * Helper to check if an event is free - matches EventCard logic exactly
+ * Returns true only if event has no fee (checking both new and legacy fields)
+ */
+const isEventFree = (event: Event): boolean => {
+  // Check new payment fields first
+  if (event.hasFee && event.feeAmount && event.feeAmount > 0) {
+    return false;
+  }
+  // Check legacy price field
+  if (event.price && event.price !== 'Free' && event.price !== '' && event.price !== '$0' && event.price !== '0') {
+    return false;
+  }
+  return true;
+};
+
+/**
  * Build Event JSON-LD structured data for search engines
  * Schema.org/Event - helps Google show rich results for events
  */
@@ -577,8 +614,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           setReservationCount(reservationCount - 1);
         }
       } else {
-        // Check if event is free
-        const isFree = !event.price || event.price.toLowerCase() === 'free' || event.price === '$0' || event.price === '0';
+        // Check if event is free (using consistent helper that checks both new and legacy price fields)
+        const isFree = isEventFree(event);
         
         if (isFree) {
           // For free events, go directly to reservation
@@ -1000,14 +1037,11 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                           </span>
                         </div>
                       )}
-                      {/* Cost */}
+                      {/* Cost - Using consistent helper for both new and legacy price fields */}
                       <div className="flex items-center gap-2.5 text-gray-600">
                         <DollarSign size={16} className="text-[#e35e25] shrink-0" />
                         <span className="text-sm sm:text-base">
-                          {event.hasFee && event.feeAmount && event.feeAmount > 0
-                            ? `$${(event.feeAmount / 100).toFixed(0)} ${(event.currency || 'CAD').toUpperCase()}`
-                            : 'Free'
-                          }
+                          {formatEventPrice(event, true)}
                         </span>
                       </div>
                     </div>
@@ -1195,10 +1229,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-100/80">
                   <div>
                     <span className="text-2xl font-heading font-bold text-[#15383c]">
-                      {event.hasFee && event.feeAmount && event.feeAmount > 0
-                        ? `$${(event.feeAmount / 100).toFixed(0)}`
-                        : t('event.free')
-                      }
+                      {isEventFree(event) ? t('event.free') : formatEventPrice(event, false)}
                     </span>
                     <p className="text-xs text-gray-500 font-medium mt-0.5">{t('ui.perPerson')}</p>
                   </div>
@@ -1515,13 +1546,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
            {/* Before reservation: Price pill + Share + Chat + Attend button (only for non-hosts) */}
            {!hasRSVPed && user?.uid !== event.hostId && (
              <>
-               {/* Price pill - Liquid glass style */}
+               {/* Price pill - Liquid glass style - Using consistent helper for both new and legacy price fields */}
                <div className="shrink-0 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-sm border border-gray-200/60 shadow-sm">
                  <span className="text-sm font-bold text-[#15383c] uppercase tracking-wide">
-                   {event.hasFee && event.feeAmount && event.feeAmount > 0
-                     ? `$${(event.feeAmount / 100).toFixed(0)}`
-                     : 'Free'
-                   }
+                   {isEventFree(event) ? 'FREE' : formatEventPrice(event, false).toUpperCase()}
                  </span>
                </div>
                
