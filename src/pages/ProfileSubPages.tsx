@@ -964,7 +964,8 @@ export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => 
                 <>
                   <div className="absolute inset-0 bg-[#635bff]/20 rounded-3xl blur-xl" />
                   <div className="relative w-24 h-24 bg-gradient-to-br from-[#635bff] to-[#544dc9] rounded-3xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                    <DollarSign size={48} className="text-white" />
+                    {/* Stripe "S" styled icon */}
+                    <span className="text-white font-bold text-5xl" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>S</span>
                   </div>
                 </>
               )}
@@ -978,39 +979,50 @@ export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => 
               {statusDisplay.description}
             </p>
 
-            {/* Complete Status - Success Card */}
+            {/* Complete Status - Success Confirmation */}
             {statusDisplay.status === 'complete' && (
-              <div className="space-y-4 mb-8">
-                {/* Success Badge */}
-                <div className="relative overflow-hidden rounded-2xl max-w-sm mx-auto">
-                  <div className="absolute inset-0 bg-gradient-to-r from-green-50/90 to-emerald-50/90 backdrop-blur-sm" />
-                  <div className="absolute inset-0 border border-green-200/50 rounded-2xl" />
-                  <div className="relative p-4">
-                    <div className="flex items-center gap-2 text-green-700 justify-center mb-2">
-                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                      <p className="text-sm font-semibold">Account Active & Ready</p>
+              <div className="space-y-6 mb-8">
+                {/* Success Badge - Enhanced */}
+                <div className="relative overflow-hidden rounded-2xl max-w-md mx-auto">
+                  <div className="absolute inset-0 bg-gradient-to-br from-green-50 via-emerald-50/80 to-green-50 backdrop-blur-sm" />
+                  <div className="absolute inset-0 border border-green-200/60 rounded-2xl" />
+                  <div className="absolute inset-0 shadow-inner" />
+                  <div className="relative p-5">
+                    <div className="flex items-center gap-3 justify-center mb-3">
+                      <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center shadow-lg shadow-green-500/30">
+                        <CheckCircle2 size={22} className="text-white" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-base font-bold text-green-800">Account Connected</p>
+                        <p className="text-xs text-green-600">Ready to receive payments</p>
+                      </div>
                     </div>
-                    <p className="text-xs text-green-600/80">
-                      ID: {stripeAccountId?.substring(0, 16)}...
-                    </p>
+                    <div className="bg-white/60 rounded-lg px-3 py-2 mt-3">
+                      <p className="text-[11px] text-gray-500 font-medium">ACCOUNT ID</p>
+                      <p className="text-xs text-gray-700 font-mono">
+                        {stripeAccountId}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                {/* Stripe Dashboard Link */}
-                <a 
-                  href="https://dashboard.stripe.com/express"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/60 backdrop-blur-sm border border-gray-200/60 text-gray-700 hover:bg-white hover:border-gray-300 transition-all text-sm font-medium group"
-                >
-                  <StripeText className="text-sm" />
-                  <span>Manage on Stripe</span>
-                  <ExternalLink size={14} className="opacity-50 group-hover:opacity-100 transition-opacity" />
-                </a>
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                  {/* Stripe Dashboard Link */}
+                  <a 
+                    href="https://dashboard.stripe.com/express"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#635bff] text-white hover:bg-[#544dc9] transition-all text-sm font-semibold shadow-lg shadow-indigo-500/25 hover:shadow-xl group"
+                  >
+                    <span>Open Stripe Dashboard</span>
+                    <ExternalLink size={14} className="opacity-70 group-hover:opacity-100 transition-opacity" />
+                  </a>
+                </div>
 
                 {/* Help Text */}
-                <p className="text-xs text-gray-500 max-w-xs mx-auto">
-                  View your payouts, update bank details, and access tax documents on the Stripe Dashboard.
+                <p className="text-xs text-gray-500 max-w-sm mx-auto leading-relaxed">
+                  Manage your payouts, update bank details, view transaction history, and access tax documents directly on Stripe.
                 </p>
               </div>
             )}
