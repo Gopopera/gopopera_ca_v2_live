@@ -21,6 +21,7 @@ import {
 import { subscribeToUserProfile } from '../../firebase/userSubscriptions';
 import { EventCard } from '../../components/events/EventCard';
 import { getInitials, getAvatarBgColor } from '../../utils/avatarUtils';
+import { RevenueBreakdownModal } from '../../components/profile/RevenueBreakdownModal';
 
 interface ProfilePageProps {
   setViewState: (view: ViewState) => void;
@@ -45,6 +46,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
     eventCounts: { hosting: 0, past: 0, drafts: 0, total: 0 } as UserEventCounts
   });
   const [loading, setLoading] = useState(true);
+  const [isRevenueModalOpen, setIsRevenueModalOpen] = useState(false);
   
   // Auto-navigate to Stripe settings if returning from Stripe onboarding
   useEffect(() => {
@@ -484,21 +486,22 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
         </div>
 
         {/* Total Revenue Card - Liquid Glass Dark */}
-        <div 
-          className="bg-gradient-to-r from-[#15383c] to-[#1a4549] backdrop-blur-xl p-6 sm:p-7 rounded-[24px] sm:rounded-[28px] shadow-xl border border-[#15383c]/50 flex justify-between items-center mb-8 sm:mb-10 cursor-pointer hover:shadow-2xl hover:scale-[1.01] transition-all touch-manipulation active:scale-[0.98] group" 
-          onClick={() => setViewState(ViewState.PROFILE_STRIPE)}
+        <button 
+          className="w-full bg-gradient-to-r from-[#15383c] to-[#1a4549] backdrop-blur-xl p-6 sm:p-7 rounded-[24px] sm:rounded-[28px] shadow-xl border border-[#15383c]/50 flex justify-between items-center mb-8 sm:mb-10 cursor-pointer hover:shadow-2xl hover:scale-[1.01] transition-all touch-manipulation active:scale-[0.98] group" 
+          onClick={() => setIsRevenueModalOpen(true)}
+          aria-label="View revenue breakdown"
         >
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/15 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:bg-white/25 transition-all border border-white/20">
               <span className="text-white font-bold text-lg sm:text-xl">$</span>
             </div>
-            <div>
+            <div className="text-left">
               <span className="text-white/70 font-medium text-xs sm:text-sm block mb-0.5">{t('profile.totalRevenue')}</span>
               <span className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-white">${stats.revenue}</span>
             </div>
           </div>
           <ChevronRight size={22} className="text-white/50 group-hover:text-white transition-colors" />
-        </div>
+        </button>
 
         {/* Events Section - Premium grid */}
         {hostedEvents.length > 0 && (
@@ -597,6 +600,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
           </div>
         </div>
       </div>
+
+      {/* Revenue Breakdown Modal */}
+      {user?.uid && (
+        <RevenueBreakdownModal
+          isOpen={isRevenueModalOpen}
+          onClose={() => setIsRevenueModalOpen(false)}
+          hostId={user.uid}
+          totalRevenue={stats.revenue}
+        />
+      )}
     </div>
   );
 };

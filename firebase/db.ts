@@ -940,6 +940,125 @@ export function subscribeToHostRevenue(
 }
 
 /**
+ * Event revenue breakdown item
+ */
+export interface EventRevenueBreakdown {
+  eventId: string;
+  eventTitle: string;
+  eventDate: string;
+  currentCapacity: number;
+  maxCapacity: number | null;
+  revenue: number;
+  currency: string;
+}
+
+/**
+ * Get host revenue breakdown by event
+ * Returns a list of events with their individual revenue, sorted by most recent first
+ */
+export async function getHostRevenueBreakdown(
+  hostId: string
+): Promise<EventRevenueBreakdown[]> {
+  const db = getDbSafe();
+  if (!db) {
+    return [];
+  }
+
+  try {
+    // Get all events for this host (excluding drafts and demo events)
+    const eventsCol = collection(db, "events");
+    const eventsQuery = query(
+      eventsCol,
+      where("hostId", "==", hostId)
+    );
+
+    const eventsSnapshot = await getDocs(eventsQuery);
+    
+    // Filter and map events
+    const hostEvents = eventsSnapshot.docs
+      .filter(doc => {
+        const data = doc.data() as FirestoreEvent;
+        return data.hostId === hostId && 
+               data.isDraft !== true && 
+               data.isDemo !== true && 
+               data.isPoperaOwned !== true;
+      })
+      .map(doc => ({
+        id: doc.id,
+        ...(doc.data() as FirestoreEvent)
+      }));
+
+    if (hostEvents.length === 0) {
+      return [];
+    }
+
+    // Get revenue for each event
+    const breakdown: EventRevenueBreakdown[] = [];
+    const batchSize = 10;
+
+    for (let i = 0; i < hostEvents.length; i += batchSize) {
+      const batchEvents = hostEvents.slice(i, i + batchSize);
+      const batchEventIds = batchEvents.map(e => e.id);
+      
+      // Query reservations for this batch
+      const reservationsCol = collection(db, "reservations");
+      const reservationsQuery = query(
+        reservationsCol,
+        where("eventId", "in", batchEventIds),
+        where("status", "==", "reserved")
+      );
+      
+      const reservationsSnapshot = await getDocs(reservationsQuery);
+      
+      // Calculate revenue and capacity per event in this batch
+      const eventRevenue: Record<string, number> = {};
+      const eventCapacity: Record<string, number> = {};
+      const eventCurrency: Record<string, string> = {};
+      
+      reservationsSnapshot.docs.forEach(doc => {
+        const data = doc.data() as FirestoreReservation;
+        const eventId = data.eventId;
+        
+        // Count capacity (attendees)
+        eventCapacity[eventId] = (eventCapacity[eventId] || 0) + (data.attendeeCount || 1);
+        
+        // Sum revenue only for successful payments
+        if (data.totalAmount && data.totalAmount > 0) {
+          if (data.paymentIntentId || data.paymentStatus === 'succeeded') {
+            eventRevenue[eventId] = (eventRevenue[eventId] || 0) + data.totalAmount;
+          }
+        }
+      });
+      
+      // Add each event in the batch to the breakdown
+      for (const event of batchEvents) {
+        breakdown.push({
+          eventId: event.id,
+          eventTitle: event.title || 'Untitled Event',
+          eventDate: event.date || '',
+          currentCapacity: eventCapacity[event.id] || 0,
+          maxCapacity: typeof event.capacity === 'number' ? event.capacity : null,
+          revenue: eventRevenue[event.id] || 0,
+          currency: event.currency || 'cad',
+        });
+      }
+    }
+
+    // Sort by date (most recent first)
+    breakdown.sort((a, b) => {
+      const dateA = new Date(a.eventDate).getTime() || 0;
+      const dateB = new Date(b.eventDate).getTime() || 0;
+      return dateB - dateA;
+    });
+
+    return breakdown;
+  } catch (error) {
+    console.error('Error fetching host revenue breakdown:', error);
+    return [];
+  }
+}
+
+/**
  * Subscribe to attended events count (RSVPs) in real-time
  */
 export function subscribeToAttendedEventsCount(
