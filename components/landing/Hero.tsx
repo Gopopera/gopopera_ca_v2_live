@@ -70,7 +70,7 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
         
         {/* Micro-proof line */}
         <p className="mt-6 sm:mt-8 text-xs sm:text-sm text-gray-400 font-medium tracking-wide">
-          In-person only • 3–10 seats • Verified hosts
+          {t('hero.microline')}
         </p>
       </div>
     </section>

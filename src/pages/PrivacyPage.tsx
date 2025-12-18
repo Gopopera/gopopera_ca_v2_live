@@ -34,6 +34,7 @@ export const PrivacyPage: React.FC<PrivacyPageProps> = ({ setViewState }) => {
         </div>
 
         <div className="space-y-8 sm:space-y-10 md:space-y-12 text-base sm:text-lg font-light leading-relaxed text-gray-300">
+          {/* Introduction */}
           <section>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-4 sm:mb-6">
               {t('privacy.introduction')}
@@ -41,8 +42,12 @@ export const PrivacyPage: React.FC<PrivacyPageProps> = ({ setViewState }) => {
             <p className="mb-4 sm:mb-6">
               {t('privacy.introductionDesc')}
             </p>
+            <p className="mb-4 sm:mb-6">
+              {t('privacy.introductionDesc2')}
+            </p>
           </section>
 
+          {/* Section 1: What We Collect */}
           <section>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-4 sm:mb-6">
               {t('privacy.informationCollect')}
@@ -50,23 +55,51 @@ export const PrivacyPage: React.FC<PrivacyPageProps> = ({ setViewState }) => {
             <p className="mb-4 sm:mb-6">
               {t('privacy.informationCollectDesc')}
             </p>
-            <ul className="list-disc list-inside space-y-2 sm:space-y-3 ml-4 sm:ml-6 mb-4 sm:mb-6">
+            
+            {/* Subsection A: Information you provide */}
+            <h3 className="text-lg sm:text-xl font-semibold text-white mb-3 sm:mb-4">
+              {t('privacy.youProvide')}
+            </h3>
+            <ul className="list-disc list-inside space-y-2 sm:space-y-3 ml-4 sm:ml-6 mb-6 sm:mb-8">
               <li>{t('privacy.accountInfo')}</li>
               <li>{t('privacy.profileInfo')}</li>
               <li>{t('privacy.eventInfo')}</li>
               <li>{t('privacy.paymentInfo')}</li>
               <li>{t('privacy.communications')}</li>
+              <li>{t('privacy.ratings')}</li>
             </ul>
-            <p className="mb-4 sm:mb-6">
+            
+            {/* Subsection B: Automatically collected */}
+            <h3 className="text-lg sm:text-xl font-semibold text-white mb-3 sm:mb-4">
               {t('privacy.automaticallyCollect')}
-            </p>
-            <ul className="list-disc list-inside space-y-2 sm:space-y-3 ml-4 sm:ml-6 mb-4 sm:mb-6">
+            </h3>
+            <ul className="list-disc list-inside space-y-2 sm:space-y-3 ml-4 sm:ml-6 mb-6 sm:mb-8">
               <li>{t('privacy.deviceInfo')}</li>
               <li>{t('privacy.usageData')}</li>
               <li>{t('privacy.locationData')}</li>
             </ul>
+            
+            {/* Subsection C: From partners */}
+            <h3 className="text-lg sm:text-xl font-semibold text-white mb-3 sm:mb-4">
+              {t('privacy.fromPartners')}
+            </h3>
+            <p className="mb-4">
+              {t('privacy.partnersDesc')}
+            </p>
+            <ul className="list-disc list-inside space-y-2 sm:space-y-3 ml-4 sm:ml-6 mb-4 sm:mb-6">
+              <li>{t('privacy.partnerPayments')}</li>
+              <li>{t('privacy.partnerEmail')}</li>
+              <li>{t('privacy.partnerSMS')}</li>
+              <li>{t('privacy.partnerHosting')}</li>
+              <li>{t('privacy.partnerFirebase')}</li>
+              <li>{t('privacy.partnerDomain')}</li>
+              <li>{t('privacy.partnerMaps')}</li>
+              <li>{t('privacy.partnerAI')}</li>
+              <li>{t('privacy.partnerSEO')}</li>
+            </ul>
           </section>
 
+          {/* Section 2: How We Use */}
           <section>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-4 sm:mb-6">
               {t('privacy.howUse')}
@@ -77,28 +110,82 @@ export const PrivacyPage: React.FC<PrivacyPageProps> = ({ setViewState }) => {
             <ul className="list-disc list-inside space-y-2 sm:space-y-3 ml-4 sm:ml-6 mb-4 sm:mb-6">
               <li>{t('privacy.provideMaintain')}</li>
               <li>{t('privacy.processTransactions')}</li>
+              <li>{t('privacy.detectPrevent')}</li>
               <li>{t('privacy.sendNotifications')}</li>
               <li>{t('privacy.personalize')}</li>
-              <li>{t('privacy.detectPrevent')}</li>
               <li>{t('privacy.complyLegal')}</li>
             </ul>
           </section>
 
+          {/* Section 3: Legal Bases / Consent */}
+          <section>
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-4 sm:mb-6">
+              {t('privacy.legalBases')}
+            </h2>
+            <p className="mb-4 sm:mb-6">
+              {t('privacy.legalBasesDesc')}
+            </p>
+          </section>
+
+          {/* Section 4: How We Share */}
           <section>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-4 sm:mb-6">
               {t('privacy.informationSharing')}
             </h2>
-            <p className="mb-4 sm:mb-6">
-              {t('privacy.informationSharingDesc')}
+            <p className="mb-4 sm:mb-6 font-medium text-white">
+              {t('privacy.noSell')}
             </p>
-            <ul className="list-disc list-inside space-y-2 sm:space-y-3 ml-4 sm:ml-6 mb-4 sm:mb-6">
-              <li><strong>{t('privacy.withUsers')}</strong> {t('privacy.withUsersDesc')}</li>
-              <li><strong>{t('privacy.withProviders')}</strong> {t('privacy.withProvidersDesc')}</li>
-              <li><strong>{t('privacy.forLegal')}</strong> {t('privacy.forLegalDesc')}</li>
-              <li><strong>{t('privacy.withConsent')}</strong> {t('privacy.withConsentDesc')}</li>
-            </ul>
+            
+            <h3 className="text-lg sm:text-xl font-semibold text-white mb-3 sm:mb-4">
+              {t('privacy.withUsers')}
+            </h3>
+            <p className="mb-6 sm:mb-8">
+              {t('privacy.withUsersDesc')}
+            </p>
+            
+            <h3 className="text-lg sm:text-xl font-semibold text-white mb-3 sm:mb-4">
+              {t('privacy.withProviders')}
+            </h3>
+            <p className="mb-6 sm:mb-8">
+              {t('privacy.withProvidersDesc')}
+            </p>
+            
+            <h3 className="text-lg sm:text-xl font-semibold text-white mb-3 sm:mb-4">
+              {t('privacy.forLegal')}
+            </h3>
+            <p className="mb-6 sm:mb-8">
+              {t('privacy.forLegalDesc')}
+            </p>
+            
+            <h3 className="text-lg sm:text-xl font-semibold text-white mb-3 sm:mb-4">
+              {t('privacy.businessTransfers')}
+            </h3>
+            <p className="mb-4 sm:mb-6">
+              {t('privacy.businessTransfersDesc')}
+            </p>
           </section>
 
+          {/* Section 5: Cookies */}
+          <section>
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-4 sm:mb-6">
+              {t('privacy.cookiesTracking')}
+            </h2>
+            <p className="mb-4 sm:mb-6">
+              {t('privacy.cookiesTrackingDesc')}
+            </p>
+          </section>
+
+          {/* Section 6: Retention */}
+          <section>
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-4 sm:mb-6">
+              {t('privacy.dataRetention')}
+            </h2>
+            <p className="mb-4 sm:mb-6">
+              {t('privacy.dataRetentionDesc')}
+            </p>
+          </section>
+
+          {/* Section 7: Security */}
           <section>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-4 sm:mb-6">
               {t('privacy.dataSecurity')}
@@ -111,6 +198,7 @@ export const PrivacyPage: React.FC<PrivacyPageProps> = ({ setViewState }) => {
             </p>
           </section>
 
+          {/* Section 8: Your Rights */}
           <section>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-4 sm:mb-6">
               {t('privacy.yourRights')}
@@ -120,31 +208,21 @@ export const PrivacyPage: React.FC<PrivacyPageProps> = ({ setViewState }) => {
             </p>
             <ul className="list-disc list-inside space-y-2 sm:space-y-3 ml-4 sm:ml-6 mb-4 sm:mb-6">
               <li>{t('privacy.accessUpdate')}</li>
+              <li>{t('privacy.withdrawConsent')}</li>
               <li>{t('privacy.deleteAccount')}</li>
-              <li>{t('privacy.optOut')}</li>
-              <li>{t('privacy.requestCopy')}</li>
-              <li>{t('privacy.objectProcessing')}</li>
+              <li>{t('privacy.requestInfo')}</li>
             </ul>
-          </section>
-
-          <section>
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-4 sm:mb-6">
-              {t('privacy.cookiesTracking')}
-            </h2>
             <p className="mb-4 sm:mb-6">
-              {t('privacy.cookiesTrackingDesc')}
+              {t('privacy.howToRequest')}
             </p>
+            <div className="bg-white/5 p-4 sm:p-6 rounded-xl border border-white/10 mt-4">
+              <p className="text-sm sm:text-base text-gray-300">
+                {t('privacy.quebecRights')}
+              </p>
+            </div>
           </section>
 
-          <section>
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-4 sm:mb-6">
-              {t('privacy.childrenPrivacy')}
-            </h2>
-            <p className="mb-4 sm:mb-6">
-              {t('privacy.childrenPrivacyDesc')}
-            </p>
-          </section>
-
+          {/* Section 9: Cross-Border Processing */}
           <section>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-4 sm:mb-6">
               {t('privacy.internationalTransfers')}
@@ -154,6 +232,17 @@ export const PrivacyPage: React.FC<PrivacyPageProps> = ({ setViewState }) => {
             </p>
           </section>
 
+          {/* Section 10: Children */}
+          <section>
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-4 sm:mb-6">
+              {t('privacy.childrenPrivacy')}
+            </h2>
+            <p className="mb-4 sm:mb-6">
+              {t('privacy.childrenPrivacyDesc')}
+            </p>
+          </section>
+
+          {/* Section 11: Changes */}
           <section>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-4 sm:mb-6">
               {t('privacy.changesPolicy')}
@@ -163,6 +252,7 @@ export const PrivacyPage: React.FC<PrivacyPageProps> = ({ setViewState }) => {
             </p>
           </section>
 
+          {/* Section 12: Contact */}
           <section>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-4 sm:mb-6">
               {t('privacy.contactUs')}

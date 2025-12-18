@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewState } from '../../types';
-import { ChevronLeft, Heart, Shield, AlertTriangle, UserCheck, MessageCircle, Users } from 'lucide-react';
+import { ChevronLeft, Heart, Shield, AlertTriangle, UserCheck, MessageCircle, Users, Mail, AlertCircle, X } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { SeoHelmet } from '../../components/seo/SeoHelmet';
 
@@ -28,189 +28,186 @@ export const GuidelinesPage: React.FC<GuidelinesPageProps> = ({ setViewState }) 
           <h1 className="font-heading font-bold text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl text-white mb-3 sm:mb-4">
             {t('guidelines.title')}
           </h1>
+          <p className="text-xs sm:text-sm font-medium text-gray-400 uppercase tracking-wider mb-4">
+            {t('guidelines.lastUpdated')}
+          </p>
           <p className="text-base sm:text-lg text-gray-300 font-light max-w-2xl mx-auto leading-relaxed">
             {t('guidelines.subtitle')}
           </p>
         </div>
 
         <div className="space-y-8 sm:space-y-10 md:space-y-12">
+          {/* Introduction */}
+          <section className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
+            <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300">
+              {t('guidelines.intro')}
+            </p>
+          </section>
+
           {/* Core Principles */}
           <section className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
               <Heart className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
               {t('guidelines.corePrinciples')}
             </h2>
-            <div className="space-y-4 sm:space-y-6 text-base sm:text-lg font-light leading-relaxed text-gray-300">
-              <p>
-                {t('guidelines.corePrinciplesDesc')}
-              </p>
+            <div className="space-y-6 sm:space-y-8">
+              <div>
+                <h3 className="font-bold text-white mb-2 text-lg sm:text-xl">{t('guidelines.respect')}</h3>
+                <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300">
+                  {t('guidelines.respectDesc')}
+                </p>
+              </div>
+              <div>
+                <h3 className="font-bold text-white mb-2 text-lg sm:text-xl">{t('guidelines.honesty')}</h3>
+                <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300">
+                  {t('guidelines.honestyDesc')}
+                </p>
+              </div>
+              <div>
+                <h3 className="font-bold text-white mb-2 text-lg sm:text-xl">{t('guidelines.safety')}</h3>
+                <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300">
+                  {t('guidelines.safetyDesc')}
+                </p>
+              </div>
             </div>
           </section>
 
-          {/* For Everyone */}
-          <section>
+          {/* Expectations for Everyone */}
+          <section className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
               <Users className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
               {t('guidelines.forEveryone')}
             </h2>
-            <div className="space-y-4 sm:space-y-6 text-base sm:text-lg font-light leading-relaxed text-gray-300">
-              <div className="bg-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">{t('guidelines.beRespectful')}</h3>
-                <p className="mb-3 sm:mb-4">
-                  {t('guidelines.beRespectfulDesc')}
-                </p>
-              </div>
-              <div className="bg-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">{t('guidelines.beHonest')}</h3>
-                <p className="mb-3 sm:mb-4">
-                  {t('guidelines.beHonestDesc')}
-                </p>
-              </div>
-              <div className="bg-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">{t('guidelines.beSafe')}</h3>
-                <p className="mb-3 sm:mb-4">
-                  {t('guidelines.beSafeDesc')}
-                </p>
-              </div>
-            </div>
+            <ul className="space-y-3 sm:space-y-4 text-base sm:text-lg font-light leading-relaxed text-gray-300 list-disc list-inside ml-2 sm:ml-4">
+              <li>{t('guidelines.everyoneRule1')}</li>
+              <li>{t('guidelines.everyoneRule2')}</li>
+              <li>{t('guidelines.everyoneRule3')}</li>
+              <li>{t('guidelines.everyoneRule4')}</li>
+              <li>{t('guidelines.everyoneRule5')}</li>
+            </ul>
           </section>
 
           {/* For Hosts */}
-          <section>
+          <section className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
               <UserCheck className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
               {t('guidelines.forHosts')}
             </h2>
-            <div className="space-y-4 sm:space-y-6 text-base sm:text-lg font-light leading-relaxed text-gray-300">
-              <div className="bg-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">{t('guidelines.hostVerification')}</h3>
-                <p className="mb-3 sm:mb-4">
-                  {t('guidelines.hostVerificationDesc')}
-                </p>
-              </div>
-              <div className="bg-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">{t('guidelines.accurateListings')}</h3>
-                <p className="mb-3 sm:mb-4">
-                  {t('guidelines.accurateListingsDesc')}
-                </p>
-              </div>
-              <div className="bg-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">{t('guidelines.honorCommitments')}</h3>
-                <p className="mb-3 sm:mb-4">
-                  {t('guidelines.honorCommitmentsDesc')}
-                </p>
-              </div>
-              <div className="bg-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">{t('guidelines.safeSpaces')}</h3>
-                <p className="mb-3 sm:mb-4">
-                  {t('guidelines.safeSpacesDesc')}
-                </p>
-              </div>
+            <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300 mb-4 sm:mb-6">
+              {t('guidelines.forHostsIntro')}
+            </p>
+            <ul className="space-y-3 sm:space-y-4 text-base sm:text-lg font-light leading-relaxed text-gray-300 list-disc list-inside ml-2 sm:ml-4 mb-6 sm:mb-8">
+              <li>{t('guidelines.hostRule1')}</li>
+              <li>{t('guidelines.hostRule2')}</li>
+              <li>{t('guidelines.hostRule3')}</li>
+              <li>{t('guidelines.hostRule4')}</li>
+              <li>{t('guidelines.hostRule5')}</li>
+              <li>{t('guidelines.hostRule6')}</li>
+            </ul>
+            <div className="bg-[#e35e25]/10 p-4 sm:p-5 rounded-xl border border-[#e35e25]/20">
+              <p className="text-sm sm:text-base text-gray-300 leading-relaxed">
+                <strong className="text-white">{t('guidelines.verificationNote')}</strong> {t('guidelines.verificationNoteDesc')}
+              </p>
             </div>
           </section>
 
           {/* For Attendees */}
-          <section>
+          <section className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
-              <MessageCircle className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
+              <Users className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
               {t('guidelines.forAttendees')}
             </h2>
-            <div className="space-y-4 sm:space-y-6 text-base sm:text-lg font-light leading-relaxed text-gray-300">
-              <div className="bg-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">{t('guidelines.rsvpResponsibly')}</h3>
-                <p className="mb-3 sm:mb-4">
-                  {t('guidelines.rsvpResponsiblyDesc')}
-                </p>
-              </div>
-              <div className="bg-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">{t('guidelines.respectSpace')}</h3>
-                <p className="mb-3 sm:mb-4">
-                  {t('guidelines.respectSpaceDesc')}
-                </p>
-              </div>
-              <div className="bg-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">{t('guidelines.honestReviews')}</h3>
-                <p className="mb-3 sm:mb-4">
-                  {t('guidelines.honestReviewsDesc')}
-                </p>
-              </div>
-            </div>
+            <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300 mb-4 sm:mb-6">
+              {t('guidelines.forAttendeesIntro')}
+            </p>
+            <ul className="space-y-3 sm:space-y-4 text-base sm:text-lg font-light leading-relaxed text-gray-300 list-disc list-inside ml-2 sm:ml-4">
+              <li>{t('guidelines.attendeeRule1')}</li>
+              <li>{t('guidelines.attendeeRule2')}</li>
+              <li>{t('guidelines.attendeeRule3')}</li>
+            </ul>
           </section>
 
-          {/* Communication */}
-          <section>
+          {/* Group Chats & Communication */}
+          <section className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
               <MessageCircle className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
               {t('guidelines.groupChats')}
             </h2>
-            <div className="space-y-4 sm:space-y-6 text-base sm:text-lg font-light leading-relaxed text-gray-300">
-              <div className="bg-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">{t('guidelines.moderatedConversations')}</h3>
-                <p className="mb-3 sm:mb-4">
-                  {t('guidelines.moderatedConversationsDesc')}
-                </p>
-              </div>
-              <div className="bg-white/5 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-                <h3 className="font-bold text-white mb-3 sm:mb-4 text-lg sm:text-xl">{t('guidelines.privacy')}</h3>
-                <p className="mb-3 sm:mb-4">
-                  {t('guidelines.privacyDesc')}
-                </p>
-              </div>
-            </div>
+            <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300 mb-4 sm:mb-6">
+              {t('guidelines.groupChatsIntro')}
+            </p>
+            <ul className="space-y-3 sm:space-y-4 text-base sm:text-lg font-light leading-relaxed text-gray-300 list-disc list-inside ml-2 sm:ml-4 mb-6 sm:mb-8">
+              <li>{t('guidelines.chatRule1')}</li>
+              <li>{t('guidelines.chatRule2')}</li>
+              <li>{t('guidelines.chatRule3')}</li>
+            </ul>
+            <p className="text-sm sm:text-base text-gray-400 italic">
+              {t('guidelines.chatEnforcement')}
+            </p>
           </section>
 
-          {/* Prohibited Content */}
-          <section>
+          {/* Prohibited Content & Behavior */}
+          <section className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
-              <AlertTriangle className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
+              <X className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
               {t('guidelines.prohibitedContent')}
             </h2>
-            <div className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
-              <ul className="space-y-3 sm:space-y-4 text-base sm:text-lg font-light leading-relaxed text-gray-300 list-disc list-inside ml-2 sm:ml-4">
-                <li>{t('guidelines.illegalActivities')}</li>
-                <li>{t('guidelines.discrimination')}</li>
-                <li>{t('guidelines.fraudulent')}</li>
-                <li>{t('guidelines.spam')}</li>
-                <li>{t('guidelines.adultContent')}</li>
-                <li>{t('guidelines.violence')}</li>
-                <li>{t('guidelines.impersonation')}</li>
-                <li>{t('guidelines.circumventing')}</li>
-              </ul>
-            </div>
+            <ul className="space-y-3 sm:space-y-4 text-base sm:text-lg font-light leading-relaxed text-gray-300 list-disc list-inside ml-2 sm:ml-4">
+              <li>{t('guidelines.prohibited1')}</li>
+              <li>{t('guidelines.prohibited2')}</li>
+              <li>{t('guidelines.prohibited3')}</li>
+              <li>{t('guidelines.prohibited4')}</li>
+              <li>{t('guidelines.prohibited5')}</li>
+              <li>{t('guidelines.prohibited6')}</li>
+              <li>{t('guidelines.prohibited7')}</li>
+              <li>{t('guidelines.prohibited8')}</li>
+              <li>{t('guidelines.prohibited9')}</li>
+              <li>{t('guidelines.prohibited10')}</li>
+              <li>{t('guidelines.prohibited11')}</li>
+              <li>{t('guidelines.prohibited12')}</li>
+            </ul>
           </section>
 
           {/* Enforcement */}
-          <section>
+          <section className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
               <Shield className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
               {t('guidelines.enforcement')}
             </h2>
-            <div className="space-y-4 sm:space-y-6 text-base sm:text-lg font-light leading-relaxed text-gray-300">
-              <p>
-                {t('guidelines.violationsMayResult')}
-              </p>
-              <ul className="list-disc list-inside space-y-2 sm:space-y-3 ml-4 sm:ml-6">
-                <li>{t('guidelines.warnings')}</li>
-                <li>{t('guidelines.temporaryRestrictions')}</li>
-                <li>{t('guidelines.permanentSuspension')}</li>
-                <li>{t('guidelines.legalAction')}</li>
-              </ul>
-              <p className="mt-4 sm:mt-6">
-                {t('guidelines.reportViolations')}
-              </p>
-            </div>
+            <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300 mb-4 sm:mb-6">
+              {t('guidelines.enforcementIntro')}
+            </p>
+            <ul className="space-y-2 sm:space-y-3 text-base sm:text-lg font-light leading-relaxed text-gray-300 list-disc list-inside ml-2 sm:ml-4">
+              <li>{t('guidelines.enforcement1')}</li>
+              <li>{t('guidelines.enforcement2')}</li>
+              <li>{t('guidelines.enforcement3')}</li>
+              <li>{t('guidelines.enforcement4')}</li>
+              <li>{t('guidelines.enforcement5')}</li>
+              <li>{t('guidelines.enforcement6')}</li>
+            </ul>
           </section>
 
-          {/* Contact */}
-          <section className="bg-[#e35e25]/10 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-[#e35e25]/20">
-            <h2 className="text-xl sm:text-2xl font-bold text-white font-heading mb-4 sm:mb-6">
-              {t('guidelines.questionsConcerns')}
+          {/* Reporting */}
+          <section className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
+              <AlertCircle className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
+              {t('guidelines.reporting')}
             </h2>
-            <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300 mb-4 sm:mb-6">
-              {t('guidelines.questionsDesc')}
+            <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300">
+              {t('guidelines.reportingDesc')}
+            </p>
+          </section>
+
+          {/* Questions / Contact */}
+          <section className="bg-[#e35e25]/10 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-[#e35e25]/20">
+            <h2 className="text-xl sm:text-2xl font-bold text-white font-heading mb-4 sm:mb-6 flex items-center gap-3">
+              <Mail className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
+              {t('guidelines.questions')}
+            </h2>
+            <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300 mb-2">
+              {t('guidelines.questionsContact') && <>{t('guidelines.questionsContact')} </>}<a href="mailto:support@gopopera.ca" className="text-[#e35e25] hover:underline">{t('guidelines.email')}</a>
             </p>
             <p className="text-base sm:text-lg font-light text-gray-300">
-              {t('guidelines.email')}<br />
               {t('guidelines.website')}
             </p>
           </section>

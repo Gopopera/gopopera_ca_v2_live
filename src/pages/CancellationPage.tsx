@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewState } from '../../types';
-import { ChevronLeft, Clock, XCircle, AlertCircle, CreditCard, UserX, Edit, HelpCircle, DollarSign, Mail, CheckCircle, X, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, AlertCircle, CreditCard, UserX, DollarSign, Mail, CheckCircle, X, AlertTriangle, Clock, XCircle, Edit, Scale } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 interface CancellationPageProps {
@@ -40,243 +40,191 @@ export const CancellationPage: React.FC<CancellationPageProps> = ({ setViewState
               {t('cancellation.overview')}
             </h2>
             <div className="space-y-4 sm:space-y-6 text-base sm:text-lg font-light leading-relaxed text-gray-300">
-              <p>
-                {t('cancellation.overviewDesc')}
+              <p>{t('cancellation.overviewDesc')}</p>
+            </div>
+          </section>
+
+          {/* RSVP Types */}
+          <section className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
+              <CheckCircle className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
+              {t('cancellation.rsvpTypes')}
+            </h2>
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 sm:gap-4">
+                <CheckCircle className="text-green-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
+                <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
+                  <strong className="text-white">{t('cancellation.freeRsvps')}</strong> {t('cancellation.freeRsvpsDesc')}
+                </p>
+              </div>
+              <div className="flex items-start gap-3 sm:gap-4">
+                <DollarSign className="text-[#e35e25] w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
+                <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
+                  <strong className="text-white">{t('cancellation.paidReservations')}</strong> {t('cancellation.paidReservationsDesc')}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Optional Commitment Fee */}
+          <section className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
+              <DollarSign className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
+              {t('cancellation.commitmentFee')}
+            </h2>
+            <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300 mb-4 sm:mb-6">
+              {t('cancellation.commitmentFeeDesc')}
+            </p>
+            <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
+              <div className="flex items-start gap-3 sm:gap-4">
+                <CheckCircle className="text-green-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
+                <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
+                  {t('cancellation.commitmentRefundedAtCheckin')}
+                </p>
+              </div>
+              <div className="flex items-start gap-3 sm:gap-4">
+                <CheckCircle className="text-green-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
+                <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
+                  {t('cancellation.commitmentConvertedToTip')}
+                </p>
+              </div>
+            </div>
+            <div className="bg-[#e35e25]/10 p-4 sm:p-5 rounded-xl border border-[#e35e25]/20">
+              <p className="text-sm sm:text-base text-gray-300 leading-relaxed">
+                <AlertTriangle className="inline text-yellow-400 w-4 h-4 mr-2" />
+                {t('cancellation.commitmentNoShowNote')}
               </p>
             </div>
           </section>
 
           {/* Attendee Cancellations */}
-          <section>
+          <section className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
               <UserX className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
               {t('cancellation.attendeeCancellations')}
             </h2>
-            
-            {/* Free Events Card */}
-            <div className="bg-white/5 p-5 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10 mb-4 sm:mb-6">
+            <div className="space-y-4 sm:space-y-6 mb-4 sm:mb-6">
               <div className="flex items-start gap-3 sm:gap-4">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-500/20 rounded-xl flex items-center justify-center shrink-0">
-                  <CheckCircle className="text-green-400 w-5 h-5 sm:w-6 sm:h-6" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-white mb-2 sm:mb-3 text-lg sm:text-xl">{t('cancellation.freeEvents')}</h3>
-                  <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
-                    {t('cancellation.freeEventsDesc')}
-                  </p>
-                </div>
+                <CheckCircle className="text-green-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
+                <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
+                  <strong className="text-white">{t('cancellation.freeRsvpsCancellation')}</strong> {t('cancellation.freeRsvpsCancellationDesc')}
+                </p>
+              </div>
+              <div className="flex items-start gap-3 sm:gap-4">
+                <DollarSign className="text-[#e35e25] w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
+                <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
+                  <strong className="text-white">{t('cancellation.paidReservationsCancellation')}</strong> {t('cancellation.paidReservationsCancellationDesc')}
+                </p>
               </div>
             </div>
-
-            {/* Paid Events Card */}
-            <div className="bg-white/5 p-5 sm:p-6 rounded-xl sm:rounded-2xl border border-white/10">
-              <div className="flex items-start gap-3 sm:gap-4 mb-4 sm:mb-6">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#e35e25]/20 rounded-xl flex items-center justify-center shrink-0">
-                  <DollarSign className="text-[#e35e25] w-5 h-5 sm:w-6 sm:h-6" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-white mb-2 sm:mb-3 text-lg sm:text-xl">{t('cancellation.paidEvents')}</h3>
-                  <p className="text-gray-300 text-sm sm:text-base leading-relaxed mb-4 sm:mb-6">
-                    {t('cancellation.paidEventsDesc')}
-                  </p>
-                </div>
-              </div>
-              
-              <div className="space-y-3 sm:space-y-4 ml-0 sm:ml-16">
-                <div className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 bg-[#15383c] rounded-lg border border-white/5">
-                  <CheckCircle className="text-green-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-bold text-white text-sm sm:text-base mb-1">{t('cancellation.fullRefund')}</p>
-                    <p className="text-gray-400 text-xs sm:text-sm">{t('cancellation.fullRefundDesc')}</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 bg-[#15383c] rounded-lg border border-white/5">
-                  <AlertTriangle className="text-yellow-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-bold text-white text-sm sm:text-base mb-1">{t('cancellation.partialRefund')}</p>
-                    <p className="text-gray-400 text-xs sm:text-sm">{t('cancellation.partialRefundDesc')}</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 bg-[#15383c] rounded-lg border border-white/5">
-                  <X className="text-red-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-bold text-white text-sm sm:text-base mb-1">{t('cancellation.noRefund')}</p>
-                    <p className="text-gray-400 text-xs sm:text-sm">{t('cancellation.noRefundDesc')}</p>
-                  </div>
-                </div>
-              </div>
-              
-              <p className="text-gray-400 text-xs sm:text-sm mt-4 sm:mt-6 ml-0 sm:ml-16 italic">
-                {t('cancellation.specificPolicy')}
-              </p>
-            </div>
+            <p className="text-sm sm:text-base text-gray-400 italic">
+              {t('cancellation.refundEligibility')}
+            </p>
           </section>
 
           {/* Host Cancellations */}
-          <section>
+          <section className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
               <XCircle className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
               {t('cancellation.hostCancellations')}
             </h2>
-            <div className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
-              <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300 mb-4 sm:mb-6">
-                {t('cancellation.hostCancellationsDesc')}
-              </p>
-              <div className="space-y-3 sm:space-y-4">
-                <div className="flex items-start gap-3 sm:gap-4">
-                  <CheckCircle className="text-green-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
-                  <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
-                    {t('cancellation.allAttendeesRefund')} <strong className="text-white">{t('cancellation.fullRefundIncluding')}</strong>, {t('cancellation.includingServiceFees')}
-                  </p>
-                </div>
-                <div className="flex items-start gap-3 sm:gap-4">
-                  <CheckCircle className="text-green-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
-                  <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
-                    {t('cancellation.notifiedImmediately')}
-                  </p>
-                </div>
-                <div className="flex items-start gap-3 sm:gap-4">
-                  <AlertCircle className="text-yellow-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
-                  <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
-                    {t('cancellation.accountReviewed')}
-                  </p>
-                </div>
-              </div>
-              <div className="mt-6 sm:mt-8 p-4 sm:p-5 bg-[#e35e25]/10 rounded-xl border border-[#e35e25]/20">
-                <p className="text-sm sm:text-base text-gray-300 leading-relaxed">
-                  <strong className="text-white">{t('cancellation.tip')}</strong> {t('cancellation.tipDesc')}
-                </p>
-              </div>
-            </div>
+            <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300">
+              {t('cancellation.hostCancellationsDesc')}
+            </p>
           </section>
 
-          {/* Refund Processing */}
-          <section>
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
-              <CreditCard className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
-              {t('cancellation.refundProcessing')}
-            </h2>
-            <div className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
-              <div className="space-y-4 sm:space-y-6 text-base sm:text-lg font-light leading-relaxed text-gray-300">
-                <div className="flex items-start gap-3 sm:gap-4">
-                  <Clock className="text-[#e35e25] w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
-                  <div>
-                    <p className="font-bold text-white mb-2">{t('cancellation.processingTime')}</p>
-                    <p>
-                      {t('cancellation.processingTimeDesc')} <strong className="text-white">{t('cancellation.businessDays')}</strong>{t('cancellation.processingTimeDesc2')}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 sm:gap-4 pt-4 sm:pt-6 border-t border-white/10">
-                  <DollarSign className="text-[#e35e25] w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
-                  <div>
-                    <p className="font-bold text-white mb-2">{t('cancellation.serviceFeeRefunds')}</p>
-                    <p>
-                      {t('cancellation.serviceFeeRefundsDesc')} <strong className="text-[#e35e25]">{t('cancellation.serviceFeePercent')}</strong> {t('cancellation.serviceFeeRefundsDesc2')}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* No-Show Policy */}
-          <section>
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
-              <AlertTriangle className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
-              {t('cancellation.noShowPolicy')}
-            </h2>
-            <div className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
-              <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300 mb-4 sm:mb-6">
-                {t('cancellation.noShowPolicyDesc')}
-              </p>
-              <div className="space-y-3 sm:space-y-4">
-                <div className="flex items-start gap-3 sm:gap-4">
-                  <X className="text-red-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
-                  <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
-                    {t('cancellation.noRefundNoShow')} <strong className="text-white">{t('cancellation.notReceiveRefund')}</strong> {t('cancellation.noRefundNoShowDesc')}
-                  </p>
-                </div>
-                <div className="flex items-start gap-3 sm:gap-4">
-                  <AlertTriangle className="text-red-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
-                  <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
-                    <strong className="text-white">{t('cancellation.repeatedNoShows')}</strong> {t('cancellation.repeatedNoShowsDesc')}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Event Modifications */}
-          <section>
+          {/* Significant Changes */}
+          <section className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
               <Edit className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
-              {t('cancellation.eventModifications')}
+              {t('cancellation.significantChanges')}
             </h2>
-            <div className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
-              <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300 mb-4 sm:mb-6">
-                {t('cancellation.eventModificationsDesc')}
-              </p>
-              <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
-                <div className="p-4 sm:p-5 bg-[#15383c] rounded-xl border border-white/5">
-                  <CheckCircle className="text-green-400 w-6 h-6 sm:w-7 sm:h-7 mb-3 sm:mb-4" />
-                  <p className="font-bold text-white text-sm sm:text-base mb-2">{t('cancellation.acceptChanges')}</p>
-                  <p className="text-gray-400 text-xs sm:text-sm">{t('cancellation.acceptChangesDesc')}</p>
-                </div>
-                <div className="p-4 sm:p-5 bg-[#15383c] rounded-xl border border-white/5">
-                  <XCircle className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7 mb-3 sm:mb-4" />
-                  <p className="font-bold text-white text-sm sm:text-base mb-2">{t('cancellation.cancelRefunded')}</p>
-                  <p className="text-gray-400 text-xs sm:text-sm">{t('cancellation.cancelRefundedDesc')}</p>
-                </div>
-              </div>
-            </div>
+            <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300">
+              {t('cancellation.significantChangesDesc')}
+            </p>
           </section>
 
-          {/* Disputes and Exceptions */}
-          <section>
+          {/* Refund Processing Times */}
+          <section className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
-              <HelpCircle className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
-              {t('cancellation.disputesExceptions')}
+              <Clock className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
+              {t('cancellation.refundProcessing')}
             </h2>
-            <div className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
-              <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300 mb-4 sm:mb-6">
-                {t('cancellation.disputesExceptionsDesc')}
-              </p>
-              <div className="bg-[#e35e25]/10 p-4 sm:p-5 rounded-xl border border-[#e35e25]/20">
-                <p className="text-sm sm:text-base text-gray-300 leading-relaxed">
-                  <strong className="text-white">{t('cancellation.needHelp')}</strong> {t('cancellation.needHelpDesc')} <a href="mailto:support@gopopera.ca" className="text-[#e35e25] hover:underline">support@gopopera.ca</a> {t('cancellation.needHelpDesc2')}
+            <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300">
+              {t('cancellation.refundProcessingDesc')}
+            </p>
+          </section>
+
+          {/* Service Fees */}
+          <section className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
+              <CreditCard className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
+              {t('cancellation.serviceFees')}
+            </h2>
+            <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300">
+              {t('cancellation.serviceFeesDesc')}
+            </p>
+          </section>
+
+          {/* No-Shows and Abuse */}
+          <section className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
+              <AlertTriangle className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
+              {t('cancellation.noShows')}
+            </h2>
+            <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300 mb-4 sm:mb-6">
+              {t('cancellation.noShowsIntro')}
+            </p>
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex items-start gap-3 sm:gap-4">
+                <X className="text-red-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
+                <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
+                  {t('cancellation.noShowsPaidNotRefunded')}
+                </p>
+              </div>
+              <div className="flex items-start gap-3 sm:gap-4">
+                <AlertTriangle className="text-yellow-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
+                <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
+                  {t('cancellation.noShowsRestrictions')}
                 </p>
               </div>
             </div>
           </section>
 
-          {/* Host Payment */}
-          <section>
+          {/* Disputes, Chargebacks, and Exceptions */}
+          <section className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
+              <AlertCircle className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
+              {t('cancellation.disputes')}
+            </h2>
+            <div className="space-y-4 sm:space-y-6">
+              <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300">
+                {t('cancellation.disputesChargebackDesc')}
+              </p>
+              <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300">
+                {t('cancellation.disputesExceptionsDesc')}
+              </p>
+            </div>
+          </section>
+
+          {/* Host Payouts */}
+          <section className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
             <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white font-heading mb-6 sm:mb-8 flex items-center gap-3">
               <DollarSign className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
-              {t('cancellation.hostPayment')}
+              {t('cancellation.hostPayouts')}
             </h2>
-            <div className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
-              <div className="space-y-4 sm:space-y-6 text-base sm:text-lg font-light leading-relaxed text-gray-300">
-                <div className="flex items-start gap-3 sm:gap-4">
-                  <CheckCircle className="text-green-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
-                  <div>
-                    <p className="font-bold text-white mb-2">{t('cancellation.paymentTimeline')}</p>
-                    <p>
-                      {t('cancellation.paymentTimelineDesc')} <strong className="text-white">{t('cancellation.afterEventConcludes')}</strong>{t('cancellation.paymentTimelineDesc2')} <strong className="text-white">{t('cancellation.threeFiveDays')}</strong>{t('cancellation.paymentTimelineDesc3')}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 sm:gap-4 pt-4 sm:pt-6 border-t border-white/10">
-                  <AlertCircle className="text-yellow-400 w-5 h-5 sm:w-6 sm:h-6 shrink-0 mt-1" />
-                  <div>
-                    <p className="font-bold text-white mb-2">{t('cancellation.cancelledEvents')}</p>
-                    <p>
-                      {t('cancellation.cancelledEventsDesc')}
-                    </p>
-                  </div>
-                </div>
-              </div>
+            <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300">
+              {t('cancellation.hostPayoutsDesc')}
+            </p>
+          </section>
+
+          {/* Consumer Rights Notice */}
+          <section className="bg-[#e35e25]/10 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-[#e35e25]/20">
+            <div className="flex items-start gap-3 sm:gap-4">
+              <Scale className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7 shrink-0 mt-1" />
+              <p className="text-base sm:text-lg font-medium leading-relaxed text-white">
+                {t('cancellation.consumerRights')}
+              </p>
             </div>
           </section>
 
@@ -284,19 +232,14 @@ export const CancellationPage: React.FC<CancellationPageProps> = ({ setViewState
           <section className="bg-white/5 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/10">
             <h2 className="text-xl sm:text-2xl font-bold text-white font-heading mb-4 sm:mb-6 flex items-center gap-3">
               <Mail className="text-[#e35e25] w-6 h-6 sm:w-7 sm:h-7" />
-              {t('cancellation.contactRefunds')}
+              {t('cancellation.contact')}
             </h2>
-            <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300 mb-4 sm:mb-6">
-              {t('cancellation.contactRefundsDesc')}
+            <p className="text-base sm:text-lg font-light leading-relaxed text-gray-300 mb-4">
+              {t('cancellation.contactDesc')}
             </p>
-            <div className="space-y-2 sm:space-y-3">
-              <p className="text-base sm:text-lg text-white">
-                <strong>{t('cancellation.email')}</strong> <a href="mailto:support@gopopera.ca" className="text-[#e35e25] hover:underline">support@gopopera.ca</a>
-              </p>
-              <p className="text-base sm:text-lg text-white">
-                <strong>{t('cancellation.website')}</strong> <a href="https://www.gopopera.ca" className="text-[#e35e25] hover:underline">www.gopopera.ca</a>
-              </p>
-            </div>
+            <p className="text-base sm:text-lg text-white">
+              <a href="mailto:support@gopopera.ca" className="text-[#e35e25] hover:underline">{t('cancellation.email')}</a>
+            </p>
           </section>
         </div>
       </div>
