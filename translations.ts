@@ -35,25 +35,30 @@ export const translations = {
       badge: 'Types of Circles',
       title: 'What kind of circle will you join?',
       description: 'From learning real skills to meeting neighbors, Popera hosts bring small groups together for meaningful in-person experiences.',
-      curatedSales: {
-        category: 'CREATIVE',
-        title: 'Make & Create',
-        description: 'Join hands-on circles for pottery, painting, crafts, and DIY projects. Learn from skilled neighbors in intimate 3–10 person sessions.',
+      makeCreate: {
+        category: 'MAKE & CREATE',
+        title: 'MAKE & CREATE',
+        description: 'Pottery, painting, crafts, DIY. Make something with a small group.',
       },
-      connectPromote: {
-        category: 'SOCIAL',
-        title: 'Connect & Meet',
-        description: 'Find your people through dinner parties, coffee meetups, and interest-based circles. Build real friendships with neighbors who share your passions.',
+      eatDrink: {
+        category: 'EAT & DRINK',
+        title: 'EAT & DRINK',
+        description: 'Dinner circles, coffee meetups, cooking nights, tastings.',
       },
-      mobilizeSupport: {
-        category: 'COMMUNITY',
-        title: 'Gather & Support',
-        description: 'Join discussion groups, book clubs, and support circles. Connect with neighbors around causes, conversations, and shared experiences.',
+      moveFlow: {
+        category: 'MOVE & FLOW',
+        title: 'MOVE & FLOW',
+        description: 'Walk clubs, yoga, dance, movement circles—small and welcoming.',
       },
-      learningWorkshops: {
-        category: 'LEARNING',
-        title: 'Learn & Grow',
-        description: 'Pick up new skills from local hosts — cooking, languages, music, movement, and more. Small-group sessions designed for real learning.',
+      talkThink: {
+        category: 'TALK & THINK',
+        title: 'TALK & THINK',
+        description: 'Book circles, language practice, debates, topic-based discussions.',
+      },
+      communitySupport: {
+        category: 'COMMUNITY & SUPPORT',
+        title: 'COMMUNITY & SUPPORT',
+        description: 'Support circles, causes, accountability groups, community meetups.',
       },
     },
     // Landing Page
@@ -1096,28 +1101,33 @@ export const translations = {
     },
     // Pillars
     pillars: {
-      badge: 'Notre écosystème',
-      title: 'Comment Popera rassemble les gens',
-      description: 'Une plateforme simple pour rassembler les gens—que vous partagiez des biens, offriez des expériences ou créiez un impact communautaire.',
-      curatedSales: {
-        category: 'ACHATS',
-        title: 'Ventes sélectionnées',
-        description: 'Organisez des Sessions de vente sélectionnées, gérez les acheteurs et rassemblez votre communauté avec des ventes en petits groupes.',
+      badge: 'Types de cercles',
+      title: 'Quel type de cercle allez-vous rejoindre?',
+      description: 'De l\'apprentissage de vraies compétences à la rencontre des voisins, les hôtes Popera rassemblent de petits groupes pour des expériences significatives en personne.',
+      makeCreate: {
+        category: 'CRÉER & FABRIQUER',
+        title: 'CRÉER & FABRIQUER',
+        description: 'Poterie, peinture, artisanat, bricolage. Créez quelque chose en petit groupe.',
       },
-      connectPromote: {
-        category: 'EXPÉRIENCES',
-        title: 'Connecter et promouvoir',
-        description: 'Créez des Cercles autour de votre art, de votre passion ou de votre compétence et organisez des Sessions qui transforment les abonnés en relations significatives.',
+      eatDrink: {
+        category: 'MANGER & BOIRE',
+        title: 'MANGER & BOIRE',
+        description: 'Cercles de dîner, rencontres café, soirées cuisine, dégustations.',
       },
-      mobilizeSupport: {
-        category: 'RASSEMBLEMENTS',
-        title: 'Mobiliser et soutenir',
-        description: 'Démarrez des Cercles dédiés à des causes ou à un impact local, et rassemblez les gens à travers des Sessions en personne significatives.',
+      moveFlow: {
+        category: 'BOUGER & RESPIRER',
+        title: 'BOUGER & RESPIRER',
+        description: 'Clubs de marche, yoga, danse, cercles de mouvement—petits et accueillants.',
       },
-      learningWorkshops: {
-        category: 'APPRENTISSAGE',
-        title: 'Apprendre et grandir',
-        description: 'Organisez des ateliers, des cours et des Sessions de développement des compétences. Du dessin et de la cuisine aux rencontres technologiques pour la croissance.',
+      talkThink: {
+        category: 'DISCUTER & RÉFLÉCHIR',
+        title: 'DISCUTER & RÉFLÉCHIR',
+        description: 'Cercles de lecture, pratique des langues, débats, discussions thématiques.',
+      },
+      communitySupport: {
+        category: 'COMMUNAUTÉ & SOUTIEN',
+        title: 'COMMUNAUTÉ & SOUTIEN',
+        description: 'Cercles de soutien, causes, groupes de responsabilité, rencontres communautaires.',
       },
     },
     // Landing Page

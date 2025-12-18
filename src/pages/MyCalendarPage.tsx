@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, MapPin, Clock, Calendar as CalendarIcon, X }
 import { useUserStore } from '../../stores/userStore';
 import { formatDate } from '../../utils/dateFormatter';
 import { getMainCategoryLabelFromEvent } from '../../utils/categoryMapper';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface MyCalendarPageProps {
   setViewState: (view: ViewState) => void;
@@ -42,7 +43,7 @@ const MinimizedEventCard: React.FC<{ event: Event; onClick: () => void }> = ({ e
             {event.title}
           </h3>
           <span className="text-xs font-bold text-[#e35e25] bg-[#e35e25]/10 px-2 py-0.5 rounded-full flex-shrink-0">
-            {getMainCategoryLabelFromEvent(event)}
+            {getMainCategoryLabelFromEvent(event, language)}
           </span>
         </div>
         <div className="flex items-center gap-3 text-xs text-gray-600 mb-1">
@@ -63,6 +64,7 @@ const MinimizedEventCard: React.FC<{ event: Event; onClick: () => void }> = ({ e
 
 export const MyCalendarPage: React.FC<MyCalendarPageProps> = ({ setViewState, events, onEventClick }) => {
   const user = useUserStore((state) => state.user);
+  const { language } = useLanguage();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 

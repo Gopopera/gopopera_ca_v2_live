@@ -232,7 +232,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   // Store hooks - always called
   const user = useUserStore((state) => state.user);
   const userProfile = useUserStore((state) => state.userProfile);
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   
   // CRITICAL: Extract primitive values from event object to stabilize dependencies
   // Use event.id as the primary key - only extract values when event.id changes
@@ -1099,7 +1099,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         <div className="absolute top-4 left-4 z-10">
           {/* Category Badge */}
           <span className="inline-block px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-[#e35e25] text-xs font-bold uppercase tracking-wider border border-white/30">
-            {getMainCategoryLabelFromEvent(event)}
+            {getMainCategoryLabelFromEvent(event, language)}
           </span>
         </div>
       </div>

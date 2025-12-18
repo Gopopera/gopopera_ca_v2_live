@@ -4,6 +4,7 @@ import { ChevronLeft, Share2, Calendar, Clock, MapPin, Download, X } from 'lucid
 import { QRCodeSVG } from 'qrcode.react';
 import { formatDate } from '../../utils/dateFormatter';
 import { getMainCategoryLabelFromEvent } from '../../utils/categoryMapper';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface ReservationConfirmationPageProps {
   event: Event;
@@ -16,6 +17,7 @@ export const ReservationConfirmationPage: React.FC<ReservationConfirmationPagePr
   reservationId,
   setViewState,
 }) => {
+  const { language } = useLanguage();
   // Generate Order ID from reservation ID (first 10 chars, uppercase)
   const orderId = useMemo(() => {
     return reservationId.substring(0, 10).toUpperCase();
@@ -352,10 +354,10 @@ export const ReservationConfirmationPage: React.FC<ReservationConfirmationPagePr
               </div>
 
               {/* Category or Price */}
-              {getMainCategoryLabelFromEvent(event) ? (
+              {getMainCategoryLabelFromEvent(event, language) ? (
                 <div>
-                  <p className="text-xs text-gray-500 mb-1 font-medium">Category</p>
-                  <p className="text-sm font-semibold text-[#15383c] capitalize">{getMainCategoryLabelFromEvent(event)}</p>
+                  <p className="text-xs text-gray-500 mb-1 font-medium">{language === 'fr' ? 'Catégorie' : 'Category'}</p>
+                  <p className="text-sm font-semibold text-[#15383c] capitalize">{getMainCategoryLabelFromEvent(event, language)}</p>
                 </div>
               ) : event.price && event.price !== 'Free' ? (
                 <div>
@@ -367,7 +369,7 @@ export const ReservationConfirmationPage: React.FC<ReservationConfirmationPagePr
           </div>
 
           {/* Total Cost / Price Section (if not shown above) */}
-          {event.price && event.price !== 'Free' && getMainCategoryLabelFromEvent(event) && (
+          {event.price && event.price !== 'Free' && getMainCategoryLabelFromEvent(event, language) && (
             <div className="mb-4 pb-4 border-b border-gray-100">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-gray-600 font-medium">Total:</p>

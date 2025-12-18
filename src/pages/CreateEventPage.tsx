@@ -9,7 +9,7 @@ import { uploadImage } from '../../firebase/storage';
 import { processImageForUpload } from '../../utils/imageProcessing';
 import { geocodeAddress } from '../../utils/geocoding';
 import { ALL_VIBES } from '../../utils/vibes';
-import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS, getVibesForCategory, type MainCategory } from '../../utils/categoryMapper';
+import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS, MAIN_CATEGORY_LABELS_FR, getVibesForCategory, type MainCategory } from '../../utils/categoryMapper';
 
 interface CreateEventPageProps {
   setViewState: (view: ViewState) => void;
@@ -22,7 +22,7 @@ const POPULAR_CITIES = [
 ];
 
 export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const addEvent = useEventStore((state) => state.addEvent);
   const user = useUserStore((state) => state.user);
   const userProfile = useUserStore((state) => state.userProfile);
@@ -50,7 +50,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sessionFrequency, setSessionFrequency] = useState<'weekly' | 'monthly' | 'oneTime' | ''>('');
   const [sessionMode, setSessionMode] = useState<'inPerson' | 'remote' | ''>('');
-  const [mainCategory, setMainCategory] = useState<'curatedSales' | 'connectPromote' | 'mobilizeSupport' | 'learnGrow' | ''>('');
+  const [mainCategory, setMainCategory] = useState<MainCategory | ''>('');
   const [selectedVibes, setSelectedVibes] = useState<string[]>([]);
   const [groupSize, setGroupSize] = useState<{ min: number; max: number } | null>(null);
   const [repeatDay, setRepeatDay] = useState<string>('');
@@ -854,7 +854,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                 >
                   <option value="">{t('createEvent.select')}</option>
                   {MAIN_CATEGORIES.map(cat => (
-                    <option key={cat} value={cat}>{MAIN_CATEGORY_LABELS[cat]}</option>
+                    <option key={cat} value={cat}>{language === 'fr' ? MAIN_CATEGORY_LABELS_FR[cat] : MAIN_CATEGORY_LABELS[cat]}</option>
                   ))}
                 </select>
               </div>

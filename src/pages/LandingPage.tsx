@@ -13,7 +13,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useSelectedCity, useSetCity, initializeGeoLocation, type City } from '../stores/cityStore';
 import { useFilterStore } from '../../stores/filterStore';
 import { applyEventFilters } from '../../utils/filterEvents';
-import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS, type MainCategory } from '../../utils/categoryMapper';
+import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS, MAIN_CATEGORY_LABELS_FR, type MainCategory } from '../../utils/categoryMapper';
 import { getDbSafe } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { sendEmail } from '../lib/email';
@@ -234,7 +234,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                          : 'bg-white/20 backdrop-blur-md text-[#15383c] border border-[#15383c]/20 hover:border-[#e35e25] hover:text-[#e35e25]'
                      }`}
                    >
-                     All
+                     {language === 'fr' ? 'TOUT' : 'ALL'}
                    </button>
                    {/* Category tabs */}
                    {MAIN_CATEGORIES.map(category => (
@@ -247,7 +247,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                            : 'bg-white/20 backdrop-blur-md text-[#15383c] border border-[#15383c]/20 hover:border-[#e35e25] hover:text-[#e35e25]'
                        }`}
                      >
-                       {MAIN_CATEGORY_LABELS[category]}
+                       {language === 'fr' ? MAIN_CATEGORY_LABELS_FR[category] : MAIN_CATEGORY_LABELS[category]}
                      </button>
                    ))}
                  </div>

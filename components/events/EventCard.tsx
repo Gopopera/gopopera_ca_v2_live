@@ -107,7 +107,7 @@ export const EventCard: React.FC<EventCardProps> = ({
   compact = false,
   profileVariant = false
 }) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const user = useUserStore((state) => state.user);
   const userProfile = useUserStore((state) => state.userProfile);
   
@@ -315,7 +315,7 @@ export const EventCard: React.FC<EventCardProps> = ({
         {/* Main Category Badge - Liquid Glass Style (hidden in compact/profile mode) */}
         {!compact && !profileVariant && (
           <div className="absolute top-3 left-3 inline-flex items-center justify-center py-1.5 px-3 rounded-full bg-white/20 backdrop-blur-md text-[#e35e25] text-[10px] sm:text-xs font-bold tracking-wider uppercase z-20 border border-white/30">
-            {getMainCategoryLabelFromEvent(event)}
+            {getMainCategoryLabelFromEvent(event, language)}
           </div>
         )}
 

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, ChevronDown, ChevronUp, Filter } from 'lucide-react';
 import { useFilterStore } from '../../stores/filterStore';
 import { ALL_VIBES } from '../../utils/vibes';
-import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS, type MainCategory } from '../../utils/categoryMapper';
+import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS, MAIN_CATEGORY_LABELS_FR, type MainCategory } from '../../utils/categoryMapper';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { createPortal } from 'react-dom';
 
 interface FilterDrawerProps {
@@ -13,6 +14,7 @@ interface FilterDrawerProps {
 
 export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, events }) => {
   const { filters, setFilter, resetFilters, getActiveFilterCount } = useFilterStore();
+  const { language } = useLanguage();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     category: true,
     location: true,
@@ -227,7 +229,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
                       : 'bg-white text-gray-700 border-gray-300 hover:border-[#e35e25] hover:text-[#e35e25]'
                   }`}
                 >
-                  All Categories
+                  {language === 'fr' ? 'Toutes les catégories' : 'All Categories'}
                 </button>
                 {/* Main categories */}
                 {MAIN_CATEGORIES.map(category => (
@@ -240,7 +242,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
                         : 'bg-white text-gray-700 border-gray-300 hover:border-[#e35e25] hover:text-[#e35e25]'
                     }`}
                   >
-                    {MAIN_CATEGORY_LABELS[category]}
+                    {language === 'fr' ? MAIN_CATEGORY_LABELS_FR[category] : MAIN_CATEGORY_LABELS[category]}
                   </button>
                 ))}
               </div>

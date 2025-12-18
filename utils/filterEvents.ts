@@ -1,7 +1,7 @@
 import { Event } from '../types';
 import { EventFilters } from '../stores/filterStore';
 import { getCircleContinuity, getAvailableSpots } from './eventHelpers';
-import { getMainCategory } from './categoryMapper';
+import { getMainCategory, normalizeCategory, type MainCategory } from './categoryMapper';
 
 /**
  * Apply filters to events array
@@ -10,9 +10,12 @@ export function applyEventFilters(events: Event[], filters: EventFilters): Event
   let filtered = [...events];
 
   // Main category filter (uses getMainCategory for fallback derivation)
+  // Backward compatible: matches both new and legacy category values
   if (filters.mainCategory) {
     filtered = filtered.filter(event => {
+      // Get the normalized category from the event (handles legacy values)
       const eventCategory = getMainCategory(event);
+      // Compare with the filter category
       return eventCategory === filters.mainCategory;
     });
   }

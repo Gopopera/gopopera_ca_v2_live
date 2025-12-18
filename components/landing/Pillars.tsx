@@ -11,31 +11,38 @@ export const Pillars: React.FC = () => {
   const pillars = [
     {
       id: "01",
-      title: t('pillars.curatedSales.title'),
-      category: t('pillars.curatedSales.category'),
-      description: t('pillars.curatedSales.description'),
+      title: t('pillars.makeCreate.title'),
+      category: t('pillars.makeCreate.category'),
+      description: t('pillars.makeCreate.description'),
       image: "/justin-lim-sale.webp",
     },
     {
       id: "02",
-      title: t('pillars.connectPromote.title'),
-      category: t('pillars.connectPromote.category'),
-      description: t('pillars.connectPromote.description'),
+      title: t('pillars.eatDrink.title'),
+      category: t('pillars.eatDrink.category'),
+      description: t('pillars.eatDrink.description'),
       image: "/corey-oconnell-crowd.webp",
     },
     {
       id: "03",
-      title: t('pillars.mobilizeSupport.title'),
-      category: t('pillars.mobilizeSupport.category'),
-      description: t('pillars.mobilizeSupport.description'),
+      title: t('pillars.moveFlow.title'),
+      category: t('pillars.moveFlow.category'),
+      description: t('pillars.moveFlow.description'),
       image: "https://images.unsplash.com/photo-1531206715517-5c0ba140b2b8?q=80&w=2074&auto=format&fit=crop",
     },
     {
       id: "04",
-      title: t('pillars.learningWorkshops.title'),
-      category: t('pillars.learningWorkshops.category'),
-      description: t('pillars.learningWorkshops.description'),
+      title: t('pillars.talkThink.title'),
+      category: t('pillars.talkThink.category'),
+      description: t('pillars.talkThink.description'),
       image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2071&auto=format&fit=crop",
+    },
+    {
+      id: "05",
+      title: t('pillars.communitySupport.title'),
+      category: t('pillars.communitySupport.category'),
+      description: t('pillars.communitySupport.description'),
+      image: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?q=80&w=2074&auto=format&fit=crop",
     }
   ];
 
