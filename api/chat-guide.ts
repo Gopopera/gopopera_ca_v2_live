@@ -61,6 +61,11 @@ interface RateLimitEntry {
 const rateLimitCache = new Map<string, RateLimitEntry>();
 const RATE_LIMIT_MS = 30 * 1000; // 30 seconds cooldown
 
+// Per-event global rate limit: max 10 requests per 5 minutes
+const eventRateLimitCache = new Map<string, number[]>();
+const EVENT_RATE_LIMIT_MAX = 10;
+const EVENT_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+
 function getRateLimitKey(userId: string | undefined, eventId: string | undefined): string {
   return `${userId || 'anon'}:${eventId || 'unknown'}`;
 }
@@ -75,6 +80,41 @@ function isRateLimited(key: string): boolean {
   }
   
   return false;
+}
+
+function isEventRateLimited(eventId: string | undefined): boolean {
+  const key = eventId || 'unknown';
+  
+  const now = Date.now();
+  const timestamps = eventRateLimitCache.get(key) || [];
+  
+  // Filter to only keep timestamps within the window
+  const recentTimestamps = timestamps.filter(t => now - t < EVENT_RATE_LIMIT_WINDOW_MS);
+  eventRateLimitCache.set(key, recentTimestamps);
+  
+  return recentTimestamps.length >= EVENT_RATE_LIMIT_MAX;
+}
+
+function recordEventRequest(eventId: string | undefined): void {
+  const key = eventId || 'unknown';
+  
+  const now = Date.now();
+  const timestamps = eventRateLimitCache.get(key) || [];
+  
+  // Filter to only keep timestamps within the window, then add new one
+  const recentTimestamps = timestamps.filter(t => now - t < EVENT_RATE_LIMIT_WINDOW_MS);
+  recentTimestamps.push(now);
+  eventRateLimitCache.set(key, recentTimestamps);
+  
+  // Clean up old event entries (keep cache small)
+  if (eventRateLimitCache.size > 200) {
+    for (const [k, v] of eventRateLimitCache.entries()) {
+      const filtered = v.filter(t => now - t < EVENT_RATE_LIMIT_WINDOW_MS);
+      if (filtered.length === 0) {
+        eventRateLimitCache.delete(k);
+      }
+    }
+  }
 }
 
 function recordRequest(key: string): void {
@@ -122,12 +162,21 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    // Rate limiting check
+    // Rate limiting check (per user)
     const rateLimitKey = getRateLimitKey(userId, eventId);
     if (isRateLimited(rateLimitKey)) {
       return res.status(429).json({
         success: false,
         error: 'Please wait a moment before asking again.',
+        cooldown: true,
+      });
+    }
+
+    // Event-level rate limiting check (max 10 per 5 minutes per event)
+    if (isEventRateLimited(eventId)) {
+      return res.status(429).json({
+        success: false,
+        error: 'Popera Guide is taking a short break for this circle. Try again in a few minutes.',
         cooldown: true,
       });
     }
@@ -143,6 +192,7 @@ export default async function handler(req: any, res: any) {
 
     // Record this request for rate limiting
     recordRequest(rateLimitKey);
+    recordEventRequest(eventId);
 
     // ========================================================================
     // BUILD PROMPT (reduced: last 10-12 messages)
@@ -175,6 +225,8 @@ Instructions:
 4. Keep the tone warm and inclusive
 5. Never ask for personal information
 6. If the question is inappropriate or off-topic, politely redirect to the event
+7. If asked for medical/legal/financial advice, refuse briefly and suggest a qualified professional
+8. If asked for dangerous, illegal, hateful, or sexual content, refuse and redirect to safe alternatives
 
 Reply directly (no JSON, no quotes, just the message text):`;
 
@@ -186,12 +238,20 @@ Reply directly (no JSON, no quotes, just the message text):`;
       messages: [
         { 
           role: 'system', 
-          content: 'You are Popera Guide, a friendly AI assistant for group event chats. Keep responses brief, warm, and helpful. Never use markdown formatting.' 
+          content: `You are Popera Guide, an AI helper inside a small in-person group chat on Popera.
+Rules:
+- Reply in 1–3 short sentences. Be warm, practical, and relevant to the circle.
+- Do NOT request or infer sensitive personal data (phone, email, address, IDs, payment details).
+- Do NOT claim you are human, present at the event, or that you can verify facts outside the chat.
+- If asked for medical, legal, or financial advice, refuse briefly and suggest consulting a qualified professional. For food/allergy questions, tell users to check ingredients and confirm allergies directly with participants.
+- Refuse any request that facilitates wrongdoing, danger, self-harm, violence, weapons, or illegal activity; redirect to a safe alternative.
+- Refuse harassment, hate, sexual content (especially anything involving minors), or explicit content; redirect to respectful community norms.
+- Output plain text only (no markdown, no JSON).`
         },
         { role: 'user', content: prompt }
       ],
       max_tokens: 220,
-      temperature: 0.7,
+      temperature: 0.4,
     });
 
     const reply = completion.choices[0]?.message?.content?.trim() || '';
