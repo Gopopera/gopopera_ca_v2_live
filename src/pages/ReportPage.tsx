@@ -76,7 +76,7 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-[#f8fafb] pt-24 pb-12 font-sans">
+      <div className="min-h-screen bg-[#15383c] pt-20 sm:pt-24 pb-8 sm:pb-12 text-white font-sans">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
           <button 
             onClick={() => setViewState(ViewState.LANDING)} 
@@ -85,19 +85,17 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
             <ChevronLeft size={20} className="sm:w-6 sm:h-6" />
           </button>
           
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 sm:p-12 text-center">
-            <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 size={32} className="text-green-600" />
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-heading font-bold text-[#15383c] mb-3">
+          <div className="bg-white/10 rounded-2xl p-8 text-center">
+            <CheckCircle2 size={48} className="text-green-400 mx-auto mb-4" />
+            <h2 className="text-2xl sm:text-3xl font-heading font-bold text-white mb-3">
               {t('report.reportSubmitted')}
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-300 mb-6">
               {t('report.thankYou')} {email || user?.email}.
             </p>
             <button
               onClick={() => setViewState(ViewState.LANDING)}
-              className="px-6 py-3 bg-[#e35e25] text-white rounded-full font-medium hover:bg-[#d14e1a] transition-colors"
+              className="px-8 py-3.5 sm:py-4 bg-white/10 hover:bg-white/20 text-white font-bold rounded-full transition-colors border border-white/5 touch-manipulation active:scale-95 text-sm sm:text-base"
             >
               {t('report.returnHome')}
             </button>
@@ -108,7 +106,7 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafb] pt-24 pb-12 font-sans">
+    <div className="min-h-screen bg-[#15383c] pt-20 sm:pt-24 pb-8 sm:pb-12 text-white font-sans">
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
         <button 
           onClick={() => setViewState(ViewState.LANDING)} 
@@ -117,26 +115,26 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
           <ChevronLeft size={20} className="sm:w-6 sm:h-6" />
         </button>
 
-        <div className="text-center mb-6 sm:mb-8">
-          <h1 className="font-heading font-bold text-3xl sm:text-4xl md:text-5xl mb-3 sm:mb-4 text-[#15383c]">
+        <div className="text-center mb-8 sm:mb-12">
+          <h1 className="font-heading font-bold text-3xl sm:text-4xl md:text-5xl mb-3 sm:mb-4">
             {t('report.title')}
           </h1>
-          <p className="text-gray-600 text-sm sm:text-base">
+          <p className="text-gray-300 text-base sm:text-lg font-light">
             {t('report.subtitle')}
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 sm:p-8 md:p-12 space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6 mb-12 sm:mb-16 md:mb-20">
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">
+            <div className="bg-red-500/20 border border-red-400/30 rounded-xl p-4 text-red-200 text-sm">
               {error}
             </div>
           )}
 
           {/* Name */}
-          <div>
-            <label className="block text-sm font-medium text-[#15383c] mb-2">
-              {t('report.name')} <span className="text-red-500">*</span>
+          <div className="space-y-2">
+            <label className="block text-xs sm:text-sm font-medium pl-1">
+              {t('report.name')} *
             </label>
             <input
               type="text"
@@ -144,14 +142,14 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
               onChange={(e) => setName(e.target.value)}
               required
               placeholder={t('report.name')}
-              className="w-full bg-white border border-gray-200 rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all"
+              className="w-full bg-[#1a454a] border border-[#2d6a70] rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-white placeholder-white/30 focus:outline-none focus:border-[#e35e25] focus:ring-1 focus:ring-[#e35e25] transition-all"
             />
           </div>
 
           {/* Email */}
-          <div>
-            <label className="block text-sm font-medium text-[#15383c] mb-2">
-              {t('report.email')} <span className="text-red-500">*</span>
+          <div className="space-y-2">
+            <label className="block text-xs sm:text-sm font-medium pl-1">
+              {t('report.email')} *
             </label>
             <input
               type="email"
@@ -159,14 +157,14 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
               onChange={(e) => setEmail(e.target.value)}
               required
               placeholder="your@email.com"
-              className="w-full bg-white border border-gray-200 rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all"
+              className="w-full bg-[#1a454a] border border-[#2d6a70] rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-white placeholder-white/30 focus:outline-none focus:border-[#e35e25] focus:ring-1 focus:ring-[#e35e25] transition-all"
             />
           </div>
 
           {/* Subject */}
-          <div>
-            <label className="block text-sm font-medium text-[#15383c] mb-2">
-              {t('report.subject')} <span className="text-red-500">*</span>
+          <div className="space-y-2">
+            <label className="block text-xs sm:text-sm font-medium pl-1">
+              {t('report.subject')} *
             </label>
             <input
               type="text"
@@ -174,43 +172,41 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
               onChange={(e) => setSubject(e.target.value)}
               required
               placeholder={t('report.subjectPlaceholder')}
-              className="w-full bg-white border border-gray-200 rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all"
+              className="w-full bg-[#1a454a] border border-[#2d6a70] rounded-full py-3 sm:py-4 px-4 sm:px-6 text-base text-white placeholder-white/30 focus:outline-none focus:border-[#e35e25] focus:ring-1 focus:ring-[#e35e25] transition-all"
             />
           </div>
 
           {/* Message */}
-          <div>
-            <label className="block text-sm font-medium text-[#15383c] mb-2">
-              {t('report.message')} <span className="text-red-500">*</span>
+          <div className="space-y-2">
+            <label className="block text-xs sm:text-sm font-medium pl-1">
+              {t('report.message')} *
             </label>
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               required
-              rows={6}
+              rows={5}
               placeholder={t('report.messagePlaceholder')}
-              className="w-full bg-white border border-gray-200 rounded-2xl sm:rounded-3xl py-3 sm:py-4 px-4 sm:px-6 text-base text-[#15383c] focus:outline-none focus:border-[#15383c] transition-all resize-none"
+              className="w-full bg-[#1a454a] border border-[#2d6a70] rounded-2xl py-3 sm:py-4 px-4 sm:px-6 text-base text-white placeholder-white/30 focus:outline-none focus:border-[#e35e25] focus:ring-1 focus:ring-[#e35e25] transition-all resize-none"
             />
           </div>
 
           {/* Submit Button */}
-          <div className="flex gap-4 pt-4">
-            <button
-              type="button"
-              onClick={() => setViewState(ViewState.LANDING)}
-              className="flex-1 px-6 py-3 bg-gray-100 text-[#15383c] rounded-full font-medium hover:bg-gray-200 transition-colors"
-            >
-              {t('report.cancel')}
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="flex-1 px-6 py-3 bg-[#e35e25] text-white rounded-full font-medium hover:bg-[#d14e1a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {submitting ? t('report.submitting') : t('report.submit')}
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-3.5 sm:py-4 rounded-full transition-colors mt-6 sm:mt-8 border border-white/5 touch-manipulation active:scale-95 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitting ? t('report.submitting') : t('report.submit')}
+          </button>
         </form>
+
+        {/* Footer info - matching Contact page pattern */}
+        <div className="text-center border-t border-white/10 pt-10 sm:pt-12 md:pt-16">
+          <p className="text-gray-300 text-base sm:text-lg font-light px-4">
+            {t('report.subtitle')} <a href="mailto:support@gopopera.ca" className="text-white font-bold hover:text-[#e35e25] transition-colors">support@gopopera.ca</a>
+          </p>
+        </div>
       </div>
     </div>
   );

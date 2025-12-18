@@ -265,15 +265,18 @@ export const StripeSettingsPage: React.FC<StripeSettingsPageProps> = ({ setViewS
   const statusDisplay = getStatusDisplay();
 
   return (
-    <div className="min-h-screen bg-white pt-24 pb-12 font-sans">
-      <div className="max-w-4xl mx-auto px-6">
-        <div className="flex items-center justify-between mb-8 border-b border-gray-100 pb-6">
-          <h1 className="font-heading font-bold text-3xl text-[#15383c]">Stripe Payout Settings</h1>
+    <div className="min-h-screen bg-[#f8fafb] pt-20 sm:pt-24 pb-8 sm:pb-12 font-sans">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between mb-6 sm:mb-8">
+          <div>
+            <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c] mb-2">Stripe Payout Settings</h1>
+            <p className="text-sm text-gray-500">Manage your payment and payout preferences</p>
+          </div>
           <button 
             onClick={() => setViewState(ViewState.PROFILE)} 
-            className="w-10 h-10 bg-[#15383c] rounded-lg flex items-center justify-center text-white hover:opacity-90 transition-opacity"
+            className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-[#15383c] hover:bg-gray-50 transition-colors touch-manipulation active:scale-95 shadow-sm"
           >
-            <X size={20} />
+            <X size={18} className="sm:w-5 sm:h-5" />
           </button>
         </div>
 

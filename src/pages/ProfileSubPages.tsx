@@ -893,81 +893,54 @@ export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => 
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#f0f4f8] via-[#f8fafb] to-[#eef2f6] pt-20 sm:pt-24 pb-8 sm:pb-12 font-sans">
-      {/* Subtle background pattern */}
-      <div className="fixed inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(99,91,255,0.03),transparent_50%),radial-gradient(circle_at_70%_80%,rgba(227,94,37,0.03),transparent_50%)] pointer-events-none" />
-      
-      <div className="relative max-w-2xl mx-auto px-4 sm:px-6">
+    <div className="min-h-screen bg-[#f8fafb] pt-20 sm:pt-24 pb-8 sm:pb-12 font-sans">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6 sm:mb-8">
           <div>
-            <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c] mb-1">Stripe Payout Settings</h1>
+            <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c] mb-2">Stripe Payout Settings</h1>
             <p className="text-sm text-gray-500">Manage your payment and payout preferences</p>
           </div>
           <button 
             onClick={() => setViewState(ViewState.PROFILE)} 
-            className="w-10 h-10 bg-white/80 backdrop-blur-sm border border-white/60 rounded-xl flex items-center justify-center text-gray-600 hover:bg-white hover:text-[#15383c] transition-all shadow-sm"
+            className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-[#15383c] hover:bg-gray-50 transition-colors touch-manipulation active:scale-95 shadow-sm"
           >
-            <X size={18} />
+            <X size={18} className="sm:w-5 sm:h-5" />
           </button>
         </div>
 
         {/* Error Alert */}
         {error && (
-          <div className="mb-6 relative overflow-hidden rounded-2xl">
-            <div className="absolute inset-0 bg-red-50/90 backdrop-blur-sm" />
-            <div className="absolute inset-0 border border-red-200/50 rounded-2xl" />
-            <div className="relative p-4 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-semibold text-red-900 mb-0.5">Error</p>
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-red-900 mb-0.5">Error</p>
+              <p className="text-sm text-red-700">{error}</p>
             </div>
           </div>
         )}
 
-        {/* Main Card - Liquid Glass Effect */}
-        <div className="relative overflow-hidden rounded-3xl">
-          {/* Layered glass background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-white/90 to-white/85" />
-          <div className="absolute inset-0 backdrop-blur-2xl" />
-          <div className="absolute inset-0 bg-gradient-to-br from-[#635bff]/5 via-transparent to-[#e35e25]/5" />
-          <div className="absolute inset-0 border border-white/60 rounded-3xl" />
-          <div className="absolute inset-0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8)]" />
-          
-          <div className="relative p-8 sm:p-12 text-center">
+        {/* Main Card */}
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-md border border-gray-100 p-6 sm:p-8 md:p-12">
+          <div className="text-center">
             {/* Status Icon */}
-            <div className="relative inline-flex mb-6">
+            <div className="mb-6">
               {statusDisplay.status === 'complete' ? (
-                <>
-                  <div className="absolute inset-0 bg-green-500/20 rounded-3xl blur-xl animate-pulse" />
-                  <div className="relative w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-3xl flex items-center justify-center shadow-lg shadow-green-500/30">
-                    <CheckCircle2 size={48} className="text-white" />
-                  </div>
-                </>
+                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                  <CheckCircle2 size={40} className="text-green-600" />
+                </div>
               ) : statusDisplay.status === 'verifying' ? (
-                <>
-                  <div className="absolute inset-0 bg-amber-500/20 rounded-3xl blur-xl animate-pulse" />
-                  <div className="relative w-24 h-24 bg-gradient-to-br from-amber-400 to-amber-600 rounded-3xl flex items-center justify-center shadow-lg shadow-amber-500/30">
-                    <Loader2 size={48} className="text-white animate-spin" />
-                  </div>
-                </>
+                <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                  <Loader2 size={40} className="text-amber-600 animate-spin" />
+                </div>
               ) : statusDisplay.status === 'pending_verification' ? (
-                <>
-                  <div className="absolute inset-0 bg-amber-500/20 rounded-3xl blur-xl" />
-                  <div className="relative w-24 h-24 bg-gradient-to-br from-amber-400 to-orange-500 rounded-3xl flex items-center justify-center shadow-lg shadow-amber-500/30">
-                    <Clock size={48} className="text-white" />
-                  </div>
-                </>
+                <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                  <Clock size={40} className="text-amber-600" />
+                </div>
               ) : (
-                <>
-                  <div className="absolute inset-0 bg-[#635bff]/20 rounded-3xl blur-xl" />
-                  <div className="relative w-24 h-24 bg-gradient-to-br from-[#635bff] to-[#544dc9] rounded-3xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                    {/* Stripe "S" styled icon */}
-                    <span className="text-white font-bold text-5xl" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>S</span>
-                  </div>
-                </>
+                <div className="w-20 h-20 bg-[#635bff]/10 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                  <span className="text-[#635bff] font-bold text-4xl" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>S</span>
+                </div>
               )}
             </div>
 
@@ -982,46 +955,40 @@ export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => 
             {/* Complete Status - Success Confirmation */}
             {statusDisplay.status === 'complete' && (
               <div className="space-y-6 mb-8">
-                {/* Success Badge - Enhanced */}
-                <div className="relative overflow-hidden rounded-2xl max-w-md mx-auto">
-                  <div className="absolute inset-0 bg-gradient-to-br from-green-50 via-emerald-50/80 to-green-50 backdrop-blur-sm" />
-                  <div className="absolute inset-0 border border-green-200/60 rounded-2xl" />
-                  <div className="absolute inset-0 shadow-inner" />
-                  <div className="relative p-5">
-                    <div className="flex items-center gap-3 justify-center mb-3">
-                      <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center shadow-lg shadow-green-500/30">
-                        <CheckCircle2 size={22} className="text-white" />
-                      </div>
-                      <div className="text-left">
-                        <p className="text-base font-bold text-green-800">Account Connected</p>
-                        <p className="text-xs text-green-600">Ready to receive payments</p>
-                      </div>
+                {/* Success Badge */}
+                <div className="bg-green-50 border border-green-200 rounded-2xl p-5 max-w-md mx-auto">
+                  <div className="flex items-center gap-3 justify-center mb-3">
+                    <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center">
+                      <CheckCircle2 size={20} className="text-white" />
                     </div>
-                    <div className="bg-white/60 rounded-lg px-3 py-2 mt-3">
-                      <p className="text-[11px] text-gray-500 font-medium">ACCOUNT ID</p>
-                      <p className="text-xs text-gray-700 font-mono">
-                        {stripeAccountId}
-                      </p>
+                    <div className="text-left">
+                      <p className="text-base font-bold text-green-800">Account Connected</p>
+                      <p className="text-xs text-green-600">Ready to receive payments</p>
                     </div>
+                  </div>
+                  <div className="bg-white rounded-lg px-3 py-2 mt-3">
+                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Account ID</p>
+                    <p className="text-sm text-gray-700 font-mono">
+                      {stripeAccountId}
+                    </p>
                   </div>
                 </div>
 
                 {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                  {/* Stripe Dashboard Link */}
                   <a 
                     href="https://dashboard.stripe.com/express"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#635bff] text-white hover:bg-[#544dc9] transition-all text-sm font-semibold shadow-lg shadow-indigo-500/25 hover:shadow-xl group"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#635bff] text-white hover:bg-[#544dc9] transition-colors text-sm font-bold shadow-lg"
                   >
                     <span>Open Stripe Dashboard</span>
-                    <ExternalLink size={14} className="opacity-70 group-hover:opacity-100 transition-opacity" />
+                    <ExternalLink size={16} />
                   </a>
                 </div>
 
                 {/* Help Text */}
-                <p className="text-xs text-gray-500 max-w-sm mx-auto leading-relaxed">
+                <p className="text-sm text-gray-500 max-w-sm mx-auto leading-relaxed">
                   Manage your payouts, update bank details, view transaction history, and access tax documents directly on Stripe.
                 </p>
               </div>
@@ -1030,28 +997,24 @@ export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => 
             {/* Pending Verification Status */}
             {statusDisplay.status === 'pending_verification' && (
               <div className="space-y-4 mb-8">
-                <div className="relative overflow-hidden rounded-2xl max-w-sm mx-auto">
-                  <div className="absolute inset-0 bg-gradient-to-r from-amber-50/90 to-orange-50/90 backdrop-blur-sm" />
-                  <div className="absolute inset-0 border border-amber-200/50 rounded-2xl" />
-                  <div className="relative p-4">
-                    <div className="flex items-center gap-2 text-amber-700 justify-center mb-2">
-                      <Loader2 size={14} className="animate-spin" />
-                      <p className="text-sm font-semibold">Stripe is reviewing your details</p>
-                    </div>
-                    <p className="text-xs text-amber-600/80">
-                      This usually takes a few minutes but can take up to 24 hours.
-                    </p>
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 max-w-sm mx-auto">
+                  <div className="flex items-center gap-2 text-amber-700 justify-center mb-2">
+                    <Loader2 size={16} className="animate-spin" />
+                    <p className="text-sm font-semibold">Stripe is reviewing your details</p>
                   </div>
+                  <p className="text-xs text-amber-600">
+                    This usually takes a few minutes but can take up to 24 hours.
+                  </p>
                 </div>
 
                 <a 
                   href="https://dashboard.stripe.com/express"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/60 backdrop-blur-sm border border-gray-200/60 text-gray-700 hover:bg-white hover:border-gray-300 transition-all text-sm font-medium group"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors text-sm font-medium"
                 >
                   <span>Check status on Stripe</span>
-                  <ExternalLink size={14} className="opacity-50 group-hover:opacity-100 transition-opacity" />
+                  <ExternalLink size={16} />
                 </a>
               </div>
             )}
@@ -1069,51 +1032,44 @@ export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => 
                 }}
                 disabled={loading}
                 type="button"
-                className="relative px-8 py-4 rounded-2xl font-bold text-white overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 mx-auto"
+                className="px-8 py-4 bg-[#635bff] text-white font-bold rounded-full hover:bg-[#544dc9] transition-colors flex items-center gap-2 mx-auto shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {/* Button background */}
-                <div className="absolute inset-0 bg-gradient-to-r from-[#635bff] via-[#7c75ff] to-[#635bff] bg-[length:200%_100%] group-hover:animate-shimmer" />
-                {/* Glow effect */}
-                <div className="absolute -inset-1 bg-[#635bff]/30 blur-lg rounded-2xl -z-10 group-hover:bg-[#635bff]/40 transition-colors" />
-                
-                <span className="relative flex items-center gap-2">
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      {statusDisplay.action} <ArrowRight size={20} />
-                    </>
-                  )}
-                </span>
+                {loading ? (
+                  <>
+                    <Loader2 size={20} className="animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    {statusDisplay.action} <ArrowRight size={20} />
+                  </>
+                )}
               </button>
             )}
 
             {/* Trust Badge */}
-            <div className="mt-8 pt-6 border-t border-gray-100/50">
+            <div className="mt-8 pt-6 border-t border-gray-100">
               <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
-                <Lock size={12} />
+                <Lock size={14} />
                 <span>Secured by</span>
                 <StripeText className="text-sm" opacity={0.6} />
               </div>
-              <p className="text-[10px] text-gray-400 mt-2">
+              <p className="text-xs text-gray-400 mt-2">
                 Stripe is a certified PCI Level 1 Service Provider
               </p>
             </div>
           </div>
         </div>
 
-        {/* Help Link - Outside main card */}
+        {/* Help Link */}
         <div className="mt-6 text-center">
           <a 
             href="https://support.stripe.com/express"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#635bff] transition-colors"
+            className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-[#635bff] transition-colors"
           >
-            <HelpCircle size={14} />
+            <HelpCircle size={16} />
             <span>Need help with Stripe?</span>
           </a>
         </div>
@@ -1560,15 +1516,18 @@ export const FollowingPage: React.FC<SubPageProps & { onHostClick?: (hostName: s
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafb] pt-24 pb-20 font-sans">
-      <div className="max-w-4xl mx-auto px-6">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="font-heading font-bold text-3xl text-[#15383c]">Following</h1>
+    <div className="min-h-screen bg-[#f8fafb] pt-20 sm:pt-24 pb-8 sm:pb-12 font-sans">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between mb-6 sm:mb-8">
+          <div>
+            <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c] mb-2">Following</h1>
+            <p className="text-sm text-gray-500">People you follow</p>
+          </div>
           <button 
             onClick={() => setViewState(ViewState.PROFILE)}
-            className="w-10 h-10 bg-[#15383c] rounded-lg flex items-center justify-center text-white hover:opacity-90 transition-opacity shadow-sm"
+            className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-[#15383c] hover:bg-gray-50 transition-colors touch-manipulation active:scale-95 shadow-sm"
           >
-            <X size={20} />
+            <X size={18} className="sm:w-5 sm:h-5" />
           </button>
         </div>
 
@@ -1697,15 +1656,18 @@ export const FollowersPage: React.FC<SubPageProps & { onHostClick?: (hostName: s
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafb] pt-24 pb-20 font-sans">
-      <div className="max-w-4xl mx-auto px-6">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="font-heading font-bold text-3xl text-[#15383c]">Followers</h1>
+    <div className="min-h-screen bg-[#f8fafb] pt-20 sm:pt-24 pb-8 sm:pb-12 font-sans">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between mb-6 sm:mb-8">
+          <div>
+            <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c] mb-2">Followers</h1>
+            <p className="text-sm text-gray-500">People who follow you</p>
+          </div>
           <button 
             onClick={() => setViewState(ViewState.PROFILE)}
-            className="w-10 h-10 bg-[#15383c] rounded-lg flex items-center justify-center text-white hover:opacity-90 transition-opacity shadow-sm"
+            className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-[#15383c] hover:bg-gray-50 transition-colors touch-manipulation active:scale-95 shadow-sm"
           >
-            <X size={20} />
+            <X size={18} className="sm:w-5 sm:h-5" />
           </button>
         </div>
 

@@ -95,9 +95,9 @@ export const Pillars: React.FC = () => {
   };
 
   return (
-    <section className="py-12 sm:py-16 md:py-20 lg:py-24 xl:py-28 bg-white relative overflow-hidden w-full lg:w-screen lg:max-w-none lg:mx-0">
+    <section className="py-12 sm:py-16 md:py-20 lg:py-24 xl:py-28 bg-white relative w-full">
+      {/* Section Header - Constrained */}
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 relative z-10">
-        {/* Section Header */}
         <div className="text-center mb-10 sm:mb-12 md:mb-16 lg:mb-20">
           <span className="inline-block py-2 sm:py-2.5 md:py-3 px-4 sm:px-5 md:px-6 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] text-[10px] sm:text-[11px] md:text-xs font-bold tracking-[0.2em] uppercase mb-4 sm:mb-5 md:mb-6">
             {t('pillars.badge')}
@@ -110,20 +110,29 @@ export const Pillars: React.FC = () => {
             {t('pillars.description')}
           </p>
         </div>
+      </div>
 
-        {/* Cards Container - Horizontal scroll carousel on all screen sizes */}
-        <div className="relative">
-          <div 
-            ref={scrollContainerRef}
-            className="flex overflow-x-auto snap-x snap-mandatory gap-6 px-4 md:px-8 hide-scrollbar w-full scroll-smooth overscroll-x-contain"
-            style={{ touchAction: 'pan-x pan-y' }}
-          >
-            {pillars.map((pillar) => (
-              <div 
-                key={pillar.id}
-                className="group relative h-auto min-h-[425px] sm:min-h-[560px] md:min-h-[550px] lg:min-h-[600px] xl:min-h-[650px] w-[85%] sm:w-[60%] md:w-[35%] flex-shrink-0 snap-start md:snap-center rounded-3xl sm:rounded-[2rem] md:rounded-[2.5rem] lg:rounded-[3rem] overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-3"
-                style={{ touchAction: 'pan-x pan-y' }}
-              >
+      {/* Cards Container - Full width for edge-to-edge scroll */}
+      <div className="relative w-full">
+        {/* Soft fade overlays on edges */}
+        <div className="hidden lg:block absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-white to-transparent z-20 pointer-events-none" />
+        <div className="hidden lg:block absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-white to-transparent z-20 pointer-events-none" />
+        
+        <div 
+          ref={scrollContainerRef}
+          className="flex overflow-x-auto snap-x snap-mandatory gap-4 sm:gap-5 md:gap-6 lg:gap-8 hide-scrollbar w-full scroll-smooth overscroll-x-contain px-6 sm:px-8 md:px-12 lg:px-16 xl:px-24 2xl:px-32"
+          style={{ 
+            touchAction: 'pan-x pan-y',
+            scrollPaddingLeft: '1.5rem',
+            scrollPaddingRight: '1.5rem'
+          }}
+        >
+          {pillars.map((pillar) => (
+            <div 
+              key={pillar.id}
+              className="group relative h-auto min-h-[425px] sm:min-h-[560px] md:min-h-[550px] lg:min-h-[600px] xl:min-h-[650px] flex-none w-[280px] sm:w-[300px] md:w-[320px] lg:w-[340px] xl:w-[360px] snap-start rounded-3xl sm:rounded-[2rem] md:rounded-[2.5rem] lg:rounded-[3rem] overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-3"
+              style={{ touchAction: 'pan-x pan-y' }}
+            >
               {/* Background Image - No filters, crisp and clean */}
               <img 
                 src={pillar.image} 
@@ -156,29 +165,28 @@ export const Pillars: React.FC = () => {
               </div>
             </div>
           ))}
-          </div>
+        </div>
 
-          {/* Scroll Indicators - Desktop only */}
-          <div className="hidden md:flex absolute bottom-6 right-8 gap-2 z-30">
-            {showLeftArrow && (
-              <button
-                onClick={scrollLeft}
-                className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm border border-[#15383c]/20 text-[#15383c] flex items-center justify-center hover:bg-white hover:border-[#15383c]/40 transition-all shadow-lg"
-                aria-label="Scroll left"
-              >
-                <ChevronLeft size={20} />
-              </button>
-            )}
-            {showRightArrow && (
-              <button
-                onClick={scrollRight}
-                className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm border border-[#15383c]/20 text-[#15383c] flex items-center justify-center hover:bg-white hover:border-[#15383c]/40 transition-all shadow-lg"
-                aria-label="Scroll right"
-              >
-                <ChevronRight size={20} />
-              </button>
-            )}
-          </div>
+        {/* Scroll Indicators - Desktop only */}
+        <div className="hidden md:flex absolute bottom-6 right-12 lg:right-16 xl:right-24 2xl:right-32 gap-2 z-30">
+          {showLeftArrow && (
+            <button
+              onClick={scrollLeft}
+              className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm border border-[#15383c]/20 text-[#15383c] flex items-center justify-center hover:bg-white hover:border-[#15383c]/40 transition-all shadow-lg"
+              aria-label="Scroll left"
+            >
+              <ChevronLeft size={20} />
+            </button>
+          )}
+          {showRightArrow && (
+            <button
+              onClick={scrollRight}
+              className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm border border-[#15383c]/20 text-[#15383c] flex items-center justify-center hover:bg-white hover:border-[#15383c]/40 transition-all shadow-lg"
+              aria-label="Scroll right"
+            >
+              <ChevronRight size={20} />
+            </button>
+          )}
         </div>
       </div>
     </section>
