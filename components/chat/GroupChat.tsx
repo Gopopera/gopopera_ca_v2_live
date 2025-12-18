@@ -672,6 +672,290 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   // Messages are synced in real-time via Firestore subscriptions
   // Only host and attendees can send messages (enforced by canSendMessages check)
   
+  // ============================================================================
+  // AI WARMUP - Posts one icebreaker at event start (opt-in by host)
+  // ============================================================================
+  const warmupPostedRef = useRef<boolean>(false);
+  
+  useEffect(() => {
+    // Only run warmup logic if:
+    // 1. aiWarmupEnabled is true
+    // 2. We're within the start window (30 min before/after event start)
+    // 3. Warmup hasn't been posted yet (check both local ref and event doc)
+    // 4. Chat is accessible
+    if (!event.aiWarmupEnabled || !canAccessChat || isDemo || warmupPostedRef.current) {
+      return;
+    }
+    
+    // Check if warmup already posted (from event doc)
+    if (event.aiWarmupPostedAt) {
+      warmupPostedRef.current = true;
+      return;
+    }
+    
+    // Calculate if we're in the start window
+    let startDateTime: number | undefined;
+    if (event.date) {
+      try {
+        const parsed = new Date(event.date);
+        if (!isNaN(parsed.getTime())) {
+          startDateTime = parsed.getTime();
+        }
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+    
+    if (!startDateTime) return;
+    
+    const now = Date.now();
+    const diffMinutes = (startDateTime - now) / (1000 * 60);
+    const isInStartWindow = diffMinutes >= -30 && diffMinutes <= 30;
+    
+    if (!isInStartWindow) {
+      console.log('[AI_WARMUP] Not in start window:', {
+        eventId: event.id,
+        diffMinutes: Math.round(diffMinutes),
+      });
+      return;
+    }
+    
+    // Post warmup message
+    const postWarmup = async () => {
+      try {
+        console.log('[AI_WARMUP] Posting warmup message for event:', event.id);
+        warmupPostedRef.current = true; // Prevent duplicate attempts
+        
+        // Fetch a fresh icebreaker
+        const response = await fetch('/api/chat-insights', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            messages: [],
+            event: {
+              title: event.title,
+              category: event.category,
+              startDateTime,
+            },
+            eventId: event.id,
+            nowISO: new Date().toISOString(),
+            forcePrompt: true,
+          }),
+        });
+        
+        if (!response.ok) {
+          console.error('[AI_WARMUP] Failed to fetch prompt');
+          return;
+        }
+        
+        const data = await response.json();
+        const promptText = data.suggestedPrompt?.text;
+        
+        if (!promptText) {
+          console.error('[AI_WARMUP] No suggested prompt in response');
+          return;
+        }
+        
+        // Build warmup message
+        const warmupIntros = [
+          "👋 Welcome everyone! Here's a quick icebreaker to get us started:",
+          "Hey all! Great to have you here. Let's warm up with this:",
+          "Welcome to the group! Here's a question to kick things off:",
+        ];
+        const intro = warmupIntros[Math.floor(Math.random() * warmupIntros.length)];
+        const warmupMessage = `${intro} ${promptText}`;
+        
+        const db = getDbSafe();
+        if (!db) {
+          console.error('[AI_WARMUP] Firestore not available');
+          return;
+        }
+        
+        // Post the message
+        const AI_SENDER_ID = 'popera-guide-ai';
+        const messagesRef = collection(db, 'events', event.id, 'messages');
+        await addDoc(messagesRef, {
+          text: warmupMessage,
+          senderId: AI_SENDER_ID,
+          userId: AI_SENDER_ID,
+          userName: 'Popera Guide (AI)',
+          isHost: false,
+          type: 'message',
+          createdAt: Date.now(),
+          metadata: {
+            ai: true,
+            reason: 'warmup',
+            generatedAt: new Date().toISOString(),
+          },
+        });
+        
+        // Update event doc to mark warmup as posted (for idempotency)
+        const eventRef = doc(db, 'events', event.id);
+        await updateDoc(eventRef, {
+          aiWarmupPostedAt: Date.now(),
+        });
+        
+        console.log('[AI_WARMUP] ✅ Warmup message posted:', {
+          eventId: event.id,
+          message: warmupMessage.slice(0, 50) + '...',
+        });
+        
+      } catch (error) {
+        console.error('[AI_WARMUP] Error posting warmup:', error);
+        warmupPostedRef.current = false; // Allow retry on error
+      }
+    };
+    
+    // Small delay to ensure chat is fully loaded
+    const warmupTimeout = setTimeout(postWarmup, 3000);
+    
+    return () => {
+      clearTimeout(warmupTimeout);
+    };
+  }, [event.id, event.aiWarmupEnabled, event.aiWarmupPostedAt, event.date, event.title, event.category, canAccessChat, isDemo]);
+  
+  // ============================================================================
+  // AI SUMMON DETECTION - Responds to "another question" and similar phrases
+  // ============================================================================
+  const SUMMON_PATTERNS = [
+    /another\s*question/i,
+    /another\s*icebreaker/i,
+    /ice\s*breaker\??/i,
+    /give\s*(us|me)\s*(one\s*)?more/i,
+    /@popera/i,
+    /popera\s*guide/i,
+    /hey\s*popera/i,
+    /ask\s*(the\s*)?ai/i,
+    /one\s*more\s*question/i,
+  ];
+  
+  const isSummonMessage = (text: string): boolean => {
+    return SUMMON_PATTERNS.some(pattern => pattern.test(text));
+  };
+  
+  const handleAiSummon = async () => {
+    // Check cooldown
+    const now = Date.now();
+    const timeSinceLastPost = now - lastAiPostRef.current;
+    
+    if (timeSinceLastPost < AI_POST_COOLDOWN_MS) {
+      console.log('[AI_SUMMON] Cooldown active, skipping AI response:', {
+        timeSinceLastPost: Math.round(timeSinceLastPost / 1000) + 's',
+        cooldown: Math.round(AI_POST_COOLDOWN_MS / 1000) + 's',
+      });
+      return;
+    }
+    
+    // Check daily limit
+    if (aiPostCountRef.current >= MAX_AI_POSTS_PER_DAY) {
+      console.log('[AI_SUMMON] Daily limit reached, skipping AI response:', {
+        count: aiPostCountRef.current,
+        max: MAX_AI_POSTS_PER_DAY,
+      });
+      return;
+    }
+    
+    try {
+      console.log('[AI_SUMMON] Generating AI response for summon');
+      
+      // Fetch a fresh suggested prompt from the API
+      let startDateTime: number | undefined;
+      if (event.date) {
+        try {
+          const parsed = new Date(event.date);
+          if (!isNaN(parsed.getTime())) {
+            startDateTime = parsed.getTime();
+          }
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+      
+      const response = await fetch('/api/chat-insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          messages: messages.slice(-10).map(m => ({
+            message: m.message,
+            userName: m.userName,
+            isHost: m.isHost,
+            timestamp: m.timestamp,
+          })),
+          event: {
+            title: event.title,
+            category: event.category,
+            startDateTime,
+          },
+          eventId: event.id,
+          nowISO: new Date().toISOString(),
+          forcePrompt: true, // Force fresh prompt
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error('[AI_SUMMON] Failed to fetch prompt');
+        return;
+      }
+      
+      const data = await response.json();
+      const promptText = data.suggestedPrompt?.text;
+      
+      if (!promptText) {
+        console.error('[AI_SUMMON] No suggested prompt in response');
+        return;
+      }
+      
+      // Build the AI message with a friendly intro
+      const intros = [
+        "Here's a question for you all:",
+        "Try this one:",
+        "How about:",
+        "Let's explore this:",
+      ];
+      const intro = intros[Math.floor(Math.random() * intros.length)];
+      const aiMessageText = `${intro} ${promptText}`;
+      
+      // Post AI message to Firestore
+      // Using a special senderId to identify AI messages
+      const AI_SENDER_ID = 'popera-guide-ai';
+      
+      // Create message directly in Firestore with AI metadata
+      const db = getDbSafe();
+      if (!db) {
+        console.error('[AI_SUMMON] Firestore not available');
+        return;
+      }
+      
+      const messagesRef = collection(db, 'events', event.id, 'messages');
+      await addDoc(messagesRef, {
+        text: aiMessageText,
+        senderId: AI_SENDER_ID,
+        userId: AI_SENDER_ID,
+        userName: 'Popera Guide (AI)',
+        isHost: false,
+        type: 'message',
+        createdAt: Date.now(),
+        metadata: {
+          ai: true,
+          reason: 'summon',
+          generatedAt: new Date().toISOString(),
+        },
+      });
+      
+      // Update tracking
+      lastAiPostRef.current = now;
+      aiPostCountRef.current += 1;
+      
+      console.log('[AI_SUMMON] ✅ AI message posted:', {
+        message: aiMessageText.slice(0, 50) + '...',
+        postCount: aiPostCountRef.current,
+      });
+      
+    } catch (error) {
+      console.error('[AI_SUMMON] Error generating AI response:', error);
+    }
+  };
+  
   const handleSendMessage = async () => {
     if (!message.trim() || !canSendMessages || !currentUser || chatLocked) return;
     
@@ -689,6 +973,16 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
     });
     // REFACTORED: Only pass senderId - sender info fetched from /users/{senderId}
     await addMessage(event.id, currentUser.id, messageText, 'message', messageIsHost);
+    
+    // Check for AI summon (only for non-host attendees)
+    if (!messageIsHost && isSummonMessage(messageText)) {
+      console.log('[GROUP_CHAT] Summon detected, triggering AI response');
+      // Use setTimeout to not block message send, and add small delay for UX
+      setTimeout(() => {
+        handleAiSummon();
+      }, 1500);
+    }
+    
     setMessage('');
 
     // Notify attendees and host of new message (non-blocking, fire-and-forget)
@@ -1047,43 +1341,95 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
     summary: string;
     highlights: string[];
     topAnnouncement: string | null;
+    suggestedPrompt: { text: string; type: string } | null;
+    mode: 'pre' | 'start' | 'during' | 'after' | null;
     loading: boolean;
   }>({
     summary: 'Analyzing the conversation...',
     highlights: [],
     topAnnouncement: null,
+    suggestedPrompt: null,
+    mode: null,
     loading: true,
   });
   
-  // Track last fetch to debounce API calls
+  // Track last fetch to debounce API calls - UPGRADED: smart caching
   const lastAiFetchRef = useRef<number>(0);
+  const lastMessageCountRef = useRef<number>(0);
+  const lastAnnouncementIdRef = useRef<string | null>(null);
   const aiFetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Fetch AI insights when messages change (debounced)
+  // AI summon cooldown tracking
+  const lastAiPostRef = useRef<number>(0);
+  const aiPostCountRef = useRef<number>(0);
+  const AI_POST_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes between AI posts
+  const MAX_AI_POSTS_PER_DAY = 3; // Max summon replies per event per day
+  
+  // ============================================================================
+  // AI INSIGHTS FETCH - SMART TRIGGERS (cost efficient)
+  // Only fetch when:
+  // 1. Initial load (user opens chat)
+  // 2. Host posts a new announcement
+  // 3. Last fetch > 5 min AND message count changed meaningfully (>= 3 new messages)
+  // ============================================================================
   useEffect(() => {
     // Don't fetch if host (insights only for attendees) or demo
     if (isHost || isDemo || !canAccessChat) return;
     
-    // Debounce: wait 3 seconds after last message before fetching
-    if (aiFetchTimeoutRef.current) {
-      clearTimeout(aiFetchTimeoutRef.current);
-    }
-    
-    // Get top announcement for display
+    // Get announcements for comparison
     const announcements = messages.filter(m => m.type === 'announcement');
+    const latestAnnouncementId = announcements.length > 0 
+      ? announcements[announcements.length - 1].id 
+      : null;
     const topAnnouncement = announcements.length > 0
       ? announcements[announcements.length - 1].message.replace(/^(Announcement:\s*)/i, '').slice(0, 120)
       : null;
     
-    // If no messages, show default
+    // If no messages, show default with no API call
     if (messages.length === 0) {
       setAiInsights({
         summary: 'The conversation is just getting started. Be the first to share your thoughts!',
         highlights: [],
         topAnnouncement,
+        suggestedPrompt: null,
+        mode: null,
         loading: false,
       });
+      lastMessageCountRef.current = 0;
       return;
+    }
+    
+    // ========================================================================
+    // SMART FETCH CONDITIONS
+    // ========================================================================
+    const now = Date.now();
+    const timeSinceLastFetch = now - lastAiFetchRef.current;
+    const messageCountDelta = messages.length - lastMessageCountRef.current;
+    const isInitialLoad = lastAiFetchRef.current === 0;
+    const isNewAnnouncement = latestAnnouncementId !== lastAnnouncementIdRef.current && latestAnnouncementId !== null;
+    const isStaleAndChanged = timeSinceLastFetch > 5 * 60 * 1000 && messageCountDelta >= 3;
+    
+    // Only fetch if one of the conditions is met
+    const shouldFetch = isInitialLoad || isNewAnnouncement || isStaleAndChanged;
+    
+    if (!shouldFetch) {
+      // Just update the top announcement display without fetching
+      if (topAnnouncement !== aiInsights.topAnnouncement) {
+        setAiInsights(prev => ({ ...prev, topAnnouncement }));
+      }
+      return;
+    }
+    
+    console.log('[AI_INSIGHTS] Fetching insights:', {
+      reason: isInitialLoad ? 'initial_load' : isNewAnnouncement ? 'new_announcement' : 'stale_refresh',
+      messageCount: messages.length,
+      messageCountDelta,
+      timeSinceLastFetch: Math.round(timeSinceLastFetch / 1000) + 's',
+    });
+    
+    // Debounce to avoid rapid successive calls
+    if (aiFetchTimeoutRef.current) {
+      clearTimeout(aiFetchTimeoutRef.current);
     }
     
     // Set loading state
@@ -1091,25 +1437,47 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
     
     aiFetchTimeoutRef.current = setTimeout(async () => {
       try {
-        const recentMessages = messages.slice(-30).map(m => ({
+        // Send only last 15 messages (reduced from 30)
+        const recentMessages = messages.slice(-15).map(m => ({
           message: m.message,
           userName: m.userName,
           isHost: m.isHost,
           timestamp: m.timestamp,
         }));
         
+        // Parse event start time for timing mode calculation
+        let startDateTime: number | undefined;
+        if (event.date) {
+          try {
+            const parsed = new Date(event.date);
+            if (!isNaN(parsed.getTime())) {
+              startDateTime = parsed.getTime();
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+        
         const eventContext = {
           title: event.title,
-          description: event.description,
+          description: event.description?.slice(0, 200), // Truncate for tokens
           category: event.category,
           date: event.date,
           location: event.location,
+          startDateTime,
         };
         
         const response = await fetch('/api/chat-insights', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: recentMessages, event: eventContext }),
+          body: JSON.stringify({ 
+            messages: recentMessages, 
+            event: eventContext,
+            eventId: event.id,
+            nowISO: new Date().toISOString(),
+            requesterRole: 'attendee',
+            topAnnouncementId: latestAnnouncementId,
+          }),
         });
         
         if (response.ok) {
@@ -1118,14 +1486,27 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
             summary: data.insight || 'The conversation is active.',
             highlights: data.highlights || [],
             topAnnouncement,
+            suggestedPrompt: data.suggestedPrompt || null,
+            mode: data.mode || null,
             loading: false,
           });
+          
+          // Update tracking refs
+          lastAiFetchRef.current = Date.now();
+          lastMessageCountRef.current = messages.length;
+          lastAnnouncementIdRef.current = latestAnnouncementId;
+          
+          if (data.cached) {
+            console.log('[AI_INSIGHTS] Received cached response');
+          }
         } else {
           // Fallback to simple message count
           setAiInsights({
             summary: `${messages.length} messages in this conversation.`,
             highlights: [],
             topAnnouncement,
+            suggestedPrompt: null,
+            mode: null,
             loading: false,
           });
         }
@@ -1136,19 +1517,19 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
           summary: `${messages.length} messages in this conversation.`,
           highlights: [],
           topAnnouncement,
+          suggestedPrompt: null,
+          mode: null,
           loading: false,
         });
       }
-      
-      lastAiFetchRef.current = Date.now();
-    }, 2000); // 2 second debounce
+    }, 1000); // 1 second debounce (reduced from 2s)
     
     return () => {
       if (aiFetchTimeoutRef.current) {
         clearTimeout(aiFetchTimeoutRef.current);
       }
     };
-  }, [messages.length, isHost, isDemo, canAccessChat, event.title, event.description, event.category, event.date, event.location]);
+  }, [messages.length, isHost, isDemo, canAccessChat, event.id, event.title, event.description, event.category, event.date, event.location]);
   
   // Calculate real member count from RSVPs (for Popera events) or use static for demo events
   const memberCount = isPoperaOwned 
@@ -1391,6 +1772,19 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                     <div className="bg-[#15383c]/5 rounded-lg p-3 border border-[#15383c]/10">
                       <p className="font-semibold text-xs text-[#15383c] mb-1.5 uppercase tracking-wide">Latest announcement</p>
                       <p className="text-xs text-gray-700 leading-relaxed italic">"{aiInsights.topAnnouncement}"</p>
+                    </div>
+                  )}
+                  {/* Suggested Prompt (optional) - New section */}
+                  {!aiInsights.loading && aiInsights.suggestedPrompt && (
+                    <div className="bg-gradient-to-r from-[#e35e25]/5 to-[#e35e25]/10 rounded-lg p-3 border border-[#e35e25]/20">
+                      <p className="font-semibold text-xs text-[#e35e25] mb-1.5 uppercase tracking-wide flex items-center gap-1.5">
+                        <MessageCircle size={12} />
+                        Suggested prompt (optional)
+                      </p>
+                      <p className="text-xs text-gray-700 leading-relaxed">"{aiInsights.suggestedPrompt.text}"</p>
+                      <p className="text-[10px] text-gray-400 mt-1.5">
+                        💡 Type "another question" anytime to get a new prompt from Popera Guide
+                      </p>
                     </div>
                   )}
                 </div>

@@ -60,6 +60,10 @@ export interface Event {
   hasFee?: boolean; // Whether event charges a fee
   feeAmount?: number; // Fee amount in cents
   currency?: string; // 'cad' or 'usd'
+  
+  // AI Features
+  aiWarmupEnabled?: boolean; // If true, AI posts one icebreaker at event start (default: false)
+  aiWarmupPostedAt?: number; // Timestamp when warmup was posted (for idempotency)
 }
 
 export enum ViewState {
