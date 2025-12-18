@@ -1,11 +1,124 @@
 import React from 'react';
-import { MessageCircle, BarChart2, Megaphone, Send, Sparkles, Users, DollarSign, ArrowLeft, X, UserPlus } from 'lucide-react';
+import { MessageCircle, BarChart2, Megaphone, Send, Sparkles, Users, DollarSign, ArrowLeft, X, Info } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+
+// Mock messages for Cold Plunge coordination
+const mockMessages = [
+  {
+    id: 1,
+    type: 'message',
+    sender: 'Marcus',
+    initial: 'M',
+    isHost: true,
+    text: "Good morning cold plunge crew! 🌊 Water temp is sitting at 4°C today. We're meeting at the lower dock — look for the orange flag. Don't forget your towels!",
+    time: '06:45',
+    avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop&crop=face'
+  },
+  {
+    id: 2,
+    type: 'message',
+    sender: 'Asha',
+    initial: 'A',
+    isHost: false,
+    text: "Perfect! I'm already on my way. Bringing my thermos with hot ginger tea if anyone wants some after 🍵",
+    time: '06:52'
+  },
+  {
+    id: 3,
+    type: 'announcement',
+    text: "Today's Session: Group breathing warm-up at 7:25 AM by the lower dock. First plunge at 7:30 AM. Bring towel & warm layers!",
+    time: '07:00'
+  },
+  {
+    id: 4,
+    type: 'message',
+    sender: 'Liam',
+    initial: 'L',
+    isHost: false,
+    text: "Hey everyone! First time joining — what should I wear? Just swim trunks or do people use wetsuits?",
+    time: '07:05'
+  },
+  {
+    id: 5,
+    type: 'message',
+    sender: 'Marcus',
+    initial: 'M',
+    isHost: true,
+    text: "Welcome Liam! Just swim trunks are fine. We do 2-3 minute plunges max for beginners. I'll guide you through it 💪",
+    time: '07:08',
+    avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop&crop=face'
+  },
+  {
+    id: 6,
+    type: 'message',
+    sender: 'Mara',
+    initial: 'M',
+    isHost: false,
+    text: "Running 5 mins late! Save me a spot on the rocks please 🙏 Traffic on Marine Drive is brutal today",
+    time: '07:12'
+  },
+  {
+    id: 7,
+    type: 'message',
+    sender: 'Asha',
+    initial: 'A',
+    isHost: false,
+    text: "Got your spot Mara! Right next to the big boulder. The sunrise is absolutely stunning right now 🌅",
+    time: '07:14'
+  },
+  {
+    id: 8,
+    type: 'message',
+    sender: 'Jon',
+    initial: 'J',
+    isHost: false,
+    text: "Anyone up for a longer immersion today? Feeling motivated! 😂 I've been working up to 5 mins",
+    time: '07:18'
+  },
+  {
+    id: 9,
+    type: 'message',
+    sender: 'Marcus',
+    initial: 'M',
+    isHost: true,
+    text: "Love the energy Jon! We can do a second round for the brave ones. Remember: breathe steady, no hyperventilating 🧘",
+    time: '07:20',
+    avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop&crop=face'
+  },
+  {
+    id: 10,
+    type: 'message',
+    sender: 'Liam',
+    initial: 'L',
+    isHost: false,
+    text: "Just arrived! Wow the water looks intense. Slightly terrified but excited 😅",
+    time: '07:22'
+  },
+  {
+    id: 11,
+    type: 'message',
+    sender: 'Mara',
+    initial: 'M',
+    isHost: false,
+    text: "Here! Asha your tea smells amazing. Anyone else want some post-plunge? ☕",
+    time: '07:24'
+  },
+  {
+    id: 12,
+    type: 'message',
+    sender: 'Marcus',
+    initial: 'M',
+    isHost: true,
+    text: "Perfect timing everyone! Let's start the breathing exercises. Circle up by the dock! 🙌",
+    time: '07:25',
+    avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop&crop=face'
+  }
+];
 
 export const ChatMockupSection: React.FC = () => {
   const { t } = useLanguage();
   return (
-    <section className="py-10 sm:py-12 md:py-16 lg:py-8 xl:py-10 bg-[#f8fafb] overflow-hidden relative lg:min-h-[calc(100vh-80px)] flex items-center">
+    <section className="py-8 sm:py-10 md:py-12 lg:py-6 xl:py-8 bg-[#f8fafb] overflow-hidden relative lg:min-h-[calc(100vh-80px)] flex items-center">
       {/* Background Decor - Enhanced with gradient flow */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
          <div className="absolute top-[-5%] right-[-5%] w-[600px] h-[600px] bg-gradient-to-br from-[#e35e25]/8 to-[#e35e25]/3 rounded-full blur-[180px]"></div>
@@ -14,7 +127,7 @@ export const ChatMockupSection: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full">
-        <div className="grid lg:grid-cols-2 gap-8 sm:gap-10 md:gap-12 lg:gap-10 items-center">
+        <div className="grid lg:grid-cols-2 gap-6 sm:gap-8 md:gap-10 lg:gap-8 items-center">
           
           {/* Left Content */}
           <div className="text-center lg:text-left order-2 lg:order-1">
@@ -34,7 +147,7 @@ export const ChatMockupSection: React.FC = () => {
              
              <div className="space-y-2 sm:space-y-3 lg:space-y-2 text-left max-w-lg mx-auto lg:mx-0">
                 {/* Feature 1: Real-world crowd activation */}
-                <div className="flex gap-3 p-3 sm:p-4 lg:p-3 bg-[#f2f2f2] rounded-[14px] sm:rounded-[16px] shadow-md hover:shadow-lg transition-all duration-300 group border border-gray-200/50">
+                <div className="flex gap-3 p-3 sm:p-4 lg:p-3 bg-white/60 backdrop-blur-md rounded-[14px] sm:rounded-[16px] shadow-sm hover:shadow-md transition-all duration-300 group border border-white/40">
                    <div className="w-9 h-9 sm:w-10 sm:h-10 lg:w-9 lg:h-9 rounded-full bg-[#15383c] flex items-center justify-center shrink-0 shadow-lg group-hover:scale-110 transition-transform">
                      <MessageCircle size={16} className="sm:w-[18px] sm:h-[18px] lg:w-4 lg:h-4 text-[#e35e25]" strokeWidth={2} />
                    </div>
@@ -45,7 +158,7 @@ export const ChatMockupSection: React.FC = () => {
                 </div>
                 
                 {/* Feature 2: Popera Guide (AI) */}
-                <div className="flex gap-3 p-3 sm:p-4 lg:p-3 bg-[#f2f2f2] rounded-[14px] sm:rounded-[16px] shadow-md hover:shadow-lg transition-all duration-300 group border border-gray-200/50">
+                <div className="flex gap-3 p-3 sm:p-4 lg:p-3 bg-white/60 backdrop-blur-md rounded-[14px] sm:rounded-[16px] shadow-sm hover:shadow-md transition-all duration-300 group border border-white/40">
                    <div className="w-9 h-9 sm:w-10 sm:h-10 lg:w-9 lg:h-9 rounded-full bg-[#15383c] flex items-center justify-center shrink-0 shadow-lg group-hover:scale-110 transition-transform">
                      <Sparkles size={16} className="sm:w-[18px] sm:h-[18px] lg:w-4 lg:h-4 text-[#e35e25]" strokeWidth={2} />
                    </div>
@@ -56,7 +169,7 @@ export const ChatMockupSection: React.FC = () => {
                 </div>
                 
                 {/* Feature 3: Instant SMS & email updates */}
-                <div className="flex gap-3 p-3 sm:p-4 lg:p-3 bg-[#f2f2f2] rounded-[14px] sm:rounded-[16px] shadow-md hover:shadow-lg transition-all duration-300 group border border-gray-200/50">
+                <div className="flex gap-3 p-3 sm:p-4 lg:p-3 bg-white/60 backdrop-blur-md rounded-[14px] sm:rounded-[16px] shadow-sm hover:shadow-md transition-all duration-300 group border border-white/40">
                    <div className="w-9 h-9 sm:w-10 sm:h-10 lg:w-9 lg:h-9 rounded-full bg-[#15383c] flex items-center justify-center shrink-0 shadow-lg group-hover:scale-110 transition-transform">
                      <Megaphone size={16} className="sm:w-[18px] sm:h-[18px] lg:w-4 lg:h-4 text-[#e35e25]" strokeWidth={2} />
                    </div>
@@ -67,7 +180,7 @@ export const ChatMockupSection: React.FC = () => {
                 </div>
                 
                 {/* Feature 4: Build local trust */}
-                <div className="flex gap-3 p-3 sm:p-4 lg:p-3 bg-[#f2f2f2] rounded-[14px] sm:rounded-[16px] shadow-md hover:shadow-lg transition-all duration-300 group border border-gray-200/50">
+                <div className="flex gap-3 p-3 sm:p-4 lg:p-3 bg-white/60 backdrop-blur-md rounded-[14px] sm:rounded-[16px] shadow-sm hover:shadow-md transition-all duration-300 group border border-white/40">
                    <div className="w-9 h-9 sm:w-10 sm:h-10 lg:w-9 lg:h-9 rounded-full bg-[#15383c] flex items-center justify-center shrink-0 shadow-lg group-hover:scale-110 transition-transform">
                      <BarChart2 size={16} className="sm:w-[18px] sm:h-[18px] lg:w-4 lg:h-4 text-[#e35e25]" strokeWidth={2} />
                    </div>
@@ -78,7 +191,7 @@ export const ChatMockupSection: React.FC = () => {
                 </div>
                 
                 {/* Feature 5: Monetize your circles */}
-                <div className="flex gap-3 p-3 sm:p-4 lg:p-3 bg-[#f2f2f2] rounded-[14px] sm:rounded-[16px] shadow-md hover:shadow-lg transition-all duration-300 group border border-gray-200/50">
+                <div className="flex gap-3 p-3 sm:p-4 lg:p-3 bg-white/60 backdrop-blur-md rounded-[14px] sm:rounded-[16px] shadow-sm hover:shadow-md transition-all duration-300 group border border-white/40">
                    <div className="w-9 h-9 sm:w-10 sm:h-10 lg:w-9 lg:h-9 rounded-full bg-[#15383c] flex items-center justify-center shrink-0 shadow-lg group-hover:scale-110 transition-transform">
                      <DollarSign size={16} className="sm:w-[18px] sm:h-[18px] lg:w-4 lg:h-4 text-[#e35e25]" strokeWidth={2} />
                    </div>
@@ -91,8 +204,9 @@ export const ChatMockupSection: React.FC = () => {
           </div>
 
           {/* Right Visual - Phone Mockup matching real mobile Group Conversation layout */}
-          <div className="relative mx-auto lg:mx-0 w-full max-w-[280px] sm:max-w-[320px] lg:max-w-[340px] order-1 lg:order-2 mb-6 lg:mb-0">
-             <div className="bg-white rounded-[24px] sm:rounded-[28px] shadow-[0_30px_60px_-15px_rgba(21,56,60,0.25)] border-[3px] sm:border-[5px] border-gray-100 overflow-hidden relative z-10 transform transition-transform hover:scale-[1.02] duration-300 lg:max-h-[540px]">
+          {/* Increased size for hero visual: mobile 340px, sm 380px, lg 420px */}
+          <div className="relative mx-auto lg:mx-0 w-full max-w-[340px] sm:max-w-[380px] lg:max-w-[420px] order-1 lg:order-2 mb-4 lg:mb-0">
+             <div className="bg-white rounded-[32px] sm:rounded-[36px] lg:rounded-[40px] shadow-[0_40px_80px_-20px_rgba(21,56,60,0.3)] border-[5px] sm:border-[6px] lg:border-[8px] border-gray-100 overflow-hidden relative z-10 transform transition-transform hover:scale-[1.02] duration-300">
                 
                 {/* Mobile Header - Matching real Group Conversation mobile layout */}
                 <div className="bg-gradient-to-br from-[#15383c] via-[#1a4549] to-[#15383c] px-3 py-3 sm:px-4 sm:py-4 text-white relative">
@@ -101,7 +215,7 @@ export const ChatMockupSection: React.FC = () => {
                       <button className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white">
                         <ArrowLeft size={18} strokeWidth={2} />
                       </button>
-                      <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.15em] text-white/70">Group Conversation</span>
+                      <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.15em] text-white/70">{t('chatMockup.groupConversationLabel')}</span>
                       <button className="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white">
                         <X size={18} strokeWidth={2} />
                       </button>
@@ -109,7 +223,7 @@ export const ChatMockupSection: React.FC = () => {
                    
                    {/* Circle info row */}
                    <div className="flex items-center gap-2.5">
-                      <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/30 shrink-0">
+                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full overflow-hidden border-2 border-white/30 shrink-0">
                         <img 
                           src="https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop&crop=face" 
                           alt="Host"
@@ -117,90 +231,101 @@ export const ChatMockupSection: React.FC = () => {
                         />
                       </div>
                       <div className="min-w-0 flex-1">
-                         <h3 className="font-bold text-sm leading-tight truncate mb-0.5">{t('chatMockup.eventName')}</h3>
+                         <h3 className="font-bold text-sm sm:text-base leading-tight truncate mb-0.5">{t('chatMockup.mockEventTitle')}</h3>
                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-white/80">Marcus</span>
-                            <span className="text-[8px] font-bold bg-[#e35e25] px-1.5 py-0.5 rounded uppercase">Host</span>
+                            <span className="text-[10px] sm:text-[11px] text-white/80">Marcus</span>
+                            <span className="text-[8px] sm:text-[9px] font-bold bg-[#e35e25] px-1.5 py-0.5 rounded uppercase">{t('common.host')}</span>
                          </div>
                       </div>
-                      <button className="flex items-center gap-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full px-2.5 py-1 transition-colors shrink-0">
-                        <UserPlus size={12} strokeWidth={2} />
-                        <span className="text-[10px] font-medium">Follow</span>
+                      <button className="flex items-center gap-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full px-2.5 sm:px-3 py-1 sm:py-1.5 transition-colors shrink-0">
+                        <Info size={12} strokeWidth={2} />
+                        <span className="text-[10px] sm:text-[11px] font-medium">{t('chatMockup.eventDetailsBtn')}</span>
                       </button>
                    </div>
                 </div>
 
-                {/* Chat Content - Real mobile Group Conversation style (NO AI Insights) */}
-                <div className="bg-gray-50 p-3 space-y-3 h-[260px] sm:h-[300px] lg:h-[280px] overflow-hidden relative">
+                {/* Chat Content - Scrollable with Cold Plunge messages */}
+                <div className="bg-gray-50 p-3 sm:p-4 space-y-3 h-[380px] sm:h-[440px] lg:h-[480px] overflow-y-auto relative" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,0,0,0.1) transparent' }}>
                    
                    {/* Date separator */}
-                   <div className="flex justify-center"><span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider bg-white px-2.5 py-0.5 rounded-full shadow-sm border border-gray-100">{t('chat.today')}</span></div>
-
-                   {/* Message 1 */}
-                   <div className="flex items-start gap-2">
-                      <div className="w-7 h-7 rounded-full bg-[#15383c] flex items-center justify-center text-white text-[10px] font-bold shrink-0">
-                        A
-                      </div>
-                      <div className="flex flex-col space-y-0.5 min-w-0 max-w-[80%]">
-                         <div className="bg-white border border-gray-100 text-gray-800 px-3 py-2 rounded-2xl rounded-tl-none shadow-sm text-[11px] leading-relaxed w-fit">
-                            {t('chatMockup.heyEveryone')}
-                         </div>
-                         <span className="text-[9px] text-gray-400 ml-1">{t('chatMockup.alex')} • 07:10</span>
-                      </div>
+                   <div className="flex justify-center sticky top-0 z-10">
+                     <span className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-wider bg-white px-2.5 py-0.5 rounded-full shadow-sm border border-gray-100">
+                       {t('chat.today')}
+                     </span>
                    </div>
 
-                   {/* Announcement Card */}
-                   <div className="bg-[#15383c] rounded-xl p-3 text-white shadow-lg relative overflow-hidden">
-                      <div className="flex items-center space-x-2 mb-1.5">
-                         <div className="w-6 h-6 rounded-full bg-[#e35e25] flex items-center justify-center shrink-0">
-                           <Megaphone size={12} className="text-white" strokeWidth={2} />
+                   {/* Render mock messages */}
+                   {mockMessages.map((msg) => {
+                     if (msg.type === 'announcement') {
+                       return (
+                         <div key={msg.id} className="bg-[#15383c] rounded-xl p-3 text-white shadow-lg relative overflow-hidden">
+                            <div className="flex items-center space-x-2 mb-1.5">
+                               <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[#e35e25] flex items-center justify-center shrink-0">
+                                 <Megaphone size={12} className="sm:w-[14px] sm:h-[14px] text-white" strokeWidth={2} />
+                               </div>
+                               <span className="font-bold text-[10px] sm:text-[11px] uppercase tracking-wide">Announcement</span>
+                            </div>
+                            <p className="text-gray-200 text-[10px] sm:text-[11px] leading-relaxed">{msg.text}</p>
+                            <span className="text-[9px] sm:text-[10px] text-gray-400 mt-1 block">Host • {msg.time}</span>
                          </div>
-                         <span className="font-bold text-[10px] uppercase tracking-wide">Announcement</span>
-                      </div>
-                      <p className="text-gray-200 text-[10px] leading-relaxed">{t('chatMockup.announcementText')}</p>
-                      <span className="text-[9px] text-gray-400 mt-1 block">Host • 07:15</span>
-                   </div>
+                       );
+                     }
 
-                   {/* Message 2 - Host message */}
-                   <div className="flex items-start gap-2">
-                      <div className="w-7 h-7 rounded-full overflow-hidden ring-2 ring-[#e35e25] shrink-0">
-                        <img 
-                          src="https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop&crop=face" 
-                          alt="Host"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="flex flex-col space-y-0.5 min-w-0 max-w-[80%]">
-                         <div className="bg-[#e35e25]/10 border border-[#e35e25]/30 text-gray-800 px-3 py-2 rounded-2xl rounded-tl-none shadow-sm text-[11px] leading-relaxed w-fit">
-                            {t('chatMockup.hostReply')}
-                         </div>
-                         <span className="text-[9px] text-gray-400 ml-1"><span className="font-bold text-[#e35e25]">Host</span> • Marcus • 07:18</span>
-                      </div>
-                   </div>
+                     // Regular message
+                     return (
+                       <div key={msg.id} className="flex items-start gap-2">
+                          {msg.isHost && msg.avatar ? (
+                            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden ring-2 ring-[#e35e25] shrink-0">
+                              <img 
+                                src={msg.avatar}
+                                alt="Host"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#15383c] flex items-center justify-center text-white text-[10px] sm:text-[11px] font-bold shrink-0">
+                              {msg.initial}
+                            </div>
+                          )}
+                          <div className="flex flex-col space-y-0.5 min-w-0 max-w-[80%]">
+                             <div className={`${msg.isHost 
+                               ? 'bg-[#e35e25]/10 border border-[#e35e25]/30' 
+                               : 'bg-white border border-gray-100'
+                             } text-gray-800 px-3 py-2 rounded-2xl rounded-tl-none shadow-sm text-[11px] sm:text-[12px] leading-relaxed w-fit`}>
+                                {msg.text}
+                             </div>
+                             <span className="text-[9px] sm:text-[10px] text-gray-400 ml-1">
+                               {msg.isHost && <span className="font-bold text-[#e35e25]">Host • </span>}
+                               {msg.sender} • {msg.time}
+                             </span>
+                          </div>
+                       </div>
+                     );
+                   })}
 
                    {/* Typing Indicator */}
-                   <div className="flex items-center gap-1.5 pl-9">
+                   <div className="flex items-center gap-1.5 pl-9 sm:pl-10">
                       <div className="flex gap-0.5">
-                         <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                         <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                         <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                         <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                         <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                         <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                       </div>
-                      <span className="text-[9px] text-gray-400">{t('chatMockup.mara')} {t('chatMockup.typingIndicator')}</span>
+                      <span className="text-[9px] sm:text-[10px] text-gray-400">Asha {t('chatMockup.typingIndicator')}</span>
                    </div>
 
                 </div>
 
                 {/* Input Bar - Matching real mobile input style */}
-                <div className="bg-white px-3 py-2.5 border-t border-gray-100">
+                <div className="bg-white px-3 py-2.5 sm:px-4 sm:py-3 border-t border-gray-100">
                    <div className="relative flex items-center">
                       <input 
                         type="text"
                         placeholder={t('chat.messageGroup')}
                         readOnly
-                        className="w-full bg-gray-50 border border-gray-200 rounded-full py-2 pl-3.5 pr-10 text-[11px] text-gray-500 focus:outline-none cursor-default"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-full py-2 sm:py-2.5 pl-3.5 sm:pl-4 pr-10 sm:pr-12 text-[11px] sm:text-[12px] text-gray-500 focus:outline-none cursor-default"
                       />
-                      <div className="absolute right-1 top-1/2 -translate-y-1/2 w-7 h-7 bg-[#15383c] rounded-full flex items-center justify-center text-white shadow-md">
-                        <Send size={12} strokeWidth={2} />
+                      <div className="absolute right-1 sm:right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 sm:w-8 sm:h-8 bg-[#15383c] rounded-full flex items-center justify-center text-white shadow-md">
+                        <Send size={12} className="sm:w-[14px] sm:h-[14px]" strokeWidth={2} />
                       </div>
                    </div>
                 </div>
