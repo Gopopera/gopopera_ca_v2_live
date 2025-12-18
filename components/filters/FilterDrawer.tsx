@@ -186,7 +186,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
             <Filter size={20} className="text-[#15383c]" />
-            <h2 className="text-xl font-heading font-bold text-[#15383c]">Filters</h2>
+            <h2 className="text-xl font-heading font-bold text-[#15383c]">{language === 'fr' ? 'Filtres' : 'Filters'}</h2>
             {activeFilterCount > 0 && (
               <span className="px-2.5 py-0.5 rounded-full bg-[#e35e25] text-white text-xs font-bold">
                 {activeFilterCount}
@@ -196,7 +196,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
           <button
             onClick={onClose}
             className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
-            aria-label="Close filters"
+            aria-label={language === 'fr' ? 'Fermer les filtres' : 'Close filters'}
           >
             <X size={20} className="text-gray-600" />
           </button>
@@ -210,7 +210,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
               onClick={() => toggleSection('category')}
               className="w-full flex items-center justify-between mb-4"
             >
-              <h3 className="text-lg font-heading font-bold text-[#15383c]">Category</h3>
+              <h3 className="text-lg font-heading font-bold text-[#15383c]">{language === 'fr' ? 'Catégorie' : 'Category'}</h3>
               {expandedSections.category ? (
                 <ChevronUp size={20} className="text-gray-400" />
               ) : (
@@ -255,7 +255,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
               onClick={() => toggleSection('location')}
               className="w-full flex items-center justify-between mb-4"
             >
-              <h3 className="text-lg font-heading font-bold text-[#15383c]">Location</h3>
+              <h3 className="text-lg font-heading font-bold text-[#15383c]">{language === 'fr' ? 'Lieu' : 'Location'}</h3>
               {expandedSections.location ? (
                 <ChevronUp size={20} className="text-gray-400" />
               ) : (
@@ -267,7 +267,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
               <div className="space-y-4">
                 {/* Country Selector */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{language === 'fr' ? 'Pays' : 'Country'}</label>
                   <div className="space-y-2">
                     {countries.map(country => (
                       <button
@@ -288,7 +288,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
                 {/* City Selector */}
                 {filters.country && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{language === 'fr' ? 'Ville' : 'City'}</label>
                     <div className="space-y-2 max-h-60 overflow-y-auto">
                       {cities.map(city => (
                         <button
@@ -316,7 +316,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
               onClick={() => toggleSection('groupSize')}
               className="w-full flex items-center justify-between mb-4"
             >
-              <h3 className="text-lg font-heading font-bold text-[#15383c]">Group Size</h3>
+              <h3 className="text-lg font-heading font-bold text-[#15383c]">{language === 'fr' ? 'Taille du groupe' : 'Group Size'}</h3>
               {expandedSections.groupSize ? (
                 <ChevronUp size={20} className="text-gray-400" />
               ) : (
@@ -327,9 +327,9 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
             {expandedSections.groupSize && (
               <div className="space-y-2">
                 {[
-                  { value: 'tiny', label: 'Tiny Circles (2–5)' },
-                  { value: 'small', label: 'Small Circles (5–10)' },
-                  { value: 'larger', label: 'Larger Circles (10+)' },
+                  { value: 'tiny', label: language === 'fr' ? 'Petits cercles (2–5)' : 'Tiny Circles (2–5)' },
+                  { value: 'small', label: language === 'fr' ? 'Cercles moyens (5–10)' : 'Small Circles (5–10)' },
+                  { value: 'larger', label: language === 'fr' ? 'Grands cercles (10+)' : 'Larger Circles (10+)' },
                 ].map(size => (
                   <button
                     key={size.value}
@@ -353,7 +353,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
               onClick={() => toggleSection('sessionFrequency')}
               className="w-full flex items-center justify-between mb-4"
             >
-              <h3 className="text-lg font-heading font-bold text-[#15383c]">Session Frequency</h3>
+              <h3 className="text-lg font-heading font-bold text-[#15383c]">{language === 'fr' ? 'Fréquence des sessions' : 'Session Frequency'}</h3>
               {expandedSections.sessionFrequency ? (
                 <ChevronUp size={20} className="text-gray-400" />
               ) : (
@@ -373,7 +373,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
                         : 'bg-white text-gray-700 border-gray-300 hover:border-[#e35e25] hover:text-[#e35e25]'
                     }`}
                   >
-                    <span>{frequency === 'One-Time' ? 'One-Time Session' : frequency}</span>
+                    <span>{frequency === 'One-Time' ? (language === 'fr' ? 'Session unique' : 'One-Time Session') : (language === 'fr' ? (frequency === 'Weekly' ? 'Hebdomadaire' : 'Mensuel') : frequency)}</span>
                     {filters.sessionFrequency.includes(frequency) && (
                       <span className="text-xs">✓</span>
                     )}
@@ -389,7 +389,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
               onClick={() => toggleSection('sessionMode')}
               className="w-full flex items-center justify-between mb-4"
             >
-              <h3 className="text-lg font-heading font-bold text-[#15383c]">Session Mode</h3>
+              <h3 className="text-lg font-heading font-bold text-[#15383c]">{language === 'fr' ? 'Mode de session' : 'Session Mode'}</h3>
               {expandedSections.sessionMode ? (
                 <ChevronUp size={20} className="text-gray-400" />
               ) : (
@@ -409,7 +409,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
                         : 'bg-white text-gray-700 border-gray-300 hover:border-[#e35e25] hover:text-[#e35e25]'
                     }`}
                   >
-                    <span>{mode === 'In-Person' ? 'In-Person Session' : 'Remote Session'}</span>
+                    <span>{mode === 'In-Person' ? (language === 'fr' ? 'Session en personne' : 'In-Person Session') : (language === 'fr' ? 'Session à distance' : 'Remote Session')}</span>
                     {filters.sessionMode.includes(mode) && (
                       <span className="text-xs">✓</span>
                     )}
@@ -425,7 +425,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
               onClick={() => toggleSection('vibes')}
               className="w-full flex items-center justify-between mb-4"
             >
-              <h3 className="text-lg font-heading font-bold text-[#15383c]">Vibes</h3>
+              <h3 className="text-lg font-heading font-bold text-[#15383c]">{language === 'fr' ? 'Ambiances' : 'Vibes'}</h3>
               {expandedSections.vibes ? (
                 <ChevronUp size={20} className="text-gray-400" />
               ) : (
@@ -458,7 +458,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
               onClick={() => toggleSection('circleContinuity')}
               className="w-full flex items-center justify-between mb-4"
             >
-              <h3 className="text-lg font-heading font-bold text-[#15383c]">Circle Continuity</h3>
+              <h3 className="text-lg font-heading font-bold text-[#15383c]">{language === 'fr' ? 'Continuité du cercle' : 'Circle Continuity'}</h3>
               {expandedSections.circleContinuity ? (
                 <ChevronUp size={20} className="text-gray-400" />
               ) : (
@@ -469,8 +469,8 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
             {expandedSections.circleContinuity && (
               <div className="space-y-2">
                 {[
-                  { value: 'startingSoon', label: 'Starting Soon ↠ Circles beginning their first sessions' },
-                  { value: 'ongoing', label: 'Ongoing ↠ Circles that already started and still have available spots' },
+                  { value: 'startingSoon', label: language === 'fr' ? 'Débute bientôt ↠ Cercles qui commencent leurs premières sessions' : 'Starting Soon ↠ Circles beginning their first sessions' },
+                  { value: 'ongoing', label: language === 'fr' ? 'En cours ↠ Cercles déjà commencés avec des places disponibles' : 'Ongoing ↠ Circles that already started and still have available spots' },
                 ].map(option => (
                   <button
                     key={option.value}
@@ -495,13 +495,13 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
             onClick={resetFilters}
             className="flex-1 px-4 py-3 rounded-full border-2 border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
           >
-            Reset
+            {language === 'fr' ? 'Réinitialiser' : 'Reset'}
           </button>
           <button
             onClick={onClose}
             className="flex-1 px-4 py-3 rounded-full bg-[#15383c] text-white font-medium hover:bg-[#1f4d52] transition-colors"
           >
-            Apply Filters
+            {language === 'fr' ? 'Appliquer les filtres' : 'Apply Filters'}
           </button>
         </div>
       </div>

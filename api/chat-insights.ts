@@ -41,12 +41,19 @@ interface SuggestedPrompt {
   type: 'icebreaker' | 'logistics' | 'poll' | 'reflection';
 }
 
+interface GroupMessageSuggestion {
+  show: boolean;
+  text: string;
+  type: 'icebreaker' | 'logistics' | 'poll' | 'reflection';
+}
+
 interface InsightsResponse {
   success: boolean;
   insight: string;
   highlights: string[];
   topAnnouncement?: string | null;
-  suggestedPrompt?: SuggestedPrompt;
+  suggestedPrompt?: SuggestedPrompt; // Keep for backwards compatibility
+  groupMessageSuggestion?: GroupMessageSuggestion; // New unified field
   mode?: 'pre' | 'start' | 'during' | 'after';
   fallback?: boolean;
   cached?: boolean;
@@ -318,6 +325,75 @@ function getSuggestedPrompt(category?: string, mode: TimingMode = 'during'): Sug
 }
 
 // ============================================================================
+// SUGGESTION VISIBILITY GATING (When to show "Group message suggestion")
+// ============================================================================
+
+// Keywords for icebreaker-heavy circles (EN + FR)
+const SOCIAL_KEYWORDS = [
+  'dinner', 'strangers', 'meetup', 'mingle', 'social', 'brunch', 'circle',
+  'souper', 'dîner', 'inconnus', 'rencontre', 'cercle'
+];
+
+interface SuggestionGatingInput {
+  messages: ChatMessage[];
+  event: EventContext;
+  mode: TimingMode;
+  nowISO?: string;
+}
+
+function shouldShowSuggestion(input: SuggestionGatingInput): boolean {
+  const { messages, event, mode, nowISO } = input;
+  const now = nowISO ? new Date(nowISO).getTime() : Date.now();
+  
+  // ========================================================================
+  // Condition A: High activity (async chat energy)
+  // Show if >= 8 messages in last 10 min OR >= 12 messages in last 30 min
+  // ========================================================================
+  const tenMinutesAgo = now - 10 * 60 * 1000;
+  const thirtyMinutesAgo = now - 30 * 60 * 1000;
+  
+  const recentMessages10 = messages.filter(m => {
+    const msgTime = new Date(m.timestamp).getTime();
+    return msgTime >= tenMinutesAgo;
+  }).length;
+  
+  const recentMessages30 = messages.filter(m => {
+    const msgTime = new Date(m.timestamp).getTime();
+    return msgTime >= thirtyMinutesAgo;
+  }).length;
+  
+  const isHighActivity = recentMessages10 >= 8 || recentMessages30 >= 12;
+  
+  // ========================================================================
+  // Condition B: It's "happening now" (in-person moment)
+  // Show if current time is within startTime - 15min to startTime + 90min
+  // ========================================================================
+  let isHappeningNow = false;
+  if (event?.startDateTime) {
+    const startTime = event.startDateTime;
+    const windowStart = startTime - 15 * 60 * 1000; // 15 min before
+    const windowEnd = startTime + 90 * 60 * 1000; // 90 min after
+    isHappeningNow = now >= windowStart && now <= windowEnd;
+  }
+  
+  // ========================================================================
+  // Condition C: Icebreaker-heavy circle types
+  // Show if category is TALK & THINK or COMMUNITY & SUPPORT
+  // OR title/description contains social keywords
+  // ========================================================================
+  const categoryKey = mapCategoryToKey(event?.category);
+  const isSocialCategory = categoryKey === 'TALK & THINK' || categoryKey === 'COMMUNITY & SUPPORT';
+  
+  const titleAndDesc = `${event?.title || ''} ${event?.description || ''}`.toLowerCase();
+  const hasSocialKeywords = SOCIAL_KEYWORDS.some(keyword => titleAndDesc.includes(keyword));
+  
+  const isIcebreakerCircle = isSocialCategory || hasSocialKeywords;
+  
+  // Return true if ANY condition is met
+  return isHighActivity || isHappeningNow || isIcebreakerCircle;
+}
+
+// ============================================================================
 // MAIN HANDLER
 // ============================================================================
 
@@ -378,6 +454,11 @@ export default async function handler(req: any, res: any) {
         insight: 'The conversation is just getting started. Be the first to share your thoughts!',
         highlights: [],
         suggestedPrompt,
+        groupMessageSuggestion: {
+          show: false, // Don't show suggestion when no messages yet
+          text: suggestedPrompt.text,
+          type: suggestedPrompt.type,
+        },
         mode,
       });
     }
@@ -395,10 +476,22 @@ export default async function handler(req: any, res: any) {
     const cachedResponse = getCachedResponse(cacheKey);
     if (cachedResponse && !forcePrompt) {
       console.log('[API] Returning cached response for key:', cacheKey);
-      // Still generate a fresh prompt even for cached responses
+      // Still generate a fresh prompt and recalculate visibility for cached responses
+      const freshPrompt = getSuggestedPrompt(event?.category, mode);
+      const showSuggestion = shouldShowSuggestion({
+        messages,
+        event,
+        mode,
+        nowISO,
+      });
       return res.status(200).json({
         ...cachedResponse,
-        suggestedPrompt: getSuggestedPrompt(event?.category, mode),
+        suggestedPrompt: freshPrompt,
+        groupMessageSuggestion: {
+          show: showSuggestion,
+          text: freshPrompt.text,
+          type: freshPrompt.type,
+        },
       });
     }
 
@@ -407,11 +500,22 @@ export default async function handler(req: any, res: any) {
     // ========================================================================
     if (!openai || !OPENAI_API_KEY) {
       console.error('[API] OpenAI not configured - missing OPENAI_API_KEY');
+      const showSuggestion = shouldShowSuggestion({
+        messages,
+        event,
+        mode,
+        nowISO,
+      });
       return res.status(200).json({ 
         success: true, 
         insight: 'Chat insights are being set up. Check back soon!',
         highlights: [],
         suggestedPrompt,
+        groupMessageSuggestion: {
+          show: showSuggestion,
+          text: suggestedPrompt.text,
+          type: suggestedPrompt.type,
+        },
         mode,
         fallback: true
       });
@@ -481,12 +585,27 @@ Respond with JSON only:
       };
     }
 
+    // ========================================================================
+    // DETERMINE IF SUGGESTION SHOULD BE SHOWN
+    // ========================================================================
+    const showSuggestion = shouldShowSuggestion({
+      messages,
+      event,
+      mode,
+      nowISO,
+    });
+
     // Build final response
     const finalResponse: InsightsResponse = {
       success: true,
       insight: parsedResponse.insight || 'The conversation is active.',
       highlights: (parsedResponse.highlights || []).slice(0, 3), // Max 3 highlights
-      suggestedPrompt,
+      suggestedPrompt, // Keep for backwards compatibility
+      groupMessageSuggestion: {
+        show: showSuggestion,
+        text: suggestedPrompt.text,
+        type: suggestedPrompt.type,
+      },
       mode,
     };
 
@@ -503,11 +622,17 @@ Respond with JSON only:
     
     // Return a graceful fallback with suggested prompt
     const mode = 'during' as TimingMode;
+    const prompt = getSuggestedPrompt(undefined, mode);
     return res.status(200).json({
       success: true,
       insight: 'Unable to analyze the conversation right now.',
       highlights: [],
-      suggestedPrompt: getSuggestedPrompt(undefined, mode),
+      suggestedPrompt: prompt,
+      groupMessageSuggestion: {
+        show: false,
+        text: prompt.text,
+        type: prompt.type,
+      },
       mode,
       fallback: true
     });

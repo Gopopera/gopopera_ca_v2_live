@@ -3,6 +3,7 @@ import { X, Star } from 'lucide-react';
 import { formatRating } from '@/utils/formatRating';
 import { listHostReviews, getUserProfile } from '@/firebase/db';
 import { FirestoreReview } from '@/firebase/types';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface HostReviewsModalProps {
   hostId: string;
@@ -32,6 +33,7 @@ export const HostReviewsModal: React.FC<HostReviewsModalProps> = ({
   const [loading, setLoading] = useState(true);
   const [calculatedRating, setCalculatedRating] = useState<number>(0);
   const [calculatedCount, setCalculatedCount] = useState<number>(0);
+  const { language, t } = useLanguage();
 
   useEffect(() => {
     if (!isOpen || !hostId) return;
@@ -112,12 +114,16 @@ export const HostReviewsModal: React.FC<HostReviewsModalProps> = ({
     const diffMs = now.getTime() - date.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return '1 day ago';
-    if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
-    if (diffDays < 365) return `${Math.floor(diffDays / 30)} month${Math.floor(diffDays / 30) > 1 ? 's' : ''} ago`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    if (diffDays === 0) return t('dateTime.today');
+    if (diffDays === 1) return t('dateTime.dayAgo');
+    if (diffDays < 7) return t('dateTime.daysAgo').replace('{count}', String(diffDays));
+    const weeks = Math.floor(diffDays / 7);
+    if (weeks === 1) return t('dateTime.weekAgo');
+    if (diffDays < 30) return t('dateTime.weeksAgo').replace('{count}', String(weeks));
+    const months = Math.floor(diffDays / 30);
+    if (months === 1) return t('dateTime.monthAgo');
+    if (diffDays < 365) return t('dateTime.monthsAgo').replace('{count}', String(months));
+    return date.toLocaleDateString(language === 'fr' ? 'fr-CA' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   const handleReviewerClick = (review: ReviewWithUser) => {
@@ -138,8 +144,8 @@ export const HostReviewsModal: React.FC<HostReviewsModalProps> = ({
       <div className="relative bg-white rounded-2xl sm:rounded-3xl w-full max-w-lg max-h-[90vh] sm:max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
         <div className="p-4 sm:p-6 border-b border-gray-100 flex items-center justify-between bg-white z-10">
           <div>
-            <h3 className="text-lg sm:text-xl font-heading font-bold text-popera-teal">Host Reviews</h3>
-            <p className="text-xs sm:text-sm text-gray-500">Hosted by {hostName}</p>
+            <h3 className="text-lg sm:text-xl font-heading font-bold text-popera-teal">{t('hostReviews.title')}</h3>
+            <p className="text-xs sm:text-sm text-gray-500">{t('hostReviews.hostedBy')} {hostName}</p>
           </div>
           <button onClick={onClose} className="p-2 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-500 transition-colors shrink-0">
             <X size={20} />
@@ -162,16 +168,16 @@ export const HostReviewsModal: React.FC<HostReviewsModalProps> = ({
                 ))}
               </div>
               <span className="text-xs text-gray-500 font-medium">
-                {displayCount} {displayCount === 1 ? 'review' : 'reviews'}
+                {displayCount} {displayCount === 1 ? t('hostReviews.review') : t('hostReviews.reviews')}
               </span>
             </div>
           </div>
         </div>
         <div className="overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
           {loading ? (
-            <div className="text-center py-8 text-gray-500">Loading reviews...</div>
+            <div className="text-center py-8 text-gray-500">{t('hostReviews.loading')}</div>
           ) : reviews.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">No reviews yet. Be the first to review this host!</div>
+            <div className="text-center py-8 text-gray-500">{t('hostReviews.noReviews')}</div>
           ) : (
             reviews.map((review) => (
               <div key={review.id} className="border-b border-gray-50 last:border-0 pb-4 sm:pb-6 last:pb-0">

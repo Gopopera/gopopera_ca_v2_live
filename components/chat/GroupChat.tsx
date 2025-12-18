@@ -1,6 +1,6 @@
 console.log("[BOOT] GroupChat.tsx loaded at runtime");
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { X, Users, Send, Megaphone, BarChart2, MessageCircle, FileText, ChevronRight, Sparkles, ArrowLeft, MoreVertical, Pin, Image as ImageIcon, Lock, Download, MessageSquareOff } from 'lucide-react';
+import { X, Users, Send, Megaphone, BarChart2, MessageCircle, FileText, ChevronRight, ChevronDown, ChevronUp, Sparkles, ArrowLeft, MoreVertical, Pin, Image as ImageIcon, Lock, Download, MessageSquareOff, HelpCircle, Loader2 } from 'lucide-react';
 import { Event } from '@/types';
 import { useUserStore } from '@/stores/userStore';
 import { useChatStore } from '@/stores/chatStore';
@@ -956,6 +956,105 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
     }
   };
   
+  // ============================================================================
+  // ASK POPERA GUIDE - User-initiated question to AI
+  // ============================================================================
+  const handleAskGuide = async () => {
+    if (!askGuideQuestion.trim() || askGuideLoading || !currentUser) return;
+    
+    // Check cooldown
+    const now = Date.now();
+    const timeSinceLastRequest = now - lastGuideRequestRef.current;
+    
+    if (timeSinceLastRequest < GUIDE_COOLDOWN_MS) {
+      setAskGuideCooldown(true);
+      setTimeout(() => setAskGuideCooldown(false), GUIDE_COOLDOWN_MS - timeSinceLastRequest);
+      return;
+    }
+    
+    setAskGuideLoading(true);
+    setAskGuideCooldown(false);
+    
+    try {
+      console.log('[ASK_GUIDE] Sending question to Popera Guide:', askGuideQuestion.slice(0, 50));
+      
+      const response = await fetch('/api/chat-guide', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: askGuideQuestion.trim(),
+          event: {
+            title: event.title,
+            description: event.description?.slice(0, 150),
+            category: event.category,
+            date: event.date,
+            location: event.location,
+          },
+          messages: messages.slice(-12).map(m => ({
+            message: m.message,
+            userName: m.userName,
+            isHost: m.isHost,
+            timestamp: m.timestamp,
+          })),
+          userId: currentUser.id,
+          eventId: event.id,
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.status === 429 || data.cooldown) {
+        setAskGuideCooldown(true);
+        setTimeout(() => setAskGuideCooldown(false), GUIDE_COOLDOWN_MS);
+        return;
+      }
+      
+      if (!response.ok || !data.success || !data.reply) {
+        console.error('[ASK_GUIDE] Failed to get response:', data.error);
+        return;
+      }
+      
+      // Post AI reply to Firestore
+      const db = getDbSafe();
+      if (!db) {
+        console.error('[ASK_GUIDE] Firestore not available');
+        return;
+      }
+      
+      const AI_SENDER_ID = 'popera-guide-ai';
+      const messagesRef = collection(db, 'events', event.id, 'messages');
+      await addDoc(messagesRef, {
+        text: data.reply,
+        senderId: AI_SENDER_ID,
+        userId: AI_SENDER_ID,
+        userName: 'Popera Guide',
+        isHost: false,
+        type: 'message',
+        createdAt: Date.now(),
+        metadata: {
+          ai: true,
+          reason: 'ask_guide',
+          question: askGuideQuestion.trim().slice(0, 100),
+          generatedAt: new Date().toISOString(),
+        },
+      });
+      
+      // Update tracking
+      lastGuideRequestRef.current = now;
+      
+      // Clear input and close
+      setAskGuideQuestion('');
+      setAskGuideOpen(false);
+      
+      console.log('[ASK_GUIDE] ✅ AI response posted');
+      
+    } catch (error) {
+      console.error('[ASK_GUIDE] Error:', error);
+    } finally {
+      setAskGuideLoading(false);
+    }
+  };
+  
   const handleSendMessage = async () => {
     if (!message.trim() || !canSendMessages || !currentUser || chatLocked) return;
     
@@ -1342,6 +1441,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
     highlights: string[];
     topAnnouncement: string | null;
     suggestedPrompt: { text: string; type: string } | null;
+    groupMessageSuggestion: { show: boolean; text: string; type: string } | null;
     mode: 'pre' | 'start' | 'during' | 'after' | null;
     loading: boolean;
   }>({
@@ -1349,9 +1449,27 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
     highlights: [],
     topAnnouncement: null,
     suggestedPrompt: null,
+    groupMessageSuggestion: null,
     mode: null,
     loading: true,
   });
+  
+  // AI Insights collapse/expand state (persisted in localStorage)
+  const [aiInsightsCollapsed, setAiInsightsCollapsed] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const key = `aiInsightsCollapsed:${event.id}`;
+      return localStorage.getItem(key) === 'true';
+    }
+    return false;
+  });
+  
+  // Ask Popera Guide state
+  const [askGuideOpen, setAskGuideOpen] = useState(false);
+  const [askGuideQuestion, setAskGuideQuestion] = useState('');
+  const [askGuideLoading, setAskGuideLoading] = useState(false);
+  const [askGuideCooldown, setAskGuideCooldown] = useState(false);
+  const lastGuideRequestRef = useRef<number>(0);
+  const GUIDE_COOLDOWN_MS = 30 * 1000; // 30 seconds
   
   // Track last fetch to debounce API calls - UPGRADED: smart caching
   const lastAiFetchRef = useRef<number>(0);
@@ -1392,6 +1510,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
         highlights: [],
         topAnnouncement,
         suggestedPrompt: null,
+        groupMessageSuggestion: null,
         mode: null,
         loading: false,
       });
@@ -1487,6 +1606,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
             highlights: data.highlights || [],
             topAnnouncement,
             suggestedPrompt: data.suggestedPrompt || null,
+            groupMessageSuggestion: data.groupMessageSuggestion || null,
             mode: data.mode || null,
             loading: false,
           });
@@ -1506,6 +1626,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
             highlights: [],
             topAnnouncement,
             suggestedPrompt: null,
+            groupMessageSuggestion: null,
             mode: null,
             loading: false,
           });
@@ -1518,6 +1639,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
           highlights: [],
           topAnnouncement,
           suggestedPrompt: null,
+          groupMessageSuggestion: null,
           mode: null,
           loading: false,
         });
@@ -1737,57 +1859,148 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
           {canAccessChat && !isDemo && !isHost && (
             <div className="sticky top-0 z-20 bg-gray-50 pb-4">
               <div className="bg-gradient-to-br from-white to-[#f8fafb] rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-gray-100 shadow-md max-w-3xl mx-auto w-full">
+                {/* Header with collapse toggle */}
                 <div className="flex items-center space-x-3 mb-3">
                   <div className="w-10 h-10 bg-gradient-to-br from-[#e35e25]/10 to-[#e35e25]/5 rounded-full flex items-center justify-center text-[#e35e25] shrink-0">
                     <Sparkles size={20} className="text-[#e35e25]" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <h4 className="text-sm font-heading font-bold text-[#15383c]">AI Insights</h4>
-                    <p className="text-xs text-gray-600">What's happening in the conversation</p>
+                    {!aiInsightsCollapsed && (
+                      <p className="text-xs text-gray-600">What's happening in the conversation</p>
+                    )}
+                  </div>
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {/* Ask Popera Guide button */}
+                    <button
+                      onClick={() => setAskGuideOpen(!askGuideOpen)}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-[#15383c] bg-[#15383c]/5 hover:bg-[#15383c]/10 rounded-lg transition-colors"
+                      title="Ask Popera Guide"
+                    >
+                      <HelpCircle size={14} />
+                      <span className="hidden sm:inline">Ask</span>
+                    </button>
+                    {/* Collapse/expand toggle */}
+                    <button
+                      onClick={() => {
+                        const newState = !aiInsightsCollapsed;
+                        setAiInsightsCollapsed(newState);
+                        if (typeof window !== 'undefined') {
+                          localStorage.setItem(`aiInsightsCollapsed:${event.id}`, String(newState));
+                        }
+                      }}
+                      className="p-1.5 text-gray-400 hover:text-[#15383c] hover:bg-gray-100 rounded-lg transition-colors"
+                      title={aiInsightsCollapsed ? 'Expand' : 'Collapse'}
+                    >
+                      {aiInsightsCollapsed ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+                    </button>
                   </div>
                 </div>
-                <div className="space-y-3 text-sm">
-                  {aiInsights.loading ? (
-                    <div className="flex items-center gap-2 text-gray-500">
-                      <div className="w-4 h-4 border-2 border-[#e35e25]/30 border-t-[#e35e25] rounded-full animate-spin"></div>
-                      <span className="text-sm">Analyzing conversation...</span>
+                
+                {/* Ask Popera Guide inline input */}
+                {askGuideOpen && (
+                  <div className="mb-3 p-3 bg-[#15383c]/5 rounded-lg border border-[#15383c]/10">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={askGuideQuestion}
+                        onChange={(e) => setAskGuideQuestion(e.target.value)}
+                        placeholder="Ask the guide a question..."
+                        className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#e35e25]/50 focus:border-[#e35e25]"
+                        disabled={askGuideLoading}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey && askGuideQuestion.trim()) {
+                            e.preventDefault();
+                            handleAskGuide();
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={handleAskGuide}
+                        disabled={!askGuideQuestion.trim() || askGuideLoading || askGuideCooldown}
+                        className="px-3 py-2 bg-[#15383c] text-white text-sm font-medium rounded-lg hover:bg-[#1a4549] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+                      >
+                        {askGuideLoading ? (
+                          <>
+                            <Loader2 size={14} className="animate-spin" />
+                            <span>Posting...</span>
+                          </>
+                        ) : (
+                          <span>Ask</span>
+                        )}
+                      </button>
                     </div>
-                  ) : (
-                    <p className="font-medium text-[#15383c] leading-relaxed">{aiInsights.summary}</p>
-                  )}
-                  {!aiInsights.loading && aiInsights.highlights.length > 0 && (
-                    <div className="bg-white/60 rounded-lg p-3 border border-gray-100">
-                      <p className="font-semibold text-xs text-gray-600 mb-2 uppercase tracking-wide">Key topics</p>
-                      <ul className="space-y-1.5">
-                        {aiInsights.highlights.map((highlight, idx) => (
-                          <li key={idx} className="text-xs text-gray-700 flex items-start gap-2">
-                            <span className="text-[#e35e25] mt-1">•</span>
-                            <span>{highlight}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {aiInsights.topAnnouncement && (
-                    <div className="bg-[#15383c]/5 rounded-lg p-3 border border-[#15383c]/10">
-                      <p className="font-semibold text-xs text-[#15383c] mb-1.5 uppercase tracking-wide">Latest announcement</p>
-                      <p className="text-xs text-gray-700 leading-relaxed italic">"{aiInsights.topAnnouncement}"</p>
-                    </div>
-                  )}
-                  {/* Suggested Prompt (optional) - New section */}
-                  {!aiInsights.loading && aiInsights.suggestedPrompt && (
-                    <div className="bg-gradient-to-r from-[#e35e25]/5 to-[#e35e25]/10 rounded-lg p-3 border border-[#e35e25]/20">
-                      <p className="font-semibold text-xs text-[#e35e25] mb-1.5 uppercase tracking-wide flex items-center gap-1.5">
-                        <MessageCircle size={12} />
-                        Suggested prompt (optional)
-                      </p>
-                      <p className="text-xs text-gray-700 leading-relaxed">"{aiInsights.suggestedPrompt.text}"</p>
-                      <p className="text-[10px] text-gray-400 mt-1.5">
-                        💡 Type "another question" anytime to get a new prompt from Popera Guide
-                      </p>
-                    </div>
-                  )}
-                </div>
+                    {askGuideCooldown && (
+                      <p className="text-[10px] text-amber-600 mt-1.5">Please wait a moment before asking again.</p>
+                    )}
+                  </div>
+                )}
+                
+                {/* Collapsed view: just summary + announcement in one line */}
+                {aiInsightsCollapsed ? (
+                  <div className="text-sm">
+                    {aiInsights.loading ? (
+                      <div className="flex items-center gap-2 text-gray-500">
+                        <div className="w-3 h-3 border-2 border-[#e35e25]/30 border-t-[#e35e25] rounded-full animate-spin"></div>
+                        <span className="text-xs">Analyzing...</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <p className="text-xs text-[#15383c] font-medium line-clamp-1">{aiInsights.summary}</p>
+                        {aiInsights.topAnnouncement && (
+                          <p className="text-[10px] text-gray-500 line-clamp-1">
+                            <span className="font-semibold">Announcement:</span> {aiInsights.topAnnouncement}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* Expanded view: full content */
+                  <div className="space-y-3 text-sm">
+                    {aiInsights.loading ? (
+                      <div className="flex items-center gap-2 text-gray-500">
+                        <div className="w-4 h-4 border-2 border-[#e35e25]/30 border-t-[#e35e25] rounded-full animate-spin"></div>
+                        <span className="text-sm">Analyzing conversation...</span>
+                      </div>
+                    ) : (
+                      <p className="font-medium text-[#15383c] leading-relaxed">{aiInsights.summary}</p>
+                    )}
+                    {!aiInsights.loading && aiInsights.highlights.length > 0 && (
+                      <div className="bg-white/60 rounded-lg p-3 border border-gray-100">
+                        <p className="font-semibold text-xs text-gray-600 mb-2 uppercase tracking-wide">Key topics</p>
+                        <ul className="space-y-1.5">
+                          {aiInsights.highlights.map((highlight, idx) => (
+                            <li key={idx} className="text-xs text-gray-700 flex items-start gap-2">
+                              <span className="text-[#e35e25] mt-1">•</span>
+                              <span>{highlight}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {aiInsights.topAnnouncement && (
+                      <div className="bg-[#15383c]/5 rounded-lg p-3 border border-[#15383c]/10">
+                        <p className="font-semibold text-xs text-[#15383c] mb-1.5 uppercase tracking-wide">Latest announcement</p>
+                        <p className="text-xs text-gray-700 leading-relaxed italic">"{aiInsights.topAnnouncement}"</p>
+                      </div>
+                    )}
+                    {/* Group message suggestion - only show when conditions are met */}
+                    {!aiInsights.loading && aiInsights.groupMessageSuggestion?.show && aiInsights.groupMessageSuggestion?.text && (
+                      <div className="bg-gradient-to-r from-[#e35e25]/5 to-[#e35e25]/10 rounded-lg p-3 border border-[#e35e25]/20">
+                        <p className="font-semibold text-xs text-[#e35e25] mb-1.5 uppercase tracking-wide flex items-center gap-1.5">
+                          <MessageCircle size={12} />
+                          Group message suggestion
+                        </p>
+                        <p className="text-xs text-gray-700 leading-relaxed">"{aiInsights.groupMessageSuggestion.text}"</p>
+                        <p className="text-[10px] text-gray-400 mt-1.5">
+                          💡 Tap Ask Popera Guide if you want a new idea.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
