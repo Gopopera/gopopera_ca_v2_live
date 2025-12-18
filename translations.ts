@@ -782,6 +782,8 @@ export const translations = {
       reportSubmitted: 'Report Submitted',
       thankYou: 'Thank you for your report. We\'ll review it and get back to you at',
       returnHome: 'Return Home',
+      needHelp: 'Need Help?',
+      needHelpDesc: 'You can also email us directly at',
     },
     // Terms Page - Comprehensive Canada-wide Terms with Québec carve-out
     terms: {
@@ -2044,6 +2046,8 @@ export const translations = {
       reportSubmitted: 'Signalement soumis',
       thankYou: 'Merci pour votre signalement. Nous l\'examinerons et vous répondrons à',
       returnHome: 'Retour à l\'accueil',
+      needHelp: 'Besoin d\'aide ?',
+      needHelpDesc: 'Vous pouvez aussi nous écrire directement à',
     },
     // Terms Page - Conditions d'utilisation complètes pour le Canada avec section Québec
     terms: {

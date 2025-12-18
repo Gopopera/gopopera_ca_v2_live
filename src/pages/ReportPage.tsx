@@ -203,8 +203,11 @@ export const ReportPage: React.FC<ReportPageProps> = ({ setViewState }) => {
 
         {/* Footer info - matching Contact page pattern */}
         <div className="text-center border-t border-white/10 pt-10 sm:pt-12 md:pt-16">
+          <h2 className="font-heading font-bold text-2xl sm:text-3xl md:text-4xl mb-4 sm:mb-6">
+            {t('report.needHelp')}
+          </h2>
           <p className="text-gray-300 text-base sm:text-lg font-light px-4">
-            {t('report.subtitle')} <a href="mailto:support@gopopera.ca" className="text-white font-bold hover:text-[#e35e25] transition-colors">support@gopopera.ca</a>
+            {t('report.needHelpDesc')} <a href="mailto:support@gopopera.ca" className="text-white font-bold hover:text-[#e35e25] transition-colors">support@gopopera.ca</a>
           </p>
         </div>
       </div>
