@@ -81,6 +81,8 @@ const StripeSettingsPage = React.lazy(() => import('./src/pages/ProfileSubPages'
 const MyReviewsPage = React.lazy(() => import('./src/pages/ProfileSubPages').then(m => ({ default: m.MyReviewsPage })));
 const FollowingPage = React.lazy(() => import('./src/pages/ProfileSubPages').then(m => ({ default: m.FollowingPage })));
 const FollowersPage = React.lazy(() => import('./src/pages/ProfileSubPages').then(m => ({ default: m.FollowersPage })));
+const PayoutSetupPage = React.lazy(() => import('./src/pages/PayoutPages').then(m => ({ default: m.PayoutSetupPage })));
+const PayoutsPage = React.lazy(() => import('./src/pages/PayoutPages').then(m => ({ default: m.PayoutsPage })));
 const ReservationConfirmationPage = React.lazy(() => import('./src/pages/ReservationConfirmationPage').then(m => ({ default: m.ReservationConfirmationPage })));
 const ConfirmReservationPage = React.lazy(() => import('./src/pages/ConfirmReservationPage').then(m => ({ default: m.ConfirmReservationPage })));
 
@@ -445,6 +447,10 @@ const AppContent: React.FC = () => {
       return ViewState.SAFETY;
     } else if (pathname === '/press') {
       return ViewState.PRESS;
+    } else if (pathname === '/host/payouts/setup') {
+      return ViewState.PAYOUT_SETUP;
+    } else if (pathname === '/host/payouts') {
+      return ViewState.PAYOUTS;
     }
     
     // Default to landing page for unknown routes
@@ -1307,6 +1313,17 @@ const AppContent: React.FC = () => {
       if (currentUrl !== '/auth') {
         window.history.replaceState({ viewState: ViewState.AUTH }, '', '/auth');
       }
+    } else if (viewState === ViewState.PAYOUT_SETUP) {
+      if (currentUrl !== '/host/payouts/setup') {
+        window.history.replaceState({ viewState: ViewState.PAYOUT_SETUP }, '', '/host/payouts/setup');
+      }
+    } else if (viewState === ViewState.PAYOUTS) {
+      // Preserve query params for stripe return/refresh handling
+      const currentSearch = window.location.search;
+      const expectedPath = '/host/payouts' + currentSearch;
+      if (currentUrl !== '/host/payouts') {
+        window.history.replaceState({ viewState: ViewState.PAYOUTS }, '', expectedPath);
+      }
     }
   }, [viewState, selectedEvent, selectedHost]);
 
@@ -1405,7 +1422,8 @@ const AppContent: React.FC = () => {
             ViewState.PROFILE_PRIVACY, ViewState.PROFILE_STRIPE,
             ViewState.PROFILE_REVIEWS, ViewState.PROFILE_FOLLOWING,
             ViewState.PROFILE_FOLLOWERS, ViewState.DELETE_ACCOUNT,
-            ViewState.CONFIRM_RESERVATION, ViewState.RESERVATION_CONFIRMED
+            ViewState.CONFIRM_RESERVATION, ViewState.RESERVATION_CONFIRMED,
+            ViewState.PAYOUT_SETUP, ViewState.PAYOUTS
           ];
           
           if (validViewStates.includes(targetView)) {
@@ -1778,6 +1796,8 @@ const AppContent: React.FC = () => {
         {viewState === ViewState.PROFILE_NOTIFICATIONS && <NotificationSettingsPage setViewState={setViewState} />}
         {viewState === ViewState.PROFILE_PRIVACY && <PrivacySettingsPage setViewState={setViewState} />}
         {viewState === ViewState.PROFILE_STRIPE && <StripeSettingsPage setViewState={setViewState} />}
+        {viewState === ViewState.PAYOUT_SETUP && <PayoutSetupPage setViewState={setViewState} />}
+        {viewState === ViewState.PAYOUTS && <PayoutsPage setViewState={setViewState} />}
         {viewState === ViewState.PROFILE_REVIEWS && (
           <React.Suspense fallback={<PageSkeleton />}>
             <MyReviewsPage setViewState={setViewState} onHostClick={handleHostClick} />
