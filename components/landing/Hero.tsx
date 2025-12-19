@@ -20,91 +20,95 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
   return (
     <section className="relative min-h-[90vh] sm:min-h-[85vh] md:min-h-[80vh] lg:min-h-[70vh] xl:min-h-[75vh] flex items-center overflow-hidden bg-[#15383c] pt-20 sm:pt-24 md:pt-28 lg:pt-20 xl:pt-24 pb-12 sm:pb-16 lg:pb-0 w-full">
       
+      {/* MOBILE/TABLET: Right-side image layer (absolute, flush to right edge) */}
+      <div 
+        className="lg:hidden absolute inset-y-0 right-0 w-[52%] sm:w-[50%] overflow-hidden pointer-events-none"
+        style={{
+          borderTopLeftRadius: '9999px',
+          borderBottomLeftRadius: '9999px',
+        }}
+        aria-hidden="true"
+      >
+        {/* The image */}
+        <img 
+          src={heroImageUrl}
+          alt=""
+          className="w-full h-full object-cover"
+          style={{ objectPosition: '35% 40%' }}
+          loading="eager"
+        />
+        
+        {/* Left fade gradient overlay (strong left → transparent right) */}
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'linear-gradient(to right, #15383c 0%, rgba(21,56,60,0.7) 20%, rgba(21,56,60,0.3) 40%, transparent 70%)',
+          }}
+        />
+        
+        {/* Subtle top fade */}
+        <div 
+          className="absolute inset-x-0 top-0 h-24 pointer-events-none"
+          style={{
+            background: 'linear-gradient(to bottom, #15383c 0%, transparent 100%)',
+          }}
+        />
+        
+        {/* Subtle bottom fade */}
+        <div 
+          className="absolute inset-x-0 bottom-0 h-24 pointer-events-none"
+          style={{
+            background: 'linear-gradient(to top, #15383c 0%, transparent 100%)',
+          }}
+        />
+      </div>
+      
       {/* Main content wrapper */}
       <div className="relative z-10 w-full max-w-screen-2xl mx-auto px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16">
         
-        {/* MOBILE/TABLET: 2-column grid layout (text left, image right) */}
-        <div className="lg:hidden grid grid-cols-12 gap-2 items-center">
+        {/* MOBILE/TABLET: Text content on left with right padding to avoid image */}
+        <div className="lg:hidden pr-[48%] sm:pr-[46%]">
           
-          {/* Left Column - Text Content (7 cols on mobile, 8 on sm+) */}
-          <div className="col-span-7 sm:col-span-8 flex flex-col items-start text-left pr-2 sm:pr-4">
-            
-            {/* Badge */}
-            <div className="mb-3 sm:mb-4 animate-fade-in-up">
-              <span className="inline-block py-1 sm:py-1.5 px-3 sm:px-4 rounded-full bg-white/5 border border-white/10 text-[#e35e25] text-[9px] sm:text-[10px] font-bold tracking-[0.12em] uppercase backdrop-blur-sm">
-                {t('hero.badge')}
-              </span>
-            </div>
-            
-            {/* Title - constrained width to prevent overlap */}
-            <h1 className="text-[1.5rem] sm:text-[1.85rem] md:text-4xl font-heading font-bold text-white mb-3 sm:mb-4 leading-[1.15] tracking-tight max-w-[95%]">
-              {t('hero.title')}
-            </h1>
-            
-            {/* Description */}
-            <p className="text-xs sm:text-sm text-gray-300/90 mb-5 sm:mb-6 font-light leading-relaxed max-w-[90%]">
-              {t('hero.description')}
-            </p>
-            
-            {/* CTAs - stacked on very small, side-by-side on sm+ */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full">
-              {/* Primary CTA */}
-              <button 
-                onClick={() => handleNav(ViewState.FEED)}
-                className="px-4 sm:px-6 py-3 sm:py-3.5 bg-[#e35e25] text-white rounded-full font-bold text-xs sm:text-sm shadow-lg shadow-[#e35e25]/25 hover:shadow-xl transition-all duration-300 flex items-center justify-center touch-manipulation active:scale-[0.98]"
-              >
-                {t('hero.startBrowsing')}
-              </button>
-              
-              {/* Secondary CTA */}
-              <button 
-                onClick={() => handleNav(ViewState.CREATE_EVENT)}
-                className="px-4 sm:px-6 py-3 sm:py-3.5 bg-transparent border-2 border-white/20 text-white rounded-full font-bold text-xs sm:text-sm hover:bg-white/5 transition-all duration-300 flex items-center justify-center gap-1.5 touch-manipulation active:scale-[0.98]"
-              >
-                {t('hero.becomeHost')} <ArrowRight size={14} className="opacity-70" />
-              </button>
-            </div>
-            
-            {/* Micro-proof */}
-            <p className="mt-4 sm:mt-5 text-[10px] sm:text-xs text-gray-400/70 font-medium tracking-wide max-w-[85%]">
-              {t('hero.microline')}
-            </p>
+          {/* Badge */}
+          <div className="mb-3 sm:mb-4 animate-fade-in-up">
+            <span className="inline-block py-1.5 sm:py-2 px-3 sm:px-4 rounded-full bg-white/5 border border-white/10 text-[#e35e25] text-[9px] sm:text-[10px] font-bold tracking-[0.12em] uppercase backdrop-blur-sm">
+              {t('hero.badge')}
+            </span>
           </div>
           
-          {/* Right Column - Circular Image (5 cols on mobile, 4 on sm+) */}
-          <div className="col-span-5 sm:col-span-4 flex items-center justify-end">
-            <div 
-              className="relative w-full max-w-[160px] sm:max-w-[200px] md:max-w-[240px] aspect-square"
-              aria-hidden="true"
+          {/* Title */}
+          <h1 className="text-[1.65rem] sm:text-[2rem] md:text-4xl font-heading font-bold text-white mb-3 sm:mb-4 leading-[1.12] tracking-tight">
+            {t('hero.title')}
+          </h1>
+          
+          {/* Description */}
+          <p className="text-xs sm:text-sm text-gray-300/90 mb-5 sm:mb-6 font-light leading-relaxed">
+            {t('hero.description')}
+          </p>
+          
+          {/* CTAs - stacked on very small, side-by-side on sm+ */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
+            {/* Primary CTA */}
+            <button 
+              onClick={() => handleNav(ViewState.FEED)}
+              className="px-5 sm:px-6 py-3 sm:py-3.5 bg-[#e35e25] text-white rounded-full font-bold text-xs sm:text-sm shadow-lg shadow-[#e35e25]/25 hover:shadow-xl transition-all duration-300 flex items-center justify-center touch-manipulation active:scale-[0.98]"
             >
-              {/* Soft left-edge gradient fade into background */}
-              <div 
-                className="absolute inset-0 z-10 pointer-events-none rounded-full"
-                style={{
-                  background: 'linear-gradient(to right, #15383c 0%, transparent 35%)',
-                }}
-              />
-              
-              {/* Circular image container */}
-              <div className="w-full h-full rounded-full overflow-hidden">
-                <img 
-                  src={heroImageUrl}
-                  alt=""
-                  className="w-full h-full object-cover"
-                  style={{ objectPosition: '40% 35%' }}
-                  loading="eager"
-                />
-              </div>
-              
-              {/* Subtle inner shadow for depth */}
-              <div 
-                className="absolute inset-0 rounded-full pointer-events-none"
-                style={{
-                  boxShadow: 'inset 0 0 30px rgba(21, 56, 60, 0.5)',
-                }}
-              />
-            </div>
+              {t('hero.startBrowsing')}
+            </button>
+            
+            {/* Secondary CTA */}
+            <button 
+              onClick={() => handleNav(ViewState.CREATE_EVENT)}
+              className="px-5 sm:px-6 py-3 sm:py-3.5 bg-transparent border-2 border-white/20 text-white rounded-full font-bold text-xs sm:text-sm hover:bg-white/5 transition-all duration-300 flex items-center justify-center gap-1.5 touch-manipulation active:scale-[0.98]"
+            >
+              {t('hero.becomeHost')} <ArrowRight size={14} className="opacity-70" />
+            </button>
           </div>
+          
+          {/* Micro-proof */}
+          <p className="mt-4 sm:mt-5 text-[10px] sm:text-xs text-gray-400/70 font-medium tracking-wide">
+            {t('hero.microline')}
+          </p>
           
         </div>
         
