@@ -1045,8 +1045,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           </div>
         )}
         
-        {/* Soft gradient only at bottom for text readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
+        {/* Soft vignette gradient for text readability - subtle at top, stronger at bottom */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60 pointer-events-none z-[2]" />
         
         {/* Favorite Button - Glass design top-right */}
         {/* Desktop: positioned at top-right of hero (stacked under header area); Mobile: same position */}
@@ -1094,10 +1094,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           </div>
         )}
         
-        {/* Content Overlay - Category badge on the top left */}
-        <div className="absolute top-4 left-4 z-10">
-          {/* Category Badge */}
-          <span className="inline-block px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-[#e35e25] text-xs font-bold uppercase tracking-wider border border-white/30">
+        {/* Content Overlay - Category badge on the top left (NO grey background container) */}
+        <div className="absolute top-4 left-4 z-20">
+          {/* Category Badge - Glass pill styling only, no solid background */}
+          <span className="inline-flex items-center px-3 py-1.5 rounded-full text-[#e35e25] text-xs font-bold uppercase tracking-wider border border-white/20 bg-white/10 backdrop-blur-md shadow-lg">
             {getMainCategoryLabelFromEvent(event, language)}
           </span>
         </div>

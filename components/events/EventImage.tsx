@@ -73,23 +73,20 @@ export const EventImage: React.FC<EventImageProps> = ({
 
   // Hero variant: Two-layer technique - blurred background + contained foreground
   // This prevents top cropping while maintaining a premium look
+  // No grey bars - blurred image fills any empty space seamlessly
   return (
     <div className={`relative w-full h-full overflow-hidden ${className}`}>
-      {/* Background layer: blurred, scaled up, covers container */}
-      <div className="absolute inset-0 overflow-hidden">
-        <img
-          src={src}
-          alt=""
-          aria-hidden="true"
-          className="w-full h-full object-cover blur-xl scale-110 opacity-60"
-          style={{ objectPosition: 'center' }}
-          loading={priority ? 'eager' : 'lazy'}
-          decoding="async"
-          onError={handleError}
-        />
-        {/* Subtle darkening gradient over blurred background */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/40 pointer-events-none" />
-      </div>
+      {/* Background layer: blurred, scaled up, fully covers container (no grey visible) */}
+      <img
+        src={src}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 w-full h-full object-cover blur-2xl scale-125"
+        style={{ objectPosition: 'center' }}
+        loading={priority ? 'eager' : 'lazy'}
+        decoding="async"
+        onError={handleError}
+      />
       
       {/* Foreground layer: full image visible, no cropping */}
       <img
