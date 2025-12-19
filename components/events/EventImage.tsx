@@ -5,7 +5,7 @@ import React from 'react';
  * 
  * Two variants:
  * - "card": For feed/grid cards - object-cover with slight upward bias to protect faces
- * - "hero": For event detail page - fixed frame with full image visible (blurred background fills gaps)
+ * - "hero": For event detail page - object-cover with top positioning (never crops the top)
  */
 
 interface EventImageProps {
@@ -71,33 +71,19 @@ export const EventImage: React.FC<EventImageProps> = ({
     );
   }
 
-  // Hero variant: Fixed frame with full image visible
-  // Two-layer technique: blurred background fills gaps + contained foreground shows full image
-  // No dead space (blur fills edges), no cropping (object-contain)
+  // Hero variant: object-cover with top positioning
+  // Fills the container, crops from bottom if needed, never crops the top (protects faces/headroom)
   return (
-    <div className={`relative w-full h-full overflow-hidden ${className}`}>
-      {/* Background layer: blurred version fills any empty space */}
-      <img
-        src={src}
-        alt=""
-        aria-hidden="true"
-        className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-80"
-        loading={priority ? 'eager' : 'lazy'}
-        decoding="async"
-        onError={handleError}
-      />
-      
-      {/* Foreground layer: full image visible, centered, no cropping */}
-      <img
-        src={src}
-        alt={alt}
-        className="relative z-[1] w-full h-full object-contain"
-        loading={priority ? 'eager' : 'lazy'}
-        decoding="async"
-        fetchPriority={priority ? 'high' : 'low'}
-        onError={handleError}
-      />
-    </div>
+    <img
+      src={src}
+      alt={alt}
+      className={`w-full h-full object-cover ${className}`}
+      style={{ objectPosition: 'center top' }}
+      loading={priority ? 'eager' : 'lazy'}
+      decoding="async"
+      fetchPriority={priority ? 'high' : 'low'}
+      onError={handleError}
+    />
   );
 };
 

@@ -986,9 +986,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       </div>
 
 
-      {/* Hero Section - Fixed frame with full image visible */}
-      {/* Mobile: fixed aspect ratio (4:3), full image shown with blur fill for gaps */}
-      {/* Desktop: wider aspect ratio, contained width */}
+      {/* Hero Section - Fixed aspect ratio with object-cover */}
+      {/* Mobile: 4:3 aspect ratio | Tablet: 16:10 | Desktop: 21:9 */}
+      {/* Image fills container, crops from bottom if needed (top never cropped) */}
       <div className="pt-16 sm:pt-0 lg:max-w-7xl lg:mx-auto lg:px-8 lg:pt-4">
       <div className="relative w-full overflow-hidden lg:rounded-2xl aspect-[4/3] sm:aspect-[16/10] lg:aspect-[21/9]">
         {event.imageUrls && event.imageUrls.length > 1 ? (
@@ -1023,7 +1023,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             ))}
           </div>
         ) : (
-          // Single image - fixed frame, full image visible with blur fill
+          // Single image - fixed aspect ratio, object-cover with top positioning
           <div
             className="w-full h-full cursor-pointer"
             onClick={() => {
