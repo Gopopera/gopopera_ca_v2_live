@@ -5,7 +5,7 @@
  */
 
 import { getDbSafe } from "../src/lib/firebase";
-import { collection, doc, setDoc, addDoc, query, where, getDocs } from "firebase/firestore";
+import { collection, doc, setDoc, addDoc, query, where, getDocs, deleteDoc } from "firebase/firestore";
 import { FirestoreUser, FirestoreReview } from "./types";
 import { createOrUpdateUserProfile } from "./db";
 import { POPERA_EMAIL } from "../stores/userStore";
@@ -62,6 +62,34 @@ export const FAKE_REVIEW_ACCOUNTS: FakeReviewAccount[] = [
     email: 'alex.kim.demo@popera.app',
     photoURL: 'https://i.pravatar.cc/150?img=15',
     bio: 'Tech entrepreneur and networking enthusiast. Building connections one event at a time.',
+  },
+  {
+    id: 'fake-reviewer-7',
+    name: 'Olivia Bennett',
+    email: 'olivia.bennett.demo@popera.app',
+    photoURL: 'https://i.pravatar.cc/150?img=32',
+    bio: 'Yoga instructor and wellness advocate. Love finding mindful community events.',
+  },
+  {
+    id: 'fake-reviewer-8',
+    name: 'James Wilson',
+    email: 'james.wilson.demo@popera.app',
+    photoURL: 'https://i.pravatar.cc/150?img=68',
+    bio: 'Photographer and visual storyteller. Capturing moments at amazing pop-ups.',
+  },
+  {
+    id: 'fake-reviewer-9',
+    name: 'Sophia Patel',
+    email: 'sophia.patel.demo@popera.app',
+    photoURL: 'https://i.pravatar.cc/150?img=44',
+    bio: 'Marketing consultant and social butterfly. Always discovering new experiences.',
+  },
+  {
+    id: 'fake-reviewer-10',
+    name: 'Michael Torres',
+    email: 'michael.torres.demo@popera.app',
+    photoURL: 'https://i.pravatar.cc/150?img=51',
+    bio: 'Chef and culinary explorer. Passionate about local food and community events.',
   },
 ];
 
@@ -264,6 +292,119 @@ export async function seedReviewsForHostEvents(hostEmail: string): Promise<void>
     }
     console.warn('[REVIEW_SEED] Error seeding reviews for host events (non-critical):', error?.message || error);
     // Don't throw - review seeding is optional and shouldn't break login
+  }
+}
+
+// Premium 5-star review comments for a polished look
+const FIVE_STAR_COMMENTS = [
+  "Absolutely incredible experience! The host was so welcoming and the atmosphere was unmatched. Highly recommend to everyone!",
+  "Best pop-up I've ever attended. The attention to detail and care put into this event was remarkable. 10/10!",
+  "Amazing host, amazing vibes! Everything was perfectly organized and I made so many great connections.",
+  "This was such a memorable experience. The host truly knows how to create magic. Can't wait for the next one!",
+  "Exceeded all my expectations! The community here is fantastic and the host is incredibly talented.",
+  "One of the best events I've been to all year. Professional, fun, and genuinely memorable. Thank you!",
+  "The energy was incredible from start to finish. This host really understands how to create special moments.",
+  "Perfect in every way! Great organization, wonderful people, and an atmosphere that was simply electric.",
+  "I've been to many events but this one stands out. The host's passion and dedication really shows!",
+  "An absolute gem of an experience. Everything was thoughtful, welcoming, and beautifully executed.",
+];
+
+/**
+ * Set exactly 10 five-star reviews for a specific host
+ * This clears existing reviews and creates exactly 10 new 5-star reviews
+ * from 10 different accounts (to avoid duplicate reviewer appearances)
+ * 
+ * @param hostEmail - Email of the host (e.g., eatezca@gmail.com)
+ */
+export async function setTenFiveStarReviews(hostEmail: string): Promise<{ success: boolean; message: string }> {
+  const db = getDbSafe();
+  if (!db) {
+    return { success: false, message: 'Firestore not available' };
+  }
+
+  try {
+    console.log(`[REVIEW_SEED] Setting up 10 five-star reviews for host: ${hostEmail}`);
+
+    // Find the host's user ID by email
+    const usersCol = collection(db, "users");
+    const hostQuery = query(usersCol, where("email", "==", hostEmail));
+    const hostSnapshot = await getDocs(hostQuery);
+    
+    if (hostSnapshot.empty) {
+      return { success: false, message: `Host with email ${hostEmail} not found` };
+    }
+
+    const hostDoc = hostSnapshot.docs[0];
+    const hostId = hostDoc.id;
+    console.log(`[REVIEW_SEED] Found host ID: ${hostId}`);
+
+    // Find all events hosted by this user
+    const eventsCol = collection(db, "events");
+    const eventsQuery = query(eventsCol, where("hostId", "==", hostId));
+    const eventsSnapshot = await getDocs(eventsQuery);
+
+    const eventDocs = eventsSnapshot.docs;
+    if (eventDocs.length === 0) {
+      return { success: false, message: 'No events found for this host. Create at least one event first.' };
+    }
+
+    console.log(`[REVIEW_SEED] Found ${eventDocs.length} events for host`);
+
+    // Step 1: Delete ALL existing reviews from ALL host's events
+    let deletedCount = 0;
+    for (const eventDoc of eventDocs) {
+      const eventId = eventDoc.id;
+      const reviewsCol = collection(db, "events", eventId, "reviews");
+      const existingReviews = await getDocs(reviewsCol);
+      
+      for (const reviewDoc of existingReviews.docs) {
+        await deleteDoc(doc(db, "events", eventId, "reviews", reviewDoc.id));
+        deletedCount++;
+      }
+    }
+    console.log(`[REVIEW_SEED] Deleted ${deletedCount} existing reviews`);
+
+    // Step 2: Ensure we have 10 fake reviewer accounts
+    if (FAKE_REVIEW_ACCOUNTS.length < 10) {
+      return { success: false, message: 'Not enough fake reviewer accounts configured (need 10)' };
+    }
+
+    // Step 3: Create exactly 10 five-star reviews distributed across events
+    // Use all 10 fake reviewer accounts (one review per account)
+    const reviewers = FAKE_REVIEW_ACCOUNTS.slice(0, 10);
+    let createdCount = 0;
+
+    for (let i = 0; i < 10; i++) {
+      const reviewer = reviewers[i];
+      // Distribute reviews across events (round-robin if multiple events)
+      const eventDoc = eventDocs[i % eventDocs.length];
+      const eventId = eventDoc.id;
+      
+      const reviewsCol = collection(db, "events", eventId, "reviews");
+      const reviewData: Omit<FirestoreReview, 'id'> = {
+        eventId,
+        userId: reviewer.id,
+        userName: reviewer.name,
+        rating: 5, // Always 5 stars
+        comment: FIVE_STAR_COMMENTS[i],
+        createdAt: Date.now() - ((10 - i) * 3 * 24 * 60 * 60 * 1000), // Stagger dates (3 days apart, newest first)
+        status: 'accepted', // Ensure reviews are visible
+      };
+
+      const sanitized = sanitizeFirestoreData(reviewData);
+      await addDoc(reviewsCol, sanitized);
+      createdCount++;
+      console.log(`[REVIEW_SEED] ✅ Created 5-star review by ${reviewer.name} for event ${eventId}`);
+    }
+
+    const message = `Successfully set up ${createdCount} five-star reviews (deleted ${deletedCount} old reviews)`;
+    console.log(`[REVIEW_SEED] ${message}`);
+    return { success: true, message };
+
+  } catch (error: any) {
+    const errorMsg = error?.message || 'Unknown error';
+    console.error('[REVIEW_SEED] Error setting up reviews:', errorMsg);
+    return { success: false, message: `Error: ${errorMsg}` };
   }
 }
 

@@ -10,6 +10,7 @@ import { ChevronLeft, CheckCircle, XCircle, Loader } from 'lucide-react';
 import { useUserStore, POPERA_EMAIL } from '../../stores/userStore';
 import { getPoperaDemoEventsSnapshot } from '../../firebase/demoSeed';
 import { ensurePoperaProfileAndSeed } from '../../firebase/poperaProfile';
+import { setTenFiveStarReviews } from '../../firebase/reviewSeed';
 import { getAppSafe, getDbSafe } from '../lib/firebase';
 import { Timestamp } from 'firebase/firestore';
 
@@ -24,6 +25,8 @@ export const DebugSeedDemoEventsPage: React.FC<DebugSeedDemoEventsPageProps> = (
   const [seededEvents, setSeededEvents] = useState<any[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [isSeedingReviews, setIsSeedingReviews] = useState(false);
+  const [reviewResult, setReviewResult] = useState<{ success: boolean; message: string } | null>(null);
   const normalizedEmail = user?.email?.toLowerCase().trim();
 
   // Only show if user is authenticated and is eatezca@gmail.com
@@ -108,6 +111,29 @@ export const DebugSeedDemoEventsPage: React.FC<DebugSeedDemoEventsPageProps> = (
       });
     } finally {
       setIsSeeding(false);
+    }
+  };
+
+  const handleSeedReviews = async () => {
+    if (!isAuthorized || !user?.uid || !normalizedEmail) {
+      setReviewResult({ success: false, message: 'Unauthorized. Only eatezca@gmail.com can seed reviews.' });
+      return;
+    }
+
+    setIsSeedingReviews(true);
+    setReviewResult(null);
+
+    try {
+      const result = await setTenFiveStarReviews(normalizedEmail);
+      setReviewResult(result);
+    } catch (error: any) {
+      console.error('[DEBUG SEED REVIEWS] Error:', error);
+      setReviewResult({ 
+        success: false, 
+        message: error.message || 'Failed to seed reviews. Check console for details.' 
+      });
+    } finally {
+      setIsSeedingReviews(false);
     }
   };
 
@@ -242,6 +268,49 @@ export const DebugSeedDemoEventsPage: React.FC<DebugSeedDemoEventsPageProps> = (
               </div>
             </div>
           )}
+
+          {/* Reviews Section */}
+          <div className="pt-6 border-t border-white/20">
+            <h2 className="text-xl font-bold mb-4">⭐ Set 10 Five-Star Reviews</h2>
+            <p className="text-gray-300 text-sm leading-relaxed mb-4">
+              This will set up exactly <strong>10 five-star reviews</strong> for your account from 10 different accounts 
+              (each with unique names and profile photos). This action will:
+            </p>
+            <ul className="text-gray-300 text-sm space-y-2 list-disc list-inside mb-4">
+              <li>Delete all existing reviews from your events</li>
+              <li>Create 10 new 5-star reviews from different accounts</li>
+              <li>Distribute reviews across your events</li>
+              <li>Each reviewer has a unique name, photo, and comment</li>
+            </ul>
+            
+            <button
+              onClick={handleSeedReviews}
+              disabled={isSeedingReviews}
+              className="w-full py-3.5 sm:py-4 bg-amber-500 text-white font-bold rounded-full hover:bg-amber-600 transition-colors shadow-lg touch-manipulation active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSeedingReviews ? (
+                <>
+                  <Loader size={20} className="animate-spin" />
+                  Setting up reviews...
+                </>
+              ) : (
+                '⭐ Set 10 Five-Star Reviews'
+              )}
+            </button>
+
+            {reviewResult && (
+              <div className={`mt-4 ${reviewResult.success ? 'text-green-400' : 'text-red-400'}`}>
+                <div className="flex items-start gap-3">
+                  {reviewResult.success ? (
+                    <CheckCircle size={24} className="shrink-0 mt-0.5" />
+                  ) : (
+                    <XCircle size={24} className="shrink-0 mt-0.5" />
+                  )}
+                  <p className="text-sm leading-relaxed">{reviewResult.message}</p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
