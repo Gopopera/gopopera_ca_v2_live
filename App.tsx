@@ -451,6 +451,8 @@ const AppContent: React.FC = () => {
       return ViewState.PAYOUT_SETUP;
     } else if (pathname === '/host/payouts') {
       return ViewState.PAYOUTS;
+    } else if (pathname === '/debug-seed') {
+      return ViewState.DEBUG_SEED_DEMO;
     }
     
     // Default to landing page for unknown routes
@@ -1323,6 +1325,10 @@ const AppContent: React.FC = () => {
       const expectedPath = '/host/payouts' + currentSearch;
       if (currentUrl !== '/host/payouts') {
         window.history.replaceState({ viewState: ViewState.PAYOUTS }, '', expectedPath);
+      }
+    } else if (viewState === ViewState.DEBUG_SEED_DEMO) {
+      if (currentUrl !== '/debug-seed') {
+        window.history.replaceState({ viewState: ViewState.DEBUG_SEED_DEMO }, '', '/debug-seed');
       }
     }
   }, [viewState, selectedEvent, selectedHost]);
