@@ -69,7 +69,15 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
         console.log('[NOTIFICATIONS_MODAL] 📡 Setting up real-time subscription:', { path });
         
         const notificationsRef = collection(db, 'users', user.uid, 'notifications');
-        const q = query(notificationsRef, orderBy('timestamp', 'desc'), limit(50));
+        
+        // Try with timestamp ordering first, fallback to limit-only if index missing
+        let q;
+        try {
+          q = query(notificationsRef, orderBy('timestamp', 'desc'), limit(50));
+        } catch (err) {
+          console.warn('[NOTIFICATIONS_MODAL] ⚠️ Falling back to unordered query');
+          q = query(notificationsRef, limit(50));
+        }
         
         unsubscribe = onSnapshot(
           q,
@@ -81,11 +89,19 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
               docIds: snapshot.docs.map(d => d.id).slice(0, 5),
             });
             
-            const notifs = snapshot.docs.map((doc) => ({
-              id: doc.id,
-              ...doc.data(),
-              timestamp: doc.data().timestamp?.toMillis?.() || doc.data().timestamp || Date.now(),
-            })) as FirestoreNotification[];
+            const notifs = snapshot.docs.map((doc) => {
+              const data = doc.data();
+              return {
+                id: doc.id,
+                ...data,
+                // Use multiple fallbacks for timestamp
+                timestamp: data.timestamp?.toMillis?.() || data.timestampMs || data.timestamp || data.createdAt || Date.now(),
+              };
+            }) as FirestoreNotification[];
+            
+            // Sort client-side to ensure proper ordering
+            notifs.sort((a, b) => b.timestamp - a.timestamp);
+            
             setNotifications(notifs);
             setLoading(false);
           },

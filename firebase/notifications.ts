@@ -26,13 +26,16 @@ import { getDbSafe } from '../src/lib/firebase';
 import type { FirestoreNotification, FirestoreAnnouncement, FirestorePollVote } from './types';
 
 /**
- * Create a notification for a user
+ * Create a notification for a user with retry logic
+ * Firestore security rules handle authentication - no client-side auth blocking
  */
 export async function createNotification(
   userId: string,
-  notification: Omit<FirestoreNotification, 'id' | 'timestamp' | 'read' | 'createdAt'>
+  notification: Omit<FirestoreNotification, 'id' | 'timestamp' | 'read' | 'createdAt'>,
+  retryCount: number = 0
 ): Promise<string> {
   const path = `users/${userId}/notifications`;
+  const MAX_RETRIES = 3;
   
   console.log('[NOTIFICATIONS] 📝 Creating notification:', {
     userId,
@@ -40,6 +43,7 @@ export async function createNotification(
     type: notification.type,
     title: notification.title,
     eventId: notification.eventId,
+    retryCount,
   });
 
   const db = getDbSafe();
@@ -52,31 +56,35 @@ export async function createNotification(
     throw new Error('Database not available');
   }
 
-  // Check if user is authenticated
+  // Log auth state for debugging (but don't block on it - Firestore rules handle security)
   try {
     const auth = getAuthInstance();
-    if (!auth?.currentUser) {
-      console.error('[NOTIFICATIONS] ❌ User not authenticated when creating notification:', {
+    if (auth?.currentUser) {
+      console.log('[NOTIFICATIONS] ✅ Auth verified, current user:', auth.currentUser.uid);
+    } else {
+      console.warn('[NOTIFICATIONS] ⚠️ No currentUser detected, proceeding anyway (Firestore rules will enforce auth):', {
         userId,
         path,
         type: notification.type,
       });
-      throw new Error('User not authenticated - cannot create notification');
     }
-    console.log('[NOTIFICATIONS] ✅ Auth verified, current user:', auth.currentUser.uid);
   } catch (authError) {
-    console.error('[NOTIFICATIONS] ❌ Auth check failed:', authError);
-    throw authError;
+    console.warn('[NOTIFICATIONS] ⚠️ Auth check failed, proceeding anyway:', authError);
   }
 
   try {
     // Use subcollection under user document: users/{userId}/notifications
     const notificationsRef = collection(db, 'users', userId, 'notifications');
+    
+    // Use createdAt as both timestamp backup and for ordering
+    const createdAtMs = Date.now();
     const notificationData = {
       ...notification,
       timestamp: serverTimestamp(),
+      // Backup timestamp as number for fallback queries
+      timestampMs: createdAtMs,
       read: false,
-      createdAt: Date.now(),
+      createdAt: createdAtMs,
     };
     
     console.log('[NOTIFICATIONS] 📤 Writing to Firestore:', {
@@ -107,8 +115,21 @@ export async function createNotification(
       type: notification.type,
       error: writeError?.message || writeError,
       code: writeError?.code,
-      stack: writeError?.stack,
+      retryCount,
     });
+    
+    // Retry with exponential backoff for transient errors
+    const isTransientError = writeError?.code === 'unavailable' || 
+                              writeError?.code === 'deadline-exceeded' ||
+                              writeError?.message?.includes('network');
+    
+    if (isTransientError && retryCount < MAX_RETRIES) {
+      const delayMs = Math.pow(2, retryCount) * 500; // 500ms, 1s, 2s
+      console.log(`[NOTIFICATIONS] 🔄 Retrying in ${delayMs}ms (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+      return createNotification(userId, notification, retryCount + 1);
+    }
+    
     throw writeError;
   }
 }
@@ -119,6 +140,7 @@ const NOTIFICATION_TTL_MS = 120 * 60 * 60 * 1000;
 /**
  * Get notifications for a user
  * Also triggers background cleanup of expired notifications (older than 120 hours)
+ * Falls back to createdAt ordering if timestamp query fails (missing index)
  */
 export async function getUserNotifications(
   userId: string,
@@ -138,14 +160,24 @@ export async function getUserNotifications(
     return [];
   }
 
+  let snapshot;
   try {
     const notificationsRef = collection(db, 'users', userId, 'notifications');
-    const q = query(
-      notificationsRef,
-      orderBy('timestamp', 'desc'),
-      limit(limitCount)
-    );
-    const snapshot = await getDocs(q);
+    
+    // Try timestamp ordering first
+    try {
+      const q = query(
+        notificationsRef,
+        orderBy('timestamp', 'desc'),
+        limit(limitCount)
+      );
+      snapshot = await getDocs(q);
+    } catch (indexError: any) {
+      // Fallback: If timestamp index is missing, query without ordering and sort client-side
+      console.warn('[NOTIFICATIONS] ⚠️ Timestamp query failed, using fallback:', indexError?.code);
+      const fallbackQuery = query(notificationsRef, limit(limitCount));
+      snapshot = await getDocs(fallbackQuery);
+    }
     
     console.log('[NOTIFICATIONS] 📊 Notifications fetched:', {
       userId,
@@ -162,7 +194,12 @@ export async function getUserNotifications(
     
     snapshot.docs.forEach(docSnapshot => {
       const data = docSnapshot.data();
-      const timestamp = data.timestamp?.toMillis?.() || data.timestamp || data.createdAt || now;
+      // Use multiple fallbacks for timestamp
+      const timestamp = data.timestamp?.toMillis?.() || 
+                        data.timestampMs || 
+                        data.timestamp || 
+                        data.createdAt || 
+                        now;
       
       if (timestamp < cutoffTime) {
         // Mark for deletion (older than 120 hours)
@@ -175,6 +212,9 @@ export async function getUserNotifications(
         } as FirestoreNotification);
       }
     });
+    
+    // Sort client-side to ensure proper ordering (handles fallback query case)
+    notifications.sort((a, b) => b.timestamp - a.timestamp);
     
     // Clean up expired notifications in background (fire and forget)
     if (expiredIds.length > 0) {
@@ -254,11 +294,14 @@ export async function getUnreadNotificationCount(userId: string): Promise<number
   const db = getDbSafe();
   if (!db) return 0;
 
-  // Check if user is authenticated
-  const { getAuthInstance } = await import('../src/lib/firebaseAuth');
-  const auth = getAuthInstance();
-  if (!auth?.currentUser) {
-    return 0;
+  // Log auth state for debugging (but don't block - Firestore rules handle auth)
+  try {
+    const auth = getAuthInstance();
+    if (!auth?.currentUser) {
+      console.warn('[NOTIFICATIONS] ⚠️ No currentUser for unread count, proceeding anyway');
+    }
+  } catch {
+    // Ignore auth check errors
   }
 
   try {
@@ -283,6 +326,7 @@ export async function getUnreadNotificationCount(userId: string): Promise<number
 
 /**
  * Subscribe to unread notification count in real-time
+ * Auth is handled by Firestore rules - we proceed with subscription even if auth check fails
  */
 export function subscribeToUnreadNotificationCount(
   userId: string,
@@ -303,21 +347,16 @@ export function subscribeToUnreadNotificationCount(
     return () => {};
   }
 
-  // Check if user is authenticated
+  // Log auth state for debugging (but don't block on it)
   try {
     const auth = getAuthInstance();
-    if (!auth?.currentUser) {
-      console.warn('[NOTIFICATIONS] ⚠️ User not authenticated for unread count subscription');
-      // CRITICAL: Defer callback to prevent React Error #310
-      queueMicrotask(() => callback(0));
-      return () => {};
+    if (auth?.currentUser) {
+      console.log('[NOTIFICATIONS] ✅ Auth verified for subscription, user:', auth.currentUser.uid);
+    } else {
+      console.warn('[NOTIFICATIONS] ⚠️ No currentUser for subscription, proceeding anyway (Firestore rules will handle auth)');
     }
-    console.log('[NOTIFICATIONS] ✅ Auth verified for subscription, user:', auth.currentUser.uid);
   } catch {
-    console.warn('[NOTIFICATIONS] ⚠️ Auth check failed for subscription');
-    // CRITICAL: Defer callback to prevent React Error #310
-    queueMicrotask(() => callback(0));
-    return () => {};
+    console.warn('[NOTIFICATIONS] ⚠️ Auth check failed for subscription, proceeding anyway');
   }
 
   try {
