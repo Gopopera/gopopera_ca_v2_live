@@ -994,15 +994,14 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       </div>
 
 
-      {/* Hero Section - Fixed aspect ratio with full image visible */}
-      {/* Mobile: 4:3 aspect ratio | Tablet: 16:10 | Desktop: 21:9 */}
-      {/* Image fits within container (object-contain), dark background fills gaps */}
+      {/* Hero Section - Image-driven height (no dead space) */}
+      {/* Container adapts to image's natural aspect ratio */}
       <div className="pt-16 sm:pt-0 lg:max-w-7xl lg:mx-auto lg:px-8 lg:pt-4">
-      <div className="relative w-full overflow-hidden lg:rounded-2xl aspect-[4/3] sm:aspect-[16/10] lg:aspect-[21/9] bg-[#15383c]">
+      <div className="relative w-full overflow-hidden lg:rounded-2xl">
         {validImageUrls.length > 1 ? (
-          // Multiple images - horizontal snap gallery (swipe to change, no scroll within image)
+          // Multiple images - horizontal snap gallery (image-driven height)
           <div 
-            className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth h-full hide-scrollbar cursor-pointer"
+            className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth hide-scrollbar cursor-pointer"
             onScroll={(e) => {
               const container = e.currentTarget;
               const scrollLeft = container.scrollLeft;
@@ -1018,7 +1017,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             }}
           >
             {validImageUrls.map((url, index) => (
-              <div key={index} className="min-w-full h-full snap-start flex-shrink-0">
+              <div key={index} className="min-w-full snap-start flex-shrink-0">
                 <EventImage
                   src={url}
                   alt={`${event.title} - Image ${index + 1}`}
@@ -1030,9 +1029,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             ))}
           </div>
         ) : (
-          // Single image - fixed aspect ratio, full image visible (object-contain)
+          // Single image - image-driven height (no dead space)
           <div
-            className="w-full h-full cursor-pointer"
+            className="w-full cursor-pointer"
             onClick={() => {
               const images = validImageUrls.length > 0 
                 ? validImageUrls 

@@ -5,7 +5,7 @@ import React from 'react';
  * 
  * Two variants:
  * - "card": For feed/grid cards - object-cover with slight upward bias to protect faces
- * - "hero": For event detail page - object-contain (full image visible, no cropping)
+ * - "hero": For event detail page - full width, natural height (no dead space)
  */
 
 interface EventImageProps {
@@ -71,13 +71,13 @@ export const EventImage: React.FC<EventImageProps> = ({
     );
   }
 
-  // Hero variant: object-contain - full image visible within frame, no cropping
-  // If aspect ratio doesn't match, empty space will show the container background
+  // Hero variant: full width, natural height - no dead space
+  // Image displays at its natural aspect ratio, container adapts to fit
   return (
     <img
       src={src}
       alt={alt}
-      className={`w-full h-full object-contain ${className}`}
+      className={`block w-full h-auto ${className}`}
       loading={priority ? 'eager' : 'lazy'}
       decoding="async"
       fetchPriority={priority ? 'high' : 'low'}
