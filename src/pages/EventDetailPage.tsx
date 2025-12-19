@@ -6,6 +6,7 @@ import { followHost, unfollowHost, isFollowing } from '../../firebase/follow';
 import { useUserStore } from '../../stores/userStore';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { EventCard } from '../../components/events/EventCard';
+import { EventImage } from '../../components/events/EventImage';
 import { MockMap } from '../../components/map/MockMap';
 import { FakeEventReservationModal } from '../../components/events/FakeEventReservationModal';
 import { ImageViewerModal } from '../../components/events/ImageViewerModal';
@@ -1010,16 +1011,18 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           >
             {event.imageUrls.map((url, index) => (
               <div key={index} className="relative min-w-full h-full snap-center flex-shrink-0">
-                <img 
-                  src={url} 
-                  alt={`${event.title} - Image ${index + 1}`} 
-                  className="w-full h-full object-cover object-top"
+                <EventImage
+                  src={url}
+                  alt={`${event.title} - Image ${index + 1}`}
+                  variant="hero"
+                  priority={index === 0}
+                  eventId={event.id}
                 />
               </div>
             ))}
           </div>
         ) : (
-          // Single image - fully visible
+          // Single image - fully visible with hero treatment (blurred bg + contained fg)
           <div
             className="w-full h-full cursor-pointer relative"
             onClick={() => {
@@ -1032,16 +1035,12 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               }
             }}
           >
-            <img 
-              src={(event.imageUrls && event.imageUrls.length > 0) ? event.imageUrls[0] : (event.imageUrl || `https://picsum.photos/seed/${event.id}/800/600`)} 
-              alt={event.title} 
-              className="w-full h-full object-cover object-top" 
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                if (!target.src.includes('picsum.photos')) {
-                  target.src = `https://picsum.photos/seed/${event.id}/800/600`;
-                }
-              }}
+            <EventImage
+              src={(event.imageUrls && event.imageUrls.length > 0) ? event.imageUrls[0] : (event.imageUrl || `https://picsum.photos/seed/${event.id}/800/600`)}
+              alt={event.title}
+              variant="hero"
+              priority={true}
+              eventId={event.id}
             />
           </div>
         )}

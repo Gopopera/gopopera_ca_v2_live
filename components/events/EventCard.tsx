@@ -15,6 +15,7 @@ import {
 } from '../../utils/eventHelpers';
 import { getMainCategoryLabelFromEvent } from '../../utils/categoryMapper';
 import { getInitials, getAvatarColor } from '../../utils/avatarUtils';
+import { EventImage } from './EventImage';
 
 // REFACTORED: Real-time attendees count component
 const EventAttendeesCount: React.FC<{ eventId: string; capacity?: number; inline?: boolean }> = ({ eventId, capacity, inline = false }) => {
@@ -293,21 +294,12 @@ export const EventCard: React.FC<EventCardProps> = ({
     >
       {/* Image Container - Premium cinematic design */}
       <div className={`relative w-full ${profileVariant ? 'aspect-square' : 'aspect-[4/3]'} overflow-hidden bg-gradient-to-br from-[#15383c] to-[#1f4d52] flex-shrink-0`} style={{ position: 'relative' }}>
-        <img 
-          src={event.imageUrls && event.imageUrls.length > 0 ? event.imageUrls[0] : (event.imageUrl || `https://picsum.photos/seed/${event.id || 'event'}/800/600`)} 
-          alt={event.title} 
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-          style={{ userSelect: 'none', WebkitUserSelect: 'none', pointerEvents: 'auto' }}
-          loading="lazy"
-          decoding="async"
-          fetchPriority="low"
-          draggable={false}
-          onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            if (!target.src.includes('picsum.photos')) {
-              target.src = `https://picsum.photos/seed/${event.id || 'event'}/800/600`;
-            }
-          }}
+        <EventImage
+          src={event.imageUrls && event.imageUrls.length > 0 ? event.imageUrls[0] : (event.imageUrl || `https://picsum.photos/seed/${event.id || 'event'}/800/600`)}
+          alt={event.title}
+          variant="card"
+          eventId={event.id}
+          hoverScale={true}
         />
         {/* Soft gradient only at bottom for text readability */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none z-10" />
