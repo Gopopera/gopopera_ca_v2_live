@@ -1013,7 +1013,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 <img 
                   src={url} 
                   alt={`${event.title} - Image ${index + 1}`} 
-                  className="w-full h-full object-cover object-center"
+                  className="w-full h-full object-cover object-top"
                 />
               </div>
             ))}
@@ -1035,7 +1035,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             <img 
               src={(event.imageUrls && event.imageUrls.length > 0) ? event.imageUrls[0] : (event.imageUrl || `https://picsum.photos/seed/${event.id}/800/600`)} 
               alt={event.title} 
-              className="w-full h-full object-cover object-center" 
+              className="w-full h-full object-cover object-top" 
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 if (!target.src.includes('picsum.photos')) {
@@ -1252,7 +1252,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               {t('event.aboutEvent')}
             </h2>
             <div className="prose prose-lg max-w-none">
-              <p className="text-base sm:text-lg md:text-xl text-gray-700 leading-relaxed font-light">
+              <p className="text-base sm:text-lg md:text-xl text-gray-700 leading-relaxed font-light whitespace-pre-wrap">
                 {event.description || "Join us for an incredible experience..."}
               </p>
             </div>
