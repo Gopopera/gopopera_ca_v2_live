@@ -385,6 +385,7 @@ export async function setTenFiveStarReviews(hostEmail: string): Promise<{ succes
         eventId,
         userId: reviewer.id,
         userName: reviewer.name,
+        userPhotoURL: reviewer.photoURL, // Include photo directly in review for reliable display
         rating: 5, // Always 5 stars
         comment: FIVE_STAR_COMMENTS[i],
         createdAt: Date.now() - ((10 - i) * 3 * 24 * 60 * 60 * 1000), // Stagger dates (3 days apart, newest first)

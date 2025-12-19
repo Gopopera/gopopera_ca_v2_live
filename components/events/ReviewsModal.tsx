@@ -29,21 +29,33 @@ export const ReviewsModal: React.FC<ReviewsModalProps> = ({ event, onClose, onRe
         // Only show accepted reviews in the public modal (exclude pending/contested)
         const firestoreReviews = await listReviews(event.id, false);
         
-        // Fetch user profiles for reviewers to get their photos
+        // Get user photos - prefer userPhotoURL from review, then fetch from profile, then fallback
         const reviewsWithUsers = await Promise.all(
           firestoreReviews.map(async (review) => {
+            // If review already has a photo URL stored, use it directly (for seeded reviews)
+            if (review.userPhotoURL) {
+              return {
+                ...review,
+                userPhoto: review.userPhotoURL,
+              };
+            }
+            
+            // Otherwise, try to fetch from user profile
             try {
               const { getUserProfile } = await import('@/firebase/db');
               const userProfile = await getUserProfile(review.userId);
+              // Generate a consistent fallback avatar number from userId
+              const fallbackNum = review.userId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 70;
               return {
                 ...review,
-                userPhoto: userProfile?.photoURL || userProfile?.imageUrl || `https://i.pravatar.cc/150?img=${review.userId}`,
+                userPhoto: userProfile?.photoURL || userProfile?.imageUrl || `https://i.pravatar.cc/150?img=${fallbackNum}`,
               };
             } catch (error) {
               console.error(`Error fetching user profile for ${review.userId}:`, error);
+              const fallbackNum = review.userId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 70;
               return {
                 ...review,
-                userPhoto: `https://i.pravatar.cc/150?img=${review.userId}`,
+                userPhoto: `https://i.pravatar.cc/150?img=${fallbackNum}`,
               };
             }
           })

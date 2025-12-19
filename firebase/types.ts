@@ -128,9 +128,11 @@ export interface FirestoreReview {
   eventId: string;
   userId: string;
   userName: string;
+  userPhotoURL?: string; // Reviewer's profile photo URL
   rating: number; // 1-5
   comment?: string;
   createdAt: number;
+  status?: 'pending' | 'accepted' | 'contested'; // Review moderation status
 }
 
 export interface FirestoreReservation {
