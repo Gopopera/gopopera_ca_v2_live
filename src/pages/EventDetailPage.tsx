@@ -986,15 +986,15 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       </div>
 
 
-      {/* Hero Section - Content-driven height (adapts to image aspect ratio) */}
-      {/* Desktop: contained width; Mobile/Tablet: full width with top padding for header */}
-      {/* Max-height prevents extremely tall images; overflow crops from bottom */}
+      {/* Hero Section - Fixed frame with full image visible */}
+      {/* Mobile: fixed aspect ratio (4:3), full image shown with blur fill for gaps */}
+      {/* Desktop: wider aspect ratio, contained width */}
       <div className="pt-16 sm:pt-0 lg:max-w-7xl lg:mx-auto lg:px-8 lg:pt-4">
-      <div className="relative w-full overflow-hidden lg:rounded-2xl max-h-[60vh] sm:max-h-[70vh] lg:max-h-[75vh]">
+      <div className="relative w-full overflow-hidden lg:rounded-2xl aspect-[4/3] sm:aspect-[16/10] lg:aspect-[21/9]">
         {event.imageUrls && event.imageUrls.length > 1 ? (
-          // Multiple images - horizontal scrollable gallery (content-driven height)
+          // Multiple images - horizontal snap gallery (swipe to change, no scroll within image)
           <div 
-            className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth hide-scrollbar cursor-pointer"
+            className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth h-full hide-scrollbar cursor-pointer"
             onScroll={(e) => {
               const container = e.currentTarget;
               const scrollLeft = container.scrollLeft;
@@ -1011,7 +1011,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             }}
           >
             {event.imageUrls.map((url, index) => (
-              <div key={index} className="min-w-full snap-center flex-shrink-0 flex items-center justify-center">
+              <div key={index} className="min-w-full h-full snap-center flex-shrink-0">
                 <EventImage
                   src={url}
                   alt={`${event.title} - Image ${index + 1}`}
@@ -1023,9 +1023,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             ))}
           </div>
         ) : (
-          // Single image - content-driven height (no fixed dimensions)
+          // Single image - fixed frame, full image visible with blur fill
           <div
-            className="w-full cursor-pointer flex items-center justify-center"
+            className="w-full h-full cursor-pointer"
             onClick={() => {
               const images = event.imageUrls && event.imageUrls.length > 0 
                 ? event.imageUrls 
