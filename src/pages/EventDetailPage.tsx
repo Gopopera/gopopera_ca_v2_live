@@ -240,6 +240,14 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   // This prevents infinite loops when event object reference changes but values stay same
   const eventId = event?.id || '';
   
+  // Filter out empty/invalid image URLs to ensure only real uploaded images are shown
+  const validImageUrls = useMemo(() => {
+    if (!event?.imageUrls || !Array.isArray(event.imageUrls)) return [];
+    return event.imageUrls.filter((url): url is string => 
+      typeof url === 'string' && url.trim().length > 0 && url !== 'undefined' && url !== 'null'
+    );
+  }, [event?.imageUrls]);
+  
   // Use refs to track the last event ID and values to prevent unnecessary recalculations
   const lastEventIdRef = useRef<string>('');
   const stableValuesRef = useRef<{
@@ -991,26 +999,25 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       {/* Image fits within container (object-contain), dark background fills gaps */}
       <div className="pt-16 sm:pt-0 lg:max-w-7xl lg:mx-auto lg:px-8 lg:pt-4">
       <div className="relative w-full overflow-hidden lg:rounded-2xl aspect-[4/3] sm:aspect-[16/10] lg:aspect-[21/9] bg-[#15383c]">
-        {event.imageUrls && event.imageUrls.length > 1 ? (
+        {validImageUrls.length > 1 ? (
           // Multiple images - horizontal snap gallery (swipe to change, no scroll within image)
           <div 
             className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth h-full hide-scrollbar cursor-pointer"
             onScroll={(e) => {
               const container = e.currentTarget;
               const scrollLeft = container.scrollLeft;
-              const imageWidth = container.scrollWidth / event.imageUrls.length;
+              const imageWidth = container.scrollWidth / validImageUrls.length;
               const newIndex = Math.round(scrollLeft / imageWidth);
-              setCurrentImageIndex(Math.min(newIndex, event.imageUrls.length - 1));
+              setCurrentImageIndex(Math.min(newIndex, validImageUrls.length - 1));
             }}
             onClick={() => {
-              const images = event.imageUrls || [];
-              if (images.length > 0) {
+              if (validImageUrls.length > 0) {
                 setImageViewerIndex(currentImageIndex);
                 setShowImageViewer(true);
               }
             }}
           >
-            {event.imageUrls.map((url, index) => (
+            {validImageUrls.map((url, index) => (
               <div key={index} className="min-w-full h-full snap-start flex-shrink-0">
                 <EventImage
                   src={url}
@@ -1027,8 +1034,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           <div
             className="w-full h-full cursor-pointer"
             onClick={() => {
-              const images = event.imageUrls && event.imageUrls.length > 0 
-                ? event.imageUrls 
+              const images = validImageUrls.length > 0 
+                ? validImageUrls 
                 : (event.imageUrl ? [event.imageUrl] : []);
               if (images.length > 0) {
                 setImageViewerIndex(0);
@@ -1037,7 +1044,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             }}
           >
             <EventImage
-              src={(event.imageUrls && event.imageUrls.length > 0) ? event.imageUrls[0] : (event.imageUrl || `https://picsum.photos/seed/${event.id}/800/600`)}
+              src={validImageUrls.length > 0 ? validImageUrls[0] : (event.imageUrl || `https://picsum.photos/seed/${event.id}/800/600`)}
               alt={event.title}
               variant="hero"
               priority={true}
@@ -1089,9 +1096,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         )}
         
         {/* Image counter for multiple images - bottom right aligned with heart icon */}
-        {event.imageUrls && event.imageUrls.length > 1 && (
+        {validImageUrls.length > 1 && (
           <div className="absolute bottom-4 right-4 bg-white/20 backdrop-blur-md text-white text-xs font-bold px-3 py-1.5 rounded-full border border-white/30 z-10 pointer-events-none">
-            {currentImageIndex + 1} / {event.imageUrls.length}
+            {currentImageIndex + 1} / {validImageUrls.length}
           </div>
         )}
         
