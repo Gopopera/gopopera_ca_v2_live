@@ -18,14 +18,35 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
   const heroImageUrl = '/ChatGPT%20Image%20Dec%2019,%202025,%2012_58_24%20PM.png';
 
   return (
-    <section className="relative min-h-[85vh] sm:min-h-[80vh] md:min-h-[75vh] lg:min-h-[70vh] xl:min-h-[75vh] flex items-center overflow-hidden bg-[#15383c] pt-20 sm:pt-24 md:pt-28 lg:pt-20 xl:pt-24 pb-0 w-full">
+    <section className="relative min-h-[90vh] sm:min-h-[85vh] md:min-h-[80vh] lg:min-h-[70vh] xl:min-h-[75vh] flex items-center overflow-hidden bg-[#15383c] pt-20 sm:pt-24 md:pt-28 lg:pt-20 xl:pt-24 pb-12 sm:pb-16 lg:pb-0 w-full">
+      
+      {/* Mobile/Tablet: Right-peeking image portal (absolute positioned) */}
+      <div 
+        className="lg:hidden absolute top-1/2 -translate-y-1/2 z-0 pointer-events-none"
+        aria-hidden="true"
+        style={{
+          right: '-25%',
+          width: 'min(85vw, 380px)',
+          aspectRatio: '1 / 1.1',
+          WebkitMaskImage: 'radial-gradient(ellipse 70% 70% at 60% 50%, black 40%, transparent 75%)',
+          maskImage: 'radial-gradient(ellipse 70% 70% at 60% 50%, black 40%, transparent 75%)',
+        }}
+      >
+        <img 
+          src={heroImageUrl}
+          alt=""
+          className="w-full h-full object-cover"
+          style={{ objectPosition: '30% center' }}
+          loading="eager"
+        />
+      </div>
       
       {/* Main content wrapper */}
       <div className="relative z-10 w-full max-w-screen-2xl mx-auto px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16">
-        <div className="flex flex-col lg:flex-row items-center lg:items-center justify-between gap-6 lg:gap-4">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 lg:gap-4">
           
-          {/* Left Column - Text Content */}
-          <div className="w-full lg:w-[48%] xl:w-[45%] text-center lg:text-left flex flex-col items-center lg:items-start pt-4 sm:pt-6 lg:pt-0">
+          {/* Left Column - Text Content (with right padding on mobile to avoid image overlap) */}
+          <div className="w-full lg:w-[48%] xl:w-[45%] text-left flex flex-col items-start pr-4 sm:pr-8 md:pr-12 lg:pr-0 lg:text-left lg:items-start pt-4 sm:pt-6 lg:pt-0">
             
             {/* Badge */}
             <div className="mb-4 sm:mb-5 md:mb-6 animate-fade-in-up">
@@ -35,12 +56,12 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
             </div>
             
             {/* Title */}
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[3.25rem] xl:text-6xl font-heading font-bold text-white mb-5 sm:mb-6 md:mb-7 leading-[1.12] tracking-tight">
+            <h1 className="text-[1.75rem] sm:text-4xl md:text-5xl lg:text-[3.25rem] xl:text-6xl font-heading font-bold text-white mb-5 sm:mb-6 md:mb-7 leading-[1.12] tracking-tight">
               {t('hero.title')}
             </h1>
             
             {/* Description */}
-            <p className="text-sm sm:text-base md:text-lg text-gray-300/90 mb-7 sm:mb-8 md:mb-10 max-w-xl font-light leading-relaxed">
+            <p className="text-sm sm:text-base md:text-lg text-gray-300/90 mb-7 sm:mb-8 md:mb-10 max-w-md lg:max-w-xl font-light leading-relaxed">
               {t('hero.description')}
             </p>
             
@@ -97,21 +118,6 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
                   borderRadius: '0 40% 40% 0 / 0 50% 50% 0',
                   boxShadow: 'inset 0 0 60px rgba(21, 56, 60, 0.4)',
                 }}
-              />
-            </div>
-          </div>
-          
-          {/* Mobile/Tablet Image - Visible below text */}
-          <div className="w-full lg:hidden mt-6 sm:mt-8">
-            <div className="relative w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden rounded-2xl sm:rounded-3xl">
-              {/* Subtle gradient overlay for depth */}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#15383c]/40 via-transparent to-[#15383c]/20 z-10 pointer-events-none" />
-              
-              <img 
-                src={heroImageUrl}
-                alt="People enjoying a circle gathering"
-                className="w-full h-full object-cover object-center"
-                loading="eager"
               />
             </div>
           </div>
