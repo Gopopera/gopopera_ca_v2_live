@@ -21,7 +21,7 @@ export const Pillars: React.FC = () => {
       title: t('pillars.eatDrink.title'),
       category: t('pillars.eatDrink.category'),
       description: t('pillars.eatDrink.description'),
-      image: "/corey-oconnell-crowd.webp",
+      image: "/ChatGPT%20Image%20Dec%2019,%202025,%2003_12_55%20PM.png",
     },
     {
       id: "03",
