@@ -15,7 +15,7 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
   };
 
   // Hero image URL - coffee circle gathering
-  const heroImageUrl = '/ChatGPT%20Image%20Dec%2019,%202025,%2003_12_55%20PM.png';
+  const heroImageUrl = '/hero-circle-gathering.png';
 
   return (
     <section className="relative min-h-[90vh] sm:min-h-[85vh] md:min-h-[80vh] lg:min-h-[70vh] xl:min-h-[75vh] flex items-center overflow-hidden bg-[#15383c] pt-20 sm:pt-24 md:pt-28 lg:pt-20 xl:pt-24 pb-12 sm:pb-16 lg:pb-0 w-full">
