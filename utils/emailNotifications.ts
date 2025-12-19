@@ -31,14 +31,11 @@ export async function sendEmailNotification(options: EmailOptions): Promise<bool
           to: options.to,
           subject: options.subject,
           html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <div style="background: linear-gradient(135deg, #15383c 0%, #1f4d52 100%); padding: 24px 32px; text-align: center; margin: -20px -20px 20px -20px; border-radius: 16px 16px 0 0;">
-                <div style="display: inline-flex; align-items: baseline; margin: 0;">
-                  <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold; letter-spacing: -0.5px; font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Popera</h1>
-                  <span style="display: inline-block; width: 3.5px; height: 3.5px; background-color: #e35e25; border-radius: 50%; flex-shrink: 0; margin-left: 1px; align-self: baseline;"></span>
-                </div>
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 16px;">
+              <div style="background: linear-gradient(135deg, #15383c 0%, #1f4d52 100%); padding: 20px 32px; text-align: center; margin: -16px -16px 20px -16px; border-radius: 12px 12px 0 0;">
+                <span style="color: #ffffff; font-size: 24px; font-weight: bold; letter-spacing: -0.5px; font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Popera</span><span style="display: inline-block; width: 4px; height: 4px; background-color: #e35e25; border-radius: 50%; margin-left: 1px; vertical-align: baseline; margin-bottom: 3px;"></span>
               </div>
-              <h2 style="color: #15383c;">${options.subject}</h2>
+              <h2 style="color: #15383c; margin-top: 0;">${options.subject}</h2>
               <p>Hello ${options.name || 'there'},</p>
               <div style="color: #333; line-height: 1.6;">
                 ${options.body.replace(/\n/g, '<br>')}

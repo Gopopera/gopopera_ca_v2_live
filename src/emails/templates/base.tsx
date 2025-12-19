@@ -18,13 +18,9 @@ export function getBaseEmailTemplate(content: string, ctaText?: string, ctaUrl?:
   <![endif]-->
 </head>
 <body style="margin: 0; padding: 0; font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: linear-gradient(145deg, #0a1628 0%, #0f2027 30%, #203a43 70%, #2c5364 100%); min-height: 100vh;">
-  <!-- Ambient glow effects -->
-  <div style="position: absolute; width: 400px; height: 400px; background: radial-gradient(circle, rgba(99, 179, 237, 0.15) 0%, transparent 70%); top: 5%; left: 10%; border-radius: 50%;"></div>
-  <div style="position: absolute; width: 300px; height: 300px; background: radial-gradient(circle, rgba(129, 230, 217, 0.12) 0%, transparent 70%); bottom: 20%; right: 15%; border-radius: 50%;"></div>
-  
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
     <tr>
-      <td align="center" style="padding: 48px 24px;">
+      <td align="center" style="padding: 24px 16px;">
         <!-- Main glass card container -->
         <table role="presentation" style="max-width: 580px; width: 100%; border-collapse: collapse;">
           <!-- Header Card -->
@@ -35,11 +31,11 @@ export function getBaseEmailTemplate(content: string, ctaText?: string, ctaUrl?:
                   <td style="padding: 28px 40px; text-align: center;">
                     <table role="presentation" style="margin: 0 auto;">
                       <tr>
-                        <td>
+                        <td style="vertical-align: baseline;">
                           <span style="color: #ffffff; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;">Popera</span>
                         </td>
-                        <td style="vertical-align: top; padding-left: 2px; padding-top: 4px;">
-                          <span style="display: inline-block; width: 6px; height: 6px; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); border-radius: 50%; box-shadow: 0 0 12px rgba(249, 115, 22, 0.6);"></span>
+                        <td style="vertical-align: baseline; padding-left: 1px;">
+                          <span style="display: inline-block; width: 5px; height: 5px; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); border-radius: 50%; box-shadow: 0 0 8px rgba(249, 115, 22, 0.5); margin-bottom: 4px;"></span>
                         </td>
                       </tr>
                     </table>
