@@ -1011,7 +1011,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             }}
           >
             {event.imageUrls.map((url, index) => (
-              <div key={index} className="min-w-full h-full snap-center flex-shrink-0">
+              <div key={index} className="min-w-full h-full snap-start flex-shrink-0">
                 <EventImage
                   src={url}
                   alt={`${event.title} - Image ${index + 1}`}
@@ -1088,9 +1088,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           </button>
         )}
         
-        {/* Image counter for multiple images */}
+        {/* Image counter for multiple images - bottom right aligned with heart icon */}
         {event.imageUrls && event.imageUrls.length > 1 && (
-          <div className="absolute bottom-24 right-4 bg-white/20 backdrop-blur-md text-white text-xs font-bold px-3 py-1.5 rounded-full border border-white/30 z-10 pointer-events-none">
+          <div className="absolute bottom-4 right-4 bg-white/20 backdrop-blur-md text-white text-xs font-bold px-3 py-1.5 rounded-full border border-white/30 z-10 pointer-events-none">
             {currentImageIndex + 1} / {event.imageUrls.length}
           </div>
         )}
