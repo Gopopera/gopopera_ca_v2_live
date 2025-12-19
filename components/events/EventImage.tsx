@@ -5,7 +5,7 @@ import React from 'react';
  * 
  * Two variants:
  * - "card": For feed/grid cards - object-cover with slight upward bias to protect faces
- * - "hero": For event detail page - two-layer technique (blurred bg + contained fg) to prevent cropping
+ * - "hero": For event detail page - content-driven height (w-full h-auto) adapts to image aspect ratio
  */
 
 interface EventImageProps {
@@ -71,34 +71,19 @@ export const EventImage: React.FC<EventImageProps> = ({
     );
   }
 
-  // Hero variant: Two-layer technique - blurred background + contained foreground
-  // This prevents top cropping while maintaining a premium look
-  // No grey bars - blurred image fills any empty space seamlessly
+  // Hero variant: Content-driven height - image defines its own height
+  // Width fills container, height scales naturally with aspect ratio
+  // No fixed container height, no blur fill, no dead space
   return (
-    <div className={`relative w-full h-full overflow-hidden ${className}`}>
-      {/* Background layer: blurred, scaled up, fully covers container (no grey visible) */}
-      <img
-        src={src}
-        alt=""
-        aria-hidden="true"
-        className="absolute inset-0 w-full h-full object-cover blur-2xl scale-125"
-        style={{ objectPosition: 'center' }}
-        loading={priority ? 'eager' : 'lazy'}
-        decoding="async"
-        onError={handleError}
-      />
-      
-      {/* Foreground layer: full image visible, no cropping */}
-      <img
-        src={src}
-        alt={alt}
-        className="absolute inset-0 w-full h-full object-contain z-[1]"
-        loading={priority ? 'eager' : 'lazy'}
-        decoding="async"
-        fetchPriority={priority ? 'high' : 'low'}
-        onError={handleError}
-      />
-    </div>
+    <img
+      src={src}
+      alt={alt}
+      className={`block w-full h-auto ${className}`}
+      loading={priority ? 'eager' : 'lazy'}
+      decoding="async"
+      fetchPriority={priority ? 'high' : 'low'}
+      onError={handleError}
+    />
   );
 };
 
