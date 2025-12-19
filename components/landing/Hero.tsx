@@ -15,17 +15,18 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
   };
 
   // Hero image URL - coffee circle gathering
-  const heroImageUrl = '/hero-coffee-circle.jpg';
+  // Replace with your own image: save to /public/hero-coffee-circle.jpg and use '/hero-coffee-circle.jpg'
+  const heroImageUrl = 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=1200&q=80';
 
   return (
-    <section className="relative min-h-[50vh] sm:min-h-[55vh] md:min-h-[60vh] lg:min-h-[70vh] xl:min-h-[75vh] flex items-center overflow-hidden bg-[#15383c] pt-20 sm:pt-24 md:pt-28 lg:pt-20 xl:pt-24 pb-8 sm:pb-10 md:pb-12 lg:pb-0 xl:pb-0 w-full">
+    <section className="relative min-h-[85vh] sm:min-h-[80vh] md:min-h-[75vh] lg:min-h-[70vh] xl:min-h-[75vh] flex items-center overflow-hidden bg-[#15383c] pt-20 sm:pt-24 md:pt-28 lg:pt-20 xl:pt-24 pb-0 w-full">
       
-      {/* Desktop: Two-column layout */}
+      {/* Main content wrapper */}
       <div className="relative z-10 w-full max-w-screen-2xl mx-auto px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16">
-        <div className="flex flex-col lg:flex-row items-center lg:items-center justify-between gap-8 lg:gap-4">
+        <div className="flex flex-col lg:flex-row items-center lg:items-center justify-between gap-6 lg:gap-4">
           
           {/* Left Column - Text Content */}
-          <div className="w-full lg:w-[48%] xl:w-[45%] text-center lg:text-left flex flex-col items-center lg:items-start">
+          <div className="w-full lg:w-[48%] xl:w-[45%] text-center lg:text-left flex flex-col items-center lg:items-start pt-4 sm:pt-6 lg:pt-0">
             
             {/* Badge */}
             <div className="mb-4 sm:mb-5 md:mb-6 animate-fade-in-up">
@@ -69,7 +70,7 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
             </p>
           </div>
           
-          {/* Right Column - Hero Image with Pill Mask */}
+          {/* Right Column - Hero Image with Pill Mask (Desktop only) */}
           <div className="hidden lg:block w-full lg:w-[50%] xl:w-[52%] relative">
             <div className="relative w-full aspect-[4/3] xl:aspect-[5/4]">
               {/* Gradient fade on left edge to blend into background */}
@@ -101,19 +102,22 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
             </div>
           </div>
           
+          {/* Mobile/Tablet Image - Visible below text */}
+          <div className="w-full lg:hidden mt-6 sm:mt-8">
+            <div className="relative w-full aspect-[16/10] sm:aspect-[16/9] overflow-hidden rounded-2xl sm:rounded-3xl">
+              {/* Subtle gradient overlay for depth */}
+              <div className="absolute inset-0 bg-gradient-to-t from-[#15383c]/40 via-transparent to-[#15383c]/20 z-10 pointer-events-none" />
+              
+              <img 
+                src={heroImageUrl}
+                alt="People enjoying a circle gathering"
+                className="w-full h-full object-cover object-center"
+                loading="eager"
+              />
+            </div>
+          </div>
+          
         </div>
-      </div>
-      
-      {/* Mobile: Hero image as background with overlay */}
-      <div className="lg:hidden absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#15383c]/95 via-[#15383c]/85 to-[#15383c] z-10" />
-        <img 
-          src={heroImageUrl}
-          alt=""
-          aria-hidden="true"
-          className="w-full h-full object-cover object-top opacity-30"
-          loading="eager"
-        />
       </div>
     </section>
   );
