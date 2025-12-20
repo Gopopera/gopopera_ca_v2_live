@@ -1501,11 +1501,11 @@ export function subscribeToReviewsCount(
         return;
       }
 
-      // Get all reviews for these events
-      const reviewsCol = collection(db, "reviews");
+      // FIXED: Get reviews from subcollection under each event (events/{eventId}/reviews)
+      // NOT from top-level reviews collection
       const allReviewQueries = eventIds.map(eventId => {
-        const q = query(reviewsCol, where("eventId", "==", eventId));
-        return getDocs(q);
+        const reviewsSubCol = collection(db, "events", eventId, "reviews");
+        return getDocs(reviewsSubCol);
       });
 
       const reviewSnapshots = await Promise.all(allReviewQueries);
@@ -1521,6 +1521,7 @@ export function subscribeToReviewsCount(
       }, 0);
 
       if (isActive) {
+        console.log('[REVIEWS_COUNT] ✅ Calculated review count:', { hostId, eventCount: eventIds.length, totalCount });
         callback(totalCount);
       }
     } catch (error) {

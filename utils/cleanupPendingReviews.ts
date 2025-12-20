@@ -28,12 +28,10 @@ export async function deletePendingReviewsForHost(hostId: string): Promise<{
     let kept = 0;
     let errors = 0;
 
-    // Get all reviews for these events
-    const reviewsCol = collection(db, 'reviews');
-    
+    // FIXED: Get reviews from subcollection under each event (events/{eventId}/reviews)
     for (const eventId of eventIds) {
-      const reviewsQuery = query(reviewsCol, where('eventId', '==', eventId));
-      const reviewsSnapshot = await getDocs(reviewsQuery);
+      const reviewsSubCol = collection(db, 'events', eventId, 'reviews');
+      const reviewsSnapshot = await getDocs(reviewsSubCol);
 
       for (const reviewDoc of reviewsSnapshot.docs) {
         const reviewData = reviewDoc.data();
@@ -43,7 +41,7 @@ export async function deletePendingReviewsForHost(hostId: string): Promise<{
         // Keep if status is 'accepted' or undefined (backward compatibility)
         if (status === 'pending' || status === 'contested') {
           try {
-            await deleteDoc(doc(db, 'reviews', reviewDoc.id));
+            await deleteDoc(doc(db, 'events', eventId, 'reviews', reviewDoc.id));
             deleted++;
             console.log(`[CLEANUP] Deleted pending review ${reviewDoc.id} for event ${eventId}`);
           } catch (error) {
