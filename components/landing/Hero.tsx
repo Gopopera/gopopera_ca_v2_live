@@ -23,43 +23,19 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
       {/* MOBILE/TABLET: Right-side image layer (absolute, flush to right edge) */}
       <div 
         className="lg:hidden absolute inset-y-0 right-0 w-[52%] sm:w-[50%] overflow-hidden pointer-events-none"
-        style={{
-          borderTopLeftRadius: '9999px',
-          borderBottomLeftRadius: '9999px',
-        }}
         aria-hidden="true"
       >
-        {/* The image */}
+        {/* The image with left-edge fade using mask-image */}
         <img 
           src={heroImageUrl}
           alt=""
           className="w-full h-full object-cover"
-          style={{ objectPosition: '35% 40%' }}
+          style={{ 
+            objectPosition: '35% 40%',
+            WebkitMaskImage: 'linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 25%, rgba(0,0,0,1) 100%)',
+            maskImage: 'linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 25%, rgba(0,0,0,1) 100%)',
+          }}
           loading="eager"
-        />
-        
-        {/* Left fade gradient overlay (strong left → transparent right) */}
-        <div 
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: 'linear-gradient(to right, #15383c 0%, rgba(21,56,60,0.7) 20%, rgba(21,56,60,0.3) 40%, transparent 70%)',
-          }}
-        />
-        
-        {/* Subtle top fade */}
-        <div 
-          className="absolute inset-x-0 top-0 h-24 pointer-events-none"
-          style={{
-            background: 'linear-gradient(to bottom, #15383c 0%, transparent 100%)',
-          }}
-        />
-        
-        {/* Subtle bottom fade */}
-        <div 
-          className="absolute inset-x-0 bottom-0 h-24 pointer-events-none"
-          style={{
-            background: 'linear-gradient(to top, #15383c 0%, transparent 100%)',
-          }}
         />
       </div>
       
@@ -112,11 +88,11 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
           
         </div>
         
-        {/* DESKTOP: Original flex layout */}
-        <div className="hidden lg:flex lg:flex-row items-center justify-between gap-4">
+        {/* DESKTOP: Text content on left, image is absolutely positioned */}
+        <div className="hidden lg:block lg:w-[48%] xl:w-[45%]">
           
-          {/* Left Column - Text Content */}
-          <div className="w-full lg:w-[48%] xl:w-[45%] text-left flex flex-col items-start">
+          {/* Text Content */}
+          <div className="text-left flex flex-col items-start">
             
             {/* Badge */}
             <div className="mb-5 md:mb-6 animate-fade-in-up">
@@ -160,39 +136,23 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
             </p>
           </div>
           
-          {/* Right Column - Hero Image with Pill Mask */}
-          <div className="w-full lg:w-[50%] xl:w-[52%] relative">
-            <div className="relative w-full aspect-[4/3] xl:aspect-[5/4]">
-              {/* Gradient fade on left edge to blend into background */}
-              <div className="absolute inset-y-0 left-0 w-32 xl:w-40 bg-gradient-to-r from-[#15383c] to-transparent z-10 pointer-events-none" />
-              
-              {/* Image container with pill/rounded shape */}
-              <div 
-                className="absolute inset-0 overflow-hidden"
-                style={{
-                  borderRadius: '0 40% 40% 0 / 0 50% 50% 0',
-                }}
-              >
-                <img 
-                  src={heroImageUrl}
-                  alt="People enjoying a circle gathering"
-                  className="w-full h-full object-cover object-center"
-                  loading="eager"
-                />
-              </div>
-              
-              {/* Subtle inner shadow for depth */}
-              <div 
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  borderRadius: '0 40% 40% 0 / 0 50% 50% 0',
-                  boxShadow: 'inset 0 0 60px rgba(21, 56, 60, 0.4)',
-                }}
-              />
-            </div>
-          </div>
-          
         </div>
+      </div>
+      
+      {/* DESKTOP: Right image panel - flush to right edge with left fade */}
+      <div className="pointer-events-none absolute inset-y-0 right-0 hidden lg:block lg:w-[52%]">
+        <img
+          src={heroImageUrl}
+          alt="People enjoying a circle gathering"
+          className="h-full w-full object-cover object-center"
+          style={{
+            WebkitMaskImage:
+              "linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,1) 100%)",
+            maskImage:
+              "linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,1) 100%)",
+          }}
+          loading="eager"
+        />
       </div>
     </section>
   );
