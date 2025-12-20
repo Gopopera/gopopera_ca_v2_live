@@ -9,6 +9,7 @@ import { create } from 'zustand';
 import { subscribeToChat } from '../firebase/listeners';
 import { addChatMessage } from '../firebase/db';
 import type { FirestoreChatMessage } from '../firebase/types';
+import { logger } from '../utils/logger';
 
 export interface ChatMessage {
   id: string;
@@ -46,13 +47,13 @@ interface ChatStore {
   initializeEventChat: (eventId: string, hostName: string) => void;
 }
 
-// REFACTORED: Map Firestore message to ChatMessage
+// PERFORMANCE OPTIMIZED: Map Firestore message to ChatMessage
 // Sender info (userName) is fetched from /users/{senderId} in real-time
 const mapFirestoreMessageToChatMessage = (msg: FirestoreChatMessage): ChatMessage => {
-  // CRITICAL: Ensure we have a valid userId from either senderId or userId
+  // Ensure we have a valid userId from either senderId or userId
   const messageUserId = msg.senderId || msg.userId || '';
   
-  // CRITICAL: Validate createdAt and handle edge cases
+  // Validate createdAt and handle edge cases
   let timestamp: string;
   try {
     if (msg.createdAt) {
@@ -62,31 +63,19 @@ const mapFirestoreMessageToChatMessage = (msg: FirestoreChatMessage): ChatMessag
       
       // Check if date is valid
       if (isNaN(date.getTime())) {
-        console.warn(`[CHAT MAPPED MESSAGE] ⚠️ Invalid createdAt for message ${msg.id}, using current time:`, {
-          messageId: msg.id,
-          createdAt: msg.createdAt,
-          createdAtType: typeof msg.createdAt,
-        });
         timestamp = new Date().toISOString();
       } else {
         timestamp = date.toISOString();
       }
     } else {
-      console.warn(`[CHAT MAPPED MESSAGE] ⚠️ Missing createdAt for message ${msg.id}, using current time:`, {
-        messageId: msg.id,
-      });
       timestamp = new Date().toISOString();
     }
   } catch (error) {
-    console.error(`[CHAT MAPPED MESSAGE] ❌ Error parsing createdAt for message ${msg.id}:`, {
-      messageId: msg.id,
-      createdAt: msg.createdAt,
-      error,
-    });
+    logger.error(`[CHAT_STORE] Error parsing createdAt for message ${msg.id}:`, error);
     timestamp = new Date().toISOString();
   }
   
-  const mappedMessage: ChatMessage = {
+  return {
     id: msg.id,
     eventId: msg.eventId,
     userId: messageUserId,
@@ -96,40 +85,6 @@ const mapFirestoreMessageToChatMessage = (msg: FirestoreChatMessage): ChatMessag
     type: msg.type || 'message',
     isHost: msg.isHost || false,
   };
-  
-  // CRITICAL DIAGNOSTIC: Log each mapped message
-  console.log(`[DIAGNOSTIC] 🟢 mapFirestoreMessageToChatMessage() MAPPED message ${msg.id}:`, {
-    originalMessage: {
-      id: msg.id,
-      senderId: msg.senderId,
-      userId: msg.userId,
-      text: msg.text?.substring(0, 30),
-      createdAt: msg.createdAt,
-      isHost: msg.isHost,
-    },
-    mappedMessage: {
-      id: mappedMessage.id,
-      eventId: mappedMessage.eventId,
-      userId: mappedMessage.userId,
-      userName: mappedMessage.userName,
-      messageLength: mappedMessage.message.length,
-      timestamp: mappedMessage.timestamp,
-      type: mappedMessage.type,
-      isHost: mappedMessage.isHost,
-    },
-    mappingSuccess: !!mappedMessage.userId,
-  });
-  
-  // CRITICAL DIAGNOSTIC: Warn if mapping failed
-  if (!mappedMessage.userId) {
-    console.error(`[DIAGNOSTIC] 🔴 mapFirestoreMessageToChatMessage() FAILED - no userId for message ${msg.id}`, {
-      messageId: msg.id,
-      originalSenderId: msg.senderId,
-      originalUserId: msg.userId,
-    });
-  }
-  
-  return mappedMessage;
 };
 
 export const useChatStore = create<ChatStore>((set, get) => ({
@@ -206,82 +161,21 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   subscribeToEventChat: (eventId: string) => {
-    // CRITICAL DIAGNOSTIC: Log when subscribeToEventChat is called
-    console.log(`[DIAGNOSTIC] 🟣 subscribeToEventChat() CALLED for eventId: ${eventId}`, {
-      eventId,
-      timestamp: new Date().toISOString(),
-      existingSubscription: !!get().unsubscribeCallbacks[eventId],
-    });
-    
     // Unsubscribe from previous subscription if exists
     const existingUnsubscribe = get().unsubscribeCallbacks[eventId];
     if (existingUnsubscribe) {
-      console.log(`[DIAGNOSTIC] 🧹 subscribeToEventChat() unsubscribing from existing subscription for eventId: ${eventId}`);
       existingUnsubscribe();
     }
 
     // Subscribe to Firestore realtime updates
-    console.log(`[DIAGNOSTIC] 📞 subscribeToEventChat() calling subscribeToChat() for eventId: ${eventId}`);
     const unsubscribe = subscribeToChat(eventId, (firestoreMessages: FirestoreChatMessage[]) => {
-      // CRITICAL DIAGNOSTIC: Log when callback receives messages
-      console.log(`[DIAGNOSTIC] 🟠 subscribeToEventChat() CALLBACK RECEIVED ${firestoreMessages.length} messages for eventId: ${eventId}`, {
-        eventId,
-        messageCount: firestoreMessages.length,
-        messageIds: firestoreMessages.map(m => m.id),
-        messageDetails: firestoreMessages.map(m => ({
-          id: m.id,
-          senderId: m.senderId,
-          userId: m.userId,
-          isHost: m.isHost,
-          text: m.text?.substring(0, 30),
-        })),
-      });
-      console.log(`[CHAT_STORE] 📨 Received ${firestoreMessages.length} messages for event ${eventId}`, {
-        eventId,
-        messageCount: firestoreMessages.length,
-        messages: firestoreMessages.map(m => ({ 
-          id: m.id, 
-          senderId: m.senderId,  // ✅ Added senderId
-          userId: m.userId, 
-          userName: m.userName, 
-          isHost: m.isHost,
-          text: m.text?.substring(0, 50),
-          createdAt: m.createdAt,
-        })),
-        // CRITICAL: Log all message details for debugging host visibility issue
-        allMessages: firestoreMessages,
-      });
-      
-      // CRITICAL: Ensure messages are properly stored
-      console.log(`[DIAGNOSTIC] 💾 subscribeToEventChat() updating store state for eventId: ${eventId}`, {
-        eventId,
-        messageCount: firestoreMessages.length,
-        beforeUpdate: get().firestoreMessages[eventId]?.length || 0,
-      });
-      
-      set((state) => {
-        const updatedMessages = {
+      // Update store with new messages (logging removed for performance)
+      set((state) => ({
+        firestoreMessages: {
           ...state.firestoreMessages,
           [eventId]: firestoreMessages,
-        };
-        
-        console.log(`[CHAT_STORE] ✅ Updated firestoreMessages for ${eventId}:`, {
-          eventId,
-          messageCount: firestoreMessages.length,
-          storedCount: updatedMessages[eventId]?.length || 0,
-        });
-        
-        // CRITICAL DIAGNOSTIC: Log after state update
-        console.log(`[DIAGNOSTIC] ✅ subscribeToEventChat() store state UPDATED for eventId: ${eventId}`, {
-          eventId,
-          storedMessageCount: updatedMessages[eventId]?.length || 0,
-          storedMessageIds: updatedMessages[eventId]?.map(m => m.id) || [],
-        });
-        
-        return {
-          firestoreMessages: updatedMessages,
-        };
-      });
+        },
+      }));
     });
 
     set((state) => ({
@@ -291,7 +185,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       },
     }));
     
-    console.log(`[CHAT_STORE] ✅ Subscribed to chat for event ${eventId}`);
+    logger.debug(`[CHAT_STORE] Subscribed to chat for event ${eventId}`);
   },
 
   unsubscribeFromEventChat: (eventId: string) => {
@@ -307,99 +201,26 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   getMessagesForEvent: (eventId: string) => {
-    // CRITICAL DIAGNOSTIC: Log when getMessagesForEvent is called
-    console.log(`[DIAGNOSTIC] 🔵 getMessagesForEvent() CALLED for eventId: ${eventId}`, {
-      eventId,
-      timestamp: new Date().toISOString(),
-      storeState: {
-        hasFirestoreMessages: !!get().firestoreMessages[eventId],
-        firestoreMessageCount: get().firestoreMessages[eventId]?.length || 0,
-      },
-    });
-    
-    // CRITICAL: Always prefer Firestore messages (real-time, most up-to-date)
-    // NO FILTERING - All users (host and attendees) should see ALL messages
+    // Always prefer Firestore messages (real-time, most up-to-date)
     const firestoreMsgs = get().firestoreMessages[eventId];
     
-    console.log(`[CHAT_STORE] 🔍 getMessagesForEvent(${eventId}):`, {
-      eventId,
-      hasFirestoreMessages: !!firestoreMsgs,
-      firestoreMessageCount: firestoreMsgs?.length || 0,
-      rawFirestoreMessages: firestoreMsgs?.map(m => ({
-        id: m.id,
-        senderId: m.senderId,
-        userId: m.userId,
-        text: m.text?.substring(0, 50),
-        createdAt: m.createdAt,
-        isHost: m.isHost,
-      })) || [],
-    });
-    
     if (firestoreMsgs && firestoreMsgs.length > 0) {
-      // Map all messages
-      const mappedMessages = firestoreMsgs.map(mapFirestoreMessageToChatMessage);
-      
-      // Sort by timestamp
-      const sortedMessages = mappedMessages.sort((a, b) => {
-        const timeA = new Date(a.timestamp).getTime();
-        const timeB = new Date(b.timestamp).getTime();
-        
-        // Handle invalid dates
-        if (isNaN(timeA) || isNaN(timeB)) {
-          console.warn(`[CHAT_STORE] ⚠️ Invalid timestamp in sort:`, {
-            messageA: { id: a.id, timestamp: a.timestamp, timeA },
-            messageB: { id: b.id, timestamp: b.timestamp, timeB },
-          });
-          return 0;
-        }
-        
-        return timeA - timeB;
-      });
-      
-      // CRITICAL: Log final sorted messages before returning
-      console.log(`[CHAT_STORE] ✅ getMessagesForEvent(${eventId}) returning ${sortedMessages.length} messages:`, {
-        eventId,
-        messageCount: sortedMessages.length,
-        messages: sortedMessages.map(m => ({ 
-          id: m.id, 
-          userId: m.userId, 
-          userName: m.userName, 
-          isHost: m.isHost,
-          type: m.type,
-          timestamp: m.timestamp,
-          text: m.message.substring(0, 50) 
-        })),
-      });
-      
-      // CRITICAL DIAGNOSTIC: Log before returning
-      console.log(`[DIAGNOSTIC] ✅ getMessagesForEvent() RETURNING ${sortedMessages.length} messages for eventId: ${eventId}`, {
-        eventId,
-        returnCount: sortedMessages.length,
-        returnMessageIds: sortedMessages.map(m => m.id),
-        returnMessageDetails: sortedMessages.map(m => ({
-          id: m.id,
-          userId: m.userId,
-          isHost: m.isHost,
-          text: m.message.substring(0, 30),
-        })),
-      });
-      
-      return sortedMessages;
+      // Map and sort all messages by timestamp
+      return firestoreMsgs
+        .map(mapFirestoreMessageToChatMessage)
+        .sort((a, b) => {
+          const timeA = new Date(a.timestamp).getTime();
+          const timeB = new Date(b.timestamp).getTime();
+          // Handle invalid dates gracefully
+          if (isNaN(timeA) || isNaN(timeB)) return 0;
+          return timeA - timeB;
+        });
     }
     
     // Fallback to local messages (only if Firestore subscription hasn't loaded yet)
-    const localMessages = get().messages
+    return get().messages
       .filter(msg => msg.eventId === eventId)
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-    
-    if (import.meta.env.DEV && localMessages.length > 0) {
-      console.log(`[CHAT_STORE] ⚠️ Using fallback local messages for ${eventId}:`, {
-        eventId,
-        messageCount: localMessages.length,
-      });
-    }
-    
-    return localMessages;
   },
 
   addPoll: (eventId, question, options) => {

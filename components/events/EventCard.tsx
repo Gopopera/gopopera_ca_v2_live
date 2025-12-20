@@ -5,7 +5,6 @@ import { formatDate } from '@/utils/dateFormatter';
 import { formatRating } from '@/utils/formatRating';
 import { useUserStore } from '@/stores/userStore';
 import { listHostReviews, subscribeToReservationCount } from '../../firebase/db';
-// REFACTORED: No longer using getUserProfile - using real-time subscriptions instead
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   getCircleContinuityText, 
@@ -16,23 +15,21 @@ import {
 import { getMainCategoryLabelFromEvent } from '../../utils/categoryMapper';
 import { getInitials, getAvatarColor } from '../../utils/avatarUtils';
 import { EventImage } from './EventImage';
+// PERFORMANCE: Use cached host profile hook to share subscriptions across cards
+import { useHostProfile } from '../../hooks/useHostProfileCache';
 
-// REFACTORED: Real-time attendees count component
+// PERFORMANCE: Real-time attendees count component (logging removed for performance)
 const EventAttendeesCount: React.FC<{ eventId: string; capacity?: number; inline?: boolean }> = ({ eventId, capacity, inline = false }) => {
   const [attendeesCount, setAttendeesCount] = React.useState<number>(0);
   
   React.useEffect(() => {
     if (!eventId) return;
     
-    console.log('[EVENT_CARD] 📡 Subscribing to reservation count:', { eventId });
-    
     const unsubscribe = subscribeToReservationCount(eventId, (count) => {
       setAttendeesCount(count);
-      console.log('[EVENT_CARD] ✅ Reservation count updated:', { eventId, count });
     });
     
     return () => {
-      console.log('[EVENT_CARD] 🧹 Unsubscribing from reservation count:', { eventId });
       unsubscribe();
     };
   }, [eventId]);
@@ -112,65 +109,14 @@ export const EventCard: React.FC<EventCardProps> = ({
   const user = useUserStore((state) => state.user);
   const userProfile = useUserStore((state) => state.userProfile);
   
-  // Get host profile picture - sync with user's profile if it's their event, or fetch from Firestore
-  const [hostProfilePicture, setHostProfilePicture] = React.useState<string | null>(null);
-  
-  // State for host name (may need to be fetched if missing)
-  const [displayHostName, setDisplayHostName] = React.useState<string>('');
+  // PERFORMANCE: Use cached host profile hook - shares subscription across all cards with same host
+  const hostProfile = useHostProfile(event.hostId);
+  const hostProfilePicture = hostProfile?.photoURL || null;
+  const displayHostName = hostProfile?.displayName || 'Unknown Host';
   
   // State for host's overall rating (from all their events)
   const [hostOverallRating, setHostOverallRating] = React.useState<number | null>(null);
   const [hostOverallReviewCount, setHostOverallReviewCount] = React.useState<number>(0);
-  
-  // REFACTORED: Real-time subscription to /users/{hostId} - single source of truth
-  // No polling, no fallbacks to stale event data - always fresh from Firestore
-  React.useEffect(() => {
-    if (!event.hostId) {
-      setHostProfilePicture(null);
-      setDisplayHostName('Unknown Host');
-      return;
-    }
-    
-    if (import.meta.env.DEV) {
-      console.log('[EVENT_CARD] 📡 Subscribing to host profile:', { hostId: event.hostId });
-    }
-    
-    let unsubscribe: (() => void) | null = null;
-    
-    // Real-time subscription to host user document
-    import('../../firebase/userSubscriptions').then(({ subscribeToUserProfile }) => {
-      unsubscribe = subscribeToUserProfile(event.hostId, (hostData) => {
-        if (hostData) {
-          setHostProfilePicture(hostData.photoURL || null);
-          setDisplayHostName(hostData.displayName || 'Unknown Host');
-          
-          if (import.meta.env.DEV) {
-            console.log('[EVENT_CARD] ✅ Host profile updated:', {
-              hostId: event.hostId,
-              displayName: hostData.displayName,
-              hasPhoto: !!hostData.photoURL,
-            });
-          }
-        } else {
-          setHostProfilePicture(null);
-          setDisplayHostName('Unknown Host');
-        }
-      });
-    }).catch((error) => {
-      console.error('[EVENT_CARD] ❌ Error loading user subscriptions:', error);
-      setHostProfilePicture(null);
-      setDisplayHostName('Unknown Host');
-    });
-    
-    return () => {
-      if (unsubscribe) {
-        if (import.meta.env.DEV) {
-          console.log('[EVENT_CARD] 🧹 Unsubscribing from host profile:', { hostId: event.hostId });
-        }
-        unsubscribe();
-      }
-    };
-  }, [event.hostId]);
   
   // Fetch host's overall rating from all their events
   React.useEffect(() => {

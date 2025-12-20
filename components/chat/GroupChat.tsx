@@ -340,33 +340,23 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
     }
   }, []);
   
-  // CRITICAL: Check reservation in real-time for attendees (not hosts)
-  // This ensures we catch reservations that haven't been synced to the user store yet
+  // PERFORMANCE OPTIMIZED: Check reservation once on mount (no polling)
+  // Real-time updates come from userStore.rsvps - no need to poll Firestore
   useEffect(() => {
     // Only check for attendees, not hosts or demo events
     if (isHost || isDemo || !currentUser?.id || !event.id) {
       return;
     }
     
-    // Check real-time reservation status
+    // Check real-time reservation status ONCE on mount
     const checkReservation = async () => {
       const hasReservation = await checkReservationInFirestore(event.id, currentUser.id);
       setHasReservedRealTime(hasReservation);
-      
-      console.log('[GROUP_CHAT] ✅ Real-time reservation status updated:', {
-        eventId: event.id,
-        userId: currentUser.id,
-        hasReservedCached: hasReserved,
-        hasReservedRealTime: hasReservation,
-      });
     };
     
     checkReservation();
-    
-    // Re-check periodically to catch late reservations
-    const interval = setInterval(checkReservation, 5000);
-    return () => clearInterval(interval);
-  }, [event.id, currentUser?.id, isHost, isDemo, checkReservationInFirestore, hasReserved]);
+    // No polling - userStore.rsvps provides real-time updates via onSnapshot
+  }, [event.id, currentUser?.id, isHost, isDemo, checkReservationInFirestore]);
   
   // Enhanced hasReserved check - uses both cached and real-time
   const hasReservedEnhanced = useMemo(() => {
@@ -421,191 +411,55 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
     }
   }, [event.id, currentUser?.id, isHost, hasReserved, hasReservedRealTime, hasReservedEnhanced, isPoperaOwned, isDemo, viewType, canAccessChat, currentUser?.rsvps]);
   
-  // CRITICAL DIAGNOSTIC: Log when messages are retrieved
+  // Get messages for this event (logging removed for performance)
   const messages = getMessagesForEvent(event.id);
-  console.log(`[DIAGNOSTIC] 🟡 GroupChat RENDER - messages retrieved for eventId: ${event.id}`, {
-    eventId: event.id,
-    messageCount: messages.length,
-    isHost,
-    userId: currentUser?.id,
-    hostId: event.hostId,
-    messageIds: messages.map(m => m.id),
-    messageDetails: messages.map(m => ({
-      id: m.id,
-      userId: m.userId,
-      isHost: m.isHost,
-      text: m.message.substring(0, 30),
-    })),
-  });
   
   const poll = getPollForEvent(event.id);
   
-  // CRITICAL: Enhanced subscription logic with real-time reservation checking and fallback
-  // Host should ALWAYS see all messages, attendees see messages when they have access
+  // PERFORMANCE OPTIMIZED: Simplified subscription logic
+  // - Subscribe IMMEDIATELY for hosts (no delay)
+  // - Subscribe IMMEDIATELY for attendees with access (no delay)
+  // - NO polling intervals - Firestore onSnapshot handles real-time updates
+  // - Reduced dependency array to prevent unnecessary re-subscriptions
   useEffect(() => {
-    let isMounted = true;
-    let verifyInterval: NodeJS.Timeout | null = null;
+    // Don't subscribe for demo events or banned users
+    if (isDemo || isBanned) {
+      return;
+    }
     
-    const setupSubscription = async () => {
-      // For hosts - always subscribe (except demo events)
-      if (isHost && !isDemo) {
-        console.log('[GROUP_CHAT] ✅ Host subscribing to chat:', {
-          eventId: event.id,
-          userId: currentUser?.id,
-          hostId: event.hostId,
-        });
-        subscribeToEventChat(event.id);
-        return;
-      }
-      
-      // For attendees - check access with enhanced reservation check
-      // Wait a bit for real-time reservation check to complete if needed
-      let hasAccess = canAccessChat;
-      
-      // If we don't have access yet but real-time check is pending, wait a moment
-      if (!hasAccess && hasReservedRealTime === null && !isPoperaOwned) {
-        console.log('[GROUP_CHAT] ⏳ Waiting for real-time reservation check...');
-        // Give it 2 seconds for real-time check
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        hasAccess = canAccessChat || hasReservedEnhanced;
-      }
-      
-      const shouldSubscribe = hasAccess && !isDemo && !isBanned;
-      
-      if (!shouldSubscribe) {
-        console.warn('[GROUP_CHAT] ⚠️ Not subscribing to chat:', {
-          eventId: event.id,
-          canAccessChat,
-          hasReserved,
-          hasReservedRealTime,
-          hasReservedEnhanced,
-          isPoperaOwned,
-          isDemo,
-          isBanned,
-          isHost,
-          viewType,
-          userId: currentUser?.id,
-          hostId: event.hostId,
-        });
-        return;
-      }
-      
-      // Log subscription start with full context
-      console.log('[GROUP_CHAT] ✅ Attendee subscribing to chat:', {
-        eventId: event.id,
-        hasReserved,
-        hasReservedRealTime,
-        hasReservedEnhanced,
-        canAccessChat,
-        viewType,
-        userId: currentUser?.id,
-        hostId: event.hostId,
-        path: `events/${event.id}/messages`,
-      });
-      
-      // CRITICAL: Subscribe immediately - this establishes the Firestore listener
+    // Determine if we should subscribe
+    // Hosts always get access, attendees need reservation or Popera-owned event
+    const shouldSubscribe = isHost || canAccessChat || isPoperaOwned || hasReserved || hasReservedEnhanced;
+    
+    if (shouldSubscribe) {
+      // Subscribe immediately - no delays!
       subscribeToEventChat(event.id);
       
-      // For attendees: Add periodic verification with fallback subscription
-      if (!isHost && isMounted) {
-        verifyInterval = setInterval(async () => {
-          if (!isMounted) return;
-          
-          const messages = getMessagesForEvent(event.id);
-          const chatStore = useChatStore.getState();
-          const firestoreMessages = chatStore.firestoreMessages[event.id] || [];
-          const subscriptionActive = !!chatStore.unsubscribeCallbacks[event.id];
-          
-          // Re-check reservation status periodically
-          if (currentUser?.id) {
-            const hasReservation = await checkReservationInFirestore(event.id, currentUser.id);
-            if (hasReservation && hasReservedRealTime !== hasReservation) {
-              setHasReservedRealTime(hasReservation);
-              console.log('[GROUP_CHAT] 🔄 Reservation status changed:', {
-                eventId: event.id,
-                hasReservation,
-              });
-            }
-          }
-          
-          console.log('[GROUP_CHAT] 🔍 Attendee subscription verification:', {
-            eventId: event.id,
-            userId: currentUser?.id,
-            messageCount: messages.length,
-            firestoreMessageCount: firestoreMessages.length,
-            subscriptionActive,
-            hasReservedEnhanced,
-          });
-          
-          // If subscription appears broken but we should have access, re-subscribe
-          if (!subscriptionActive && hasReservedEnhanced && !isDemo && !isBanned) {
-            console.warn('[GROUP_CHAT] ⚠️ Subscription lost, re-subscribing');
-            subscribeToEventChat(event.id);
-          }
-          
-          // If we have messages but subscription isn't active, something's wrong
-          if (messages.length > 0 && !subscriptionActive) {
-            console.warn('[GROUP_CHAT] ⚠️ Messages exist but subscription inactive, re-subscribing');
-            subscribeToEventChat(event.id);
-          }
-        }, 5000); // Verify every 5 seconds for attendees
+      if (import.meta.env.DEV) {
+        console.log('[GROUP_CHAT] ✅ Subscribed to chat:', {
+          eventId: event.id,
+          isHost,
+          hasReserved,
+          isPoperaOwned,
+        });
       }
-      
-      // For hosts: Add periodic verification to catch any subscription issues
-      if (isHost && isMounted) {
-        verifyInterval = setInterval(() => {
-          if (!isMounted) return;
-          
-          const messages = getMessagesForEvent(event.id);
-          const chatStore = useChatStore.getState();
-          const firestoreMessages = chatStore.firestoreMessages[event.id] || [];
-          
-          console.log('[GROUP_CHAT] 🔍 Host subscription verification:', {
-            eventId: event.id,
-            userId: currentUser?.id,
-            hostId: event.hostId,
-            messageCount: messages.length,
-            firestoreMessageCount: firestoreMessages.length,
-            subscriptionActive: !!chatStore.unsubscribeCallbacks[event.id],
-          });
-          
-          // If subscription appears broken, try to re-subscribe
-          if (!chatStore.unsubscribeCallbacks[event.id] && messages.length === 0 && firestoreMessages.length === 0) {
-            console.warn('[GROUP_CHAT] ⚠️ Host subscription appears broken, attempting re-subscription');
-            subscribeToEventChat(event.id);
-          }
-        }, 3000); // Verify every 3 seconds for hosts
-      }
-    };
+    }
     
-    setupSubscription();
-    
-    // Cleanup: Unsubscribe when component unmounts or dependencies change
+    // Cleanup on unmount
     return () => {
-      isMounted = false;
-      if (verifyInterval) {
-        clearInterval(verifyInterval);
-      }
-      console.log('[GROUP_CHAT] 🧹 Cleaning up subscription for event:', event.id);
       unsubscribeFromEventChat(event.id);
     };
   }, [
     event.id,
-    event.hostId,
-    canAccessChat,
     isDemo,
     isBanned,
+    isHost,
+    canAccessChat,
+    isPoperaOwned,
+    hasReserved,
+    hasReservedEnhanced,
     subscribeToEventChat,
     unsubscribeFromEventChat,
-    isHost,
-    hasReserved,
-    hasReservedRealTime,
-    hasReservedEnhanced,
-    isPoperaOwned,
-    currentUser?.id,
-    viewType,
-    getMessagesForEvent,
-    checkReservationInFirestore,
   ]);
   
   // Debug: Log messages for host (separate effect for reactive logging)

@@ -56,24 +56,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     initializeGeoLocation();
   }, []);
   
-  // Filter events based on location and vibes
+  // PERFORMANCE OPTIMIZED: Filter events based on location and vibes (logging removed)
   const filteredEvents = useMemo(() => {
     let filtered = events;
-    
-    // Debug logging
-    console.log('[LANDING_PAGE] Filtering events:', {
-      totalEvents: events.length,
-      location,
-      searchQuery,
-      eventTitles: events.map(e => e.title),
-      eventCities: events.map(e => e.city),
-    });
     
     // Apply city filter - match by city slug or city name
     // Handle "Canada" as showing all events
     if (location && location.trim() && location.toLowerCase() !== 'canada') {
       const citySlug = location.toLowerCase();
-      const beforeCityFilter = filtered.length;
       filtered = filtered.filter(event => {
         const eventCityLower = event.city.toLowerCase();
         // Normalize city name (remove ", CA" for comparison)
@@ -85,17 +75,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                eventCityLower.includes(citySlug) || 
                eventCityLower.includes(citySlug.replace('-', ' '));
       });
-      console.log('[LANDING_PAGE] After city filter:', {
-        before: beforeCityFilter,
-        after: filtered.length,
-        location,
-        filteredEventCities: filtered.map(e => e.city),
-      });
     }
     
     // Apply search filter
     if (searchQuery.trim()) {
-      const beforeSearch = filtered.length;
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(event => 
         event.title.toLowerCase().includes(query) ||
@@ -103,22 +86,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         event.hostName.toLowerCase().includes(query) ||
         event.tags.some(tag => tag.toLowerCase().includes(query))
       );
-      console.log('[LANDING_PAGE] After search filter:', {
-        before: beforeSearch,
-        after: filtered.length,
-        query: searchQuery,
-      });
     }
     
     // Apply filter store filters (vibes, session frequency, mode, etc.)
-    filtered = applyEventFilters(filtered, filters);
-    
-    console.log('[LANDING_PAGE] Final filtered events:', {
-      count: filtered.length,
-      titles: filtered.map(e => e.title),
-    });
-    
-    return filtered;
+    return applyEventFilters(filtered, filters);
   }, [events, location, searchQuery, filters]);
 
   const toggleFaq = (index: number) => {
@@ -356,8 +327,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
       {/* 3. Pillars / Types of Circles section */}
       <section className="relative overflow-hidden bg-white">
-        {/* Left image panel - visible on all screen sizes with responsive width and fade */}
-        <div className="pointer-events-none absolute inset-y-0 left-0 w-[32%] sm:w-[35%] lg:w-[38%]">
+        {/* Left image panel - desktop only */}
+        <div className="pointer-events-none absolute inset-y-0 left-0 hidden lg:block lg:w-[38%]">
           <img
             src="/images/landing/yoga-circle.jpg"
             alt="Small indoor yoga circle"
@@ -371,8 +342,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           />
         </div>
 
-        {/* Content - shifted to right side of white space on all screens */}
-        <div className="relative z-10 w-[72%] sm:w-[68%] md:w-[65%] lg:w-[65%] ml-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 md:py-20 lg:py-24 xl:py-28 text-center">
+        {/* Content - centered on mobile, shifted right on desktop */}
+        <div className="relative z-10 w-full lg:w-[65%] lg:ml-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 md:py-20 lg:py-24 xl:py-28 text-center">
             <div className="mb-6 sm:mb-8 md:mb-10">
               <span className="inline-flex items-center gap-2 py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">
                 <Sparkles size={10} className="sm:w-3 sm:h-3 -mt-0.5" />
