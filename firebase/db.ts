@@ -1511,12 +1511,14 @@ export function subscribeToReviewsCount(
       const reviewSnapshots = await Promise.all(allReviewQueries);
       
       // Count only accepted reviews (or reviews without status for backward compatibility)
+      // FIXED: Use same falsy check as listReviews - !status covers undefined, null, empty strings, etc.
       const totalCount = reviewSnapshots.reduce((sum, snapshot) => {
         return sum + snapshot.docs.filter(doc => {
           const data = doc.data();
           const status = data.status;
           // Include accepted reviews or reviews without status (backward compatibility)
-          return status === 'accepted' || status === undefined || status === null;
+          // Match listReviews logic: !status || status === 'accepted'
+          return !status || status === 'accepted';
         }).length;
       }, 0);
 
@@ -1979,7 +1981,8 @@ export async function listReviews(eventId: string, includePending: boolean = fal
       return allReviews.filter(review => {
         const status = (review as any).status;
         // Include reviews without status (backward compatibility) or explicitly accepted reviews
-        return !status || status === 'accepted' || status === undefined;
+        // !status covers undefined, null, empty strings, etc.
+        return !status || status === 'accepted';
       });
     }
     
