@@ -35,7 +35,7 @@ export const PressPage: React.FC<PressPageProps> = ({ setViewState }) => {
               About Popera
             </h2>
             <p className="text-gray-600 mb-4 leading-relaxed">
-              Popera is a peer-to-peer marketplace for small, in-person experiences. Neighbors host intimate 3–10 person circles — cooking nights, creative workshops, learning sessions — and others join to learn something new and meet people in real life.
+              Popera is a peer-to-peer marketplace for small, in-person experiences. Neighbors host intimate 3–50 person circles — cooking nights, creative workshops, learning sessions — and others join to learn something new and meet people in real life.
             </p>
             <p className="text-gray-600 leading-relaxed">
               Founded with a mission to bring people together through authentic, local connections, Popera combines simple RSVPs, built-in group chats, and transparent reviews to create a safe, engaging platform for community events.

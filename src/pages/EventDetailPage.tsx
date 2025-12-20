@@ -147,7 +147,7 @@ function buildEventJsonLd(event: Event, reservationCount: number | null): object
     eventStatus: 'https://schema.org/EventScheduled',
     location,
     organizer,
-    image: event.imageUrls?.[0] || event.imageUrl || 'https://gopopera.ca/og-image.png',
+    image: event.imageUrls?.[0] || event.imageUrl || 'https://gopopera.ca/2.jpg',
     url: `https://gopopera.ca/event/${event.id}`,
   };
 
@@ -208,6 +208,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
 }) => {
   // CRITICAL: All hooks must be called unconditionally and in the same order every render
   // Call ALL hooks first, before any conditional logic or early returns
+  
   
   // State hooks - always called
   const [showFakeEventModal, setShowFakeEventModal] = useState(false);
@@ -374,11 +375,14 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const [hostOverallRating, setHostOverallRating] = useState<number | null>(null);
   const [hostOverallReviewCount, setHostOverallReviewCount] = useState<number>(0);
   
-  // State for rating - use host's overall rating if available, otherwise fallback to event rating
+  // State for rating - use host's overall rating computed from actual reviews
+  // FIXED: Initialize with 0 instead of stale event document values to prevent showing old cached data
   const [currentRating, setCurrentRating] = useState<{ rating: number; reviewCount: number }>({
-    rating: eventRating,
-    reviewCount: eventReviewCount
+    rating: 0,
+    reviewCount: 0
   });
+  // Track if rating has been loaded from reviews
+  const [ratingLoaded, setRatingLoaded] = useState(false);
   
   // Fetch host's overall rating from all their events
   useEffect(() => {
@@ -394,8 +398,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         const acceptedReviews = await listHostReviews(eventHostId, false);
         
         if (acceptedReviews.length === 0) {
-          setHostOverallRating(null);
+          // FIXED: Set rating to 0 instead of null so we don't fall back to stale values
+          setHostOverallRating(0);
           setHostOverallReviewCount(0);
+          setRatingLoaded(true);
           return;
         }
         
@@ -405,10 +411,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         
         setHostOverallRating(averageRating);
         setHostOverallReviewCount(acceptedReviews.length);
+        setRatingLoaded(true);
       } catch (error) {
         console.warn('[EVENT_DETAIL] Failed to fetch host overall rating:', error);
-        setHostOverallRating(null);
+        // Set to 0 on error instead of falling back to stale values
+        setHostOverallRating(0);
         setHostOverallReviewCount(0);
+        setRatingLoaded(true);
       }
     };
     
@@ -420,20 +429,11 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const prevRatingRef = useRef<{ rating: number; reviewCount: number } | null>(null);
   
   useEffect(() => {
-    let newRating: { rating: number; reviewCount: number };
-    
-    if (hostOverallRating !== null) {
-      newRating = {
-        rating: hostOverallRating,
-        reviewCount: hostOverallReviewCount
-      };
-    } else {
-      // Fallback to event rating if host rating not available
-      newRating = {
-        rating: eventRating,
-        reviewCount: eventReviewCount
-      };
-    }
+    // Always use computed rating from actual reviews, never fall back to stale event document values
+    const newRating = {
+      rating: hostOverallRating ?? 0,
+      reviewCount: hostOverallReviewCount
+    };
     
     // Only update if values actually changed
     if (!prevRatingRef.current || 
@@ -442,7 +442,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       setCurrentRating(newRating);
       prevRatingRef.current = newRating;
     }
-  }, [hostOverallRating, hostOverallReviewCount, eventRating, eventReviewCount]); // Use stable primitive values
+  }, [hostOverallRating, hostOverallReviewCount, ratingLoaded]); // Use computed values from actual reviews
   
   // REFACTORED: Real-time subscription to /users/{hostId} - single source of truth
   // No polling, no fallbacks to stale event data - always fresh from Firestore

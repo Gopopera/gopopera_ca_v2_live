@@ -25,7 +25,7 @@ export const translations = {
       titleMobileLine2: 'circle near you.',
       titleHighlight: '',
       description: 'Experience small & medium size social events in your city.',
-      microline: 'In-person only • 3–10 seats • Host profiles & reviews',
+      microline: 'In-person only • 3–50 seats • Host profiles & reviews',
       getStarted: 'Get Started',
       startBrowsing: 'Browse Circles',
       becomeHost: 'Become a Host',
@@ -67,7 +67,7 @@ export const translations = {
       badge: 'Peer-to-Peer Experiences',
       title: 'Small Circles &',
       titleHighlight: 'Real Connections',
-      description: 'Popera is a marketplace where neighbors host and join small, in-person experiences — cooking nights, creative workshops, learning sessions, and social gatherings for 3–10 people.',
+      description: 'Popera is a marketplace where neighbors host and join small, in-person experiences — cooking nights, creative workshops, learning sessions, and social gatherings for 3–50 people.',
       descriptionHighlight: '',
       descriptionEnd: '',
       signUp: 'Sign Up',
@@ -569,8 +569,8 @@ export const translations = {
     // About Page
     about: {
       title: 'About Popera',
-      description: 'Popera is a peer-to-peer marketplace to start, join, and host small in-person circles (3–10). Neighbors run intimate circles — cooking nights, creative workshops, walk clubs, learning sessions, and thoughtful discussions — and others join to build real connection in their city. Every circle comes with group chat, reputation, and simple hosting tools so the connection can grow over time.',
-      microLine: 'In-person only • 3–10 seats • Public or private • Built for repeat circles',
+      description: 'Popera is a peer-to-peer marketplace to start, join, and host small in-person circles (3–50). Neighbors run intimate circles — cooking nights, creative workshops, walk clubs, learning sessions, and thoughtful discussions — and others join to build real connection in their city. Every circle comes with group chat, reputation, and simple hosting tools so the connection can grow over time.',
+      microLine: 'In-person only • 3–50 seats • Public or private • Built for repeat circles',
       letsHost: 'Popera lets anyone host small-group circles and get paid for what they know.',
       commitment: 'Commitment',
       commitmentDesc: 'Want stronger commitment? Optionally add a small $1–$3 commitment fee — refundable at check-in or convertible to tip/credit.',
@@ -685,7 +685,7 @@ export const translations = {
       howCreateAccount: 'How do I create an account?',
       howCreateAccountA: 'Click "Sign In / Sign Up" in the header, then choose your preferred sign-in method (Google, email, etc.). Once signed in, you can create events, RSVP to events, and connect with other users.',
       howHostFirst: 'How do I host my first circle?',
-      howHostFirstA: 'Click "Host a Circle" in the header (or from your profile menu), fill in the circle details (title, description, date, time, location, images), set a capacity (3–10 people) and optional reservation fee, then publish. Your circle will appear in the feed for others to discover.',
+      howHostFirstA: 'Click "Host a Circle" in the header (or from your profile menu), fill in the circle details (title, description, date, time, location, images), set a capacity (3–50 people) and optional reservation fee, then publish. Your circle will appear in the feed for others to discover.',
       howRSVP: 'How do I RSVP to a session?',
       howRSVPA: 'Browse circles in the feed, click on any session to view details, then click "Reserve" or "RSVP". For paid sessions, you\'ll complete payment during the reservation process. You\'ll receive a confirmation and can access the session\'s group chat.',
       whatReservationFee: 'What is a reservation fee?',
@@ -799,7 +799,7 @@ export const translations = {
       s1Desc: 'By creating an account, accessing, or using the Platform, you agree to these Terms and our Privacy Policy, Cancellation & Refund Policy, and Community Guidelines, which are incorporated by reference. If you do not agree, do not use the Platform.',
       // Section 2
       s2Title: '2. What Popera Is (Marketplace Role)',
-      s2Desc1: 'Popera is a peer-to-peer marketplace that helps people start, join, and host small in-person social circles (typically 3–10 people) ("Circles"). We provide tools for creating Circle listings, RSVPs, group communication, payments (where enabled), and reputation features (ratings/reviews).',
+      s2Desc1: 'Popera is a peer-to-peer marketplace that helps people start, join, and host small in-person social circles (typically 3–50 people) ("Circles"). We provide tools for creating Circle listings, RSVPs, group communication, payments (where enabled), and reputation features (ratings/reviews).',
       s2PlatformRole: 'Platform role:',
       s2PlatformRoleDesc: 'Popera is a technology platform. Hosts organize and run Circles. Attendees choose to participate. Popera does not organize, operate, control, or guarantee any Circle, and Popera is not a party to any agreement between Hosts and Attendees.',
       // Section 3
@@ -906,7 +906,7 @@ export const translations = {
       // Introduction
       introduction: 'Introduction',
       introductionDesc: 'This Privacy Policy explains how Popera ("Popera," "we," "us") collects, uses, discloses, and protects personal information when you access or use Popera on https://gopopera.ca or https://gopopera.com (the "Platform").',
-      introductionDesc2: 'Popera is a peer-to-peer marketplace for small, in-person circles (typically 3–10 people). Because Circles happen offline, privacy and safety matter. This policy describes what we do with your information and the choices you have.',
+      introductionDesc2: 'Popera is a peer-to-peer marketplace for small, in-person circles (typically 3–50 people). Because Circles happen offline, privacy and safety matter. This policy describes what we do with your information and the choices you have.',
       // Section 1: What We Collect
       informationCollect: '1. What We Collect',
       informationCollectDesc: 'We collect personal information in three ways: (a) information you provide, (b) information collected automatically, and (c) information from partners that help us run the Platform.',
@@ -1053,7 +1053,7 @@ export const translations = {
       subtitle: 'Building a safe, respectful, and vibrant community — in real life',
       lastUpdated: 'Last updated: December 18, 2025',
       // Introduction
-      intro: 'Popera is a peer-to-peer marketplace where neighbors start, join, and host small in-person Circles (typically 3–10 people). Trust and respect are the product. These Guidelines apply to everyone using Popera (Hosts and Attendees) and are enforced alongside our Terms of Service.',
+      intro: 'Popera is a peer-to-peer marketplace where neighbors start, join, and host small in-person Circles (typically 3–50 people). Trust and respect are the product. These Guidelines apply to everyone using Popera (Hosts and Attendees) and are enforced alongside our Terms of Service.',
       // Core Principles
       corePrinciples: 'Our Core Principles',
       respect: '1) Respect',
@@ -1145,7 +1145,7 @@ export const translations = {
       startHosting: 'Start Hosting',
       noUpfrontCosts: 'No upfront costs • Keep 90% of earnings',
       readyToHost: 'Ready to host your own circle?',
-      createSessions: 'Create intimate 3–10 person sessions and earn from what you know. It\'s free to start.',
+      createSessions: 'Create intimate 3–50 person sessions and earn from what you know. It\'s free to start.',
       becomeAHost: 'Become a Host',
       securePayment: 'Secure payment powered by Stripe.',
       signInToJoin: 'Sign In to Join Conversations',
@@ -1290,7 +1290,7 @@ export const translations = {
       titleMobileLine2: 'en personne près de chez vous.',
       titleHighlight: '',
       description: 'Découvrez des événements sociaux de petite et moyenne taille dans votre ville.',
-      microline: 'En personne seulement • 3–10 places • Profils d\'hôtes & avis',
+      microline: 'En personne seulement • 3–50 places • Profils d\'hôtes & avis',
       getStarted: 'Commencer',
       startBrowsing: 'Parcourir les cercles',
       becomeHost: 'Devenir hôte',
@@ -1833,8 +1833,8 @@ export const translations = {
     // About Page
     about: {
       title: 'À propos de Popera',
-      description: 'Popera est un marché entre voisins pour démarrer, rejoindre et animer des petits cercles en personne (3–10). Les voisins animent des cercles intimes — soirées cuisine, ateliers créatifs, clubs de marche, sessions d\'apprentissage et discussions réfléchies — et d\'autres rejoignent pour créer des connexions réelles dans leur ville. Chaque cercle comprend un chat de groupe, une réputation et des outils simples pour que la connexion puisse grandir.',
-      microLine: 'En personne seulement • 3–10 places • Public ou privé • Conçu pour les cercles récurrents',
+      description: 'Popera est un marché entre voisins pour démarrer, rejoindre et animer des petits cercles en personne (3–50). Les voisins animent des cercles intimes — soirées cuisine, ateliers créatifs, clubs de marche, sessions d\'apprentissage et discussions réfléchies — et d\'autres rejoignent pour créer des connexions réelles dans leur ville. Chaque cercle comprend un chat de groupe, une réputation et des outils simples pour que la connexion puisse grandir.',
+      microLine: 'En personne seulement • 3–50 places • Public ou privé • Conçu pour les cercles récurrents',
       letsHost: 'Popera permet à quiconque d\'animer des cercles en petit groupe et de gagner de l\'argent.',
       commitment: 'Engagement',
       commitmentDesc: 'Vous voulez un engagement plus fort? Ajoutez optionnellement des frais d\'engagement de 1–3$ — remboursables à l\'arrivée ou convertibles en pourboire/crédit.',
@@ -1949,7 +1949,7 @@ export const translations = {
       howCreateAccount: 'Comment créer un compte?',
       howCreateAccountA: 'Cliquez sur « Se connecter / S\'inscrire » dans l\'en-tête, puis choisissez votre méthode de connexion préférée (Google, courriel, etc.). Une fois connecté, vous pouvez créer des cercles, réserver des sessions et vous connecter avec d\'autres utilisateurs.',
       howHostFirst: 'Comment animer mon premier cercle?',
-      howHostFirstA: 'Cliquez sur « Animer un cercle » dans l\'en-tête (ou depuis le menu de votre profil), remplissez les détails du cercle (titre, description, date, heure, lieu, images), définissez une capacité (3-10 personnes) et des frais de réservation optionnels, puis publiez. Votre cercle apparaîtra dans le fil d\'actualité pour que d\'autres puissent le découvrir.',
+      howHostFirstA: 'Cliquez sur « Animer un cercle » dans l\'en-tête (ou depuis le menu de votre profil), remplissez les détails du cercle (titre, description, date, heure, lieu, images), définissez une capacité (3–50 personnes) et des frais de réservation optionnels, puis publiez. Votre cercle apparaîtra dans le fil d\'actualité pour que d\'autres puissent le découvrir.',
       howRSVP: 'Comment réserver une session?',
       howRSVPA: 'Parcourez les cercles dans le fil d\'actualité, cliquez sur une session pour voir les détails, puis cliquez sur "Réserver" ou "RSVP". Pour les sessions payantes, vous compléterez le paiement pendant le processus de réservation. Vous recevrez une confirmation et pourrez accéder au chat de groupe de la session.',
       whatReservationFee: 'Qu\'est-ce qu\'un frais de réservation?',
@@ -2063,7 +2063,7 @@ export const translations = {
       s1Desc: 'En créant un compte, en accédant ou en utilisant la Plateforme, vous acceptez ces Conditions ainsi que notre Politique de confidentialité, Politique d\'annulation et de remboursement, et Règles de la communauté, qui sont incorporées par référence. Si vous n\'êtes pas d\'accord, n\'utilisez pas la Plateforme.',
       // Section 2
       s2Title: '2. Ce qu\'est Popera (Rôle de marché)',
-      s2Desc1: 'Popera est un marché entre particuliers qui aide les gens à démarrer, rejoindre et animer de petits cercles sociaux en personne (généralement 3–10 personnes) (« Cercles »). Nous fournissons des outils pour créer des annonces de Cercles, gérer les réservations, communiquer en groupe, traiter les paiements (si activés) et gérer la réputation (évaluations/avis).',
+      s2Desc1: 'Popera est un marché entre particuliers qui aide les gens à démarrer, rejoindre et animer de petits cercles sociaux en personne (généralement 3–50 personnes) (« Cercles »). Nous fournissons des outils pour créer des annonces de Cercles, gérer les réservations, communiquer en groupe, traiter les paiements (si activés) et gérer la réputation (évaluations/avis).',
       s2PlatformRole: 'Rôle de la plateforme :',
       s2PlatformRoleDesc: 'Popera est une plateforme technologique. Les Hôtes organisent et animent les Cercles. Les Participants choisissent de participer. Popera n\'organise pas, n\'exploite pas, ne contrôle pas et ne garantit aucun Cercle, et Popera n\'est pas partie à tout accord entre Hôtes et Participants.',
       // Section 3

@@ -3,7 +3,7 @@
  * 
  * Generates view-aware meta tags for improved SEO within a CSR SPA.
  * All copy aligns with Popera's positioning as a peer-to-peer marketplace
- * for small, in-person experiences (3-10 person circles).
+ * for small, in-person experiences (3–50 person circles).
  */
 
 import { useMemo } from 'react';
@@ -13,12 +13,12 @@ import { ViewState, Event } from '../types';
 const BASE_URL = 'https://gopopera.ca';
 
 // Default OG image for brand consistency
-const DEFAULT_OG_IMAGE = `${BASE_URL}/og-image.png`;
+const DEFAULT_OG_IMAGE = `${BASE_URL}/2.jpg`;
 
 // Brand name and positioning — peer-to-peer marketplace for small, in-person experiences
 const BRAND_NAME = 'Popera';
 const BRAND_TAGLINE = 'Small in-person experiences, hosted by people near you';
-const BRAND_DESCRIPTION = 'Join intimate 3–10 person circles in your neighborhood to cook, create, learn, and connect — or host your own and earn from what you know.';
+const BRAND_DESCRIPTION = 'Join intimate 3–50 person circles in your neighborhood to cook, create, learn, and connect — or host your own and earn from what you know.';
 
 /**
  * SEO metadata structure returned by the hook
@@ -101,7 +101,7 @@ const STATIC_METADATA: Partial<Record<ViewState, Partial<SeoMetadata>>> = {
   },
   [ViewState.FEED]: {
     title: `Explore Circles Near You — ${BRAND_NAME}`,
-    description: 'Browse small, intimate circles hosted by locals — cooking nights, creative workshops, learning sessions, and social gatherings for 3–10 people.',
+    description: 'Browse small, intimate circles hosted by locals — cooking nights, creative workshops, learning sessions, and social gatherings for 3–50 people.',
     canonicalUrl: `${BASE_URL}/explore`,
     ogType: 'website',
   },
@@ -257,7 +257,7 @@ function getCategoryMetadata(category: string): Partial<SeoMetadata> {
   const categoryName = category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
   return {
     title: `${categoryName} Circles — ${BRAND_NAME}`,
-    description: `Browse ${categoryName.toLowerCase()} circles on Popera. Join intimate 3–10 person experiences and learn from hosts in your neighborhood.`,
+    description: `Browse ${categoryName.toLowerCase()} circles on Popera. Join intimate 3–50 person experiences and learn from hosts in your neighborhood.`,
     canonicalUrl: `${BASE_URL}/circles/${category.toLowerCase()}`,
     ogType: 'website',
   };

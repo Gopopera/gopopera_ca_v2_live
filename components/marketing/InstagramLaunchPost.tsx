@@ -113,7 +113,7 @@ export const InstagramLaunchPost: React.FC = () => {
             className="text-[#f2f2f2]/85 font-normal text-center max-w-xl leading-relaxed"
             style={{ fontSize: '26px' }}
           >
-            Join 3–10 person circles to meet people<br />
+            Join 3–50 person circles to meet people<br />
             in your city — or start your own.
           </p>
         </div>
