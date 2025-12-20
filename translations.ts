@@ -72,6 +72,25 @@ export const translations = {
       descriptionEnd: '',
       signUp: 'Sign Up',
       seeGuidelines: 'See Guidelines',
+      // Event feed section
+      filterByCategory: 'Filter by Category',
+      filters: 'Filters',
+      viewAllEvents: 'View All Events',
+      // Community Guidelines section
+      safetyTrust: 'Safety & Trust',
+      communityGuidelines: 'Community Guidelines',
+      guidelineVerified: 'Every host is verified for authenticity',
+      guidelineReviews: 'Reviews stay public and honest',
+      guidelineModerated: 'Group chats are moderated to ensure respect',
+      guidelineSafety: 'Your safety and experience comes first',
+      // Newsletter section
+      stayUpdated: 'Stay Updated',
+      stayUpdatedDesc: 'Get updates on new Circles and Sessions in your area.',
+      emailPlaceholder: 'email',
+      submit: 'Submit',
+      subscribedSuccess: 'Subscribed! Check your email.',
+      termsAgreement: 'By clicking submit, you agree to our',
+      termsOfUse: 'Terms of Use',
     },
     // Feed
     feed: {
@@ -1337,6 +1356,25 @@ export const translations = {
       descriptionEnd: '',
       signUp: 'S\'inscrire',
       seeGuidelines: 'Voir les directives',
+      // Event feed section
+      filterByCategory: 'Filtrer par catégorie',
+      filters: 'Filtres',
+      viewAllEvents: 'Voir tous les événements',
+      // Community Guidelines section
+      safetyTrust: 'Sécurité & Confiance',
+      communityGuidelines: 'Directives communautaires',
+      guidelineVerified: 'Chaque hôte est vérifié pour son authenticité',
+      guidelineReviews: 'Les avis restent publics et honnêtes',
+      guidelineModerated: 'Les chats de groupe sont modérés pour garantir le respect',
+      guidelineSafety: 'Votre sécurité et votre expérience passent en premier',
+      // Newsletter section
+      stayUpdated: 'Restez informé',
+      stayUpdatedDesc: 'Recevez des mises à jour sur les nouveaux cercles et sessions dans votre région.',
+      emailPlaceholder: 'courriel',
+      submit: 'Soumettre',
+      subscribedSuccess: 'Abonné ! Vérifiez votre courriel.',
+      termsAgreement: 'En cliquant sur soumettre, vous acceptez nos',
+      termsOfUse: 'Conditions d\'utilisation',
     },
     // Feed
     feed: {

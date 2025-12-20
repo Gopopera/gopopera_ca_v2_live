@@ -17,6 +17,7 @@ export interface UserProfileData {
   bio?: string;
   followers?: string[];
   following?: string[];
+  createdAt?: number; // Timestamp when user signed up
 }
 
 /**
@@ -59,6 +60,7 @@ export function subscribeToUserProfile(
           bio: data.bio || undefined,
           followers: Array.isArray(data.followers) ? data.followers : [],
           following: Array.isArray(data.following) ? data.following : [],
+          createdAt: data.createdAt || undefined,
         };
         
         if (import.meta.env.DEV) {

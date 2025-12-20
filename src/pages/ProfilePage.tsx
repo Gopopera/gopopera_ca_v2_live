@@ -63,6 +63,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string>(userName);
+  const [memberSinceDate, setMemberSinceDate] = useState<number | null>(null);
   
   // Generate a consistent random color for default cover based on user ID
   const getDefaultCoverGradient = React.useMemo(() => {
@@ -101,6 +102,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
           setProfilePicture(userData.photoURL || null);
           setCoverPhoto(userData.coverPhotoURL || null);
           setDisplayName(userData.displayName || userName);
+          setMemberSinceDate(userData.createdAt || null);
           
           if (import.meta.env.DEV) {
             console.log('[PROFILE_PAGE] ✅ User profile updated from Firestore:', {
@@ -108,6 +110,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
               displayName: userData.displayName,
               hasPhoto: !!userData.photoURL,
               hasCoverPhoto: !!userData.coverPhotoURL,
+              createdAt: userData.createdAt,
             });
           }
         } else {
@@ -115,6 +118,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
           setProfilePicture(null);
           setCoverPhoto(null);
           setDisplayName(userName);
+          setMemberSinceDate(null);
         }
       });
     } catch (error) {
@@ -122,6 +126,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
       setProfilePicture(null);
       setCoverPhoto(null);
       setDisplayName(userName);
+      setMemberSinceDate(null);
     }
     
     return () => {
@@ -355,7 +360,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
           </h1>
           <div className="flex items-center justify-center gap-2 mb-6">
             <Star size={18} className="text-[#e35e25] fill-[#e35e25]" />
-            <span className="text-gray-500 text-sm sm:text-base">{t('profile.memberSince')}</span>
+            <span className="text-gray-500 text-sm sm:text-base">
+              {t('profile.memberSince')} {memberSinceDate 
+                ? new Date(memberSinceDate).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+                : ''}
+            </span>
           </div>
           
           {/* Bio Section - Clean layout */}

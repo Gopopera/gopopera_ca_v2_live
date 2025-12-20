@@ -2,6 +2,7 @@ import React from 'react';
 import { ArrowRight } from 'lucide-react';
 import { ViewState } from '@/types';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useUserStore } from '../../stores/userStore';
 
 interface HeroProps {
     setViewState: (view: ViewState) => void;
@@ -9,9 +10,25 @@ interface HeroProps {
 
 export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
   const { t } = useLanguage();
+  const user = useUserStore((state) => state.user);
+  const setRedirectAfterLogin = useUserStore((state) => state.setRedirectAfterLogin);
+  
   const handleNav = (view: ViewState) => {
       setViewState(view);
       window.scrollTo({ top: 0, behavior: 'instant' });
+  };
+  
+  // Handle protected navigation - requires auth
+  const handleProtectedNav = (view: ViewState) => {
+    if (user) {
+      // User is logged in, navigate directly
+      setViewState(view);
+    } else {
+      // User not logged in, redirect to auth first and set redirect for after login
+      setRedirectAfterLogin(view);
+      setViewState(ViewState.AUTH);
+    }
+    window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
   // Hero image URL - coffee circle gathering
@@ -74,7 +91,7 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
             
             {/* Secondary CTA */}
             <button 
-              onClick={() => handleNav(ViewState.CREATE_EVENT)}
+              onClick={() => handleProtectedNav(ViewState.CREATE_EVENT)}
               className="px-5 sm:px-6 py-3 sm:py-3.5 bg-transparent border-2 border-white/20 text-white rounded-full font-bold text-xs sm:text-sm hover:bg-white/5 transition-all duration-300 flex items-center justify-center gap-1.5 touch-manipulation active:scale-[0.98]"
             >
               {t('hero.becomeHost')} <ArrowRight size={14} className="opacity-70" />
@@ -123,7 +140,7 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
               
               {/* Secondary CTA */}
               <button 
-                onClick={() => handleNav(ViewState.CREATE_EVENT)}
+                onClick={() => handleProtectedNav(ViewState.CREATE_EVENT)}
                 className="px-8 py-4 bg-transparent border-2 border-white/20 text-white rounded-full font-bold text-base hover:bg-white/5 hover:border-white/30 transition-all duration-300 flex items-center justify-center gap-2 touch-manipulation active:scale-[0.98] whitespace-nowrap"
               >
                 {t('hero.becomeHost')} <ArrowRight size={18} className="opacity-70" />

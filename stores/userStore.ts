@@ -131,6 +131,7 @@ export const useUserStore = create<UserStore>()(
           email: firebaseUser.email || '',
           displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
           photoURL: firebaseUser.photoURL || '',
+          createdAt: Date.now(), // Set signup timestamp for new users (merge: true won't overwrite existing)
         };
 
         createOrUpdateUserProfile(firebaseUser.uid, baseProfile).catch(err => {
@@ -597,6 +598,7 @@ export const useUserStore = create<UserStore>()(
               displayName: name,
               name: name,
               preferences,
+              createdAt: Date.now(), // Set signup timestamp for new users
             });
             await get().fetchUserProfile(currentUser.uid);
           }

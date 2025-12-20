@@ -56,6 +56,7 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
   // State for host profile picture (synced from Firestore)
   const [hostProfilePicture, setHostProfilePicture] = useState<string | null>(null);
   const [hostCoverPhoto, setHostCoverPhoto] = useState<string | null>(null);
+  const [hostMemberSince, setHostMemberSince] = useState<number | null>(null);
   
   // Generate a consistent random color for default cover based on host ID
   const getDefaultCoverGradient = useMemo(() => {
@@ -80,6 +81,7 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
     if (!hostId) {
       setHostProfilePicture(null);
       setHostCoverPhoto(null);
+      setHostMemberSince(null);
       return;
     }
     
@@ -95,6 +97,7 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
         if (hostData) {
           setHostProfilePicture(hostData.photoURL || null);
           setHostCoverPhoto(hostData.coverPhotoURL || null);
+          setHostMemberSince(hostData.createdAt || null);
           
           if (import.meta.env.DEV) {
             console.log('[HOST_PROFILE] ✅ Host profile updated:', {
@@ -102,17 +105,20 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
               displayName: hostData.displayName,
               hasPhoto: !!hostData.photoURL,
               hasCoverPhoto: !!hostData.coverPhotoURL,
+              createdAt: hostData.createdAt,
             });
           }
         } else {
           setHostProfilePicture(null);
           setHostCoverPhoto(null);
+          setHostMemberSince(null);
         }
       });
     } catch (error) {
       console.error('[HOST_PROFILE] ❌ Error loading user subscriptions:', error);
       setHostProfilePicture(null);
       setHostCoverPhoto(null);
+      setHostMemberSince(null);
     }
     
     return () => {
@@ -422,10 +428,19 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
           <h1 className="font-heading font-bold text-2xl sm:text-3xl md:text-4xl text-[#15383c] mb-2">
             {displayName.toUpperCase()}
           </h1>
-          <div className="flex items-center justify-center gap-2 mb-4">
+          <div className="flex items-center justify-center gap-2 mb-2">
             <MapPin size={16} className="text-[#e35e25]" />
             <span className="text-gray-500 text-sm sm:text-base">{primaryCity}</span>
           </div>
+          {/* Member since date */}
+          {hostMemberSince && (
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <Star size={16} className="text-[#e35e25] fill-[#e35e25]" />
+              <span className="text-gray-500 text-sm sm:text-base">
+                Member since {new Date(hostMemberSince).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+              </span>
+            </div>
+          )}
           
           {/* Bio Section */}
           {bio && (

@@ -180,13 +180,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
              {/* Category Tabs + Filter Button */}
              <div className="mt-4">
                <div className="flex items-center justify-between mb-3">
-                 <h3 className="text-sm font-semibold text-gray-600">Filter by Category</h3>
+                 <h3 className="text-sm font-semibold text-gray-600">{t('landing.filterByCategory')}</h3>
                  <button
                    onClick={() => setFilterDrawerOpen(true)}
                    className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border-2 border-[#15383c] text-[#15383c] font-medium hover:bg-[#15383c] hover:text-white transition-colors flex-shrink-0 touch-manipulation active:scale-[0.95] text-xs sm:text-sm"
                  >
                    <Filter size={16} className="sm:w-[18px] sm:h-[18px]" />
-                   <span className="hidden sm:inline">Filters</span>
+                   <span className="hidden sm:inline">{t('landing.filters')}</span>
                    {getActiveFilterCount() > 0 && (
                      <span className="px-1.5 py-0.5 rounded-full bg-[#e35e25] text-white text-[10px] sm:text-xs font-bold">
                        {getActiveFilterCount()}
@@ -320,7 +320,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
              onClick={() => setViewState(ViewState.FEED)}
              className="w-auto mx-auto sm:w-auto px-8 sm:px-10 py-4 sm:py-4 min-h-[48px] sm:min-h-0 border-2 border-gray-300 rounded-full text-[#15383c] font-bold text-base sm:text-base hover:border-[#15383c] hover:bg-[#15383c] hover:text-white transition-all touch-manipulation active:scale-[0.97] active:bg-[#15383c] active:text-white"
            >
-             View All Events
+             {t('landing.viewAllEvents')}
            </button>
         </div>
       </section>
@@ -382,12 +382,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] border-t border-white/5">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
            <span className="inline-block py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-white/5 border border-white/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase mb-4 sm:mb-6 backdrop-blur-sm shadow-sm">
-              Safety & Trust
+              {t('landing.safetyTrust')}
            </span>
 
           <div className="flex justify-center mb-8 sm:mb-12">
              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-white uppercase tracking-tight">
-               <span className="text-[#e35e25]">Community</span> Guidelines
+               {t('landing.communityGuidelines')}
              </h2>
           </div>
 
@@ -396,25 +396,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white">
                 <Check size={14} strokeWidth={3} />
               </div>
-              <span>Every host is verified for authenticity</span>
+              <span>{t('landing.guidelineVerified')}</span>
             </div>
             <div className="flex items-center md:justify-center gap-3 sm:gap-4 text-white text-base sm:text-lg md:text-xl font-light">
               <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white">
                 <Check size={14} strokeWidth={3} />
               </div>
-              <span>Reviews stay public and honest</span>
+              <span>{t('landing.guidelineReviews')}</span>
             </div>
             <div className="flex items-center md:justify-center gap-3 sm:gap-4 text-white text-base sm:text-lg md:text-xl font-light">
               <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white">
                 <Check size={14} strokeWidth={3} />
               </div>
-              <span>Group chats are moderated to ensure respect</span>
+              <span>{t('landing.guidelineModerated')}</span>
             </div>
             <div className="flex items-center md:justify-center gap-3 sm:gap-4 text-white text-base sm:text-lg md:text-xl font-light">
               <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white">
                 <Check size={14} strokeWidth={3} />
               </div>
-              <span>Your safety and experience comes first</span>
+              <span>{t('landing.guidelineSafety')}</span>
             </div>
           </div>
 
@@ -468,11 +468,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] text-white relative overflow-hidden border-t border-white/5">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-[#e35e25] mb-4 sm:mb-6 tracking-tight uppercase leading-none">
-            Stay Updated
+            {t('landing.stayUpdated')}
           </h2>
           
           <p className="text-sm sm:text-base text-gray-300 mb-8 sm:mb-10 md:mb-12 font-light max-w-2xl mx-auto leading-relaxed">
-            Get updates on new Circles and Sessions in your area.
+            {t('landing.stayUpdatedDesc')}
           </p>
 
           <form 
@@ -570,7 +570,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   type="email" 
                   value={newsletterEmail}
                   onChange={(e) => setNewsletterEmail(e.target.value)}
-                  placeholder="email" 
+                  placeholder={t('landing.emailPlaceholder')} 
                   required
                   disabled={newsletterSubmitting}
                   className="w-full bg-transparent border border-gray-500/50 rounded-full py-3 sm:py-4 md:py-5 pl-6 sm:pl-8 pr-32 sm:pr-40 text-white placeholder-gray-500 focus:outline-none focus:border-[#e35e25] focus:ring-1 focus:ring-[#e35e25] transition-all text-sm sm:text-base md:text-lg disabled:opacity-50"
@@ -580,7 +580,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   disabled={newsletterSubmitting || !newsletterEmail.trim()}
                   className="absolute right-1.5 sm:right-2 top-1.5 sm:top-2 bottom-1.5 sm:bottom-2 bg-white text-[#15383c] px-6 sm:px-8 rounded-full font-bold hover:bg-gray-100 transition-colors shadow-lg text-xs sm:text-sm md:text-base touch-manipulation active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                  {newsletterSubmitting ? '...' : 'Submit'}
+                  {newsletterSubmitting ? '...' : t('landing.submit')}
               </button>
           </form>
           
@@ -588,13 +588,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="max-w-2xl mx-auto mb-4">
               <div className="bg-green-500/20 border border-green-500/50 rounded-full px-4 py-2 flex items-center justify-center gap-2">
                 <CheckCircle2 size={18} className="text-green-400" />
-                <p className="text-green-400 text-sm font-medium">Subscribed! Check your email.</p>
+                <p className="text-green-400 text-sm font-medium">{t('landing.subscribedSuccess')}</p>
               </div>
             </div>
           )}
           
           <p className="text-xs sm:text-sm text-gray-500 opacity-60">
-              By clicking submit, you agree to our <button 
+              {t('landing.termsAgreement')} <button 
                 type="button"
                 onClick={(e) => {
                   e.preventDefault();
@@ -604,7 +604,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 }} 
                 className="underline hover:text-[#e35e25] transition-colors cursor-pointer"
               >
-                Terms of Use
+                {t('landing.termsOfUse')}
               </button>.
           </p>
         </div>
