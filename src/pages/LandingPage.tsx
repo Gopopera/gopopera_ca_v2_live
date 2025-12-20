@@ -371,8 +371,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           />
         </div>
 
-        {/* Content - shifted to right side of white space */}
-        <div className="relative z-10 w-full ml-auto lg:w-[65%] px-4 sm:px-6 lg:px-8 py-12 sm:py-16 md:py-20 lg:py-24 xl:py-28 text-center">
+        {/* Content - shifted to right side of white space on all screens */}
+        <div className="relative z-10 w-[72%] sm:w-[68%] md:w-[65%] lg:w-[65%] ml-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 md:py-20 lg:py-24 xl:py-28 text-center">
             <div className="mb-6 sm:mb-8 md:mb-10">
               <span className="inline-flex items-center gap-2 py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">
                 <Sparkles size={10} className="sm:w-3 sm:h-3 -mt-0.5" />
