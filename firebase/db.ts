@@ -600,10 +600,55 @@ export async function createReservation(
     const sanitizedReservation = sanitizeFirestoreData(reservation);
 
     const docRef = await addDoc(reservationsCol, sanitizedReservation);
+    
+    // Sync attendeeCount on event document for unauthenticated users
+    // This is done in background - don't block reservation creation
+    syncEventAttendeeCount(eventId).catch(err => {
+      console.warn('[CREATE_RESERVATION] ⚠️ Failed to sync attendeeCount:', err);
+    });
+    
     return docRef.id;
   } catch (error: any) {
     console.error('Firestore write failed:', { path: 'reservations', error: error.message || 'Unknown error' });
     throw error;
+  }
+}
+
+/**
+ * Sync the attendeeCount field on an event document
+ * Counts all reservations with status "reserved" for the event
+ * This denormalized field is used by unauthenticated users
+ */
+async function syncEventAttendeeCount(eventId: string): Promise<void> {
+  const db = getDbSafe();
+  if (!db) return;
+  
+  try {
+    // Count all reserved reservations for this event
+    const reservationsCol = collection(db, "reservations");
+    const q = query(
+      reservationsCol,
+      where("eventId", "==", eventId),
+      where("status", "==", "reserved")
+    );
+    const snapshot = await getDocs(q);
+    
+    // Sum up attendeeCount from all reservations
+    const totalCount = snapshot.docs.reduce((total, docSnap) => {
+      const data = docSnap.data() as FirestoreReservation;
+      return total + (data.attendeeCount || 1);
+    }, 0);
+    
+    // Update the event document
+    const eventRef = doc(db, "events", eventId);
+    await updateDoc(eventRef, { attendeeCount: totalCount });
+    
+    console.log('[SYNC_ATTENDEE_COUNT] ✅ Event attendeeCount synced:', { eventId, count: totalCount });
+  } catch (error: any) {
+    // Only log non-permission errors
+    if (error?.code !== 'permission-denied') {
+      console.warn('[SYNC_ATTENDEE_COUNT] ⚠️ Failed to sync:', error);
+    }
   }
 }
 
@@ -657,7 +702,19 @@ export async function cancelReservation(reservationId: string): Promise<void> {
   
   try {
     const reservationRef = doc(db, "reservations", reservationId);
+    
+    // Get the reservation to find eventId before cancelling
+    const reservationDoc = await getDoc(reservationRef);
+    const eventId = reservationDoc.data()?.eventId;
+    
     await updateDoc(reservationRef, { status: "cancelled" });
+    
+    // Sync attendeeCount on event document for unauthenticated users
+    if (eventId) {
+      syncEventAttendeeCount(eventId).catch(err => {
+        console.warn('[CANCEL_RESERVATION] ⚠️ Failed to sync attendeeCount:', err);
+      });
+    }
   } catch (error: any) {
     console.error('Firestore write failed:', { path: `reservations/${reservationId}`, error: error.message || 'Unknown error' });
     throw error;
@@ -743,6 +800,10 @@ export function subscribeToUserRSVPs(
 /**
  * Subscribe to reservation count in real-time for an event
  * Returns unsubscribe function
+ * 
+ * IMPORTANT: This function handles both authenticated and unauthenticated users:
+ * - Authenticated users: Can query reservations collection directly (more accurate)
+ * - Unauthenticated users: Falls back to attendeeCount field on event document
  */
 export function subscribeToReservationCount(
   eventId: string,
@@ -756,6 +817,41 @@ export function subscribeToReservationCount(
     return () => {};
   }
 
+  // Track if we've received valid data from reservations query
+  let reservationsQueryActive = false;
+  let eventUnsubscribe: Unsubscribe | null = null;
+
+  // Always subscribe to event document for attendeeCount (works for unauthenticated users)
+  // This is the fallback and also ensures data consistency
+  const setupEventSubscription = () => {
+    try {
+      const eventRef = doc(db, "events", eventId);
+      eventUnsubscribe = onSnapshot(
+        eventRef,
+        (docSnapshot) => {
+          // Only use event attendeeCount if reservations query failed/not active
+          if (!reservationsQueryActive) {
+            const data = docSnapshot.data();
+            const count = data?.attendeeCount || 0;
+            console.log('[RESERVATION_COUNT] 📊 Using event.attendeeCount (fallback):', { eventId, count });
+            callback(count);
+          }
+        },
+        (error) => {
+          console.warn('[RESERVATION_COUNT] ⚠️ Event subscription error:', error);
+          // Don't call callback with 0 here - let reservations query handle it
+        }
+      );
+    } catch (error) {
+      console.warn('[RESERVATION_COUNT] ⚠️ Error setting up event subscription:', error);
+    }
+  };
+
+  // Set up event subscription first as fallback
+  setupEventSubscription();
+
+  // Try to subscribe to reservations (only works for authenticated users)
+  let reservationsUnsubscribe: Unsubscribe | null = null;
   try {
     const reservationsCol = collection(db, "reservations");
     const q = query(
@@ -764,26 +860,64 @@ export function subscribeToReservationCount(
       where("status", "==", "reserved")
     );
     
-    return onSnapshot(
+    reservationsUnsubscribe = onSnapshot(
       q,
       (snapshot) => {
         // Sum up attendeeCount from all reservations (default to 1 if not specified)
-        const count = snapshot.docs.reduce((total, doc) => {
-          const data = doc.data() as FirestoreReservation;
+        const count = snapshot.docs.reduce((total, docSnap) => {
+          const data = docSnap.data() as FirestoreReservation;
           return total + (data.attendeeCount || 1);
         }, 0);
+        reservationsQueryActive = true;
+        console.log('[RESERVATION_COUNT] ✅ Using reservations query:', { eventId, count, docs: snapshot.docs.length });
         callback(count);
+        
+        // Also update the event document's attendeeCount for sync
+        // This ensures unauthenticated users see up-to-date counts
+        updateEventAttendeeCount(eventId, count).catch(err => {
+          // Silent fail - this is a sync operation, not critical
+          console.warn('[RESERVATION_COUNT] ⚠️ Failed to sync attendeeCount to event:', err);
+        });
       },
-      (error) => {
-        console.error('Error in reservation count subscription:', error);
-        callback(0);
+      (error: any) => {
+        // Permission denied is expected for unauthenticated users
+        if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+          console.log('[RESERVATION_COUNT] 📖 Falling back to event.attendeeCount (not authenticated):', { eventId });
+          // Event subscription will provide the count
+        } else {
+          console.error('[RESERVATION_COUNT] ❌ Error in reservation subscription:', error);
+        }
+        reservationsQueryActive = false;
       }
     );
   } catch (error) {
-    console.error('Error setting up reservation count subscription:', error);
-    // CRITICAL: Defer callback to prevent React Error #310
-    queueMicrotask(() => callback(0));
-    return () => {};
+    console.warn('[RESERVATION_COUNT] ⚠️ Error setting up reservations subscription:', error);
+    reservationsQueryActive = false;
+  }
+
+  // Return combined unsubscribe function
+  return () => {
+    if (eventUnsubscribe) eventUnsubscribe();
+    if (reservationsUnsubscribe) reservationsUnsubscribe();
+  };
+}
+
+/**
+ * Update the attendeeCount field on an event document
+ * This is a denormalized field for public display (unauthenticated users)
+ */
+async function updateEventAttendeeCount(eventId: string, count: number): Promise<void> {
+  const db = getDbSafe();
+  if (!db) return;
+  
+  try {
+    const eventRef = doc(db, "events", eventId);
+    await updateDoc(eventRef, { attendeeCount: count });
+  } catch (error: any) {
+    // Only log non-permission errors
+    if (error?.code !== 'permission-denied') {
+      console.warn('[RESERVATION_COUNT] ⚠️ Failed to update attendeeCount:', error);
+    }
   }
 }
 

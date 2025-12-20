@@ -251,9 +251,14 @@ export const useEventStore = create<EventStore>((set, get) => ({
     return get().events;
   },
 
-  getEventsByHost: (hostName) => {
+  // FIXED: Accept both hostId and hostName for flexible filtering
+  getEventsByHost: (hostIdOrName) => {
     return get().events.filter(event => 
-      event.host === hostName || event.hostName === hostName
+      // Primary: Match by hostId (most reliable)
+      event.hostId === hostIdOrName ||
+      // Fallback: Match by hostName or host field (backward compatibility)
+      event.host === hostIdOrName || 
+      event.hostName === hostIdOrName
     );
   },
 
