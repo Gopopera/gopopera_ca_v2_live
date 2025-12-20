@@ -356,17 +356,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
       {/* 3. Pillars / Types of Circles section */}
       <section className="relative overflow-hidden bg-white">
-        {/* Left image panel (desktop only) - fades before center */}
-        <div className="pointer-events-none absolute inset-y-0 left-0 hidden lg:block lg:w-[38%]">
+        {/* Left image panel - visible on all screen sizes with responsive width and fade */}
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-[32%] sm:w-[35%] lg:w-[38%]">
           <img
             src="/images/landing/yoga-circle.jpg"
             alt="Small indoor yoga circle"
             className="h-full w-full object-cover"
             style={{
               WebkitMaskImage:
-                "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)",
+                "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 100%)",
               maskImage:
-                "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)",
+                "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 100%)",
             }}
           />
         </div>
