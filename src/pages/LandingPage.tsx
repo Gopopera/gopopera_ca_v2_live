@@ -355,8 +355,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* 3. Pillars / Types of Circles section */}
-      <section className="py-12 sm:py-16 md:py-20 lg:py-24 xl:py-28 bg-[#FAFAFA] relative overflow-hidden w-full">
-         <div className="max-w-5xl md:max-w-6xl lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+      <section className="relative overflow-hidden bg-white">
+        {/* Left image panel (desktop only) - fades before center */}
+        <div className="pointer-events-none absolute inset-y-0 left-0 hidden lg:block lg:w-[38%]">
+          <img
+            src="/images/landing/yoga-circle.jpg"
+            alt="Small indoor yoga circle"
+            className="h-full w-full object-cover"
+            style={{
+              WebkitMaskImage:
+                "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)",
+              maskImage:
+                "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)",
+            }}
+          />
+        </div>
+
+        {/* Content - centered layout preserved */}
+        <div className="relative z-10 max-w-5xl md:max-w-6xl lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 md:py-20 lg:py-24 xl:py-28 text-center">
             <div className="mb-6 sm:mb-8 md:mb-10">
               <span className="inline-flex items-center gap-2 py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">
                 <Sparkles size={10} className="sm:w-3 sm:h-3 -mt-0.5" />
@@ -382,7 +398,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 {t('landing.signUp')}
               </button>
             </div>
-         </div>
+        </div>
       </section>
 
       {/* 4. Every Great Circle Starts With Real Connection */}

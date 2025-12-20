@@ -35,7 +35,7 @@ if (getApps().length === 0) {
 const db = getFirestore('gopopera2028');
 console.log('✅ Connected to Firestore database: gopopera2028');
 
-// 5 fake reviewers with realistic profiles
+// 10 fake reviewers with realistic profiles (all different people)
 const REVIEWERS = [
   {
     id: 'reviewer-jessica-martinez',
@@ -61,6 +61,31 @@ const REVIEWERS = [
     id: 'reviewer-emily-rodriguez',
     name: 'Emily Rodriguez',
     photoURL: 'https://i.pravatar.cc/150?img=28',
+  },
+  {
+    id: 'reviewer-alex-nguyen',
+    name: 'Alex Nguyen',
+    photoURL: 'https://i.pravatar.cc/150?img=51',
+  },
+  {
+    id: 'reviewer-olivia-patel',
+    name: 'Olivia Patel',
+    photoURL: 'https://i.pravatar.cc/150?img=23',
+  },
+  {
+    id: 'reviewer-james-wilson',
+    name: 'James Wilson',
+    photoURL: 'https://i.pravatar.cc/150?img=59',
+  },
+  {
+    id: 'reviewer-sophia-kim',
+    name: 'Sophia Kim',
+    photoURL: 'https://i.pravatar.cc/150?img=41',
+  },
+  {
+    id: 'reviewer-michael-brown',
+    name: 'Michael Brown',
+    photoURL: 'https://i.pravatar.cc/150?img=68',
   },
 ];
 
@@ -135,13 +160,13 @@ async function setReviewsForEatezca() {
   
   console.log(`✅ Deleted ${deletedCount} existing reviews`);
 
-  // Step 2: Create exactly 10 five-star reviews from 5 different people (2 each)
-  console.log('\n⭐ Creating 10 five-star reviews from 5 different people...');
+  // Step 2: Create exactly 10 five-star reviews from 10 different people (1 each)
+  console.log('\n⭐ Creating 10 five-star reviews from 10 different people...');
   let createdCount = 0;
 
   for (let i = 0; i < 10; i++) {
-    // Cycle through the 5 reviewers (each gets 2 reviews)
-    const reviewer = REVIEWERS[i % 5];
+    // Each reviewer gets exactly 1 review
+    const reviewer = REVIEWERS[i];
     
     // Distribute reviews across events (round-robin)
     const eventDoc = eventDocs[i % eventDocs.length];
@@ -190,9 +215,9 @@ async function setReviewsForEatezca() {
   console.log('\n✅ SUCCESS!');
   console.log(`   - Deleted ${deletedCount} old reviews`);
   console.log(`   - Created ${createdCount} new five-star reviews`);
-  console.log(`   - From ${REVIEWERS.length} different reviewers`);
+  console.log(`   - From ${createdCount} different reviewers (each person reviewed once)`);
   console.log(`   - Distributed across ${eventDocs.length} events`);
-  console.log('\n🎉 Your profile now shows 10 reviews with 5 stars average from 5 different people!');
+  console.log('\n🎉 Your profile now shows 10 reviews with 5 stars average from 10 different people!');
 }
 
 // Run the script
