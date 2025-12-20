@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Share2, Instagram, Link2, Download } from 'lucide-react';
+import { X, Share2, Instagram, Link2, Download, Copy, Check } from 'lucide-react';
 import { Event } from '../../types';
 import { generateStoryImage, shareToInstagramStory } from '../../utils/generateStoryImage';
 import { formatDate } from '../../utils/dateFormatter';
@@ -13,18 +13,50 @@ interface ShareModalProps {
 export const ShareModal: React.FC<ShareModalProps> = ({ event, isOpen, onClose }) => {
   const [generating, setGenerating] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
 
+  const eventUrl = window.location.origin + `/event/${event.id}`;
+
+  // Copy link only - just the URL, no extra text
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(eventUrl);
+      setCopied(true);
+      setTimeout(() => {
+        setCopied(false);
+        onClose();
+      }, 1500);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = eventUrl;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        setCopied(true);
+        setTimeout(() => {
+          setCopied(false);
+          onClose();
+        }, 1500);
+      } catch (e) {
+        console.error('Fallback copy failed:', e);
+      }
+      document.body.removeChild(textArea);
+    }
+  };
+
+  // Share via native share API (includes preview on supported platforms)
   const handleShareLink = async () => {
-    const url = window.location.origin + `/event/${event.id}`;
-    
     if (navigator.share) {
       try {
         await navigator.share({
-          title: event.title,
-          text: event.description,
-          url: url,
+          url: eventUrl,
         });
         onClose();
       } catch (err) {
@@ -34,13 +66,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ event, isOpen, onClose }
       }
     } else {
       // Fallback: copy to clipboard
-      try {
-        await navigator.clipboard.writeText(url);
-        alert('Link copied to clipboard!');
-        onClose();
-      } catch (err) {
-        console.error('Failed to copy:', err);
-      }
+      await handleCopyLink();
     }
   };
 
@@ -129,19 +155,39 @@ export const ShareModal: React.FC<ShareModalProps> = ({ event, isOpen, onClose }
         </div>
         
         <div className="p-4 sm:p-5 space-y-2.5">
-          {/* Share Link - Glass Style */}
+          {/* Copy Link - Just copies the URL */}
           <button
-            onClick={handleShareLink}
+            onClick={handleCopyLink}
             className="w-full flex items-center gap-3 p-3.5 bg-white/80 backdrop-blur-sm hover:bg-white border border-gray-200/60 rounded-xl transition-all text-left"
           >
-            <div className="w-12 h-12 bg-popera-teal/10 rounded-full flex items-center justify-center shrink-0">
-              <Link2 size={24} className="text-popera-teal" />
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-colors ${copied ? 'bg-green-100' : 'bg-popera-teal/10'}`}>
+              {copied ? (
+                <Check size={24} className="text-green-600" />
+              ) : (
+                <Copy size={24} className="text-popera-teal" />
+              )}
             </div>
             <div className="flex-1">
-              <h4 className="font-bold text-popera-teal">Share Link</h4>
-              <p className="text-sm text-gray-500">Copy or share the event link</p>
+              <h4 className="font-bold text-popera-teal">{copied ? 'Link Copied!' : 'Copy Link'}</h4>
+              <p className="text-sm text-gray-500">{copied ? 'Ready to paste' : 'Copy the event link to clipboard'}</p>
             </div>
           </button>
+          
+          {/* Share via Apps (native share) */}
+          {typeof navigator !== 'undefined' && navigator.share && (
+            <button
+              onClick={handleShareLink}
+              className="w-full flex items-center gap-3 p-3.5 bg-white/80 backdrop-blur-sm hover:bg-white border border-gray-200/60 rounded-xl transition-all text-left"
+            >
+              <div className="w-12 h-12 bg-popera-teal/10 rounded-full flex items-center justify-center shrink-0">
+                <Share2 size={24} className="text-popera-teal" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-bold text-popera-teal">Share via Apps</h4>
+                <p className="text-sm text-gray-500">Share to messages, social media & more</p>
+              </div>
+            </button>
+          )}
           
           {/* Share to Instagram Story */}
           <button

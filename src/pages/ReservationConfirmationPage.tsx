@@ -1,6 +1,6 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useCallback } from 'react';
 import { Event, ViewState } from '../../types';
-import { ChevronLeft, Share2, Calendar, Clock, MapPin, Download, X } from 'lucide-react';
+import { X, Download } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { formatDate } from '../../utils/dateFormatter';
 import { getMainCategoryLabelFromEvent } from '../../utils/categoryMapper';
@@ -33,6 +33,11 @@ export const ReservationConfirmationPage: React.FC<ReservationConfirmationPagePr
     });
   }, [reservationId, event.id]);
 
+  const handleClose = useCallback(() => {
+    // Return to event detail page or previous view
+    setViewState(ViewState.DETAIL);
+  }, [setViewState]);
+
   // Prevent body scroll when modal is open
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -50,12 +55,7 @@ export const ReservationConfirmationPage: React.FC<ReservationConfirmationPagePr
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, []);
-
-  const handleClose = () => {
-    // Return to event detail page or previous view
-    setViewState(ViewState.DETAIL);
-  };
+  }, [handleClose]);
 
   const handleDownloadPass = async () => {
     try {
@@ -225,31 +225,6 @@ export const ReservationConfirmationPage: React.FC<ReservationConfirmationPagePr
     }
   };
 
-  const handleShare = async () => {
-    const url = `${window.location.origin}/event/${event.id}?reservation=${reservationId}`;
-    
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `My reservation for ${event.title}`,
-          text: `I've reserved a spot for ${event.title}!`,
-          url,
-        });
-      } catch (err) {
-        // User cancelled or error
-        console.log('Share cancelled');
-      }
-    } else {
-      // Fallback: copy to clipboard
-      try {
-        await navigator.clipboard.writeText(url);
-        alert('Reservation link copied to clipboard!');
-      } catch (err) {
-        console.error('Failed to copy:', err);
-      }
-    }
-  };
-
   // Format date for display
   const formattedDate = useMemo(() => {
     if (!event.date) return 'TBD';
@@ -266,100 +241,89 @@ export const ReservationConfirmationPage: React.FC<ReservationConfirmationPagePr
     }
   }, [event.date]);
 
-  // Format date for header (shorter format)
-  const headerDate = useMemo(() => {
-    if (!event.date) return '';
-    try {
-      const date = new Date(event.date);
-      return date.toLocaleDateString('en-US', { 
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        weekday: 'long'
-      });
-    } catch {
-      return '';
+  // Get event image URL
+  const eventImageUrl = useMemo(() => {
+    if (event.imageUrls && event.imageUrls.length > 0) {
+      return event.imageUrls[0];
     }
-  }, [event.date]);
+    if (event.imageUrl) {
+      return event.imageUrl;
+    }
+    // Fallback placeholder
+    return `https://picsum.photos/seed/${event.id}/800/450`;
+  }, [event.imageUrls, event.imageUrl, event.id]);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={handleClose}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-md" onClick={handleClose}>
       <div 
-        className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-white/95 backdrop-blur-2xl rounded-2xl sm:rounded-3xl shadow-2xl border border-white/60 max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 flex-shrink-0">
+        {/* Header with X button */}
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 flex-shrink-0">
+          <h1 className="text-lg sm:text-xl font-heading font-bold text-[#15383c] flex-1">
+            {event.title}
+          </h1>
           <button
             onClick={handleClose}
-            className="w-10 h-10 rounded-full flex items-center justify-center text-[#15383c] hover:bg-gray-50 transition-colors active:scale-95 touch-manipulation"
-            aria-label="Back"
+            className="w-10 h-10 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-white/80 backdrop-blur-sm border border-gray-200/60 transition-all active:scale-95 touch-manipulation shrink-0"
+            aria-label="Close"
           >
-            <ChevronLeft size={20} />
+            <X size={20} />
           </button>
-          <h1 className="text-base sm:text-lg font-heading font-semibold text-[#15383c]">Reservation Details</h1>
-          <div className="w-10 h-10" /> {/* Spacer for centering */}
         </div>
 
-        {/* Content - Compact, no scrolling needed */}
+        {/* Content */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 min-h-0">
-          {/* Event Title and Date Header */}
-          <div className="mb-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <h2 className="text-lg sm:text-xl font-heading font-bold text-[#15383c] mb-1 leading-tight">
-                  {event.title}
-                </h2>
-                <p className="text-sm text-gray-600">
-                  {headerDate}
-                </p>
-              </div>
-              <button
-                onClick={handleShare}
-                className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-[#e35e25] hover:bg-[#e35e25]/10 transition-colors active:scale-95 touch-manipulation"
-                aria-label="Share reservation"
-              >
-                <Share2 size={20} />
-              </button>
+          {/* Event Image */}
+          <div className="mb-5">
+            <img
+              src={eventImageUrl}
+              alt={event.title}
+              className="w-full h-auto rounded-2xl shadow-lg border border-white/20 object-cover"
+              style={{ aspectRatio: '16/9' }}
+            />
+          </div>
+
+          {/* QR Code in Glass Panel */}
+          <div className="mb-5">
+            <div className="bg-white/80 backdrop-blur-sm border border-gray-200/60 rounded-2xl p-6 flex flex-col items-center shadow-lg">
+              <QRCodeSVG
+                value={qrData}
+                size={180}
+                level="H"
+                includeMargin={true}
+                fgColor="#15383c"
+                bgColor="#ffffff"
+              />
+              <p className="text-xs text-[#e35e25] text-center font-medium mt-4 max-w-xs leading-relaxed">
+                Show this QR code at check-in
+              </p>
             </div>
           </div>
 
-          {/* Key Information Grid - Two Columns (matching image layout) */}
-          <div className="mb-4 pb-4 border-b border-gray-100">
+          {/* Minimal Details Grid */}
+          <div className="bg-white/60 backdrop-blur-sm border border-gray-200/40 rounded-xl p-4 mb-4">
             <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-              {/* Left Column */}
               <div>
                 <p className="text-xs text-gray-500 mb-1 font-medium">Date</p>
                 <p className="text-sm font-semibold text-[#15383c]">{formattedDate}</p>
               </div>
-
-              {/* Right Column */}
               <div>
                 <p className="text-xs text-gray-500 mb-1 font-medium">Time</p>
                 <p className="text-sm font-semibold text-[#15383c]">{event.time || 'TBD'}</p>
               </div>
-
-              {/* Location - Full Width */}
               <div className="col-span-2">
                 <p className="text-xs text-gray-500 mb-1 font-medium">Location</p>
                 <p className="text-sm font-semibold text-[#15383c] break-words">
                   {event.location || `${event.address || ''}, ${event.city || ''}`.trim() || 'TBD'}
                 </p>
               </div>
-
-              {/* Reservation ID */}
               <div>
                 <p className="text-xs text-gray-500 mb-1 font-medium">Reservation ID</p>
                 <p className="text-sm font-semibold text-[#15383c] font-mono">{orderId}</p>
               </div>
-
-              {/* Category or Price */}
-              {getMainCategoryLabelFromEvent(event, language) ? (
-                <div>
-                  <p className="text-xs text-gray-500 mb-1 font-medium">{language === 'fr' ? 'Catégorie' : 'Category'}</p>
-                  <p className="text-sm font-semibold text-[#15383c] capitalize">{getMainCategoryLabelFromEvent(event, language)}</p>
-                </div>
-              ) : event.price && event.price !== 'Free' ? (
+              {event.price && event.price !== 'Free' ? (
                 <div>
                   <p className="text-xs text-gray-500 mb-1 font-medium">Price</p>
                   <p className="text-sm font-semibold text-[#e35e25]">{event.price}</p>
@@ -367,42 +331,13 @@ export const ReservationConfirmationPage: React.FC<ReservationConfirmationPagePr
               ) : null}
             </div>
           </div>
-
-          {/* Total Cost / Price Section (if not shown above) */}
-          {event.price && event.price !== 'Free' && getMainCategoryLabelFromEvent(event, language) && (
-            <div className="mb-4 pb-4 border-b border-gray-100">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-600 font-medium">Total:</p>
-                <p className="text-base font-bold text-[#e35e25]">{event.price}</p>
-              </div>
-            </div>
-          )}
-
-          {/* QR Code Section */}
-          <div className="mb-4">
-            <div className="flex flex-col items-center">
-              <div className="bg-white p-3 rounded-lg shadow-sm mb-3">
-                <QRCodeSVG
-                  value={qrData}
-                  size={160}
-                  level="H"
-                  includeMargin={true}
-                  fgColor="#15383c"
-                  bgColor="#ffffff"
-                />
-              </div>
-              <p className="text-xs text-[#e35e25] text-center font-medium max-w-xs leading-relaxed">
-                Note: Just show your QR code while checking in at the event.
-              </p>
-            </div>
-          </div>
         </div>
 
-        {/* Action Buttons - Fixed at Bottom */}
-        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 flex gap-3 flex-shrink-0 bg-white">
+        {/* Action Buttons */}
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200/60 flex gap-3 flex-shrink-0 bg-white/80 backdrop-blur-sm">
           <button
             onClick={handleClose}
-            className="flex-1 px-4 py-3 bg-white border-2 border-gray-300 text-[#15383c] rounded-full font-semibold text-sm hover:bg-gray-50 hover:border-[#15383c] transition-all active:scale-95 touch-manipulation"
+            className="flex-1 px-4 py-3 bg-white/80 backdrop-blur-sm border-2 border-gray-300/60 text-[#15383c] rounded-full font-semibold text-sm hover:bg-white hover:border-[#15383c] transition-all active:scale-95 touch-manipulation"
           >
             Close
           </button>

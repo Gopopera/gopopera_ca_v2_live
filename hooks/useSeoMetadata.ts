@@ -195,8 +195,9 @@ function getEventDetailMetadata(event: Event): SeoMetadata {
     160
   );
 
-  // Get the best available image
-  const ogImage = event.imageUrls?.[0] || event.imageUrl || DEFAULT_OG_IMAGE;
+  // Use dynamic OG image that matches the event info page design
+  // This creates a beautiful, consistent preview for social media sharing
+  const ogImage = `${BASE_URL}/api/og-image?eventId=${event.id}`;
 
   return {
     title: `${event.title} — ${BRAND_NAME}`,
