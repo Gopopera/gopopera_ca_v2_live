@@ -46,7 +46,11 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
   const profileStore = useProfileStore();
   
   // State for reviews fetched from Firestore (source of truth)
-  const [firestoreReviews, setFirestoreReviews] = useState<FirestoreReview[]>([]);
+  // Extended to include userPhoto for consistent profile picture display
+  interface ReviewWithPhoto extends FirestoreReview {
+    userPhoto?: string | null;
+  }
+  const [firestoreReviews, setFirestoreReviews] = useState<ReviewWithPhoto[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   
   // State for host profile picture (synced from Firestore)
@@ -147,6 +151,7 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
   }, [hostId]);
   
   // Fetch reviews from Firestore (only accepted reviews for accurate count)
+  // FIX: Also fetch reviewer profile pictures for consistent display
   useEffect(() => {
     const loadReviews = async () => {
       if (!hostId) {
@@ -158,7 +163,28 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
         setReviewsLoading(true);
         // Only get accepted reviews (includePending=false) to ensure count matches displayed reviews
         const acceptedReviews = await listHostReviews(hostId, false);
-        setFirestoreReviews(acceptedReviews);
+        
+        // Fetch reviewer profile pictures for each review
+        const reviewsWithPhotos = await Promise.all(
+          acceptedReviews.map(async (review) => {
+            // First check if review has stored photo URL (for seeded/migrated reviews)
+            if ((review as any).userPhotoURL) {
+              return { ...review, userPhoto: (review as any).userPhotoURL };
+            }
+            // Otherwise fetch from user profile
+            try {
+              const userProfile = await getUserProfile(review.userId);
+              return {
+                ...review,
+                userPhoto: userProfile?.photoURL || userProfile?.imageUrl || null,
+              };
+            } catch {
+              return { ...review, userPhoto: null };
+            }
+          })
+        );
+        
+        setFirestoreReviews(reviewsWithPhotos);
       } catch (error) {
         console.error('[HOST_PROFILE] Error loading reviews:', error);
         setFirestoreReviews([]);
@@ -524,8 +550,27 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
                     <div key={review.id} className="bg-white p-5 sm:p-6 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 bg-gradient-to-br from-[#e35e25] to-[#15383c] rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md">
-                            {review.userName?.[0] || 'U'}
+                          {/* FIX: Display reviewer profile picture consistently */}
+                          <div className="w-12 h-12 rounded-full overflow-hidden shadow-md shrink-0">
+                            {review.userPhoto ? (
+                              <img 
+                                src={review.userPhoto} 
+                                alt={review.userName} 
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  // On error, hide the img and show fallback
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                  const fallback = (e.target as HTMLImageElement).nextElementSibling as HTMLElement;
+                                  if (fallback) fallback.style.display = 'flex';
+                                }}
+                              />
+                            ) : null}
+                            <div 
+                              className={`w-full h-full flex items-center justify-center ${getAvatarBgColor(review.userName, review.userId)} text-white font-bold text-lg`}
+                              style={{ display: review.userPhoto ? 'none' : 'flex' }}
+                            >
+                              {getInitials(review.userName)}
+                            </div>
                           </div>
                           <div>
                             <h4 className="text-sm sm:text-base font-bold text-[#15383c]">{review.userName}</h4>

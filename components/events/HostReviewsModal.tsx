@@ -4,6 +4,7 @@ import { formatRating } from '@/utils/formatRating';
 import { listHostReviews, getUserProfile } from '@/firebase/db';
 import { FirestoreReview } from '@/firebase/types';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { getInitials, getAvatarBgColor } from '@/utils/avatarUtils';
 
 interface HostReviewsModalProps {
   hostId: string;
@@ -59,34 +60,33 @@ export const HostReviewsModal: React.FC<HostReviewsModalProps> = ({
         }
         
         // Fetch user profiles and event titles for each review
+        // FIX: First check review.userPhotoURL, then fetch from profile, use consistent fallback
         const reviewsWithUsers = await Promise.all(
           hostReviews.map(async (review) => {
             try {
-              // Fetch reviewer profile
-              const userProfile = await getUserProfile(review.userId);
-              const userPhoto = userProfile?.photoURL || userProfile?.imageUrl || `https://i.pravatar.cc/150?img=${review.userId}`;
-              
-              // Try to get event title from review (if stored) or fetch from event
-              let eventTitle = 'Event';
-              try {
-                const { getEventById } = await import('@/firebase/db');
-                // Extract eventId from review path or use a different method
-                // For now, we'll use a placeholder - you may need to store eventId in review
-                eventTitle = 'Event';
-              } catch (error) {
-                console.warn('[HOST_REVIEWS_MODAL] Could not fetch event title:', error);
+              // First check if review has stored photo URL (for seeded/migrated reviews)
+              if ((review as any).userPhotoURL) {
+                return {
+                  ...review,
+                  userPhoto: (review as any).userPhotoURL,
+                  eventTitle: 'Event',
+                };
               }
+              
+              // Otherwise fetch from user profile
+              const userProfile = await getUserProfile(review.userId);
+              const userPhoto = userProfile?.photoURL || userProfile?.imageUrl || null;
               
               return {
                 ...review,
                 userPhoto,
-                eventTitle,
+                eventTitle: 'Event',
               };
             } catch (error) {
               console.error(`[HOST_REVIEWS_MODAL] Error fetching user profile for ${review.userId}:`, error);
               return {
                 ...review,
-                userPhoto: `https://i.pravatar.cc/150?img=${review.userId}`,
+                userPhoto: null, // Use null to allow fallback to initials
                 eventTitle: 'Event',
               };
             }
@@ -186,16 +186,27 @@ export const HostReviewsModal: React.FC<HostReviewsModalProps> = ({
                     className={`flex items-center gap-2 sm:gap-3 ${onReviewerClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
                     onClick={() => handleReviewerClick(review)}
                   >
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-200 overflow-hidden shrink-0 ring-1 ring-gray-200">
-                      <img 
-                        src={review.userPhoto || `https://i.pravatar.cc/150?img=${review.userId}`} 
-                        alt={review.userName} 
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = `https://i.pravatar.cc/150?img=${review.userId}`;
-                        }}
-                      />
+                    {/* FIX: Use consistent profile picture display with initials fallback */}
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden shrink-0 ring-1 ring-gray-200">
+                      {review.userPhoto ? (
+                        <img 
+                          src={review.userPhoto} 
+                          alt={review.userName} 
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            // On error, hide the img and show fallback
+                            (e.target as HTMLImageElement).style.display = 'none';
+                            const fallback = (e.target as HTMLImageElement).nextElementSibling as HTMLElement;
+                            if (fallback) fallback.style.display = 'flex';
+                          }}
+                        />
+                      ) : null}
+                      <div 
+                        className={`w-full h-full flex items-center justify-center ${getAvatarBgColor(review.userName, review.userId)} text-white font-bold text-xs sm:text-sm`}
+                        style={{ display: review.userPhoto ? 'none' : 'flex' }}
+                      >
+                        {getInitials(review.userName)}
+                      </div>
                     </div>
                     <div className="min-w-0">
                       <h4 className="text-xs sm:text-sm font-bold text-popera-teal truncate">{review.userName}</h4>

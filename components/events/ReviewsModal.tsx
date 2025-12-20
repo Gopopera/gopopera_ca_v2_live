@@ -6,6 +6,7 @@ import { listReviews } from '@/firebase/db';
 import { FirestoreReview } from '@/firebase/types';
 import { ViewState } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { getInitials, getAvatarBgColor } from '@/utils/avatarUtils';
 
 interface ReviewsModalProps {
   event: Event;
@@ -41,21 +42,19 @@ export const ReviewsModal: React.FC<ReviewsModalProps> = ({ event, onClose, onRe
             }
             
             // Otherwise, try to fetch from user profile
+            // FIX: Use null fallback to allow consistent initials display
             try {
               const { getUserProfile } = await import('@/firebase/db');
               const userProfile = await getUserProfile(review.userId);
-              // Generate a consistent fallback avatar number from userId
-              const fallbackNum = review.userId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 70;
               return {
                 ...review,
-                userPhoto: userProfile?.photoURL || userProfile?.imageUrl || `https://i.pravatar.cc/150?img=${fallbackNum}`,
+                userPhoto: userProfile?.photoURL || userProfile?.imageUrl || null,
               };
             } catch (error) {
               console.error(`Error fetching user profile for ${review.userId}:`, error);
-              const fallbackNum = review.userId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 70;
               return {
                 ...review,
-                userPhoto: `https://i.pravatar.cc/150?img=${fallbackNum}`,
+                userPhoto: null, // Use null to allow fallback to initials
               };
             }
           })
@@ -129,16 +128,27 @@ export const ReviewsModal: React.FC<ReviewsModalProps> = ({ event, onClose, onRe
                        className={`flex items-center gap-2 sm:gap-3 ${onReviewerClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
                        onClick={() => handleReviewerClick(review)}
                      >
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-200 overflow-hidden shrink-0 ring-1 ring-gray-200">
-                          <img 
-                            src={review.userPhoto || `https://i.pravatar.cc/150?img=${review.userId}`} 
-                            alt={review.userName} 
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.src = `https://i.pravatar.cc/150?img=${review.userId}`;
-                            }}
-                          />
+                        {/* FIX: Use consistent profile picture display with initials fallback */}
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden shrink-0 ring-1 ring-gray-200">
+                          {review.userPhoto ? (
+                            <img 
+                              src={review.userPhoto} 
+                              alt={review.userName} 
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                // On error, hide the img and show fallback
+                                (e.target as HTMLImageElement).style.display = 'none';
+                                const fallback = (e.target as HTMLImageElement).nextElementSibling as HTMLElement;
+                                if (fallback) fallback.style.display = 'flex';
+                              }}
+                            />
+                          ) : null}
+                          <div 
+                            className={`w-full h-full flex items-center justify-center ${getAvatarBgColor(review.userName, review.userId)} text-white font-bold text-xs sm:text-sm`}
+                            style={{ display: review.userPhoto ? 'none' : 'flex' }}
+                          >
+                            {getInitials(review.userName)}
+                          </div>
                         </div>
                         <div className="min-w-0">
                           <h4 className="text-xs sm:text-sm font-bold text-popera-teal truncate">{review.userName}</h4>
