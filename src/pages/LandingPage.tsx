@@ -386,7 +386,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
            </span>
 
           <div className="flex justify-center mb-8 sm:mb-12">
-             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-white uppercase tracking-tight">
+             <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-4xl font-heading font-bold text-white uppercase tracking-tight">
                {t('landing.communityGuidelines')}
              </h2>
           </div>

@@ -35,6 +35,8 @@ export const translations = {
     pillars: {
       badge: 'Types of Circles',
       title: 'What kind of circle will you join?',
+      sectionTitle: 'What you can do',
+      sectionTitleLine2: 'in a small circle',
       description: 'From learning real skills to meeting neighbors, Popera hosts bring small groups together for meaningful in-person experiences.',
       makeCreate: {
         category: 'MAKE & CREATE',
@@ -540,6 +542,20 @@ export const translations = {
       mara: 'Mara',
       jon: 'Jon',
       host: 'Host',
+      // Mock Messages for chat
+      mockMsg1: "Good morning cold plunge crew! 🌊 Water temp is sitting at 4°C today. We're meeting at the lower dock — look for the orange flag. Don't forget your towels!",
+      mockMsg2: "Perfect! I'm already on my way. Bringing my thermos with hot ginger tea if anyone wants some after 🍵",
+      mockAnnouncement: "Today's Session: Group breathing warm-up at 7:25 AM by the lower dock. First plunge at 7:30 AM. Bring towel & warm layers!",
+      mockMsg3: "Hey everyone! First time joining — what should I wear? Just swim trunks or do people use wetsuits?",
+      mockMsg4: "Welcome Liam! Just swim trunks are fine. We do 2-3 minute plunges max for beginners. I'll guide you through it 💪",
+      mockMsg5: "Running 5 mins late! Save me a spot on the rocks please 🙏 Traffic on Marine Drive is brutal today",
+      mockMsg6: "Got your spot Mara! Right next to the big boulder. The sunrise is absolutely stunning right now 🌅",
+      mockMsg7: "Anyone up for a longer immersion today? Feeling motivated! 😂 I've been working up to 5 mins",
+      mockMsg8: "Love the energy Jon! We can do a second round for the brave ones. Remember: breathe steady, no hyperventilating 🧘",
+      mockMsg9: "Just arrived! Wow the water looks intense. Slightly terrified but excited 😅",
+      mockMsg10: "Here! Asha your tea smells amazing. Anyone else want some post-plunge? ☕",
+      mockMsg11: "Perfect timing everyone! Let's start the breathing exercises. Circle up by the dock! 🙌",
+      announcementLabel: 'Announcement',
     },
     // Notifications
     notifications: {
@@ -1303,10 +1319,10 @@ export const translations = {
     },
     // Hero
     hero: {
-      badge: 'Expériences entre voisins',
-      title: 'Rejoignez un petit cercle en personne près de chez vous.',
-      titleMobileLine1: 'Rejoignez un petit cercle',
-      titleMobileLine2: 'en personne près de chez vous.',
+      badge: 'Expériences sociales',
+      title: 'Rejoignez un cercle social près de chez vous.',
+      titleMobileLine1: 'Rejoignez un cercle social',
+      titleMobileLine2: 'près de chez vous.',
       titleHighlight: '',
       description: 'Découvrez des événements sociaux de petite et moyenne taille dans votre ville.',
       microline: 'En personne seulement • 3–50 places • Profils d\'hôtes & avis',
@@ -1319,6 +1335,8 @@ export const translations = {
     pillars: {
       badge: 'Types de cercles',
       title: 'Quel type de cercle allez-vous rejoindre?',
+      sectionTitle: 'Ce que vous pouvez faire',
+      sectionTitleLine2: 'dans un petit cercle',
       description: 'De l\'apprentissage de vraies compétences à la rencontre des voisins, les hôtes Popera rassemblent de petits groupes pour des expériences significatives en personne.',
       makeCreate: {
         category: 'CRÉER & FABRIQUER',
@@ -1348,7 +1366,7 @@ export const translations = {
     },
     // Landing Page
     landing: {
-      badge: 'Là où les Cercles locaux commencent',
+      badge: 'Expériences sociales',
       title: 'Cercles sociaux &',
       titleHighlight: 'Sessions en personne',
       description: 'Popera est un marché pour organiser et rejoindre des expériences en personne de petite et moyenne taille, des soirées cuisine aux ateliers créatifs, sessions d\'apprentissage et rassemblements sociaux pour 3 à 50 personnes.',
@@ -1823,6 +1841,20 @@ export const translations = {
       mara: 'Mara',
       jon: 'Jon',
       host: 'Hôte',
+      // Mock Messages for chat
+      mockMsg1: "Bonjour l'équipe du plongeon froid! 🌊 La température de l'eau est à 4°C aujourd'hui. On se retrouve au quai inférieur — cherchez le drapeau orange. N'oubliez pas vos serviettes!",
+      mockMsg2: "Parfait! Je suis déjà en route. J'apporte mon thermos avec du thé au gingembre chaud si quelqu'un en veut après 🍵",
+      mockAnnouncement: "Session d'aujourd'hui: Échauffement respiratoire de groupe à 7h25 au quai inférieur. Premier plongeon à 7h30. Apportez serviette et vêtements chauds!",
+      mockMsg3: "Salut tout le monde! C'est ma première fois — qu'est-ce que je dois porter? Juste un maillot ou les gens utilisent des combinaisons?",
+      mockMsg4: "Bienvenue Liam! Juste un maillot de bain c'est parfait. On fait 2-3 minutes max pour les débutants. Je vais te guider 💪",
+      mockMsg5: "J'arrive dans 5 minutes! Gardez-moi une place sur les rochers s'il vous plaît 🙏 La circulation sur Marine Drive est terrible aujourd'hui",
+      mockMsg6: "Ta place est gardée Mara! Juste à côté du gros rocher. Le lever de soleil est absolument magnifique en ce moment 🌅",
+      mockMsg7: "Quelqu'un veut essayer une immersion plus longue aujourd'hui? Je suis motivé! 😂 Je travaille vers les 5 minutes",
+      mockMsg8: "J'adore l'énergie Jon! On peut faire un deuxième tour pour les plus courageux. Rappelez-vous: respirez régulièrement, pas d'hyperventilation 🧘",
+      mockMsg9: "Je viens d'arriver! Wow l'eau a l'air intense. Un peu terrifié mais excité 😅",
+      mockMsg10: "Ici! Asha ton thé sent incroyable. Quelqu'un d'autre en veut après le plongeon? ☕",
+      mockMsg11: "Timing parfait tout le monde! Commençons les exercices de respiration. Rassemblez-vous près du quai! 🙌",
+      announcementLabel: 'Annonce',
     },
     // Notifications
     notifications: {

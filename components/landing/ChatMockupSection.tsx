@@ -2,15 +2,15 @@ import React from 'react';
 import { MessageCircle, BarChart2, Megaphone, Send, Sparkles, Users, DollarSign, ArrowLeft, X, Info } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
-// Mock messages for Cold Plunge coordination
-const mockMessages = [
+// Mock messages factory - returns translated messages
+const getMockMessages = (t: (key: string) => string) => [
   {
     id: 1,
     type: 'message',
     sender: 'Marcus',
     initial: 'M',
     isHost: true,
-    text: "Good morning cold plunge crew! 🌊 Water temp is sitting at 4°C today. We're meeting at the lower dock — look for the orange flag. Don't forget your towels!",
+    text: t('chatMockup.mockMsg1'),
     time: '06:45',
     avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop&crop=face'
   },
@@ -20,13 +20,13 @@ const mockMessages = [
     sender: 'Asha',
     initial: 'A',
     isHost: false,
-    text: "Perfect! I'm already on my way. Bringing my thermos with hot ginger tea if anyone wants some after 🍵",
+    text: t('chatMockup.mockMsg2'),
     time: '06:52'
   },
   {
     id: 3,
     type: 'announcement',
-    text: "Today's Session: Group breathing warm-up at 7:25 AM by the lower dock. First plunge at 7:30 AM. Bring towel & warm layers!",
+    text: t('chatMockup.mockAnnouncement'),
     time: '07:00'
   },
   {
@@ -35,7 +35,7 @@ const mockMessages = [
     sender: 'Liam',
     initial: 'L',
     isHost: false,
-    text: "Hey everyone! First time joining — what should I wear? Just swim trunks or do people use wetsuits?",
+    text: t('chatMockup.mockMsg3'),
     time: '07:05'
   },
   {
@@ -44,7 +44,7 @@ const mockMessages = [
     sender: 'Marcus',
     initial: 'M',
     isHost: true,
-    text: "Welcome Liam! Just swim trunks are fine. We do 2-3 minute plunges max for beginners. I'll guide you through it 💪",
+    text: t('chatMockup.mockMsg4'),
     time: '07:08',
     avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop&crop=face'
   },
@@ -54,7 +54,7 @@ const mockMessages = [
     sender: 'Mara',
     initial: 'M',
     isHost: false,
-    text: "Running 5 mins late! Save me a spot on the rocks please 🙏 Traffic on Marine Drive is brutal today",
+    text: t('chatMockup.mockMsg5'),
     time: '07:12'
   },
   {
@@ -63,7 +63,7 @@ const mockMessages = [
     sender: 'Asha',
     initial: 'A',
     isHost: false,
-    text: "Got your spot Mara! Right next to the big boulder. The sunrise is absolutely stunning right now 🌅",
+    text: t('chatMockup.mockMsg6'),
     time: '07:14'
   },
   {
@@ -72,7 +72,7 @@ const mockMessages = [
     sender: 'Jon',
     initial: 'J',
     isHost: false,
-    text: "Anyone up for a longer immersion today? Feeling motivated! 😂 I've been working up to 5 mins",
+    text: t('chatMockup.mockMsg7'),
     time: '07:18'
   },
   {
@@ -81,7 +81,7 @@ const mockMessages = [
     sender: 'Marcus',
     initial: 'M',
     isHost: true,
-    text: "Love the energy Jon! We can do a second round for the brave ones. Remember: breathe steady, no hyperventilating 🧘",
+    text: t('chatMockup.mockMsg8'),
     time: '07:20',
     avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop&crop=face'
   },
@@ -91,7 +91,7 @@ const mockMessages = [
     sender: 'Liam',
     initial: 'L',
     isHost: false,
-    text: "Just arrived! Wow the water looks intense. Slightly terrified but excited 😅",
+    text: t('chatMockup.mockMsg9'),
     time: '07:22'
   },
   {
@@ -100,7 +100,7 @@ const mockMessages = [
     sender: 'Mara',
     initial: 'M',
     isHost: false,
-    text: "Here! Asha your tea smells amazing. Anyone else want some post-plunge? ☕",
+    text: t('chatMockup.mockMsg10'),
     time: '07:24'
   },
   {
@@ -109,7 +109,7 @@ const mockMessages = [
     sender: 'Marcus',
     initial: 'M',
     isHost: true,
-    text: "Perfect timing everyone! Let's start the breathing exercises. Circle up by the dock! 🙌",
+    text: t('chatMockup.mockMsg11'),
     time: '07:25',
     avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop&crop=face'
   }
@@ -117,6 +117,7 @@ const mockMessages = [
 
 export const ChatMockupSection: React.FC = () => {
   const { t } = useLanguage();
+  const mockMessages = getMockMessages(t);
   return (
     <section className="py-8 sm:py-10 md:py-12 lg:py-6 xl:py-8 bg-[#f8fafb] overflow-hidden relative lg:min-h-[calc(100vh-80px)] flex items-center">
       {/* Background Decor - Enhanced with gradient flow */}
@@ -263,10 +264,10 @@ export const ChatMockupSection: React.FC = () => {
                                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[#e35e25] flex items-center justify-center shrink-0">
                                  <Megaphone size={12} className="sm:w-[14px] sm:h-[14px] text-white" strokeWidth={2} />
                                </div>
-                               <span className="font-bold text-[10px] sm:text-[11px] uppercase tracking-wide">Announcement</span>
+                               <span className="font-bold text-[10px] sm:text-[11px] uppercase tracking-wide">{t('chatMockup.announcementLabel')}</span>
                             </div>
                             <p className="text-gray-200 text-[10px] sm:text-[11px] leading-relaxed">{msg.text}</p>
-                            <span className="text-[9px] sm:text-[10px] text-gray-400 mt-1 block">Host • {msg.time}</span>
+                            <span className="text-[9px] sm:text-[10px] text-gray-400 mt-1 block">{t('chatMockup.host')} • {msg.time}</span>
                          </div>
                        );
                      }
@@ -295,7 +296,7 @@ export const ChatMockupSection: React.FC = () => {
                                 {msg.text}
                              </div>
                              <span className="text-[9px] sm:text-[10px] text-gray-400 ml-1">
-                               {msg.isHost && <span className="font-bold text-[#e35e25]">Host • </span>}
+                               {msg.isHost && <span className="font-bold text-[#e35e25]">{t('chatMockup.host')} • </span>}
                                {msg.sender} • {msg.time}
                              </span>
                           </div>
