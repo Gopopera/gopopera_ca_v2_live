@@ -89,6 +89,13 @@ export default defineConfig(({ mode }) => {
         emptyOutDir: true,
         // Increase build timeout for large chunks
         chunkSizeWarningLimit: 1000, // Increase limit to 1000KB
+        // Disable modulePreload for lazy-loaded chunks (prevents image-processing from loading on initial page)
+        modulePreload: {
+          resolveDependencies: (filename, deps) => {
+            // Exclude image-processing chunk from preloading - it should load on-demand only
+            return deps.filter(dep => !dep.includes('image-processing'));
+          }
+        },
         rollupOptions: {
           // Note: Do NOT externalize packages - they need to be bundled for production
           output: {
@@ -96,12 +103,16 @@ export default defineConfig(({ mode }) => {
             chunkFileNames: `assets/[name].[hash].js`,
             assetFileNames: `assets/[name].[hash].[ext]`,
             manualChunks: (id) => {
-              // Separate large image processing library into its own chunk
-              if (id.includes('heic2any') || id.includes('imageProcessing') || id.includes('utils/imageProcessing')) {
-                return 'image-processing';
-              }
+              // NOTE: Do NOT manually chunk image-processing modules (heic2any, imageProcessing, imageCompression).
+              // They are dynamically imported via imageProcessingLoader and should be code-split naturally by Vite.
+              // Adding them to manualChunks causes Rollup to add static imports, defeating lazy loading.
+              
               // Vendor chunks
               if (id.includes('node_modules')) {
+                // Exclude heic2any from vendor chunk - let it be dynamically imported
+                if (id.includes('heic2any')) {
+                  return undefined; // Let Vite handle code-splitting naturally
+                }
                 if (id.includes('react') || id.includes('react-dom')) {
                   return 'react-vendor';
                 }

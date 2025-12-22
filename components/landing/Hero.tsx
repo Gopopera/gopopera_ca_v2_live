@@ -3,6 +3,20 @@ import { ArrowRight } from 'lucide-react';
 import { ViewState } from '@/types';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useUserStore } from '../../stores/userStore';
+import { trackEvent } from '../../src/lib/ga4';
+
+/** GA4 CTA tracking for landing page hero section */
+interface LandingCTAParams {
+  cta_id: string;
+  cta_text: string;
+  section: string;
+  destination: string;
+  is_external: boolean;
+}
+
+function trackLandingCTA(params: LandingCTAParams): void {
+  trackEvent('landing_cta_click', params);
+}
 
 interface HeroProps {
     setViewState: (view: ViewState) => void;
@@ -13,13 +27,27 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
   const user = useUserStore((state) => state.user);
   const setRedirectAfterLogin = useUserStore((state) => state.setRedirectAfterLogin);
   
-  const handleNav = (view: ViewState) => {
+  const handleNav = (view: ViewState, ctaId: string, ctaText: string, destination: string) => {
+      trackLandingCTA({
+        cta_id: ctaId,
+        cta_text: ctaText,
+        section: 'hero',
+        destination,
+        is_external: false,
+      });
       setViewState(view);
       window.scrollTo({ top: 0, behavior: 'instant' });
   };
   
   // Handle protected navigation - requires auth
-  const handleProtectedNav = (view: ViewState) => {
+  const handleProtectedNav = (view: ViewState, ctaId: string, ctaText: string, destination: string) => {
+    trackLandingCTA({
+      cta_id: ctaId,
+      cta_text: ctaText,
+      section: 'hero',
+      destination,
+      is_external: false,
+    });
     if (user) {
       // User is logged in, navigate directly
       setViewState(view);
@@ -83,7 +111,7 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
             {/* Primary CTA */}
             <button 
-              onClick={() => handleNav(ViewState.FEED)}
+              onClick={() => handleNav(ViewState.FEED, 'hero_browse_circles', t('hero.startBrowsing'), '/explore')}
               className="px-5 sm:px-6 py-3 sm:py-3.5 bg-[#e35e25] text-white rounded-full font-bold text-xs sm:text-sm shadow-lg shadow-[#e35e25]/25 hover:shadow-xl transition-all duration-300 flex items-center justify-center touch-manipulation active:scale-[0.98]"
             >
               {t('hero.startBrowsing')}
@@ -91,7 +119,7 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
             
             {/* Secondary CTA */}
             <button 
-              onClick={() => handleProtectedNav(ViewState.CREATE_EVENT)}
+              onClick={() => handleProtectedNav(ViewState.CREATE_EVENT, 'hero_become_host', t('hero.becomeHost'), '/create-event')}
               className="px-5 sm:px-6 py-3 sm:py-3.5 bg-transparent border-2 border-white/20 text-white rounded-full font-bold text-xs sm:text-sm hover:bg-white/5 transition-all duration-300 flex items-center justify-center gap-1.5 touch-manipulation active:scale-[0.98]"
             >
               {t('hero.becomeHost')} <ArrowRight size={14} className="opacity-70" />
@@ -132,7 +160,7 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
             <div className="flex flex-row items-center gap-4">
               {/* Primary CTA */}
               <button 
-                onClick={() => handleNav(ViewState.FEED)}
+                onClick={() => handleNav(ViewState.FEED, 'hero_browse_circles', t('hero.startBrowsing'), '/explore')}
                 className="px-8 py-4 bg-[#e35e25] text-white rounded-full font-bold text-base shadow-lg shadow-[#e35e25]/25 hover:shadow-xl hover:shadow-[#e35e25]/35 hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center touch-manipulation active:scale-[0.98]"
               >
                 {t('hero.startBrowsing')}
@@ -140,7 +168,7 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
               
               {/* Secondary CTA */}
               <button 
-                onClick={() => handleProtectedNav(ViewState.CREATE_EVENT)}
+                onClick={() => handleProtectedNav(ViewState.CREATE_EVENT, 'hero_become_host', t('hero.becomeHost'), '/create-event')}
                 className="px-8 py-4 bg-transparent border-2 border-white/20 text-white rounded-full font-bold text-base hover:bg-white/5 hover:border-white/30 transition-all duration-300 flex items-center justify-center gap-2 touch-manipulation active:scale-[0.98] whitespace-nowrap"
               >
                 {t('hero.becomeHost')} <ArrowRight size={18} className="opacity-70" />

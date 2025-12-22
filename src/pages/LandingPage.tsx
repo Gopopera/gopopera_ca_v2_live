@@ -17,6 +17,20 @@ import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS, MAIN_CATEGORY_LABELS_FR, type Ma
 import { getDbSafe } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { sendEmail } from '../lib/email';
+import { trackEvent } from '../lib/ga4';
+
+/** GA4 CTA tracking for landing page */
+interface LandingCTAParams {
+  cta_id: string;
+  cta_text: string;
+  section: string;
+  destination: string;
+  is_external: boolean;
+}
+
+function trackLandingCTA(params: LandingCTAParams): void {
+  trackEvent('landing_cta_click', params);
+}
 
 interface LandingPageProps {
   setViewState: (view: ViewState) => void;
@@ -317,7 +331,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
         <div className="mt-8 sm:mt-10 md:mt-12 text-center">
            <button 
-             onClick={() => setViewState(ViewState.FEED)}
+             onClick={() => {
+               trackLandingCTA({
+                 cta_id: 'upcoming_view_all',
+                 cta_text: t('landing.viewAllEvents'),
+                 section: 'upcoming_circles',
+                 destination: '/explore',
+                 is_external: false,
+               });
+               setViewState(ViewState.FEED);
+             }}
              className="w-auto mx-auto sm:w-auto px-8 sm:px-10 py-4 sm:py-4 min-h-[48px] sm:min-h-0 border-2 border-gray-300 rounded-full text-[#15383c] font-bold text-base sm:text-base hover:border-[#15383c] hover:bg-[#15383c] hover:text-white transition-all touch-manipulation active:scale-[0.97] active:bg-[#15383c] active:text-white"
            >
              {t('landing.viewAllEvents')}
@@ -364,7 +387,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-5 md:gap-6 px-4">
               <button 
-                onClick={() => setViewState(ViewState.AUTH)}
+                onClick={() => {
+                  trackLandingCTA({
+                    cta_id: 'pillars_signup',
+                    cta_text: t('landing.signUp'),
+                    section: 'pillars',
+                    destination: '/auth',
+                    is_external: false,
+                  });
+                  setViewState(ViewState.AUTH);
+                }}
                 className="w-auto mx-auto sm:w-auto px-10 sm:px-12 md:px-14 py-4 sm:py-5 md:py-6 min-h-[52px] sm:min-h-0 rounded-full bg-[#e35e25] text-white font-bold text-base sm:text-lg md:text-xl lg:text-2xl hover:bg-[#cf4d1d] transition-all shadow-lg shadow-orange-900/20 hover:-translate-y-1 hover:shadow-xl hover:shadow-orange-900/30 touch-manipulation active:scale-[0.97] active:bg-[#cf4d1d]">
                 {t('landing.signUp')}
               </button>
@@ -419,10 +451,34 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-4">
-            <button onClick={() => setViewState(ViewState.GUIDELINES)} className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 bg-white text-[#15383c] rounded-full font-bold hover:bg-gray-100 transition-colors touch-manipulation active:scale-95 text-sm sm:text-base">
+            <button 
+              onClick={() => {
+                trackLandingCTA({
+                  cta_id: 'guidelines_see_guidelines',
+                  cta_text: t('landing.seeGuidelines'),
+                  section: 'guidelines',
+                  destination: '/guidelines',
+                  is_external: false,
+                });
+                setViewState(ViewState.GUIDELINES);
+              }} 
+              className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 bg-white text-[#15383c] rounded-full font-bold hover:bg-gray-100 transition-colors touch-manipulation active:scale-95 text-sm sm:text-base"
+            >
               {t('landing.seeGuidelines')}
             </button>
-            <button onClick={() => setViewState(ViewState.AUTH)} className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 border border-[#e35e25] text-white rounded-full font-bold hover:bg-[#e35e25]/10 transition-colors touch-manipulation active:scale-95 text-sm sm:text-base">
+            <button 
+              onClick={() => {
+                trackLandingCTA({
+                  cta_id: 'guidelines_signup',
+                  cta_text: t('landing.signUp'),
+                  section: 'guidelines',
+                  destination: '/auth',
+                  is_external: false,
+                });
+                setViewState(ViewState.AUTH);
+              }} 
+              className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 border border-[#e35e25] text-white rounded-full font-bold hover:bg-[#e35e25]/10 transition-colors touch-manipulation active:scale-95 text-sm sm:text-base"
+            >
               {t('landing.signUp')}
             </button>
           </div>
@@ -599,6 +655,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
+                  trackLandingCTA({
+                    cta_id: 'newsletter_terms',
+                    cta_text: t('landing.termsOfUse'),
+                    section: 'newsletter',
+                    destination: '/terms',
+                    is_external: false,
+                  });
                   setViewState(ViewState.TERMS);
                   window.scrollTo({ top: 0, behavior: 'instant' });
                 }} 

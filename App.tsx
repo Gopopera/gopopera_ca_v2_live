@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 
 // Global error handler for unhandled promise rejections
 if (typeof window !== 'undefined') {
@@ -1334,12 +1334,22 @@ const AppContent: React.FC = () => {
     }
   }, [viewState, selectedEvent, selectedHost]);
 
-  // GA4 Analytics: Track page views on route/view changes
+  // GA4 Analytics: Track page views AFTER URL sync
+  // This effect runs after the URL sync effect above has called pushState/replaceState.
+  // We use a ref to track the last-tracked pathname so we fire exactly ONCE per
+  // real navigation (even if multiple state deps change simultaneously or on popstate).
+  const previousPathnameRef = useRef<string | null>(null);
+  
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
     const pathname = window.location.pathname;
-    trackPageView(pathname);
+    
+    // Only fire page_view if pathname actually changed
+    if (pathname !== previousPathnameRef.current) {
+      previousPathnameRef.current = pathname;
+      trackPageView(pathname, document.title);
+    }
   }, [viewState, selectedEvent?.id, selectedHost]);
 
   // Router: Handle direct navigation and popstate events

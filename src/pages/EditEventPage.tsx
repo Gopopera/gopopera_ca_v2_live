@@ -4,7 +4,7 @@ import { ChevronLeft, Upload, MapPin, Calendar, Clock, Plus, X, ArrowUp, ArrowDo
 import { useEventStore } from '../../stores/eventStore';
 import { useUserStore } from '../../stores/userStore';
 import { uploadImage } from '../../firebase/storage';
-import { processImageForUpload } from '../../utils/imageProcessing';
+import { processImageForUploadLazy, prefetchImageProcessing } from '../lib/imageProcessingLoader';
 import { getEventById, updateEvent, deleteEvent } from '../../firebase/db';
 import { geocodeAddress } from '../../utils/geocoding';
 import { ALL_VIBES } from '../../utils/vibes';
@@ -47,6 +47,12 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
   const [price, setPrice] = useState(initialEvent?.price || 'Free');
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Prefetch image processing chunk on mount (non-blocking)
+  // This warms the cache before user uploads, improving perceived speed
+  useEffect(() => {
+    prefetchImageProcessing();
+  }, []);
 
   // Load event if eventId provided but no initial event
   useEffect(() => {
@@ -155,7 +161,8 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
           
           const processAndUploadImage = async (file: File, path: string): Promise<string> => {
             // Process image (HEIC conversion + compression) - ensures images are never too large
-            const processed = await processImageForUpload(file, {
+            // Using lazy loader to defer loading the heavy image processing chunk until needed
+            const processed = await processImageForUploadLazy(file, {
               maxWidth: 1600,
               maxHeight: 1600,
               quality: 0.75, // Slightly lower quality for better compression

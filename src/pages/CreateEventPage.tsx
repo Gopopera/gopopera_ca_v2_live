@@ -6,7 +6,7 @@ import { useUserStore } from '../../stores/userStore';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { HostPhoneVerificationModal } from '../../components/auth/HostPhoneVerificationModal';
 import { uploadImage } from '../../firebase/storage';
-import { processImageForUpload } from '../../utils/imageProcessing';
+import { processImageForUploadLazy, prefetchImageProcessing } from '../lib/imageProcessingLoader';
 import { geocodeAddress } from '../../utils/geocoding';
 import { ALL_VIBES } from '../../utils/vibes';
 import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS, MAIN_CATEGORY_LABELS_FR, getVibesForCategory, type MainCategory } from '../../utils/categoryMapper';
@@ -73,6 +73,12 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       setGroupSize(null);
     }
   }, [attendeesCount]);
+
+  // Prefetch image processing chunk on mount (non-blocking)
+  // This warms the cache before user uploads, improving perceived speed
+  useEffect(() => {
+    prefetchImageProcessing();
+  }, []);
 
   // Check host phone verification status on mount
   // This determines if user can create events (phoneVerifiedForHosting must be true)
@@ -375,7 +381,8 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
           console.log(`[CREATE_EVENT] Starting processAndUploadImage for "${file.name}"`);
           
           // Process image: convert HEIC to JPEG if needed, then compress if needed
-          const processed = await processImageForUpload(file, {
+          // Using lazy loader to defer loading the heavy image processing chunk until needed
+          const processed = await processImageForUploadLazy(file, {
             maxWidth: 1600,
             maxHeight: 1600,
             quality: 0.80,
