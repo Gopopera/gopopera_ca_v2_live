@@ -98,6 +98,7 @@ import { useSelectedCity, useSetCity, initializeGeoLocation, validateCityHasEven
 import { useFilterStore } from './stores/filterStore';
 import { NotificationsModal } from './components/notifications/NotificationsModal';
 import { isPrivateMode, getPrivateModeMessage } from './utils/browserDetection';
+import { trackPageView } from './src/lib/ga4';
 
 // Mock Data Generator - Initial seed data
 const generateMockEvents = (): Event[] => [
@@ -1332,6 +1333,14 @@ const AppContent: React.FC = () => {
       }
     }
   }, [viewState, selectedEvent, selectedHost]);
+
+  // GA4 Analytics: Track page views on route/view changes
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const pathname = window.location.pathname;
+    trackPageView(pathname);
+  }, [viewState, selectedEvent?.id, selectedHost]);
 
   // Router: Handle direct navigation and popstate events
   // This ensures routes are detected on initial page load and browser navigation
