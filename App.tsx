@@ -100,7 +100,7 @@ import { useFilterStore } from './stores/filterStore';
 const NotificationsModal = React.lazy(() => import('./components/notifications/NotificationsModal').then(m => ({ default: m.NotificationsModal })));
 import { isPrivateMode, getPrivateModeMessage } from './utils/browserDetection';
 import { trackPageView } from './src/lib/ga4';
-import { redditPageVisit, redditTrackViewContent, redditTrackLead } from './src/lib/redditPixel';
+import { redditPageVisit, redditTrackViewContent, redditTrackSignUp } from './src/lib/redditPixel';
 
 // Mock Data Generator - Initial seed data
 const generateMockEvents = (): Event[] => [
@@ -1369,9 +1369,9 @@ const AppContent: React.FC = () => {
       previousRedditPathnameRef.current = pathname;
       redditPageVisit(pathname);
       
-      // Fire Lead when user lands on /auth
+      // Fire SignUp when user lands on /auth (signup intent)
       if (pathname === '/auth') {
-        redditTrackLead('direct_navigation');
+        redditTrackSignUp('direct_navigation');
       }
     }
     
