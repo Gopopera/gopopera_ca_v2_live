@@ -18,6 +18,7 @@ import type { Unsubscribe } from 'firebase/auth';
 import type { ViewState } from '../types';
 import { completeGoogleRedirect, loginWithEmail, loginWithGoogle, signupWithEmail } from '../src/lib/authHelpers';
 import { ensurePoperaProfileAndSeed } from '../firebase/poperaProfile';
+import { redditTrackCompleteRegistration } from '../src/lib/redditPixel';
 import { isEventEnded } from '../utils/eventDateHelpers';
 
 // Simplified User interface matching Firebase Auth user
@@ -123,6 +124,11 @@ export const useUserStore = create<UserStore>()(
         };
 
         set({ user: immediateUser, currentUser: immediateUser, loading: false, ready: true, isAuthReady: true });
+
+        // Reddit Pixel: Track CompleteRegistration (deduplicated per session)
+        // Fires once per browser session - safe to call on both login and signup
+        const authMethod = firebaseUser.providerData?.[0]?.providerId === 'google.com' ? 'google' : 'email';
+        redditTrackCompleteRegistration(authMethod);
 
         const baseProfile = {
           id: firebaseUser.uid,

@@ -17,8 +17,9 @@ import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS, MAIN_CATEGORY_LABELS_FR, type Ma
 // Firebase imports moved to dynamic import in newsletter handler for faster initial load
 import { sendEmail } from '../lib/email';
 import { trackEvent } from '../lib/ga4';
+import { redditTrackCTA } from '../lib/redditPixel';
 
-/** GA4 CTA tracking for landing page */
+/** GA4 + Reddit CTA tracking for landing page */
 interface LandingCTAParams {
   cta_id: string;
   cta_text: string;
@@ -28,7 +29,10 @@ interface LandingCTAParams {
 }
 
 function trackLandingCTA(params: LandingCTAParams): void {
+  // GA4 tracking
   trackEvent('landing_cta_click', params);
+  // Reddit Pixel tracking (also fires Lead if destination is /auth)
+  redditTrackCTA(params.cta_id, params.cta_text, params.section, params.destination);
 }
 
 interface LandingPageProps {

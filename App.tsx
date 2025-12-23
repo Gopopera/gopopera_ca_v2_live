@@ -100,7 +100,7 @@ import { useFilterStore } from './stores/filterStore';
 const NotificationsModal = React.lazy(() => import('./components/notifications/NotificationsModal').then(m => ({ default: m.NotificationsModal })));
 import { isPrivateMode, getPrivateModeMessage } from './utils/browserDetection';
 import { trackPageView } from './src/lib/ga4';
-import { trackRedditPageVisit } from './src/lib/redditPixel';
+import { redditPageVisit, redditTrackViewContent, redditTrackLead } from './src/lib/redditPixel';
 
 // Mock Data Generator - Initial seed data
 const generateMockEvents = (): Event[] => [
@@ -1355,7 +1355,9 @@ const AppContent: React.FC = () => {
   }, [viewState, selectedEvent?.id, selectedHost]);
 
   // Reddit Pixel: Track PageVisit AFTER URL sync (same pattern as GA4)
+  // Also tracks Lead when navigating to /auth and ViewContent for event details
   const previousRedditPathnameRef = useRef<string | null>(null);
+  const lastViewedEventIdRef = useRef<string | null>(null);
   
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1365,7 +1367,20 @@ const AppContent: React.FC = () => {
     // Only fire PageVisit if pathname actually changed
     if (pathname !== previousRedditPathnameRef.current) {
       previousRedditPathnameRef.current = pathname;
-      trackRedditPageVisit();
+      redditPageVisit(pathname);
+      
+      // Fire Lead when user lands on /auth
+      if (pathname === '/auth') {
+        redditTrackLead('direct_navigation');
+      }
+    }
+    
+    // Fire ViewContent when entering DETAIL view (dedupe by event ID)
+    if (viewState === ViewState.DETAIL && selectedEvent?.id) {
+      if (selectedEvent.id !== lastViewedEventIdRef.current) {
+        lastViewedEventIdRef.current = selectedEvent.id;
+        redditTrackViewContent(selectedEvent.id);
+      }
     }
   }, [viewState, selectedEvent?.id, selectedHost]);
 

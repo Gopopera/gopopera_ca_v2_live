@@ -4,8 +4,9 @@ import { ViewState } from '@/types';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useUserStore } from '../../stores/userStore';
 import { trackEvent } from '../../src/lib/ga4';
+import { redditTrackCTA } from '../../src/lib/redditPixel';
 
-/** GA4 CTA tracking for landing page hero section */
+/** GA4 + Reddit CTA tracking for landing page hero section */
 interface LandingCTAParams {
   cta_id: string;
   cta_text: string;
@@ -15,7 +16,10 @@ interface LandingCTAParams {
 }
 
 function trackLandingCTA(params: LandingCTAParams): void {
+  // GA4 tracking
   trackEvent('landing_cta_click', params);
+  // Reddit Pixel tracking (also fires Lead if destination is /auth)
+  redditTrackCTA(params.cta_id, params.cta_text, params.section, params.destination);
 }
 
 interface HeroProps {
