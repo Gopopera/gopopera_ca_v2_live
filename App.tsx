@@ -100,6 +100,7 @@ import { useFilterStore } from './stores/filterStore';
 const NotificationsModal = React.lazy(() => import('./components/notifications/NotificationsModal').then(m => ({ default: m.NotificationsModal })));
 import { isPrivateMode, getPrivateModeMessage } from './utils/browserDetection';
 import { trackPageView } from './src/lib/ga4';
+import { trackRedditPageVisit } from './src/lib/redditPixel';
 
 // Mock Data Generator - Initial seed data
 const generateMockEvents = (): Event[] => [
@@ -1350,6 +1351,21 @@ const AppContent: React.FC = () => {
     if (pathname !== previousPathnameRef.current) {
       previousPathnameRef.current = pathname;
       trackPageView(pathname, document.title);
+    }
+  }, [viewState, selectedEvent?.id, selectedHost]);
+
+  // Reddit Pixel: Track PageVisit AFTER URL sync (same pattern as GA4)
+  const previousRedditPathnameRef = useRef<string | null>(null);
+  
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const pathname = window.location.pathname;
+    
+    // Only fire PageVisit if pathname actually changed
+    if (pathname !== previousRedditPathnameRef.current) {
+      previousRedditPathnameRef.current = pathname;
+      trackRedditPageVisit();
     }
   }, [viewState, selectedEvent?.id, selectedHost]);
 
