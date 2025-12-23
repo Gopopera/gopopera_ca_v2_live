@@ -398,7 +398,20 @@ export async function setTenFiveStarReviews(hostEmail: string): Promise<{ succes
       console.log(`[REVIEW_SEED] ✅ Created 5-star review by ${reviewer.name} for event ${eventId}`);
     }
 
-    const message = `Successfully set up ${createdCount} five-star reviews (deleted ${deletedCount} old reviews)`;
+    // FIX: Recalculate rating for ALL events after seeding to sync Firestore
+    // This ensures the event documents have accurate rating and reviewCount fields
+    const { recalculateEventRating } = await import('./db');
+    console.log(`[REVIEW_SEED] Recalculating ratings for ${eventDocs.length} events...`);
+    for (const eventDoc of eventDocs) {
+      try {
+        await recalculateEventRating(eventDoc.id);
+        console.log(`[REVIEW_SEED] ✅ Recalculated rating for event ${eventDoc.id}`);
+      } catch (error) {
+        console.warn(`[REVIEW_SEED] ⚠️ Failed to recalculate rating for event ${eventDoc.id}:`, error);
+      }
+    }
+
+    const message = `Successfully set up ${createdCount} five-star reviews (deleted ${deletedCount} old reviews, recalculated ${eventDocs.length} event ratings)`;
     console.log(`[REVIEW_SEED] ${message}`);
     return { success: true, message };
 

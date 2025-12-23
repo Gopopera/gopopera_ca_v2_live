@@ -93,10 +93,11 @@ import { useEventStore } from './stores/eventStore';
 import { useUserStore } from './stores/userStore';
 import { categoryMatches } from './utils/categoryMapper';
 import { useDebouncedFavorite } from './hooks/useDebouncedFavorite';
-import { ConversationButtonModal } from './components/chat/ConversationButtonModal';
+// Lazy-load modals that are only shown conditionally (performance optimization)
+const ConversationButtonModal = React.lazy(() => import('./components/chat/ConversationButtonModal').then(m => ({ default: m.ConversationButtonModal })));
 import { useSelectedCity, useSetCity, initializeGeoLocation, validateCityHasEvents, type City } from './src/stores/cityStore';
 import { useFilterStore } from './stores/filterStore';
-import { NotificationsModal } from './components/notifications/NotificationsModal';
+const NotificationsModal = React.lazy(() => import('./components/notifications/NotificationsModal').then(m => ({ default: m.NotificationsModal })));
 import { isPrivateMode, getPrivateModeMessage } from './utils/browserDetection';
 import { trackPageView } from './src/lib/ga4';
 
@@ -2304,30 +2305,34 @@ const AppContent: React.FC = () => {
         </React.Suspense>
       )}
 
-      {/* Conversation Button Modal */}
+      {/* Conversation Button Modal - Lazy loaded */}
       {showConversationModal && conversationModalEvent && (
-        <ConversationButtonModal
-          isOpen={showConversationModal}
-          onClose={() => {
-            setShowConversationModal(false);
-            setConversationModalEvent(null);
-          }}
-          onRSVP={() => {
-            if (conversationModalEvent) {
-              handleRSVP(conversationModalEvent.id);
-            }
-          }}
-          eventTitle={conversationModalEvent.title}
-        />
+        <React.Suspense fallback={null}>
+          <ConversationButtonModal
+            isOpen={showConversationModal}
+            onClose={() => {
+              setShowConversationModal(false);
+              setConversationModalEvent(null);
+            }}
+            onRSVP={() => {
+              if (conversationModalEvent) {
+                handleRSVP(conversationModalEvent.id);
+              }
+            }}
+            eventTitle={conversationModalEvent.title}
+          />
+        </React.Suspense>
       )}
 
-      {/* Notifications Modal */}
+      {/* Notifications Modal - Lazy loaded */}
       {isLoggedIn && (
-        <NotificationsModal
-          isOpen={showNotificationsModal}
-          onClose={() => setShowNotificationsModal(false)}
-          onNavigate={handleNotificationNavigate}
-        />
+        <React.Suspense fallback={null}>
+          <NotificationsModal
+            isOpen={showNotificationsModal}
+            onClose={() => setShowNotificationsModal(false)}
+            onNavigate={handleNotificationNavigate}
+          />
+        </React.Suspense>
       )}
 
       {viewState !== ViewState.AUTH && <Footer setViewState={setViewState} isLoggedIn={isLoggedIn} onProtectedNav={handleProtectedNav} />}

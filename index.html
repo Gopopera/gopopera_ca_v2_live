@@ -178,9 +178,17 @@
         };
       })();
     </script>
+    <!-- Font Loading Optimization: preconnect + preload critical font + async CSS -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Preload Inter 400 (body font) to reduce FOIT on mobile -->
+    <link rel="preload" href="https://fonts.gstatic.com/s/inter/v13/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa1ZL7.woff2" as="font" type="font/woff2" crossorigin>
+    <!-- Load fonts with display=swap (already present in URL) -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Preconnect to Firebase/external services for faster data fetching -->
+    <link rel="preconnect" href="https://firestore.googleapis.com">
+    <link rel="preconnect" href="https://firebasestorage.googleapis.com">
+    <link rel="preconnect" href="https://images.unsplash.com">
     <style>
       :root {
         --brand-accent: #e35e25;

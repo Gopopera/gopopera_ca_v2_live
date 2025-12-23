@@ -23,6 +23,12 @@ export const ReviewsModal: React.FC<ReviewsModalProps> = ({ event, onClose, onRe
   const [loading, setLoading] = useState(true);
   const { language, t } = useLanguage();
 
+  // FIX: Calculate rating from actual fetched reviews instead of using stale event.rating
+  // This ensures the displayed rating always matches the actual reviews shown
+  const calculatedRating = reviews.length > 0
+    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+    : 0;
+
   useEffect(() => {
     const loadReviews = async () => {
       try {
@@ -106,10 +112,10 @@ export const ReviewsModal: React.FC<ReviewsModalProps> = ({ event, onClose, onRe
         </div>
         <div className="px-4 sm:px-6 py-6 sm:py-8 bg-[#fafafa] border-b border-gray-100 text-center">
            <div className="flex items-center justify-center gap-2 mb-2">
-              <span className="text-4xl sm:text-5xl font-heading font-bold text-popera-teal">{formatRating(event.rating)}</span>
+              <span className="text-4xl sm:text-5xl font-heading font-bold text-popera-teal">{formatRating(calculatedRating)}</span>
               <div className="flex flex-col items-start">
                  <div className="flex text-popera-orange">
-                    {[...Array(5)].map((_, i) => (<Star key={i} size={16} fill={i < Math.floor(event.rating) ? "currentColor" : "none"} className={i < Math.floor(event.rating) ? "" : "text-gray-300"} />))}
+                    {[...Array(5)].map((_, i) => (<Star key={i} size={16} fill={i < Math.floor(calculatedRating) ? "currentColor" : "none"} className={i < Math.floor(calculatedRating) ? "" : "text-gray-300"} />))}
                  </div>
                  <span className="text-xs text-gray-500 font-medium">{reviews.length} {reviews.length === 1 ? t('circleReviews.review') : t('circleReviews.reviews')}</span>
               </div>

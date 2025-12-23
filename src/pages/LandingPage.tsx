@@ -14,8 +14,7 @@ import { useSelectedCity, useSetCity, initializeGeoLocation, type City } from '.
 import { useFilterStore } from '../../stores/filterStore';
 import { applyEventFilters } from '../../utils/filterEvents';
 import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS, MAIN_CATEGORY_LABELS_FR, type MainCategory } from '../../utils/categoryMapper';
-import { getDbSafe } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+// Firebase imports moved to dynamic import in newsletter handler for faster initial load
 import { sendEmail } from '../lib/email';
 import { trackEvent } from '../lib/ga4';
 
@@ -356,6 +355,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             src="/images/landing/yoga-circle.jpg"
             alt="Small indoor yoga circle"
             className="h-full w-full object-cover"
+            loading="lazy"
+            decoding="async"
             style={{
               WebkitMaskImage:
                 "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 85%)",
@@ -536,6 +537,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             onSubmit={async (e) => {
               e.preventDefault();
               if (!newsletterEmail.trim() || newsletterSubmitting) return;
+
+              // Dynamic import Firebase modules only when newsletter is submitted (performance optimization)
+              const { getDbSafe } = await import('../lib/firebase');
+              const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
 
               // Check for missing config before starting
               const db = getDbSafe();
