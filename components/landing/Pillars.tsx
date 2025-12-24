@@ -130,7 +130,7 @@ export const Pillars: React.FC = () => {
           {pillars.map((pillar) => (
             <div 
               key={pillar.id}
-              className="group relative h-auto min-h-[425px] sm:min-h-[560px] md:min-h-[550px] lg:min-h-[600px] xl:min-h-[650px] flex-none w-[280px] sm:w-[300px] md:w-[320px] lg:w-[340px] xl:w-[360px] snap-start rounded-3xl sm:rounded-[2rem] md:rounded-[2.5rem] lg:rounded-[3rem] overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-3"
+              className="group relative h-auto min-h-[425px] sm:min-h-[560px] md:min-h-[550px] lg:min-h-[400px] xl:min-h-[430px] flex-none w-[280px] sm:w-[300px] md:w-[320px] lg:w-[340px] xl:w-[360px] snap-start rounded-3xl sm:rounded-[2rem] md:rounded-[2.5rem] lg:rounded-[3rem] overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-3"
               style={{ touchAction: 'pan-x pan-y' }}
             >
               {/* Background Image - No filters, crisp and clean */}
