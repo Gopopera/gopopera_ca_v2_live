@@ -17,6 +17,8 @@ import {
   updateReservationCheckIn,
   cancelReservation
 } from '../../firebase/db';
+import { TicketStoryExport } from '../components/ticket/TicketStoryExport';
+import { toPng } from 'html-to-image';
 
 // Base URL for ticket links
 const BASE_URL = import.meta.env.VITE_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://gopopera.ca');
@@ -81,6 +83,8 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
   const [cancelling, setCancelling] = useState(false);
   const [cancelSuccess, setCancelSuccess] = useState(false);
   const ticketRef = useRef<HTMLDivElement>(null);
+  const exportRef = useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Load ticket data
   useEffect(() => {
@@ -267,153 +271,57 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
     });
   };
 
-  // Handle download
+  // Handle download - generate high-quality IG Story image
   const handleDownload = async () => {
-    if (!ticketData || !ticketRef.current) return;
+    if (!ticketData || !exportRef.current) return;
 
+    setIsExporting(true);
+    
     try {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      // Set canvas size
-      canvas.width = 1200;
-      canvas.height = 1800;
-
-      // Background gradient (Popera brand colors)
-      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      gradient.addColorStop(0, '#1f4d52');
-      gradient.addColorStop(0.5, '#15383c');
-      gradient.addColorStop(1, '#0f2a2d');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Decorative circle
-      ctx.fillStyle = 'rgba(227, 94, 37, 0.1)';
-      ctx.beginPath();
-      ctx.arc(canvas.width / 2, -200, 400, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Popera logo with dot
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 48px system-ui, -apple-system, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('Popera', canvas.width / 2 - 10, 100);
+      // Wait for fonts to load
+      await document.fonts.ready;
       
-      // Orange dot
-      ctx.fillStyle = '#e35e25';
-      ctx.beginPath();
-      ctx.arc(canvas.width / 2 + 75, 85, 6, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Event title
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 40px system-ui, -apple-system, sans-serif';
-      const maxTitleWidth = canvas.width - 120;
-      const titleWords = (ticketData.event.title || 'Event').split(' ');
-      let titleY = 200;
-      let currentLine = '';
+      // Wait for images in the export component to load
+      const images = exportRef.current.querySelectorAll('img') as NodeListOf<HTMLImageElement>;
+      await Promise.all(
+        Array.from(images).map((img: HTMLImageElement) => {
+          if (img.complete) return Promise.resolve();
+          return new Promise<void>((resolve) => {
+            img.onload = () => resolve();
+            img.onerror = () => resolve(); // Continue even if image fails
+          });
+        })
+      );
       
-      for (const word of titleWords) {
-        const testLine = currentLine + word + ' ';
-        const metrics = ctx.measureText(testLine);
-        if (metrics.width > maxTitleWidth && currentLine !== '') {
-          ctx.fillText(currentLine.trim(), canvas.width / 2, titleY);
-          currentLine = word + ' ';
-          titleY += 50;
-        } else {
-          currentLine = testLine;
-        }
-      }
-      if (currentLine) {
-        ctx.fillText(currentLine.trim(), canvas.width / 2, titleY);
-      }
-
-      // Hosted by
-      const hostY = titleY + 80;
-      ctx.font = '24px system-ui, -apple-system, sans-serif';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-      ctx.fillText(`Hosted by ${ticketData.host?.displayName || 'Host'}`, canvas.width / 2, hostY);
-
-      // Details section
-      const detailsY = hostY + 80;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
-      ctx.fillRect(60, detailsY, canvas.width - 120, 250);
-
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '20px system-ui, -apple-system, sans-serif';
-      ctx.textAlign = 'left';
-
-      // Date
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-      ctx.fillText('Date', 100, detailsY + 40);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 26px system-ui, -apple-system, sans-serif';
-      ctx.fillText(formattedDate, 100, detailsY + 75);
-
-      // Time
-      ctx.font = '20px system-ui, -apple-system, sans-serif';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-      ctx.fillText('Time', 100, detailsY + 120);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 26px system-ui, -apple-system, sans-serif';
-      ctx.fillText(ticketData.event.time || 'TBD', 100, detailsY + 155);
-
-      // Location
-      ctx.font = '20px system-ui, -apple-system, sans-serif';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-      ctx.fillText('Location', 100, detailsY + 200);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
-      const location = ticketData.event.location || 
-        `${ticketData.event.address || ''}, ${ticketData.event.city || ''}`.trim() || 'TBD';
-      ctx.fillText(location.substring(0, 50), 100, detailsY + 235);
-
-      // Reservation ID & Transaction
-      const infoY = detailsY + 300;
-      ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-      ctx.fillRect(60, infoY, canvas.width - 120, 100);
-
-      ctx.font = '18px system-ui, -apple-system, sans-serif';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-      ctx.fillText('Reservation ID', canvas.width / 2, infoY + 35);
-      ctx.font = 'bold 28px monospace';
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(`#${orderId}`, canvas.width / 2, infoY + 70);
-
-      // QR Code area (white box)
-      const qrY = infoY + 150;
-      ctx.fillStyle = '#ffffff';
-      const qrSize = 350;
-      ctx.fillRect(canvas.width / 2 - qrSize / 2, qrY, qrSize, qrSize);
-
-      // QR code text
-      ctx.fillStyle = '#15383c';
-      ctx.font = 'bold 20px system-ui, -apple-system, sans-serif';
-      ctx.fillText('Scan for Check-in', canvas.width / 2, qrY + qrSize + 40);
-
-      // Footer
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-      ctx.font = '16px system-ui, -apple-system, sans-serif';
-      ctx.fillText('Show this ticket at the event entrance', canvas.width / 2, canvas.height - 60);
-      ctx.fillText('gopopera.ca', canvas.width / 2, canvas.height - 30);
-
-      // Convert to image and download
-      canvas.toBlob((blob) => {
-        if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `popera-ticket-${orderId}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }, 'image/png', 0.95);
+      // Small delay to ensure QR canvas is fully rendered
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Capture the export component as PNG with high pixel ratio
+      const dataUrl = await toPng(exportRef.current, {
+        pixelRatio: 2, // 2x for high resolution
+        width: 1080,
+        height: 1920,
+        backgroundColor: '#15383c',
+        cacheBust: true,
+        skipFonts: false,
+        style: {
+          left: '0',
+          top: '0',
+        },
+      });
+      
+      // Trigger download
+      const link = document.createElement('a');
+      link.download = `popera-ticket-${orderId}.png`;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } catch (error) {
       console.error('Error generating ticket image:', error);
       alert('Failed to download ticket. Please try again.');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -666,10 +574,20 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
             </button>
             <button
               onClick={handleDownload}
-              className="flex items-center justify-center gap-2 py-3 bg-[#15383c] text-white rounded-full font-semibold hover:bg-[#1f4d52] transition-all"
+              disabled={isExporting}
+              className="flex items-center justify-center gap-2 py-3 bg-[#15383c] text-white rounded-full font-semibold hover:bg-[#1f4d52] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Download size={18} />
-              Download
+              {isExporting ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Download size={18} />
+                  Download
+                </>
+              )}
             </button>
           </div>
 
@@ -752,6 +670,17 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
             </div>
           </div>
         </div>
+      )}
+
+      {/* Hidden export component for generating downloadable image */}
+      {ticketData && (
+        <TicketStoryExport
+          ref={exportRef}
+          event={ticketData.event}
+          hostName={ticketData.host?.displayName || 'Host'}
+          qrUrl={qrUrl}
+          formattedDate={formattedDate}
+        />
       )}
     </div>
   );
