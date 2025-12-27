@@ -56,7 +56,7 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
       const loadAssets = async () => {
         // 1. Load logo
         try {
-          const logoUrl = await getSafeDataUrl('/Popera.png');
+          const logoUrl = await getSafeDataUrl('/popera-logo.png');
           if (!cancelled) {
             setLogoDataUrl(logoUrl);
             setLogoLoaded(true);
