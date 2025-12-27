@@ -14,53 +14,31 @@ interface TicketStoryExportProps {
 }
 
 /**
- * TicketStoryExport - A dedicated component for generating the downloadable ticket image.
- * Sized for Instagram Story (1080x1920, 9:16 aspect ratio).
- * Uses offscreen positioning for reliable html2canvas capture.
- * Sets data-ready="true" when all assets (fonts, QR canvas, images) are loaded.
+ * TicketStoryExport - Liquid glass style ticket for Instagram Story (1080x1920).
+ * Uses safe CSS subset for html-to-image compatibility (no backdrop-filter).
+ * Signals ready only after all assets (logo, cover, fonts, QR) are loaded.
  */
 export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportProps>(
   ({ event, hostName, qrUrl, formattedDate, eventImageUrl, onReady, debugMode = false }, ref) => {
     const rootRef = useRef<HTMLDivElement>(null);
     const hasSignaledReady = useRef(false);
     
-    // Image state
+    // Asset loading state
     const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
     const [logoLoaded, setLogoLoaded] = useState(false);
-    const [safeCoverDataUrl, setSafeCoverDataUrl] = useState<string | null>(null);
+    const [coverDataUrl, setCoverDataUrl] = useState<string | null>(null);
     const [coverLoaded, setCoverLoaded] = useState(false);
 
-    // Format location properly with commas
-    const location = React.useMemo(() => {
-      // Try to extract neighborhood/area and city
-      if (event.location) {
-        // If full location is provided, use it
-        return event.location;
-      }
+    // Format location with proper commas
+    const formattedLocation = React.useMemo(() => {
+      if (event.location) return event.location;
       
-      // Build from parts
       const parts: string[] = [];
-      if (event.address) {
-        parts.push(event.address);
-      }
-      if (event.city) {
-        parts.push(event.city);
-      }
-      if ((event as any).regionOrCountry || (event as any).country) {
-        parts.push((event as any).regionOrCountry || (event as any).country);
-      }
+      if (event.address) parts.push(event.address);
+      if (event.city) parts.push(event.city);
+      if ((event as any).country) parts.push((event as any).country);
       
-      if (parts.length === 0) {
-        return 'Location TBD';
-      }
-      
-      // Join with proper separators and clean up
-      return parts
-        .filter(Boolean)
-        .join(', ')
-        .replace(/,\s*,/g, ',')
-        .replace(/^\s*,\s*|\s*,\s*$/g, '')
-        .trim();
+      return parts.length > 0 ? parts.filter(Boolean).join(', ') : 'Location TBD';
     }, [event]);
 
     // Combine refs
@@ -73,120 +51,115 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
       }
     }, [ref]);
 
-    // Load logo image as data URL (required for html2canvas)
+    // Load all assets on mount
     useEffect(() => {
       let cancelled = false;
-      
-      getSafeDataUrl('/Popera.png').then((dataUrl) => {
-        if (!cancelled) {
-          setLogoDataUrl(dataUrl);
-          setLogoLoaded(true);
-          console.log('[TicketStoryExport] Logo loaded:', dataUrl ? 'success' : 'failed');
-        }
-      });
 
-      return () => {
-        cancelled = true;
+      const loadAssets = async () => {
+        // 1. Load logo
+        try {
+          const logoUrl = await getSafeDataUrl('/Popera.png');
+          if (!cancelled) {
+            setLogoDataUrl(logoUrl);
+            setLogoLoaded(true);
+          }
+        } catch {
+          if (!cancelled) {
+            setLogoDataUrl(null);
+            setLogoLoaded(true);
+          }
+        }
+
+        // 2. Load cover image (if provided)
+        if (eventImageUrl) {
+          try {
+            const coverUrl = await getSafeDataUrl(eventImageUrl);
+            if (!cancelled) {
+              setCoverDataUrl(coverUrl);
+              setCoverLoaded(true);
+            }
+          } catch {
+            if (!cancelled) {
+              setCoverDataUrl(null);
+              setCoverLoaded(true);
+            }
+          }
+        } else {
+          if (!cancelled) {
+            setCoverLoaded(true);
+          }
+        }
       };
-    }, []);
 
-    // Load cover image safely (convert to data URL to avoid CORS)
-    useEffect(() => {
-      if (!eventImageUrl) {
-        setCoverLoaded(true);
-        return;
-      }
-
-      let cancelled = false;
-      
-      getSafeDataUrl(eventImageUrl).then((dataUrl) => {
-        if (!cancelled) {
-          setSafeCoverDataUrl(dataUrl);
-          setCoverLoaded(true);
-          console.log('[TicketStoryExport] Cover loaded:', dataUrl ? 'success' : 'failed (using fallback)');
-        }
-      });
+      loadAssets();
 
       return () => {
         cancelled = true;
       };
     }, [eventImageUrl]);
 
-    // Check readiness and signal when ready
-    const checkReadiness = useCallback(async () => {
+    // Signal ready when all assets loaded
+    const checkAndSignalReady = useCallback(async () => {
       if (hasSignaledReady.current) return;
       if (!rootRef.current) return;
+      if (!logoLoaded || !coverLoaded) return;
 
       try {
-        // 1. Wait for fonts (with fallback if fonts API not available)
+        // Wait for fonts
         if (document.fonts?.ready) {
           await document.fonts.ready;
         }
 
-        // 2. Wait for logo to be processed
-        if (!logoLoaded) {
-          return; // Still loading, try again later
-        }
-
-        // 3. Wait for cover image to be processed
-        if (eventImageUrl && !coverLoaded) {
-          return; // Still loading, try again later
-        }
-
-        // 4. Verify QR canvas exists and has dimensions
+        // Wait for QR canvas
         const qrCanvas = rootRef.current.querySelector('canvas');
-        if (qrCanvas) {
-          if (qrCanvas.width === 0 || qrCanvas.height === 0) {
-            await new Promise<void>((resolve) => {
-              const checkCanvas = () => {
-                if (qrCanvas.width > 0 && qrCanvas.height > 0) {
-                  resolve();
-                } else {
-                  requestAnimationFrame(checkCanvas);
-                }
-              };
-              checkCanvas();
-            });
-          }
+        if (qrCanvas && (qrCanvas.width === 0 || qrCanvas.height === 0)) {
+          await new Promise<void>((resolve) => {
+            const check = () => {
+              if (qrCanvas.width > 0 && qrCanvas.height > 0) resolve();
+              else requestAnimationFrame(check);
+            };
+            check();
+          });
         }
 
-        // 5. Extra delay to ensure paint is complete
-        await new Promise<void>((resolve) => {
-          setTimeout(() => {
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                resolve();
-              });
-            });
-          }, 150);
-        });
+        // Wait for paint
+        await new Promise(r => requestAnimationFrame(() => r(null)));
+        await new Promise(r => setTimeout(r, 200));
 
-        // Signal ready
         hasSignaledReady.current = true;
         if (rootRef.current) {
           rootRef.current.dataset.ready = 'true';
         }
-        console.log('[TicketStoryExport] Ready signal set');
         onReady?.();
       } catch (err) {
-        console.error('TicketStoryExport readiness check error:', err);
-        // Signal ready anyway to prevent hanging
+        console.error('[TicketStoryExport] Ready check error:', err);
         hasSignaledReady.current = true;
         if (rootRef.current) {
           rootRef.current.dataset.ready = 'true';
         }
         onReady?.();
       }
-    }, [onReady, eventImageUrl, coverLoaded, logoLoaded]);
+    }, [logoLoaded, coverLoaded, onReady]);
 
-    // Run readiness check on mount and when deps change
     useEffect(() => {
-      hasSignaledReady.current = false;
-      const timer = setTimeout(() => {
-        checkReadiness();
-      }, 50);
-      return () => clearTimeout(timer);
-    }, [checkReadiness]);
+      if (logoLoaded && coverLoaded) {
+        checkAndSignalReady();
+      }
+    }, [logoLoaded, coverLoaded, checkAndSignalReady]);
+
+    // Liquid glass styles (no backdrop-filter for html-to-image compatibility)
+    const glassCard = {
+      backgroundColor: 'rgba(255, 255, 255, 0.06)',
+      border: '1px solid rgba(255, 255, 255, 0.12)',
+      borderRadius: '28px',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+    };
+
+    const glassCardInner = {
+      backgroundColor: 'rgba(255, 255, 255, 0.04)',
+      border: '1px solid rgba(255, 255, 255, 0.08)',
+      borderRadius: '22px',
+    };
 
     return (
       <div
@@ -202,50 +175,51 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
           zIndex: debugMode ? 9999 : -1,
           fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
           overflow: 'hidden',
+          backgroundColor: '#15383c',
         }}
       >
-        {/* Background gradient */}
+        {/* Subtle gradient overlay */}
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'linear-gradient(180deg, #1f4d52 0%, #15383c 50%, #0f2a2d 100%)',
+            background: 'linear-gradient(180deg, rgba(31, 77, 82, 0.4) 0%, transparent 40%, rgba(15, 42, 45, 0.6) 100%)',
           }}
         />
 
-        {/* Decorative glow circle */}
+        {/* Decorative glow */}
         <div
           style={{
             position: 'absolute',
-            top: '-150px',
+            top: '-200px',
             left: '50%',
             transform: 'translateX(-50%)',
-            width: '600px',
-            height: '600px',
+            width: '800px',
+            height: '800px',
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(227, 94, 37, 0.15) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(227, 94, 37, 0.12) 0%, transparent 60%)',
           }}
         />
 
-        {/* Content container with safe margins */}
+        {/* Content with safe padding */}
         <div
           style={{
             position: 'relative',
             height: '100%',
             display: 'flex',
             flexDirection: 'column',
-            padding: '100px 60px 80px 60px',
+            padding: '72px',
             boxSizing: 'border-box',
           }}
         >
-          {/* Popera Logo - Single logo at top center */}
+          {/* Logo - centered, transparent, no box */}
           <div
             style={{
               display: 'flex',
-              alignItems: 'center',
               justifyContent: 'center',
-              marginBottom: '32px',
-              minHeight: '64px',
+              alignItems: 'center',
+              marginBottom: '36px',
+              minHeight: '80px',
             }}
           >
             {logoDataUrl ? (
@@ -253,222 +227,232 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
                 src={logoDataUrl}
                 alt="Popera"
                 style={{
-                  height: '64px',
+                  height: '72px',
                   width: 'auto',
                   objectFit: 'contain',
                 }}
               />
             ) : (
-              // Fallback text logo if image fails to load
+              // Text fallback (no box)
               <div style={{ display: 'flex', alignItems: 'baseline' }}>
-                <span style={{ fontSize: '48px', fontWeight: 700, color: '#ffffff', letterSpacing: '-1px' }}>
+                <span style={{ 
+                  fontSize: '56px', 
+                  fontWeight: 700, 
+                  color: '#ffffff',
+                  letterSpacing: '-1px',
+                }}>
                   Popera
                 </span>
-                <span style={{ display: 'inline-block', width: '10px', height: '10px', backgroundColor: '#e35e25', borderRadius: '50%', marginLeft: '4px' }} />
+                <span style={{ 
+                  display: 'inline-block',
+                  width: '12px', 
+                  height: '12px', 
+                  backgroundColor: '#e35e25', 
+                  borderRadius: '50%', 
+                  marginLeft: '6px',
+                }} />
               </div>
             )}
           </div>
 
-          {/* Event Cover Image */}
-          <div
-            style={{
-              width: '100%',
-              height: '460px',
-              borderRadius: '24px',
-              overflow: 'hidden',
-              marginBottom: '28px',
-              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)',
-              position: 'relative',
-              flexShrink: 0,
-            }}
-          >
-            {safeCoverDataUrl ? (
-              <img
-                src={safeCoverDataUrl}
-                alt={event.title}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  display: 'block',
-                }}
-              />
-            ) : (
-              // Branded gradient placeholder (NO text)
-              <>
+          {/* Main glass card */}
+          <div style={{ ...glassCard, padding: '28px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+            
+            {/* Cover image container */}
+            <div
+              style={{
+                width: '100%',
+                height: '460px',
+                borderRadius: '22px',
+                overflow: 'hidden',
+                marginBottom: '24px',
+                position: 'relative',
+                flexShrink: 0,
+              }}
+            >
+              {coverDataUrl ? (
+                <img
+                  src={coverDataUrl}
+                  alt={event.title}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    display: 'block',
+                  }}
+                />
+              ) : (
+                // Gradient placeholder (no text)
                 <div
                   style={{
                     position: 'absolute',
                     inset: 0,
                     background: 'linear-gradient(135deg, #2a5a60 0%, #1f4d52 50%, #15383c 100%)',
                   }}
-                />
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    opacity: 0.15,
-                    backgroundImage: `radial-gradient(circle at 25% 25%, rgba(255,255,255,0.2) 0%, transparent 50%),
-                                     radial-gradient(circle at 75% 75%, rgba(227,94,37,0.2) 0%, transparent 50%)`,
-                  }}
-                />
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
                 >
                   <div
                     style={{
-                      width: '100px',
-                      height: '100px',
-                      borderRadius: '50%',
-                      background: 'radial-gradient(circle, rgba(227, 94, 37, 0.25) 0%, transparent 70%)',
+                      position: 'absolute',
+                      inset: 0,
+                      opacity: 0.2,
+                      background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.15) 0%, transparent 50%)',
                     }}
                   />
                 </div>
-              </>
-            )}
-          </div>
-
-          {/* Event Title - flow layout, no fixed height */}
-          <div
-            style={{
-              marginBottom: '8px',
-              paddingBottom: '4px', // Extra padding for descenders
-            }}
-          >
-            <h1
-              style={{
-                fontSize: '50px',
-                fontWeight: 700,
-                color: '#ffffff',
-                textAlign: 'center',
-                margin: 0,
-                lineHeight: 1.18,
-                display: '-webkit-box',
-                WebkitLineClamp: 3,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-                wordBreak: 'break-word',
-              }}
-            >
-              {event.title}
-            </h1>
-          </div>
-
-          {/* Hosted by - with proper spacing */}
-          <p
-            style={{
-              fontSize: '26px',
-              color: 'rgba(255, 255, 255, 0.75)',
-              textAlign: 'center',
-              margin: '0 0 24px 0',
-            }}
-          >
-            Hosted by <span style={{ fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)' }}>{hostName}</span>
-          </p>
-
-          {/* Event Details Card */}
-          <div
-            style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              borderRadius: '20px',
-              padding: '24px 32px',
-              marginBottom: '24px',
-              flexShrink: 0,
-            }}
-          >
-            {/* Date */}
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.5)', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                Date
-              </div>
-              <div style={{ fontSize: '28px', fontWeight: 600, color: '#ffffff' }}>
-                {formattedDate}
-              </div>
+              )}
             </div>
 
-            {/* Time */}
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.5)', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                Time
-              </div>
-              <div style={{ fontSize: '28px', fontWeight: 600, color: '#ffffff' }}>
-                {event.time || 'TBD'}
-              </div>
+            {/* Title - no fixed height, proper line clamp */}
+            <div style={{ marginBottom: '12px', paddingBottom: '8px' }}>
+              <h1
+                style={{
+                  fontSize: '58px',
+                  fontWeight: 800,
+                  color: '#ffffff',
+                  textAlign: 'center',
+                  margin: 0,
+                  lineHeight: 1.12,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  wordBreak: 'break-word',
+                }}
+              >
+                {event.title}
+              </h1>
             </div>
 
-            {/* Location */}
-            <div>
-              <div style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.5)', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                Location
-              </div>
-              <div style={{ fontSize: '24px', fontWeight: 600, color: '#ffffff', lineHeight: 1.25 }}>
-                {location.length > 45 ? location.substring(0, 45) + '...' : location}
-              </div>
-            </div>
-          </div>
-
-          {/* QR Code Section */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              flex: 1,
-              justifyContent: 'center',
-              minHeight: 0,
-            }}
-          >
-            <div
-              style={{
-                backgroundColor: '#ffffff',
-                borderRadius: '20px',
-                padding: '20px',
-                boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)',
-              }}
-            >
-              <QRCodeCanvas
-                value={qrUrl}
-                size={240}
-                level="H"
-                includeMargin={false}
-                fgColor="#15383c"
-                bgColor="#ffffff"
-              />
-            </div>
-
+            {/* Hosted by - proper spacing */}
             <p
               style={{
-                fontSize: '22px',
-                fontWeight: 600,
-                color: '#e35e25',
+                fontSize: '28px',
+                color: 'rgba(255, 255, 255, 0.7)',
                 textAlign: 'center',
-                marginTop: '16px',
-                marginBottom: 0,
+                margin: '0 0 24px 0',
               }}
             >
-              Show this QR code at check-in
+              Hosted by{' '}
+              <span style={{ fontWeight: 600, color: 'rgba(255, 255, 255, 0.9)' }}>
+                {hostName}
+              </span>
             </p>
+
+            {/* Info card - Date/Time/Location */}
+            <div style={{ ...glassCardInner, padding: '24px', marginBottom: '24px', flexShrink: 0 }}>
+              {/* Date */}
+              <div style={{ marginBottom: '18px' }}>
+                <div style={{ 
+                  fontSize: '14px', 
+                  color: 'rgba(255, 255, 255, 0.5)', 
+                  textTransform: 'uppercase', 
+                  letterSpacing: '2px',
+                  marginBottom: '4px',
+                }}>
+                  Date
+                </div>
+                <div style={{ fontSize: '30px', fontWeight: 600, color: '#ffffff' }}>
+                  {formattedDate}
+                </div>
+              </div>
+
+              {/* Time */}
+              <div style={{ marginBottom: '18px' }}>
+                <div style={{ 
+                  fontSize: '14px', 
+                  color: 'rgba(255, 255, 255, 0.5)', 
+                  textTransform: 'uppercase', 
+                  letterSpacing: '2px',
+                  marginBottom: '4px',
+                }}>
+                  Time
+                </div>
+                <div style={{ fontSize: '30px', fontWeight: 600, color: '#ffffff' }}>
+                  {event.time || 'TBD'}
+                </div>
+              </div>
+
+              {/* Location */}
+              <div>
+                <div style={{ 
+                  fontSize: '14px', 
+                  color: 'rgba(255, 255, 255, 0.5)', 
+                  textTransform: 'uppercase', 
+                  letterSpacing: '2px',
+                  marginBottom: '4px',
+                }}>
+                  Location
+                </div>
+                <div style={{ 
+                  fontSize: '26px', 
+                  fontWeight: 600, 
+                  color: '#ffffff',
+                  lineHeight: 1.3,
+                }}>
+                  {formattedLocation.length > 40 ? formattedLocation.substring(0, 40) + '...' : formattedLocation}
+                </div>
+              </div>
+            </div>
+
+            {/* QR Section - flex grow to center */}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flex: 1,
+                minHeight: 0,
+              }}
+            >
+              {/* QR in white rounded container */}
+              <div
+                style={{
+                  backgroundColor: '#ffffff',
+                  borderRadius: '24px',
+                  padding: '24px',
+                  boxShadow: '0 12px 48px rgba(0, 0, 0, 0.25)',
+                }}
+              >
+                <QRCodeCanvas
+                  value={qrUrl}
+                  size={280}
+                  level="H"
+                  includeMargin={false}
+                  fgColor="#15383c"
+                  bgColor="#ffffff"
+                />
+              </div>
+
+              {/* QR instruction in orange */}
+              <p
+                style={{
+                  fontSize: '24px',
+                  fontWeight: 600,
+                  color: '#e35e25',
+                  textAlign: 'center',
+                  marginTop: '20px',
+                  marginBottom: 0,
+                }}
+              >
+                Show this QR code at check-in
+              </p>
+            </div>
           </div>
 
           {/* Footer */}
           <div
             style={{
               textAlign: 'center',
-              paddingTop: '12px',
-              flexShrink: 0,
+              paddingTop: '24px',
             }}
           >
             <p
               style={{
-                fontSize: '18px',
-                color: 'rgba(255, 255, 255, 0.5)',
+                fontSize: '20px',
+                color: 'rgba(242, 242, 242, 0.6)',
                 margin: 0,
+                letterSpacing: '1px',
               }}
             >
               gopopera.ca
