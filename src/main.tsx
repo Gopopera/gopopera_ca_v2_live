@@ -5,8 +5,12 @@ import './index.css';
 import './lib/ui-normalize.css';
 import App from '../App';
 import { AppErrorBoundary } from './utils/AppErrorBoundary';
+import { applyInAppBrowserClass } from './utils/inAppBrowser';
 
-const el = document.getElementById('root')!;
+// Apply performance optimizations for Instagram/Facebook in-app browsers
+applyInAppBrowserClass();
+
+const el = document.getElementById('root')!
 const DEBUG_APP_SHELL = false; // flip to false after we confirm mount
 
 function SafeShell() {

@@ -13,6 +13,7 @@ import { FollowNotificationTemplate } from '../src/emails/templates/FollowNotifi
 import { RSVPHostNotificationTemplate } from '../src/emails/templates/RSVPHostNotification';
 import { ReservationConfirmationEmailTemplate } from '../src/emails/templates/ReservationConfirmationEmail';
 import { FirstEventWelcomeEmailTemplate } from '../src/emails/templates/FirstEventWelcomeEmail';
+import { getBaseUrl } from '../src/utils/baseUrl';
 
 /**
  * Get Popera logo header HTML for emails
@@ -28,8 +29,16 @@ function getPoperaLogoHeader(): string {
   `;
 }
 
-// Base URL for event links (fallback to window.location.origin if not set)
-const BASE_URL = import.meta.env.VITE_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://gopopera.ca');
+/**
+ * Get base URL for event links.
+ * Uses getBaseUrl() which correctly handles production domains:
+ * - On gopopera.com: returns https://gopopera.com
+ * - On gopopera.ca: returns https://gopopera.ca
+ * This ensures email links match the domain the user is on.
+ */
+function getNotificationBaseUrl(): string {
+  return getBaseUrl();
+}
 
 interface UserNotificationPreferences {
   email_opt_in?: boolean;
@@ -261,7 +270,7 @@ export async function notifyFollowersOfNewEvent(
           hostName,
           eventTitle,
           eventDescription,
-          eventUrl: `${BASE_URL}/event/${eventId}`,
+          eventUrl: `${getNotificationBaseUrl()}/event/${eventId}`,
           eventImageUrl,
         });
 
@@ -323,7 +332,7 @@ export async function notifyAttendeesOfAnnouncement(
           eventTitle,
           announcementTitle,
           announcementMessage,
-          eventUrl: `${BASE_URL}/event/${eventId}`,
+          eventUrl: `${getNotificationBaseUrl()}/event/${eventId}`,
         });
 
         await sendEmail({
@@ -404,7 +413,7 @@ export async function notifyAttendeesOfPoll(
           eventTitle,
           pollQuestion: pollTitle,
           pollOptions,
-          eventUrl: `${BASE_URL}/event/${eventId}`,
+          eventUrl: `${getNotificationBaseUrl()}/event/${eventId}`,
         });
 
         await sendEmail({
@@ -492,7 +501,7 @@ export async function notifyAttendeesOfNewMessage(
                 <p style="margin: 0 0 8px 0; color: #666; font-size: 14px;"><strong>${senderName}</strong> sent a message:</p>
                 <p style="margin: 0; color: #333; line-height: 1.6;">"${messageSnippet}"</p>
               </div>
-              <a href="${BASE_URL}/event/${eventId}" style="display: inline-block; background-color: #e35e25; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin: 20px 0;">View Event</a>
+              <a href="${getNotificationBaseUrl()}/event/${eventId}" style="display: inline-block; background-color: #e35e25; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin: 20px 0;">View Event</a>
               <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
               <p style="color: #666; font-size: 12px;">
                 Popera Team<br>
@@ -556,8 +565,8 @@ export async function notifyUserOfReservationConfirmation(
     const userInfo = await getUserContactInfo(userId);
     const preferences = await getUserNotificationPreferences(userId);
     const orderId = `#${reservationId.substring(0, 10).toUpperCase()}`;
-    const eventUrl = `${BASE_URL}/event/${eventId}`;
-    const ticketUrl = `${BASE_URL}/ticket/${reservationId}`;
+    const eventUrl = `${getNotificationBaseUrl()}/event/${eventId}`;
+    const ticketUrl = `${getNotificationBaseUrl()}/ticket/${reservationId}`;
 
     // ALWAYS send in-app notification (cannot be disabled)
     try {
@@ -687,7 +696,7 @@ export async function notifyHostOfRSVP(
           attendeeName: attendeeInfo.name || 'Someone',
           attendeeEmail: attendeeInfo.email || '',
           eventTitle,
-          eventUrl: `${BASE_URL}/event/${eventId}`,
+          eventUrl: `${getNotificationBaseUrl()}/event/${eventId}`,
         });
 
         await sendEmail({
@@ -747,7 +756,7 @@ export async function notifyUserOfFirstEvent(
   try {
     const userInfo = await getUserContactInfo(userId);
     const preferences = await getUserNotificationPreferences(userId);
-    const eventUrl = `${BASE_URL}/event/${eventId}`;
+    const eventUrl = `${getNotificationBaseUrl()}/event/${eventId}`;
 
     // ALWAYS send in-app notification (cannot be disabled)
     try {
@@ -954,7 +963,7 @@ export async function notifyHostOfNewFavorite(
               Keep creating amazing events to engage your community!
             </p>
             <div style="margin: 20px 0;">
-              <a href="${BASE_URL}/event/${eventId}" style="display: inline-block; background-color: #e35e25; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">View Event</a>
+              <a href="${getNotificationBaseUrl()}/event/${eventId}" style="display: inline-block; background-color: #e35e25; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">View Event</a>
             </div>
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
             <p style="color: #666; font-size: 12px;">
@@ -1037,7 +1046,7 @@ export async function notifyUsersEventGettingFull(
             <p style="color: #666; line-height: 1.6;">
               You favorited this event but haven't reserved yet. Don't miss out - secure your spot now!
             </p>
-            <a href="${BASE_URL}/event/${eventId}" style="display: inline-block; background-color: #e35e25; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold;">Reserve Now</a>
+            <a href="${getNotificationBaseUrl()}/event/${eventId}" style="display: inline-block; background-color: #e35e25; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold;">Reserve Now</a>
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
             <p style="color: #666; font-size: 12px;">
               Popera Team<br>
@@ -1064,7 +1073,7 @@ export async function notifyUsersEventGettingFull(
       try {
         await sendSMSNotification({
           to: contactInfo.phone,
-          message: `Popera: ${eventTitle} is ${capacityPercentage}% full! Reserve now: ${BASE_URL}/event/${eventId}`,
+          message: `Popera: ${eventTitle} is ${capacityPercentage}% full! Reserve now: ${getNotificationBaseUrl()}/event/${eventId}`,
         });
       } catch (error) {
         console.error('[NOTIFICATION_HELPERS] ❌ Error sending event getting full SMS:', error);
@@ -1120,7 +1129,7 @@ export async function notifyHostEventTrending(
             <p style="color: #666; line-height: 1.6;">
               Keep the momentum going! Engage with your attendees in the group chat and share updates.
             </p>
-            <a href="${BASE_URL}/event/${eventId}" style="display: inline-block; background-color: #e35e25; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold;">View Event</a>
+            <a href="${getNotificationBaseUrl()}/event/${eventId}" style="display: inline-block; background-color: #e35e25; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold;">View Event</a>
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
             <p style="color: #666; font-size: 12px;">
               Popera Team<br>
@@ -1204,7 +1213,7 @@ export async function suggestFollowingHost(
             <p style="color: #666; line-height: 1.6;">
               You recently attended <strong>${eventTitle}</strong>. Follow ${hostInfo.name || 'the host'} to get notified when they create their next pop-up!
             </p>
-            <a href="${BASE_URL}/event/${eventId}" style="display: inline-block; background-color: #e35e25; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold;">Follow Host</a>
+            <a href="${getNotificationBaseUrl()}/event/${eventId}" style="display: inline-block; background-color: #e35e25; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold;">Follow Host</a>
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
             <p style="color: #666; font-size: 12px;">
               Popera Team<br>

@@ -77,3 +77,57 @@ button, a, input, textarea, select {
   }
 }
 
+/* ============================================
+   Instagram/Facebook In-App Browser Performance Overrides
+   SAFE, narrowly-scoped optimizations to reduce janky scrolling
+   in WebView-based browsers (Instagram, Facebook).
+   Does NOT apply global selectors to avoid breaking UI.
+   ============================================ */
+
+/* 1. Disable smooth scroll behavior (safe global for inapp) */
+.inapp-ig,
+.inapp-ig body {
+  scroll-behavior: auto !important;
+}
+
+/* 2. Disable backdrop-filter on glass/blur elements only */
+.inapp-ig [class*="backdrop-blur"] {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* 3. Increase opacity on translucent backgrounds to compensate for no blur */
+/* Only target elements that typically use backdrop-blur */
+.inapp-ig [class*="backdrop-blur"].bg-white\/5 { background-color: rgba(255, 255, 255, 0.12) !important; }
+.inapp-ig [class*="backdrop-blur"].bg-white\/10 { background-color: rgba(255, 255, 255, 0.18) !important; }
+.inapp-ig [class*="backdrop-blur"].bg-white\/20 { background-color: rgba(255, 255, 255, 0.35) !important; }
+.inapp-ig [class*="backdrop-blur"].bg-white\/60 { background-color: rgba(255, 255, 255, 0.8) !important; }
+.inapp-ig [class*="backdrop-blur"].bg-white\/70 { background-color: rgba(255, 255, 255, 0.88) !important; }
+.inapp-ig [class*="backdrop-blur"].bg-white\/80 { background-color: rgba(255, 255, 255, 0.92) !important; }
+.inapp-ig [class*="backdrop-blur"].bg-white\/90 { background-color: rgba(255, 255, 255, 0.96) !important; }
+.inapp-ig [class*="backdrop-blur"].bg-white\/95 { background-color: rgba(255, 255, 255, 0.98) !important; }
+.inapp-ig [class*="backdrop-blur"].bg-black\/40 { background-color: rgba(0, 0, 0, 0.55) !important; }
+.inapp-ig [class*="backdrop-blur"].bg-black\/50 { background-color: rgba(0, 0, 0, 0.65) !important; }
+
+/* 4. Soften only the heaviest shadows (shadow-2xl, shadow-xl) */
+.inapp-ig .shadow-2xl,
+.inapp-ig [class*="shadow-2xl"] {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+}
+
+.inapp-ig .shadow-xl,
+.inapp-ig [class*="shadow-xl"] {
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* 5. Shorten transitions ONLY for backdrop-blur elements (not globally) */
+.inapp-ig [class*="backdrop-blur"] {
+  transition-duration: 80ms !important;
+  transition-property: opacity, transform, background-color !important;
+}
+
+/* 6. Disable heavy drop-shadow filters on blur elements only */
+.inapp-ig [class*="backdrop-blur"][class*="drop-shadow"] {
+  filter: none !important;
+  -webkit-filter: none !important;
+}
