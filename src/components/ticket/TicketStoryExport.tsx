@@ -1,4 +1,4 @@
-import React, { forwardRef, useEffect, useState } from 'react';
+import React, { forwardRef, useEffect, useRef, useCallback } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { Event } from '../../../types';
 
@@ -7,32 +7,134 @@ interface TicketStoryExportProps {
   hostName: string;
   qrUrl: string;
   formattedDate: string;
+  onReady?: () => void;
+  debugMode?: boolean;
 }
 
 /**
  * TicketStoryExport - A dedicated component for generating the downloadable ticket image.
  * Sized for Instagram Story (1080x1920, 9:16 aspect ratio).
- * This component renders offscreen and is captured as an image.
+ * Uses opacity:0 instead of offscreen positioning for reliable capture.
+ * Sets data-ready="true" when all assets (fonts, images, QR canvas) are loaded.
  */
 export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportProps>(
-  ({ event, hostName, qrUrl, formattedDate }, ref) => {
-    const [imageLoaded, setImageLoaded] = useState(false);
-    const [imageError, setImageError] = useState(false);
+  ({ event, hostName, qrUrl, formattedDate, onReady, debugMode = false }, ref) => {
+    const imgRef = useRef<HTMLImageElement>(null);
+    const rootRef = useRef<HTMLDivElement>(null);
+    const hasSignaledReady = useRef(false);
 
     // Get event image URL
     const eventImageUrl = event.imageUrls?.[0] || event.imageUrl || '';
     const location = event.location || 
       `${event.address || ''}, ${event.city || ''}`.replace(/^,\s*|,\s*$/g, '').trim() || 'Location TBD';
 
+    // Combine refs
+    const setRefs = useCallback((node: HTMLDivElement | null) => {
+      rootRef.current = node;
+      if (typeof ref === 'function') {
+        ref(node);
+      } else if (ref) {
+        ref.current = node;
+      }
+    }, [ref]);
+
+    // Check readiness and signal when ready
+    const checkReadiness = useCallback(async () => {
+      if (hasSignaledReady.current) return;
+      if (!rootRef.current) return;
+
+      try {
+        // 1. Wait for fonts
+        await document.fonts.ready;
+
+        // 2. Wait for cover image (if exists)
+        if (imgRef.current && eventImageUrl) {
+          if (!imgRef.current.complete) {
+            await new Promise<void>((resolve) => {
+              const img = imgRef.current;
+              if (!img) { resolve(); return; }
+              const onLoad = () => { img.removeEventListener('load', onLoad); img.removeEventListener('error', onError); resolve(); };
+              const onError = () => { img.removeEventListener('load', onLoad); img.removeEventListener('error', onError); resolve(); };
+              img.addEventListener('load', onLoad);
+              img.addEventListener('error', onError);
+              // Check again in case it loaded between checks
+              if (img.complete) { resolve(); }
+            });
+          }
+          // Try to decode for extra safety
+          try {
+            await imgRef.current.decode();
+          } catch {
+            // decode() may fail for cross-origin or already decoded images, that's fine
+          }
+        }
+
+        // 3. Verify QR canvas exists and has dimensions
+        const qrCanvas = rootRef.current.querySelector('canvas');
+        if (qrCanvas) {
+          // Wait for canvas to have proper dimensions
+          if (qrCanvas.width === 0 || qrCanvas.height === 0) {
+            await new Promise<void>((resolve) => {
+              const checkCanvas = () => {
+                if (qrCanvas.width > 0 && qrCanvas.height > 0) {
+                  resolve();
+                } else {
+                  requestAnimationFrame(checkCanvas);
+                }
+              };
+              checkCanvas();
+            });
+          }
+        }
+
+        // 4. Extra frame to ensure paint is complete
+        await new Promise<void>((resolve) => {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              resolve();
+            });
+          });
+        });
+
+        // Signal ready
+        hasSignaledReady.current = true;
+        if (rootRef.current) {
+          rootRef.current.dataset.ready = 'true';
+        }
+        onReady?.();
+      } catch (err) {
+        console.error('TicketStoryExport readiness check error:', err);
+        // Signal ready anyway to prevent hanging
+        hasSignaledReady.current = true;
+        if (rootRef.current) {
+          rootRef.current.dataset.ready = 'true';
+        }
+        onReady?.();
+      }
+    }, [eventImageUrl, onReady]);
+
+    // Run readiness check on mount and when deps change
+    useEffect(() => {
+      hasSignaledReady.current = false;
+      // Small delay to let React finish rendering
+      const timer = setTimeout(() => {
+        checkReadiness();
+      }, 50);
+      return () => clearTimeout(timer);
+    }, [checkReadiness]);
+
     return (
       <div
-        ref={ref}
+        ref={setRefs}
+        data-ready="false"
         style={{
           position: 'fixed',
-          left: '-99999px',
-          top: 0,
+          inset: 0,
           width: '1080px',
           height: '1920px',
+          opacity: debugMode ? 1 : 0,
+          pointerEvents: 'none',
+          zIndex: debugMode ? 9999 : -1,
           fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
           overflow: 'hidden',
         }}
@@ -92,6 +194,7 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
             </span>
             <span
               style={{
+                display: 'inline-block',
                 width: '10px',
                 height: '10px',
                 backgroundColor: '#e35e25',
@@ -113,13 +216,12 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
               boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)',
             }}
           >
-            {eventImageUrl && !imageError ? (
+            {eventImageUrl ? (
               <img
+                ref={imgRef}
                 src={eventImageUrl}
                 alt={event.title}
                 crossOrigin="anonymous"
-                onLoad={() => setImageLoaded(true)}
-                onError={() => setImageError(true)}
                 style={{
                   width: '100%',
                   height: '100%',
@@ -278,4 +380,3 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
 );
 
 TicketStoryExport.displayName = 'TicketStoryExport';
-

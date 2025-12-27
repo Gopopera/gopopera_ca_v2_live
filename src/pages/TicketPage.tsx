@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Event, ViewState } from '../../types';
 import { 
   Download, Share2, Calendar, MapPin, Clock, 
@@ -19,6 +20,9 @@ import {
 } from '../../firebase/db';
 import { TicketStoryExport } from '../components/ticket/TicketStoryExport';
 import { toPng } from 'html-to-image';
+
+// Debug mode for export - set to true to see export component before capture
+const DEBUG_EXPORT = false;
 
 // Base URL for ticket links
 const BASE_URL = import.meta.env.VITE_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://gopopera.ca');
@@ -85,6 +89,29 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
   const ticketRef = useRef<HTMLDivElement>(null);
   const exportRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [showExport, setShowExport] = useState(false);
+
+  // Helper: wait for export component to be ready with timeout
+  const waitForExportReady = useCallback((): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const startTime = Date.now();
+      const timeout = 5000; // 5 second timeout
+      
+      const check = () => {
+        if (exportRef.current?.dataset.ready === 'true') {
+          resolve();
+          return;
+        }
+        if (Date.now() - startTime > timeout) {
+          reject(new Error('Export component timed out'));
+          return;
+        }
+        requestAnimationFrame(check);
+      };
+      
+      requestAnimationFrame(check);
+    });
+  }, []);
 
   // Load ticket data
   useEffect(() => {
@@ -273,28 +300,19 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
 
   // Handle download - generate high-quality IG Story image
   const handleDownload = async () => {
-    if (!ticketData || !exportRef.current) return;
+    if (!ticketData) return;
 
     setIsExporting(true);
+    setShowExport(true);
     
     try {
-      // Wait for fonts to load
-      await document.fonts.ready;
+      // Wait for export component to signal ready (fonts, images, QR canvas all loaded)
+      await waitForExportReady();
       
-      // Wait for images in the export component to load
-      const images = exportRef.current.querySelectorAll('img') as NodeListOf<HTMLImageElement>;
-      await Promise.all(
-        Array.from(images).map((img: HTMLImageElement) => {
-          if (img.complete) return Promise.resolve();
-          return new Promise<void>((resolve) => {
-            img.onload = () => resolve();
-            img.onerror = () => resolve(); // Continue even if image fails
-          });
-        })
-      );
-      
-      // Small delay to ensure QR canvas is fully rendered
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Extra safety: ensure ref is available
+      if (!exportRef.current) {
+        throw new Error('Export component not mounted');
+      }
       
       // Capture the export component as PNG with high pixel ratio
       const dataUrl = await toPng(exportRef.current, {
@@ -303,11 +321,6 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
         height: 1920,
         backgroundColor: '#15383c',
         cacheBust: true,
-        skipFonts: false,
-        style: {
-          left: '0',
-          top: '0',
-        },
       });
       
       // Trigger download
@@ -322,6 +335,7 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
       alert('Failed to download ticket. Please try again.');
     } finally {
       setIsExporting(false);
+      setShowExport(false);
     }
   };
 
@@ -672,15 +686,17 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
         </div>
       )}
 
-      {/* Hidden export component for generating downloadable image */}
-      {ticketData && (
+      {/* Export component rendered via Portal when download is triggered */}
+      {showExport && ticketData && createPortal(
         <TicketStoryExport
           ref={exportRef}
           event={ticketData.event}
           hostName={ticketData.host?.displayName || 'Host'}
           qrUrl={qrUrl}
           formattedDate={formattedDate}
-        />
+          debugMode={DEBUG_EXPORT}
+        />,
+        document.body
       )}
     </div>
   );
