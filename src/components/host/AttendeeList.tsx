@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, CheckCircle2, Clock, XCircle, Loader2, Users } from 'lucide-react';
-import { listReservationsForEvent, updateReservationCheckIn, getUserProfile } from '../../../firebase/db';
+import { Search, CheckCircle2, Clock, XCircle, Loader2, Users, AlertTriangle } from 'lucide-react';
+import { listReservationsForEvent, updateReservationCheckIn, getUserProfile, ListReservationsResult } from '../../../firebase/db';
 import { FirestoreReservation } from '../../../firebase/types';
 
 interface AttendeeListProps {
@@ -19,6 +19,7 @@ interface AttendeeData {
 export const AttendeeList: React.FC<AttendeeListProps> = ({ eventId, hostUid }) => {
   const [attendees, setAttendees] = useState<AttendeeData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<{ type: string; message: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [checkingIn, setCheckingIn] = useState<string | null>(null);
 
@@ -28,12 +29,24 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({ eventId, hostUid }) 
 
     const loadAttendees = async () => {
       setLoading(true);
+      setError(null);
+      
       try {
-        const reservations = await listReservationsForEvent(eventId);
+        const result: ListReservationsResult = await listReservationsForEvent(eventId);
+        
+        // Handle errors from the result
+        if (result.error) {
+          if (!cancelled) {
+            setError({ type: result.error, message: result.errorMessage || 'Unknown error' });
+            setAttendees([]);
+            setLoading(false);
+          }
+          return;
+        }
         
         // Fetch user profiles for each reservation
         const attendeeData: AttendeeData[] = await Promise.all(
-          reservations.map(async (res) => {
+          result.reservations.map(async (res) => {
             let displayName = 'Unknown';
             let email: string | undefined;
             let photoURL: string | undefined;
@@ -46,7 +59,7 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({ eventId, hostUid }) 
                 photoURL = profile.photoURL || profile.imageUrl;
               }
             } catch {
-              // Ignore profile fetch errors
+              // Ignore profile fetch errors - use defaults
             }
 
             return {
@@ -64,6 +77,9 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({ eventId, hostUid }) 
         }
       } catch (err) {
         console.error('Error loading attendees:', err);
+        if (!cancelled) {
+          setError({ type: 'unknown', message: 'Failed to load attendees. Please try again.' });
+        }
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -78,7 +94,7 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({ eventId, hostUid }) 
     };
   }, [eventId]);
 
-  // Filter and sort attendees
+  // Filter and sort attendees (client-side - no Firestore orderBy)
   const filteredAttendees = useMemo(() => {
     let filtered = attendees;
 
@@ -92,19 +108,26 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({ eventId, hostUid }) 
       );
     }
 
-    // Sort: unchecked first, then by reservation date
+    // Sort client-side: unchecked first, checked-in next, cancelled last
+    // Use stable tiebreaker: reservedAt then reservationId
     return filtered.sort((a, b) => {
-      // Cancelled at the end
-      if (a.reservation.status === 'cancelled' && b.reservation.status !== 'cancelled') return 1;
-      if (b.reservation.status === 'cancelled' && a.reservation.status !== 'cancelled') return -1;
+      // 1. Cancelled at the end
+      const aCancelled = a.reservation.status === 'cancelled';
+      const bCancelled = b.reservation.status === 'cancelled';
+      if (aCancelled !== bCancelled) return aCancelled ? 1 : -1;
       
-      // Unchecked before checked
+      // 2. Unchecked before checked
       const aChecked = !!a.reservation.checkedInAt;
       const bChecked = !!b.reservation.checkedInAt;
       if (aChecked !== bChecked) return aChecked ? 1 : -1;
 
-      // Then by reservation date (newest first)
-      return (b.reservation.reservedAt || 0) - (a.reservation.reservedAt || 0);
+      // 3. By reservation date (newest first)
+      const aTime = a.reservation.reservedAt || 0;
+      const bTime = b.reservation.reservedAt || 0;
+      if (aTime !== bTime) return bTime - aTime;
+
+      // 4. Stable tiebreaker: reservationId
+      return a.reservationId.localeCompare(b.reservationId);
     });
   }, [attendees, searchQuery]);
 
@@ -144,12 +167,26 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({ eventId, hostUid }) 
   const checkedInCount = attendees.filter((a) => a.reservation.checkedInAt).length;
   const cancelledCount = attendees.filter((a) => a.reservation.status === 'cancelled').length;
 
+  // Loading state
   if (loading) {
     return (
       <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
         <div className="flex items-center justify-center py-8">
           <Loader2 className="w-6 h-6 animate-spin text-white/50" />
           <span className="ml-3 text-white/70">Loading attendees...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <AlertTriangle className="w-10 h-10 text-amber-400 mb-3" />
+          <p className="text-white/90 font-medium mb-1">Unable to load attendees</p>
+          <p className="text-white/60 text-sm max-w-xs">{error.message}</p>
         </div>
       </div>
     );
@@ -272,4 +309,3 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({ eventId, hostUid }) 
     </div>
   );
 };
-

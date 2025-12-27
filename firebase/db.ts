@@ -812,22 +812,64 @@ export async function getCheckedInCountForEvent(eventId: string): Promise<number
 }
 
 /**
- * List all reservations for an event (for hosts to see attendee list)
+ * Result type for listReservationsForEvent with error handling
  */
-export async function listReservationsForEvent(eventId: string): Promise<(FirestoreReservation & { id: string })[]> {
+export interface ListReservationsResult {
+  reservations: (FirestoreReservation & { id: string })[];
+  error?: 'permission-denied' | 'index-required' | 'unknown';
+  errorMessage?: string;
+}
+
+/**
+ * List all reservations for an event (for hosts to see attendee list)
+ * Uses single where() filter only - no orderBy() to avoid composite index requirements.
+ * Sorting is done client-side in AttendeeList component.
+ */
+export async function listReservationsForEvent(eventId: string): Promise<ListReservationsResult> {
   const db = getDbSafe();
-  if (!db) return [];
+  if (!db) {
+    return { reservations: [], error: 'unknown', errorMessage: 'Database not available' };
+  }
+  
+  if (!eventId) {
+    return { reservations: [], error: 'unknown', errorMessage: 'Event ID is required' };
+  }
   
   try {
     const reservationsCol = collection(db, "reservations");
+    // Single where() filter only - index-safe, no composite index needed
     const q = query(reservationsCol, where("eventId", "==", eventId));
     const snap = await getDocs(q);
-    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() as FirestoreReservation }));
+    const reservations = snap.docs.map(doc => ({ id: doc.id, ...doc.data() as FirestoreReservation }));
+    return { reservations };
   } catch (error: any) {
-    if (error?.code !== 'permission-denied') {
-      console.error("Error listing reservations for event:", error);
+    const errorCode = error?.code || '';
+    const errorMsg = error?.message || 'Unknown error';
+    
+    // Log full error for debugging
+    console.error('[listReservationsForEvent] Error:', { code: errorCode, message: errorMsg, eventId });
+    
+    if (errorCode === 'permission-denied') {
+      return { 
+        reservations: [], 
+        error: 'permission-denied', 
+        errorMessage: "You don't have permission to view attendees for this event." 
+      };
     }
-    return [];
+    
+    if (errorCode === 'failed-precondition' || errorMsg.includes('index')) {
+      return { 
+        reservations: [], 
+        error: 'index-required', 
+        errorMessage: 'Attendee list requires a Firestore index. Contact support.' 
+      };
+    }
+    
+    return { 
+      reservations: [], 
+      error: 'unknown', 
+      errorMessage: 'Failed to load attendees. Please try again.' 
+    };
   }
 }
 
