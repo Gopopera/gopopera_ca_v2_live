@@ -98,6 +98,7 @@ import { useDebouncedFavorite } from './hooks/useDebouncedFavorite';
 const ConversationButtonModal = React.lazy(() => import('./components/chat/ConversationButtonModal').then(m => ({ default: m.ConversationButtonModal })));
 import { useSelectedCity, useSetCity, initializeGeoLocation, validateCityHasEvents, type City } from './src/stores/cityStore';
 import { useFilterStore } from './stores/filterStore';
+import { matchesLocationFilter } from './utils/location';
 const NotificationsModal = React.lazy(() => import('./components/notifications/NotificationsModal').then(m => ({ default: m.NotificationsModal })));
 import { isPrivateMode, getPrivateModeMessage } from './utils/browserDetection';
 import { trackPageView } from './src/lib/ga4';
@@ -976,22 +977,9 @@ const AppContent: React.FC = () => {
   // Filters work together: Vibes + City + Search all apply simultaneously
   let filteredEvents = allEvents;
   
-  // Apply city filter - match by city slug or city name
-  // "Canada" shows all events (no filter)
-  if (location && location.trim() && location.toLowerCase() !== 'canada') {
-    const citySlug = location.toLowerCase();
-    filteredEvents = filteredEvents.filter(event => {
-      const eventCityLower = event.city.toLowerCase();
-      // Normalize city name (remove ", CA" for comparison)
-      const normalizedEventCity = eventCityLower.replace(/,\s*ca$/, '').trim();
-      const normalizedLocation = citySlug.replace(/,\s*ca$/, '').trim();
-      // Match by slug (e.g., "montreal" matches "Montreal, CA")
-      return normalizedEventCity.includes(normalizedLocation) || 
-             normalizedLocation.includes(normalizedEventCity) ||
-             eventCityLower.includes(citySlug) || 
-             eventCityLower.includes(citySlug.replace('-', ' '));
-    });
-  }
+  // Apply city filter using centralized helper (utils/location.ts)
+  // Handles "All Locations", "Canada", "United States", and specific cities
+  filteredEvents = filteredEvents.filter(event => matchesLocationFilter(event, location));
   
   // Apply search filter last (text search in titles, descriptions, tags, hostName, aboutEvent, whatToExpect)
   // This ensures search works with vibes and city filters
