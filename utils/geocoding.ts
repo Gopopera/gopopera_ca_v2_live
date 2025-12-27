@@ -3,6 +3,8 @@
  * Uses Google Geocoding API
  */
 
+import { getGeocodingCountrySuffix } from './location';
+
 export interface GeocodeResult {
   lat: number;
   lng: number;
@@ -32,7 +34,10 @@ export async function geocodeAddress(
   }
 
   try {
-    const fullAddress = `${address}, ${city}, Canada`;
+    // Use centralized helper to detect country from city suffix
+    // SAFETY: Returns empty string if no country detected (never appends wrong country)
+    const countrySuffix = getGeocodingCountrySuffix(city);
+    const fullAddress = `${address}, ${city}${countrySuffix}`;
     const encodedAddress = encodeURIComponent(fullAddress);
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${apiKey}`;
 

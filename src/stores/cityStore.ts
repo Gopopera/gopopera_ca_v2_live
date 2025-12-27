@@ -1,6 +1,7 @@
 // src/stores/cityStore.ts
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { matchesLocationFilter } from '../../utils/location';
 
 export type City =
   | "montreal" | "ottawa" | "gatineau" | "quebec" | "toronto" | "vancouver";
@@ -81,11 +82,11 @@ function setCachedGeo(city: string, region: string, country: string): void {
 export const useCityStore = create<CityState>()(
   persist(
     (set, get) => ({
-      selectedCity: "Canada", // Default to Canada (shows all events)
+      selectedCity: "All Locations", // Default: shows all events globally
       isGeoInitialized: false,
       
       setCity: (c: string, isManual = true) => {
-        const normalized = c.trim() || "Canada";
+        const normalized = c.trim() || "All Locations";
         set({ selectedCity: normalized });
         
         // If user manually set the city, remember that preference
@@ -95,7 +96,7 @@ export const useCityStore = create<CityState>()(
       },
       
       resetCity: () => {
-        set({ selectedCity: "Canada" });
+        set({ selectedCity: "All Locations" });
         setManualLocationFlag(false);
       },
       
@@ -152,7 +153,7 @@ export const useCityStore = create<CityState>()(
       // Ensure we have a valid default on rehydration
       onRehydrateStorage: () => (state) => {
         if (state && !state.selectedCity) {
-          state.selectedCity = "Canada";
+          state.selectedCity = "All Locations";
         }
       },
     }
@@ -166,31 +167,25 @@ export const resetCity = () => useCityStore.getState().resetCity();
 export const initializeGeoLocation = () => useCityStore.getState().initializeFromGeo();
 
 /**
- * Validate that the current city has events, otherwise fall back to "Canada"
+ * Validate that the current city has events, otherwise fall back to "All Locations"
  * Call this after events are loaded to ensure the user sees results
  */
-export function validateCityHasEvents(events: { city: string }[]): void {
+export function validateCityHasEvents(events: { city?: string; country?: string }[]): void {
   const state = useCityStore.getState();
   const currentCity = state.selectedCity;
   
-  // If already "Canada" or user manually set it, don't override
-  if (currentCity.toLowerCase() === 'canada' || hasManualLocationSet()) {
+  // If already a broad filter or user manually set it, don't override
+  const lowerCity = currentCity.toLowerCase();
+  if (lowerCity === 'all locations' || lowerCity === 'canada' || lowerCity === 'united states' || hasManualLocationSet()) {
     return;
   }
   
-  // Check if any events match the current city
-  const cityLower = currentCity.toLowerCase();
-  const hasEventsInCity = events.some(event => {
-    const eventCityLower = event.city?.toLowerCase() || '';
-    const normalizedEventCity = eventCityLower.replace(/,\s*ca$/, '').trim();
-    return normalizedEventCity.includes(cityLower) || 
-           cityLower.includes(normalizedEventCity) ||
-           eventCityLower.includes(cityLower);
-  });
+  // Check if any events match using centralized helper
+  const hasEventsInCity = events.some(event => matchesLocationFilter(event, currentCity));
   
-  // If no events in this city, fall back to Canada
+  // If no events in this city, fall back to All Locations
   if (!hasEventsInCity && events.length > 0) {
-    console.log('[cityStore] No events in detected city, falling back to Canada');
-    state.setCity('Canada', false); // Set without marking as manual
+    console.log('[cityStore] No events in detected city, falling back to All Locations');
+    state.setCity('All Locations', false); // Set without marking as manual
   }
 }
