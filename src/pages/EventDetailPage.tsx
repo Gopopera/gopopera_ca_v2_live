@@ -15,7 +15,7 @@ import { ShareModal } from '../../components/share/ShareModal';
 import { SeoHelmet } from '../../components/seo/SeoHelmet';
 import { formatDate } from '../../utils/dateFormatter';
 import { formatRating } from '../../utils/formatRating';
-import { getReservationCountForEvent, listHostReviews, subscribeToReservationCount, getUserProfile } from '../../firebase/db';
+import { getReservationCountForEvent, listHostReviews, subscribeToReservationCount, getUserProfile, listReservationsForUser } from '../../firebase/db';
 // REFACTORED: No longer using getUserProfile for host display - using real-time subscriptions instead
 // But we use getUserProfile to check host Stripe status for payments
 import { getMainCategoryLabelFromEvent } from '../../utils/categoryMapper';
@@ -24,6 +24,7 @@ import { getInitials, getAvatarBgColor } from '../../utils/avatarUtils';
 import { subscribeToFollowersCount } from '../../firebase/follow';
 import { PaymentModal } from '../../components/payments/PaymentModal';
 import { hasEventFee, isRecurringEvent, getEventFeeAmount } from '../../utils/stripeHelpers';
+import { AttendeeList } from '../components/host/AttendeeList';
 
 /**
  * Helper to format event price display - matches EventCard logic exactly
@@ -327,19 +328,59 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const rsvpsRef = useRef<string[]>(rsvps);
   const rsvpsStringRef = useRef<string>(rsvps.join(','));
   
+  // Track rsvps string for dependency - this changes when rsvps array contents change
+  const currentRsvpsString = rsvps.join(',');
+  
   // Only update ref if the actual contents changed (not just the reference)
   // Do this in a useEffect to avoid side effects during render
   useEffect(() => {
-    const currentRsvpsString = rsvps.join(',');
     if (currentRsvpsString !== rsvpsStringRef.current) {
       rsvpsRef.current = rsvps;
       rsvpsStringRef.current = currentRsvpsString;
     }
-  }, [rsvps]);
+  }, [rsvps, currentRsvpsString]);
   
+  // Real-time Firestore check for active reservation (not cancelled)
+  // This ensures we don't trust stale cached rsvps from localStorage
+  const [hasActiveReservation, setHasActiveReservation] = useState<boolean | null>(null);
+  
+  useEffect(() => {
+    const checkActiveReservation = async () => {
+      if (!user?.uid || !eventId) {
+        setHasActiveReservation(false);
+        return;
+      }
+      
+      try {
+        const reservations = await listReservationsForUser(user.uid);
+        const activeReservation = reservations.find(
+          r => r.eventId === eventId && r.status === 'reserved'
+        );
+        console.log('[EVENT_DETAIL] Active reservation check:', { 
+          eventId, 
+          found: !!activeReservation, 
+          reservationsCount: reservations.length 
+        });
+        setHasActiveReservation(!!activeReservation);
+      } catch (error) {
+        console.error('[EVENT_DETAIL] Error checking active reservation:', error);
+        // On error, assume no active reservation (safer than showing stale data)
+        setHasActiveReservation(false);
+      }
+    };
+    
+    checkActiveReservation();
+  }, [user?.uid, eventId, currentRsvpsString]); // Re-check when rsvps change
+  
+  // FIXED: Use real-time Firestore check when available, fallback to cached
   const hasRSVPed = useMemo(() => {
-    return rsvpsRef.current.includes(eventId);
-  }, [eventId]); // Only depend on eventId - ref is updated separately
+    // If real-time check completed, trust it over cached
+    if (hasActiveReservation !== null) {
+      return hasActiveReservation;
+    }
+    // Fallback to cached while real-time is loading
+    return rsvps.includes(eventId);
+  }, [eventId, currentRsvpsString, hasActiveReservation]); // eslint-disable-line react-hooks/exhaustive-deps
   
   // REFACTORED: Initialize empty - will be populated by real-time subscription
   const [displayHostName, setDisplayHostName] = useState<string>('');
@@ -1478,6 +1519,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             </p>
           </div>
 
+          {/* Host Attendee List - Only visible to event host */}
+          {isLoggedIn && user?.uid === event.hostId && (
+            <div className="mb-12 sm:mb-16 lg:mb-12">
+              <AttendeeList eventId={event.id} hostUid={user.uid} />
+            </div>
+          )}
+
           {/* Cancellation Policy Section - Compact */}
           <div className="mb-10 sm:mb-12 md:mb-16 pt-6 sm:pt-8 border-t border-gray-100">
             <h2 className="text-lg sm:text-xl font-heading font-bold text-[#15383c] mb-3 sm:mb-4">
@@ -1654,11 +1702,12 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                  <MessageCircle size={18} />
                </button>
                <button 
-                 disabled
-                 className="flex-1 h-11 font-semibold text-[15px] rounded-full bg-[#15383c] text-white shadow-lg shadow-[#15383c]/20 flex items-center justify-center touch-manipulation px-5 gap-2"
+                 onClick={handleRSVP}
+                 disabled={reserving}
+                 className="flex-1 h-11 font-semibold text-[15px] rounded-full bg-[#15383c] text-white shadow-lg shadow-[#15383c]/20 flex items-center justify-center touch-manipulation px-5 gap-2 hover:bg-[#1f4d52] active:scale-95 transition-all disabled:opacity-50"
                >
                  <CheckCircle2 size={16} />
-                 {t('ui.attending')}
+                 {reserving ? t('ui.cancelling') || 'Cancelling...' : t('ui.attending')}
                </button>
              </>
            )}

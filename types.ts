@@ -111,4 +111,7 @@ export enum ViewState {
   // Host Payouts
   PAYOUT_SETUP = 'PAYOUT_SETUP',
   PAYOUTS = 'PAYOUTS',
+  
+  // Ticket
+  TICKET = 'TICKET',
 }

@@ -359,11 +359,14 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   }, [event.id, currentUser?.id, isHost, isDemo, checkReservationInFirestore]);
   
   // Enhanced hasReserved check - uses both cached and real-time
+  // FIXED: Prioritize real-time Firestore check when available (not null)
+  // This ensures cancelled reservations are properly detected
   const hasReservedEnhanced = useMemo(() => {
     if (isHost) return true; // Host always has access
-    if (hasReserved) return true; // Cached RSVP check
-    if (hasReservedRealTime === true) return true; // Real-time check
-    return false;
+    // If real-time check has completed (not null), trust it over cached
+    if (hasReservedRealTime !== null) return hasReservedRealTime;
+    // Fallback to cached check only when real-time hasn't loaded yet
+    return hasReserved;
   }, [isHost, hasReserved, hasReservedRealTime]);
   
   // Check if user is banned

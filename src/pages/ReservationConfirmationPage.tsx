@@ -5,6 +5,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { formatDate } from '../../utils/dateFormatter';
 import { getMainCategoryLabelFromEvent } from '../../utils/categoryMapper';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { AddToCalendarButton } from '../components/AddToCalendarButton';
 
 interface ReservationConfirmationPageProps {
   event: Event;
@@ -334,20 +335,23 @@ export const ReservationConfirmationPage: React.FC<ReservationConfirmationPagePr
         </div>
 
         {/* Action Buttons */}
-        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200/60 flex gap-3 flex-shrink-0 bg-white/80 backdrop-blur-sm">
-          <button
-            onClick={handleClose}
-            className="flex-1 px-4 py-3 bg-white/80 backdrop-blur-sm border-2 border-gray-300/60 text-[#15383c] rounded-full font-semibold text-sm hover:bg-white hover:border-[#15383c] transition-all active:scale-95 touch-manipulation"
-          >
-            Close
-          </button>
-          <button
-            onClick={handleDownloadPass}
-            className="flex-1 px-4 py-3 bg-[#15383c] text-white rounded-full font-semibold text-sm hover:bg-[#1f4d52] transition-all active:scale-95 touch-manipulation shadow-md flex items-center justify-center gap-2"
-          >
-            <Download size={18} />
-            <span>Download</span>
-          </button>
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200/60 flex flex-col gap-3 flex-shrink-0 bg-white/80 backdrop-blur-sm">
+          <div className="flex gap-3">
+            <button
+              onClick={handleClose}
+              className="flex-1 px-4 py-3 bg-white/80 backdrop-blur-sm border-2 border-gray-300/60 text-[#15383c] rounded-full font-semibold text-sm hover:bg-white hover:border-[#15383c] transition-all active:scale-95 touch-manipulation"
+            >
+              Close
+            </button>
+            <button
+              onClick={handleDownloadPass}
+              className="flex-1 px-4 py-3 bg-[#15383c] text-white rounded-full font-semibold text-sm hover:bg-[#1f4d52] transition-all active:scale-95 touch-manipulation shadow-md flex items-center justify-center gap-2"
+            >
+              <Download size={18} />
+              <span>Download</span>
+            </button>
+          </div>
+          {event && <AddToCalendarButton event={event} />}
         </div>
       </div>
     </div>

@@ -27,7 +27,13 @@ service cloud.firestore {
       // This ensures host names and profile pictures are visible on events even when not logged in
       allow read: if true; // Allow public read for event host display
       allow create: if isAuthenticated() && userId == request.auth.uid;
-      allow update: if isAuthenticated() && userId == request.auth.uid;
+      // UPDATE: User can update own profile fully, OR any user can update followers array (for follow system)
+      allow update: if isAuthenticated() && (
+        // Own profile - full update allowed
+        userId == request.auth.uid ||
+        // Other users can ONLY update followers array (follow/unfollow)
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followers'])
+      );
       allow delete: if isAuthenticated() && userId == request.auth.uid;
       
       // Notifications subcollection - users can read/write their own notifications
@@ -41,16 +47,34 @@ service cloud.firestore {
     }
     
     match /reservations/{reservationId} {
-      allow read: if isAuthenticated() && 
-        (resource.data.userId == request.auth.uid || 
-         get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.hostId == request.auth.uid);
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update: if isAuthenticated() && 
-        (resource.data.userId == request.auth.uid || 
-         get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.hostId == request.auth.uid);
-      allow delete: if isAuthenticated() && 
-        (resource.data.userId == request.auth.uid || 
-         get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.hostId == request.auth.uid);
+      // READ: reservation owner OR event host
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.hostId == request.auth.uid
+      );
+
+      // CREATE: only the user creating their own reservation
+      allow create: if isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid;
+
+      // UPDATE: field-level restrictions
+      allow update: if isAuthenticated() && (
+        // Attendee can update cancellation + subscription opt-out fields only
+        (resource.data.userId == request.auth.uid &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['status', 'cancelledAt', 'cancelledByUid', 'optOutRequested', 'optOutProcessed']))
+        ||
+        // Host can update check-in + expulsion fields only
+        (get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.hostId == request.auth.uid &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['checkedInAt', 'checkedInBy', 'status', 'cancelledAt', 'cancelledBy', 'cancellationReason']))
+      );
+
+      // DELETE: reservation owner OR event host
+      allow delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.hostId == request.auth.uid
+      );
     }
     
     match /reviews/{reviewId} {

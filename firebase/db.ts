@@ -689,7 +689,7 @@ export async function listReservationsForUser(userId: string): Promise<Firestore
   }
 }
 
-export async function cancelReservation(reservationId: string): Promise<void> {
+export async function cancelReservation(reservationId: string, cancelledByUid?: string): Promise<void> {
   const db = getDbSafe();
   if (!db) {
     throw new Error('Firestore not initialized');
@@ -707,7 +707,16 @@ export async function cancelReservation(reservationId: string): Promise<void> {
     const reservationDoc = await getDoc(reservationRef);
     const eventId = reservationDoc.data()?.eventId;
     
-    await updateDoc(reservationRef, { status: "cancelled" });
+    // Update with status, cancelledAt timestamp, and cancelledByUid
+    const updateData: Record<string, any> = { 
+      status: "cancelled",
+      cancelledAt: serverTimestamp(),
+    };
+    if (cancelledByUid) {
+      updateData.cancelledByUid = cancelledByUid;
+    }
+    
+    await updateDoc(reservationRef, updateData);
     
     // Sync attendeeCount on event document for unauthenticated users
     if (eventId) {
@@ -718,6 +727,149 @@ export async function cancelReservation(reservationId: string): Promise<void> {
   } catch (error: any) {
     console.error('Firestore write failed:', { path: `reservations/${reservationId}`, error: error.message || 'Unknown error' });
     throw error;
+  }
+}
+
+/**
+ * Get a single reservation by ID
+ */
+export async function getReservationById(reservationId: string): Promise<FirestoreReservation | null> {
+  const db = getDbSafe();
+  if (!db) {
+    return null;
+  }
+  
+  try {
+    const reservationRef = doc(db, "reservations", reservationId);
+    const reservationDoc = await getDoc(reservationRef);
+    
+    if (!reservationDoc.exists()) {
+      return null;
+    }
+    
+    const data = reservationDoc.data();
+    return {
+      id: reservationDoc.id,
+      ...data,
+    } as FirestoreReservation;
+  } catch (error: any) {
+    console.error('Error fetching reservation:', error);
+    return null;
+  }
+}
+
+/**
+ * Update reservation with check-in info (host only)
+ */
+export async function updateReservationCheckIn(reservationId: string, checkedInByUid: string): Promise<void> {
+  const db = getDbSafe();
+  if (!db) {
+    throw new Error('Firestore not initialized');
+  }
+  
+  try {
+    const reservationRef = doc(db, "reservations", reservationId);
+    
+    await updateDoc(reservationRef, {
+      checkedInAt: serverTimestamp(),
+      checkedInBy: checkedInByUid,
+    });
+    
+    console.log('[CHECK_IN] ✅ Reservation checked in:', { reservationId, checkedInBy: checkedInByUid });
+  } catch (error: any) {
+    console.error('Error checking in reservation:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get count of checked-in reservations for an event
+ */
+export async function getCheckedInCountForEvent(eventId: string): Promise<number> {
+  const db = getDbSafe();
+  if (!db) {
+    return 0;
+  }
+  
+  try {
+    const reservationsCol = collection(db, "reservations");
+    const q = query(
+      reservationsCol, 
+      where("eventId", "==", eventId), 
+      where("status", "==", "reserved")
+    );
+    const snap = await getDocs(q);
+    
+    // Count reservations that have checkedInAt set
+    return snap.docs.filter(doc => {
+      const data = doc.data();
+      return !!data.checkedInAt;
+    }).length;
+  } catch (error: any) {
+    console.error("Error fetching checked-in count:", error);
+    return 0;
+  }
+}
+
+/**
+ * Result type for listReservationsForEvent with error handling
+ */
+export interface ListReservationsResult {
+  reservations: (FirestoreReservation & { id: string })[];
+  error?: 'permission-denied' | 'index-required' | 'unknown';
+  errorMessage?: string;
+}
+
+/**
+ * List all reservations for an event (for hosts to see attendee list)
+ * Uses single where() filter only - no orderBy() to avoid composite index requirements.
+ * Sorting is done client-side in AttendeeList component.
+ */
+export async function listReservationsForEvent(eventId: string): Promise<ListReservationsResult> {
+  const db = getDbSafe();
+  if (!db) {
+    return { reservations: [], error: 'unknown', errorMessage: 'Database not available' };
+  }
+  
+  if (!eventId) {
+    return { reservations: [], error: 'unknown', errorMessage: 'Event ID is required' };
+  }
+  
+  try {
+    const reservationsCol = collection(db, "reservations");
+    // Single where() filter only - index-safe, no composite index needed
+    const q = query(reservationsCol, where("eventId", "==", eventId));
+    const snap = await getDocs(q);
+    const reservations = snap.docs.map(doc => ({ id: doc.id, ...doc.data() as FirestoreReservation }));
+    return { reservations };
+  } catch (error: any) {
+    const errorCode = error?.code || '';
+    const errorMsg = error?.message || 'Unknown error';
+    
+    // Log full error for debugging
+    console.error('[listReservationsForEvent] Error:', { code: errorCode, message: errorMsg, eventId });
+    
+    if (errorCode === 'permission-denied') {
+      return { 
+        reservations: [], 
+        error: 'permission-denied', 
+        errorMessage: "You don't have permission to view attendees for this event." 
+      };
+    }
+    
+    if (errorCode === 'failed-precondition' || errorMsg.includes('index')) {
+      return { 
+        reservations: [], 
+        error: 'index-required', 
+        errorMessage: 'Attendee list requires a Firestore index. Contact support.' 
+      };
+    }
+    
+    return { 
+      reservations: [], 
+      error: 'unknown', 
+      errorMessage: 'Failed to load attendees. Please try again.' 
+    };
   }
 }
 
