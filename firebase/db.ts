@@ -811,6 +811,26 @@ export async function getCheckedInCountForEvent(eventId: string): Promise<number
   }
 }
 
+/**
+ * List all reservations for an event (for hosts to see attendee list)
+ */
+export async function listReservationsForEvent(eventId: string): Promise<(FirestoreReservation & { id: string })[]> {
+  const db = getDbSafe();
+  if (!db) return [];
+  
+  try {
+    const reservationsCol = collection(db, "reservations");
+    const q = query(reservationsCol, where("eventId", "==", eventId));
+    const snap = await getDocs(q);
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() as FirestoreReservation }));
+  } catch (error: any) {
+    if (error?.code !== 'permission-denied') {
+      console.error("Error listing reservations for event:", error);
+    }
+    return [];
+  }
+}
+
 export async function getReservationCountForEvent(eventId: string): Promise<number> {
   const db = getDbSafe();
   if (!db) {

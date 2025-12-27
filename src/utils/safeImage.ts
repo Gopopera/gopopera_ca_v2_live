@@ -34,10 +34,7 @@ export async function getSafeDataUrl(imageUrl: string, timeoutMs: number = 8000)
 
     // Create a timeout promise
     const timeoutPromise = new Promise<null>((resolve) => {
-      setTimeout(() => {
-        console.warn('[safeImage] Timeout loading image:', imageUrl);
-        resolve(null);
-      }, timeoutMs);
+      setTimeout(() => resolve(null), timeoutMs);
     });
 
     if (isSameOrigin) {
@@ -59,15 +56,11 @@ export async function getSafeDataUrl(imageUrl: string, timeoutMs: number = 8000)
             } else {
               resolve(absoluteUrl);
             }
-          } catch (e) {
-            console.warn('[safeImage] Failed to convert to data URL:', e);
+          } catch {
             resolve(null);
           }
         };
-        img.onerror = () => {
-          console.warn('[safeImage] Failed to load same-origin image:', absoluteUrl);
-          resolve(null);
-        };
+        img.onerror = () => resolve(null);
         img.src = absoluteUrl;
       });
 
@@ -85,7 +78,6 @@ export async function getSafeDataUrl(imageUrl: string, timeoutMs: number = 8000)
         });
 
         if (!response.ok) {
-          console.warn('[safeImage] Failed to fetch image:', response.status, absoluteUrl);
           return null;
         }
 
@@ -93,25 +85,17 @@ export async function getSafeDataUrl(imageUrl: string, timeoutMs: number = 8000)
 
         return new Promise((resolve) => {
           const reader = new FileReader();
-          reader.onloadend = () => {
-            const dataUrl = reader.result as string;
-            resolve(dataUrl);
-          };
-          reader.onerror = () => {
-            console.warn('[safeImage] Failed to convert blob to data URL');
-            resolve(null);
-          };
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = () => resolve(null);
           reader.readAsDataURL(blob);
         });
-      } catch (error) {
-        console.warn('[safeImage] Error fetching cross-origin image:', error);
+      } catch {
         return null;
       }
     })();
 
     return await Promise.race([fetchPromise, timeoutPromise]);
-  } catch (error) {
-    console.warn('[safeImage] Error converting image:', error);
+  } catch {
     return null;
   }
 }

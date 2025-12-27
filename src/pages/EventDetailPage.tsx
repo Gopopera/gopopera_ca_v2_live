@@ -24,6 +24,7 @@ import { getInitials, getAvatarBgColor } from '../../utils/avatarUtils';
 import { subscribeToFollowersCount } from '../../firebase/follow';
 import { PaymentModal } from '../../components/payments/PaymentModal';
 import { hasEventFee, isRecurringEvent, getEventFeeAmount } from '../../utils/stripeHelpers';
+import { AttendeeList } from '../components/host/AttendeeList';
 
 /**
  * Helper to format event price display - matches EventCard logic exactly
@@ -1517,6 +1518,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               <span>{event.location}</span>
             </p>
           </div>
+
+          {/* Host Attendee List - Only visible to event host */}
+          {isLoggedIn && user?.uid === event.hostId && (
+            <div className="mb-12 sm:mb-16 lg:mb-12">
+              <AttendeeList eventId={event.id} hostUid={user.uid} />
+            </div>
+          )}
 
           {/* Cancellation Policy Section - Compact */}
           <div className="mb-10 sm:mb-12 md:mb-16 pt-6 sm:pt-8 border-t border-gray-100">
