@@ -530,8 +530,12 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
             <div className="flex items-center gap-3 text-gray-700">
               <MapPin size={18} className="text-[#e35e25] shrink-0" />
               <span className="line-clamp-2">
-                {ticketData.event.location || 
-                  `${ticketData.event.address || ''}, ${ticketData.event.city || ''}`.trim() || 'TBD'}
+                {(() => {
+                  // Format location with proper separators
+                  if (ticketData.event.location) return ticketData.event.location;
+                  const parts = [ticketData.event.address, ticketData.event.city].filter(Boolean);
+                  return parts.length > 0 ? parts.join(', ') : 'TBD';
+                })()}
               </span>
             </div>
           </div>
@@ -726,6 +730,7 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
           hostName={ticketData.host?.displayName || 'Host'}
           qrUrl={qrUrl}
           formattedDate={formattedDate}
+          eventImageUrl={eventImageUrl}
           debugMode={DEBUG_EXPORT}
         />,
         document.body
