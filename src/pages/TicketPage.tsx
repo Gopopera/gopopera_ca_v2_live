@@ -314,6 +314,8 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
         throw new Error('Export component not mounted');
       }
       
+      console.log('[Ticket Download] exportRef current:', exportRef.current);
+      
       // Capture the export component as PNG with high pixel ratio
       const dataUrl = await toPng(exportRef.current, {
         pixelRatio: 2, // 2x for high resolution
@@ -332,7 +334,8 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
       document.body.removeChild(link);
     } catch (error) {
       console.error('Error generating ticket image:', error);
-      alert('Failed to download ticket. Please try again.');
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to download ticket: ${message}`);
     } finally {
       setIsExporting(false);
       setShowExport(false);

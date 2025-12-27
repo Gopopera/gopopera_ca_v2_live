@@ -15,16 +15,14 @@ interface TicketStoryExportProps {
  * TicketStoryExport - A dedicated component for generating the downloadable ticket image.
  * Sized for Instagram Story (1080x1920, 9:16 aspect ratio).
  * Uses opacity:0 instead of offscreen positioning for reliable capture.
- * Sets data-ready="true" when all assets (fonts, images, QR canvas) are loaded.
+ * Sets data-ready="true" when all assets (fonts, QR canvas) are loaded.
+ * NOTE: External cover image removed to avoid CORS tainting - uses branded placeholder instead.
  */
 export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportProps>(
   ({ event, hostName, qrUrl, formattedDate, onReady, debugMode = false }, ref) => {
-    const imgRef = useRef<HTMLImageElement>(null);
     const rootRef = useRef<HTMLDivElement>(null);
     const hasSignaledReady = useRef(false);
 
-    // Get event image URL
-    const eventImageUrl = event.imageUrls?.[0] || event.imageUrl || '';
     const location = event.location || 
       `${event.address || ''}, ${event.city || ''}`.replace(/^,\s*|,\s*$/g, '').trim() || 'Location TBD';
 
@@ -44,30 +42,12 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
       if (!rootRef.current) return;
 
       try {
-        // 1. Wait for fonts
-        await document.fonts.ready;
-
-        // 2. Wait for cover image (if exists)
-        if (imgRef.current && eventImageUrl) {
-          if (!imgRef.current.complete) {
-            await new Promise<void>((resolve) => {
-              const img = imgRef.current;
-              if (!img) { resolve(); return; }
-              const onLoad = () => { img.removeEventListener('load', onLoad); img.removeEventListener('error', onError); resolve(); };
-              const onError = () => { img.removeEventListener('load', onLoad); img.removeEventListener('error', onError); resolve(); };
-              img.addEventListener('load', onLoad);
-              img.addEventListener('error', onError);
-              // Check again in case it loaded between checks
-              if (img.complete) { resolve(); }
-            });
-          }
-          // Try to decode for extra safety
-          try {
-            await imgRef.current.decode();
-          } catch {
-            // decode() may fail for cross-origin or already decoded images, that's fine
-          }
+        // 1. Wait for fonts (with fallback if fonts API not available)
+        if (document.fonts?.ready) {
+          await document.fonts.ready;
         }
+
+        // 2. No external cover image in export (placeholder used) to avoid CORS tainting
 
         // 3. Verify QR canvas exists and has dimensions
         const qrCanvas = rootRef.current.querySelector('canvas');
@@ -87,13 +67,15 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
           }
         }
 
-        // 4. Extra frame to ensure paint is complete
+        // 4. Extra delay to ensure paint is complete
         await new Promise<void>((resolve) => {
-          requestAnimationFrame(() => {
+          setTimeout(() => {
             requestAnimationFrame(() => {
-              resolve();
+              requestAnimationFrame(() => {
+                resolve();
+              });
             });
-          });
+          }, 100);
         });
 
         // Signal ready
@@ -101,6 +83,7 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
         if (rootRef.current) {
           rootRef.current.dataset.ready = 'true';
         }
+        console.log('[TicketStoryExport] Ready signal set');
         onReady?.();
       } catch (err) {
         console.error('TicketStoryExport readiness check error:', err);
@@ -111,7 +94,7 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
         }
         onReady?.();
       }
-    }, [eventImageUrl, onReady]);
+    }, [onReady]);
 
     // Run readiness check on mount and when deps change
     useEffect(() => {
@@ -204,44 +187,61 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
             />
           </div>
 
-          {/* Event Cover Image */}
+          {/* Event Cover Image - Placeholder (no external image to avoid CORS) */}
           <div
             style={{
               width: '100%',
-              height: '400px',
+              height: '520px',
               borderRadius: '24px',
               overflow: 'hidden',
               marginBottom: '40px',
-              backgroundColor: '#2a5a60',
               boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)',
+              position: 'relative',
             }}
           >
-            {eventImageUrl ? (
-              <img
-                ref={imgRef}
-                src={eventImageUrl}
-                alt={event.title}
-                crossOrigin="anonymous"
+            {/* Gradient background */}
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'linear-gradient(135deg, #2a5a60 0%, #1f4d52 50%, #15383c 100%)',
+              }}
+            />
+            {/* Subtle pattern overlay */}
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                opacity: 0.12,
+                backgroundImage: `radial-gradient(circle at 20% 30%, rgba(255,255,255,0.25) 0%, transparent 55%),
+                                 radial-gradient(circle at 80% 70%, rgba(227,94,37,0.25) 0%, transparent 55%)`,
+              }}
+            />
+            {/* Center brand mark */}
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '12px',
+              }}
+            >
+              <span style={{ fontSize: '56px', fontWeight: 800, color: '#f2f2f2', opacity: 0.92 }}>
+                Popera
+              </span>
+              <span
                 style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '999px',
+                  background: '#e35e25',
+                  opacity: 0.92,
+                  display: 'inline-block',
                 }}
               />
-            ) : (
-              <div
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: 'linear-gradient(135deg, #2a5a60 0%, #1f4d52 100%)',
-                }}
-              >
-                <span style={{ fontSize: '80px' }}>🎉</span>
-              </div>
-            )}
+            </div>
           </div>
 
           {/* Event Title */}
