@@ -355,11 +355,16 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         const activeReservation = reservations.find(
           r => r.eventId === eventId && r.status === 'reserved'
         );
+        console.log('[EVENT_DETAIL] Active reservation check:', { 
+          eventId, 
+          found: !!activeReservation, 
+          reservationsCount: reservations.length 
+        });
         setHasActiveReservation(!!activeReservation);
       } catch (error) {
         console.error('[EVENT_DETAIL] Error checking active reservation:', error);
-        // Fallback to cached on error
-        setHasActiveReservation(null);
+        // On error, assume no active reservation (safer than showing stale data)
+        setHasActiveReservation(false);
       }
     };
     
@@ -1689,11 +1694,12 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                  <MessageCircle size={18} />
                </button>
                <button 
-                 disabled
-                 className="flex-1 h-11 font-semibold text-[15px] rounded-full bg-[#15383c] text-white shadow-lg shadow-[#15383c]/20 flex items-center justify-center touch-manipulation px-5 gap-2"
+                 onClick={handleRSVP}
+                 disabled={reserving}
+                 className="flex-1 h-11 font-semibold text-[15px] rounded-full bg-[#15383c] text-white shadow-lg shadow-[#15383c]/20 flex items-center justify-center touch-manipulation px-5 gap-2 hover:bg-[#1f4d52] active:scale-95 transition-all disabled:opacity-50"
                >
                  <CheckCircle2 size={16} />
-                 {t('ui.attending')}
+                 {reserving ? t('ui.cancelling') || 'Cancelling...' : t('ui.attending')}
                </button>
              </>
            )}
