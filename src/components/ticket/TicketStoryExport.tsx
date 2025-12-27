@@ -166,24 +166,24 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
           boxSizing: 'border-box',
         }}>
           
-          {/* Logo - 120px, centered, NO box/background at all */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '26px' }}>
+          {/* Logo - 280px, centered, NO box/background at all */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '40px' }}>
             {logoDataUrl ? (
               <img
                 src={logoDataUrl}
                 alt="Popera"
                 style={{
-                  height: '120px',
+                  height: '280px',
                   width: 'auto',
                   display: 'block',
                   backgroundColor: 'transparent',
                 }}
               />
             ) : (
-              // Text fallback - no box
+              // Text fallback - no box, larger
               <div style={{ display: 'flex', alignItems: 'baseline' }}>
-                <span style={{ fontSize: '72px', fontWeight: 700, color: '#ffffff', letterSpacing: '-1px' }}>Popera</span>
-                <span style={{ display: 'inline-block', width: '16px', height: '16px', backgroundColor: '#e35e25', borderRadius: '50%', marginLeft: '8px' }} />
+                <span style={{ fontSize: '140px', fontWeight: 700, color: '#ffffff', letterSpacing: '-2px' }}>Popera</span>
+                <span style={{ display: 'inline-block', width: '28px', height: '28px', backgroundColor: '#e35e25', borderRadius: '50%', marginLeft: '12px' }} />
               </div>
             )}
           </div>
@@ -209,7 +209,7 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
             {safeTitle}
           </h1>
 
-          {/* Hosted by - explicit space, proper margins */}
+          {/* Hosted by - explicit space using template literal */}
           <div style={{
             fontSize: '32px',
             color: 'rgba(255, 255, 255, 0.85)',
@@ -217,7 +217,7 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
             marginTop: '6px',
             marginBottom: '30px',
           }}>
-            Hosted by{' '}
+            {`Hosted by `}
             <span style={{ fontWeight: 700, color: 'rgba(255, 255, 255, 0.95)' }}>{safeHostName}</span>
           </div>
 

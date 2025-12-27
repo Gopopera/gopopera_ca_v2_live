@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { formatDate } from '../../utils/dateFormatter';
+import { formatTicketDate } from '../utils/formatTicketText';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useUserStore } from '../../stores/userStore';
 import { AddToCalendarButton } from '../components/AddToCalendarButton';
@@ -213,6 +214,18 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
     if (!ticketData?.event?.date) return 'TBD';
     try {
       return formatDate(ticketData.event.date);
+    } catch {
+      return ticketData.event.date;
+    }
+  }, [ticketData?.event?.date]);
+
+  // Format date for export (with proper spacing: "Fri, January 30th 2026")
+  const formattedDateForExport = useMemo(() => {
+    if (!ticketData?.event?.date) return 'TBD';
+    try {
+      const dateObj = new Date(ticketData.event.date);
+      if (isNaN(dateObj.getTime())) return ticketData.event.date;
+      return formatTicketDate(dateObj);
     } catch {
       return ticketData.event.date;
     }
@@ -714,7 +727,7 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
           event={ticketData.event}
           hostName={ticketData.host?.displayName || 'Host'}
           qrUrl={qrUrl}
-          formattedDate={formattedDate}
+          formattedDate={formattedDateForExport}
           eventImageUrl={eventImageUrl}
           debugMode={exportMode === 'debug'}
           plainMode={exportMode === 'plain'}
