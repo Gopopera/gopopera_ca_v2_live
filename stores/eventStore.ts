@@ -324,13 +324,23 @@ export const useEventStore = create<EventStore>((set, get) => ({
     const events = get().events || [];
     const grouped: Record<string, Event[]> = {};
 
-    // Helper to normalize city name to "City, CA" format
+    // Helper to normalize city name to "City, XX" format (preserves CA or US)
     const normalizeCityName = (city: string): string => {
       if (!city) return '';
-      // Remove any existing country code and whitespace
-      const cleaned = city.trim().replace(/,\s*CA$/, '').replace(/,\s*Canada$/, '').trim();
-      // Add ", CA" if not already present
-      return cleaned ? `${cleaned}, CA` : '';
+      const trimmed = city.trim();
+      // If already has a country code suffix, return as-is
+      if (/,\s*(CA|US)$/i.test(trimmed)) {
+        return trimmed;
+      }
+      // Check if it contains country name and normalize
+      if (/,\s*Canada$/i.test(trimmed)) {
+        return trimmed.replace(/,\s*Canada$/i, ', CA');
+      }
+      if (/,\s*United States$/i.test(trimmed)) {
+        return trimmed.replace(/,\s*United States$/i, ', US');
+      }
+      // Default to CA for backward compatibility with existing Canadian cities
+      return `${trimmed}, CA`;
     };
 
     events.forEach((event) => {

@@ -13,6 +13,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useSelectedCity, useSetCity, initializeGeoLocation, type City } from '../stores/cityStore';
 import { useFilterStore } from '../../stores/filterStore';
 import { applyEventFilters } from '../../utils/filterEvents';
+import { matchesLocationFilter } from '../../utils/location';
 import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS, MAIN_CATEGORY_LABELS_FR, type MainCategory } from '../../utils/categoryMapper';
 // Firebase imports moved to dynamic import in newsletter handler for faster initial load
 import { sendEmail } from '../lib/email';
@@ -77,22 +78,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const filteredEvents = useMemo(() => {
     let filtered = events;
     
-    // Apply city filter - match by city slug or city name
-    // Handle "Canada" as showing all events
-    if (location && location.trim() && location.toLowerCase() !== 'canada') {
-      const citySlug = location.toLowerCase();
-      filtered = filtered.filter(event => {
-        const eventCityLower = event.city.toLowerCase();
-        // Normalize city name (remove ", CA" for comparison)
-        const normalizedEventCity = eventCityLower.replace(/,\s*ca$/, '').trim();
-        const normalizedLocation = citySlug.replace(/,\s*ca$/, '').trim();
-        // Match by slug (e.g., "montreal" matches "Montreal, CA")
-        return normalizedEventCity.includes(normalizedLocation) || 
-               normalizedLocation.includes(normalizedEventCity) ||
-               eventCityLower.includes(citySlug) || 
-               eventCityLower.includes(citySlug.replace('-', ' '));
-      });
-    }
+    // Apply city filter using centralized helper (utils/location.ts)
+    // Handles "All Locations", "Canada", "United States", and specific cities
+    filtered = filtered.filter(event => matchesLocationFilter(event, location));
     
     // Apply search filter
     if (searchQuery.trim()) {
