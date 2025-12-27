@@ -15,7 +15,7 @@ import { ShareModal } from '../../components/share/ShareModal';
 import { SeoHelmet } from '../../components/seo/SeoHelmet';
 import { formatDate } from '../../utils/dateFormatter';
 import { formatRating } from '../../utils/formatRating';
-import { getReservationCountForEvent, listHostReviews, subscribeToReservationCount, getUserProfile } from '../../firebase/db';
+import { getReservationCountForEvent, listHostReviews, subscribeToReservationCount, getUserProfile, listReservationsForUser } from '../../firebase/db';
 // REFACTORED: No longer using getUserProfile for host display - using real-time subscriptions instead
 // But we use getUserProfile to check host Stripe status for payments
 import { getMainCategoryLabelFromEvent } from '../../utils/categoryMapper';
@@ -339,10 +339,42 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     }
   }, [rsvps, currentRsvpsString]);
   
-  // FIXED: Include currentRsvpsString in deps so useMemo recomputes when rsvps changes
+  // Real-time Firestore check for active reservation (not cancelled)
+  // This ensures we don't trust stale cached rsvps from localStorage
+  const [hasActiveReservation, setHasActiveReservation] = useState<boolean | null>(null);
+  
+  useEffect(() => {
+    const checkActiveReservation = async () => {
+      if (!user?.uid || !eventId) {
+        setHasActiveReservation(false);
+        return;
+      }
+      
+      try {
+        const reservations = await listReservationsForUser(user.uid);
+        const activeReservation = reservations.find(
+          r => r.eventId === eventId && r.status === 'reserved'
+        );
+        setHasActiveReservation(!!activeReservation);
+      } catch (error) {
+        console.error('[EVENT_DETAIL] Error checking active reservation:', error);
+        // Fallback to cached on error
+        setHasActiveReservation(null);
+      }
+    };
+    
+    checkActiveReservation();
+  }, [user?.uid, eventId, currentRsvpsString]); // Re-check when rsvps change
+  
+  // FIXED: Use real-time Firestore check when available, fallback to cached
   const hasRSVPed = useMemo(() => {
+    // If real-time check completed, trust it over cached
+    if (hasActiveReservation !== null) {
+      return hasActiveReservation;
+    }
+    // Fallback to cached while real-time is loading
     return rsvps.includes(eventId);
-  }, [eventId, currentRsvpsString]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [eventId, currentRsvpsString, hasActiveReservation]); // eslint-disable-line react-hooks/exhaustive-deps
   
   // REFACTORED: Initialize empty - will be populated by real-time subscription
   const [displayHostName, setDisplayHostName] = useState<string>('');
