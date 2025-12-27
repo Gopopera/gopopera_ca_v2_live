@@ -748,7 +748,21 @@ export const useUserStore = create<UserStore>()(
         try {
           const currentUser = get().user;
           const currentRSVPs = Array.isArray(currentUser?.rsvps) ? currentUser.rsvps : [];
-          if (currentRSVPs.includes(eventId)) return;
+          
+          // Don't trust local state blindly - verify with Firestore if eventId appears in local rsvps
+          if (currentRSVPs.includes(eventId)) {
+            // Check Firestore for an actual active reservation
+            const existingReservations = await listReservationsForUser(userId);
+            const activeReservation = existingReservations.find(r => r.eventId === eventId && r.status === 'reserved');
+            
+            if (activeReservation) {
+              // Active reservation exists, return its ID (no duplicate needed)
+              return activeReservation.id;
+            }
+            // No active reservation found - local state was stale (e.g., from cancelled reservation)
+            // Proceed to create a new reservation
+            console.log('[USER_STORE] Local rsvps stale - no active reservation found, creating new one for event:', eventId);
+          }
           
           const reservationId = await createReservation(eventId, userId, options);
           
