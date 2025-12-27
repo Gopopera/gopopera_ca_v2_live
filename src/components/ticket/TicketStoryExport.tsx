@@ -2,6 +2,7 @@ import React, { forwardRef, useEffect, useRef, useCallback, useState } from 'rea
 import { QRCodeCanvas } from 'qrcode.react';
 import { Event } from '../../../types';
 import { getSafeDataUrl } from '../../utils/safeImage';
+import { truncateTitle } from '../../utils/formatTicketText';
 
 interface TicketStoryExportProps {
   event: Event;
@@ -16,7 +17,7 @@ interface TicketStoryExportProps {
 
 /**
  * TicketStoryExport - Premium IG Story ticket (1080x1920).
- * No cover image (removed for reliability).
+ * No cover image. No line-clamp. Clean transparent logo.
  * Liquid glass style without backdrop-filter.
  */
 export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportProps>(
@@ -27,15 +28,18 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
     const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
     const [logoLoaded, setLogoLoaded] = useState(false);
 
-    // Format location
+    // Format location with proper spacing
     const formattedLocation = React.useMemo(() => {
       if (event.location) return event.location;
       const parts = [event.address, event.city, (event as any).country].filter(Boolean);
       return parts.length > 0 ? parts.join(', ') : 'Location TBD';
     }, [event]);
 
-    // Safe host name
+    // Safe host name (never undefined)
     const safeHostName = hostName || 'Popera';
+
+    // Safe title (JS truncation, no CSS clamp)
+    const safeTitle = truncateTitle(event.title, 120);
 
     // Combine refs
     const setRefs = useCallback((node: HTMLDivElement | null) => {
@@ -116,18 +120,12 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
       }
     }, [logoLoaded, checkAndSignalReady]);
 
-    // Glass card styles (no backdrop-filter)
+    // Glass card styles (no backdrop-filter for html-to-image compatibility)
     const glassCard: React.CSSProperties = {
-      backgroundColor: 'rgba(255, 255, 255, 0.06)',
+      background: 'rgba(255, 255, 255, 0.06)',
       border: '1px solid rgba(255, 255, 255, 0.12)',
-      borderRadius: '28px',
-      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-    };
-
-    const glassCardInner: React.CSSProperties = {
-      backgroundColor: 'rgba(255, 255, 255, 0.04)',
-      border: '1px solid rgba(255, 255, 255, 0.08)',
-      borderRadius: '22px',
+      borderRadius: '34px',
+      boxShadow: '0 30px 90px rgba(0, 0, 0, 0.25)',
     };
 
     return (
@@ -138,7 +136,7 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
           position: 'fixed',
           left: debugMode ? '50%' : '-10000px',
           top: debugMode ? '50%' : 0,
-          transform: debugMode ? 'translate(-50%, -50%) scale(0.4)' : 'none',
+          transform: debugMode ? 'translate(-50%, -50%) scale(0.35)' : 'none',
           width: '1080px',
           height: '1920px',
           pointerEvents: 'none',
@@ -150,108 +148,139 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
         }}
       >
         {/* Background gradient */}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(31, 77, 82, 0.4) 0%, transparent 40%, rgba(15, 42, 45, 0.6) 100%)' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(31, 77, 82, 0.5) 0%, transparent 35%, rgba(15, 42, 45, 0.7) 100%)' }} />
 
         {/* Decorative glow */}
-        <div style={{ position: 'absolute', top: '-200px', left: '50%', transform: 'translateX(-50%)', width: '800px', height: '800px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(227, 94, 37, 0.12) 0%, transparent 60%)' }} />
+        <div style={{ position: 'absolute', top: '-250px', left: '50%', transform: 'translateX(-50%)', width: '900px', height: '900px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(227, 94, 37, 0.1) 0%, transparent 55%)' }} />
 
         {/* Content */}
-        <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', padding: '72px', boxSizing: 'border-box' }}>
+        <div style={{
+          position: 'relative',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          paddingLeft: '86px',
+          paddingRight: '86px',
+          paddingTop: '84px',
+          paddingBottom: '70px',
+          boxSizing: 'border-box',
+        }}>
           
-          {/* Logo - 96px, centered, NO box/background */}
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'transparent', border: 'none' }}>
+          {/* Logo - 120px, centered, NO box/background at all */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '26px' }}>
             {logoDataUrl ? (
               <img
                 src={logoDataUrl}
                 alt="Popera"
                 style={{
-                  height: '96px',
+                  height: '120px',
                   width: 'auto',
                   display: 'block',
-                  margin: '0 auto',
-                  background: 'transparent',
+                  backgroundColor: 'transparent',
                 }}
               />
             ) : (
               // Text fallback - no box
-              <div style={{ display: 'flex', alignItems: 'baseline', background: 'transparent' }}>
-                <span style={{ fontSize: '64px', fontWeight: 700, color: '#ffffff', letterSpacing: '-1px' }}>Popera</span>
-                <span style={{ display: 'inline-block', width: '14px', height: '14px', backgroundColor: '#e35e25', borderRadius: '50%', marginLeft: '6px' }} />
+              <div style={{ display: 'flex', alignItems: 'baseline' }}>
+                <span style={{ fontSize: '72px', fontWeight: 700, color: '#ffffff', letterSpacing: '-1px' }}>Popera</span>
+                <span style={{ display: 'inline-block', width: '16px', height: '16px', backgroundColor: '#e35e25', borderRadius: '50%', marginLeft: '8px' }} />
               </div>
             )}
           </div>
 
-          {/* Spacer after logo (replaces removed cover image) */}
-          <div style={{ height: '72px', flexShrink: 0 }} />
+          {/* Title - NO clamp, JS truncation, no overflow hidden */}
+          <h1
+            style={{
+              fontSize: '78px',
+              fontWeight: 800,
+              color: '#ffffff',
+              lineHeight: 1.14,
+              letterSpacing: '-0.02em',
+              textAlign: 'center',
+              margin: 0,
+              marginTop: '26px',
+              marginBottom: '10px',
+              paddingBottom: '18px',
+              maxWidth: '920px',
+              alignSelf: 'center',
+              wordBreak: 'break-word',
+            }}
+          >
+            {safeTitle}
+          </h1>
 
-          {/* Title - max 3 lines, no clipping */}
-          <div style={{ maxWidth: '900px', margin: '0 auto', textAlign: 'center', padding: '0 0 10px 0' }}>
-            <h1
-              style={{
-                fontSize: '64px',
-                fontWeight: 800,
-                color: '#ffffff',
-                lineHeight: 1.12,
-                letterSpacing: '-0.02em',
-                margin: 0,
-                paddingBottom: '10px',
-                display: '-webkit-box',
-                WebkitLineClamp: 3,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                wordBreak: 'break-word',
-              }}
-            >
-              {event.title}
-            </h1>
-            {/* Debug: red baseline */}
-            {debugMode && (
-              <div style={{ height: '2px', backgroundColor: 'red', opacity: 0.7, marginTop: '4px' }} />
-            )}
+          {/* Hosted by - explicit space, proper margins */}
+          <div style={{
+            fontSize: '32px',
+            color: 'rgba(255, 255, 255, 0.85)',
+            textAlign: 'center',
+            marginTop: '6px',
+            marginBottom: '30px',
+          }}>
+            Hosted by{' '}
+            <span style={{ fontWeight: 700, color: 'rgba(255, 255, 255, 0.95)' }}>{safeHostName}</span>
           </div>
 
-          {/* Hosted by - explicit space */}
-          <p style={{ fontSize: '28px', color: 'rgba(255, 255, 255, 0.7)', textAlign: 'center', margin: '16px 0 32px 0' }}>
-            Hosted by{' '}
-            <span style={{ fontWeight: 600, color: 'rgba(255, 255, 255, 0.9)' }}>{safeHostName}</span>
-          </p>
-
-          {/* Main glass card */}
-          <div style={{ ...glassCard, padding: '28px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+          {/* Main content area */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 0 }}>
             
             {/* Info card */}
-            <div style={{ ...glassCardInner, padding: '24px', marginBottom: '24px', flexShrink: 0 }}>
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '4px' }}>Date</div>
-                <div style={{ fontSize: '28px', fontWeight: 600, color: '#ffffff' }}>{formattedDate}</div>
+            <div style={{ ...glassCard, padding: '44px' }}>
+              <div style={{ marginBottom: '28px' }}>
+                <div style={{ fontSize: '18px', color: 'rgba(255, 255, 255, 0.65)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '8px' }}>Date</div>
+                <div style={{ fontSize: '44px', fontWeight: 600, color: '#ffffff' }}>{formattedDate}</div>
               </div>
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '4px' }}>Time</div>
-                <div style={{ fontSize: '28px', fontWeight: 600, color: '#ffffff' }}>{event.time || 'TBD'}</div>
+              <div style={{ marginBottom: '28px' }}>
+                <div style={{ fontSize: '18px', color: 'rgba(255, 255, 255, 0.65)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '8px' }}>Time</div>
+                <div style={{ fontSize: '40px', fontWeight: 600, color: '#ffffff' }}>{event.time || 'TBD'}</div>
               </div>
               <div>
-                <div style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '2px', marginBottom: '4px' }}>Location</div>
-                <div style={{ fontSize: '24px', fontWeight: 600, color: '#ffffff', lineHeight: 1.3 }}>
-                  {formattedLocation.length > 45 ? formattedLocation.substring(0, 45) + '...' : formattedLocation}
+                <div style={{ fontSize: '18px', color: 'rgba(255, 255, 255, 0.65)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '8px' }}>Location</div>
+                <div style={{ fontSize: '36px', fontWeight: 600, color: '#ffffff', lineHeight: 1.25 }}>
+                  {formattedLocation.length > 50 ? formattedLocation.substring(0, 50) + '...' : formattedLocation}
                 </div>
               </div>
             </div>
 
             {/* QR Section */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, minHeight: 0 }}>
-              <div style={{ backgroundColor: '#ffffff', borderRadius: '24px', padding: '24px', boxShadow: '0 12px 48px rgba(0, 0, 0, 0.25)' }}>
-                <QRCodeCanvas value={qrUrl} size={260} level="H" includeMargin={false} fgColor="#15383c" bgColor="#ffffff" />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '36px' }}>
+              <div style={{
+                backgroundColor: '#ffffff',
+                borderRadius: '26px',
+                width: '440px',
+                height: '440px',
+                padding: '18px',
+                boxSizing: 'border-box',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+              }}>
+                <QRCodeCanvas
+                  value={qrUrl}
+                  size={404}
+                  level="H"
+                  includeMargin={false}
+                  fgColor="#15383c"
+                  bgColor="#ffffff"
+                />
               </div>
-              <p style={{ fontSize: '24px', fontWeight: 600, color: '#e35e25', textAlign: 'center', marginTop: '20px', marginBottom: 0 }}>
+              <p style={{
+                fontSize: '26px',
+                fontWeight: 600,
+                color: '#e35e25',
+                textAlign: 'center',
+                marginTop: '26px',
+                marginBottom: '20px',
+              }}>
                 Show this QR code at check-in
               </p>
             </div>
           </div>
 
           {/* Footer */}
-          <div style={{ textAlign: 'center', paddingTop: '24px' }}>
-            <p style={{ fontSize: '20px', color: 'rgba(242, 242, 242, 0.5)', margin: 0, letterSpacing: '1px' }}>gopopera.ca</p>
+          <div style={{ textAlign: 'center', paddingTop: '10px' }}>
+            <p style={{ fontSize: '22px', color: 'rgba(242, 242, 242, 0.5)', margin: 0, letterSpacing: '1.5px' }}>gopopera.ca</p>
           </div>
         </div>
       </div>
