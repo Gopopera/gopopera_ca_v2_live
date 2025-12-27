@@ -20,12 +20,10 @@ import {
 } from '../../firebase/db';
 import { TicketStoryExport } from '../components/ticket/TicketStoryExport';
 import html2canvas from 'html2canvas';
+import { getBaseUrl } from '../utils/baseUrl';
 
 // Debug mode for export - set to true to see export component before capture
 const DEBUG_EXPORT = false;
-
-// Base URL for ticket links
-const BASE_URL = import.meta.env.VITE_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://gopopera.ca');
 
 interface TicketData {
   reservation: {
@@ -198,9 +196,10 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
   }, [reservationId]);
 
   // QR Code URL - encodes the ticket URL with check-in mode
+  // Uses getBaseUrl() to ensure we never encode vercel.app preview URLs
   const qrUrl = useMemo(() => {
     if (!reservationId) return '';
-    return `${BASE_URL}/ticket/${reservationId}?mode=checkin`;
+    return `${getBaseUrl()}/ticket/${reservationId}?mode=checkin`;
   }, [reservationId]);
 
   // Format date for display
@@ -264,7 +263,7 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
 
   // Handle share
   const handleShare = async () => {
-    const ticketUrl = `${BASE_URL}/ticket/${reservationId}`;
+    const ticketUrl = `${getBaseUrl()}/ticket/${reservationId}`;
     const shareText = `My ticket for ${ticketData?.event?.title || 'Event'}`;
 
     if (navigator.share) {

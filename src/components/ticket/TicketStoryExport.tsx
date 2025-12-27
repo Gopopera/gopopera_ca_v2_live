@@ -23,22 +23,24 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
   ({ event, hostName, qrUrl, formattedDate, eventImageUrl, onReady, debugMode = false }, ref) => {
     const rootRef = useRef<HTMLDivElement>(null);
     const hasSignaledReady = useRef(false);
+    
+    // Image state
+    const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
+    const [logoLoaded, setLogoLoaded] = useState(false);
     const [safeCoverDataUrl, setSafeCoverDataUrl] = useState<string | null>(null);
     const [coverLoaded, setCoverLoaded] = useState(false);
 
     // Format location properly with commas
     const location = React.useMemo(() => {
-      const parts: string[] = [];
-      
       // Try to extract neighborhood/area and city
       if (event.location) {
-        // If full location is provided, use it but clean it up
+        // If full location is provided, use it
         return event.location;
       }
       
       // Build from parts
+      const parts: string[] = [];
       if (event.address) {
-        // Extract neighborhood/area from address if it contains one
         parts.push(event.address);
       }
       if (event.city) {
@@ -56,8 +58,8 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
       return parts
         .filter(Boolean)
         .join(', ')
-        .replace(/,\s*,/g, ',') // Remove double commas
-        .replace(/^\s*,\s*|\s*,\s*$/g, '') // Trim leading/trailing commas
+        .replace(/,\s*,/g, ',')
+        .replace(/^\s*,\s*|\s*,\s*$/g, '')
         .trim();
     }, [event]);
 
@@ -70,6 +72,23 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
         ref.current = node;
       }
     }, [ref]);
+
+    // Load logo image as data URL (required for html2canvas)
+    useEffect(() => {
+      let cancelled = false;
+      
+      getSafeDataUrl('/Popera.png').then((dataUrl) => {
+        if (!cancelled) {
+          setLogoDataUrl(dataUrl);
+          setLogoLoaded(true);
+          console.log('[TicketStoryExport] Logo loaded:', dataUrl ? 'success' : 'failed');
+        }
+      });
+
+      return () => {
+        cancelled = true;
+      };
+    }, []);
 
     // Load cover image safely (convert to data URL to avoid CORS)
     useEffect(() => {
@@ -84,6 +103,7 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
         if (!cancelled) {
           setSafeCoverDataUrl(dataUrl);
           setCoverLoaded(true);
+          console.log('[TicketStoryExport] Cover loaded:', dataUrl ? 'success' : 'failed (using fallback)');
         }
       });
 
@@ -103,16 +123,19 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
           await document.fonts.ready;
         }
 
-        // 2. Wait for cover image to be processed
-        if (eventImageUrl && !coverLoaded) {
-          // Still loading, try again later
-          return;
+        // 2. Wait for logo to be processed
+        if (!logoLoaded) {
+          return; // Still loading, try again later
         }
 
-        // 3. Verify QR canvas exists and has dimensions
+        // 3. Wait for cover image to be processed
+        if (eventImageUrl && !coverLoaded) {
+          return; // Still loading, try again later
+        }
+
+        // 4. Verify QR canvas exists and has dimensions
         const qrCanvas = rootRef.current.querySelector('canvas');
         if (qrCanvas) {
-          // Wait for canvas to have proper dimensions
           if (qrCanvas.width === 0 || qrCanvas.height === 0) {
             await new Promise<void>((resolve) => {
               const checkCanvas = () => {
@@ -127,7 +150,7 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
           }
         }
 
-        // 4. Extra delay to ensure paint is complete
+        // 5. Extra delay to ensure paint is complete
         await new Promise<void>((resolve) => {
           setTimeout(() => {
             requestAnimationFrame(() => {
@@ -135,7 +158,7 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
                 resolve();
               });
             });
-          }, 100);
+          }, 150);
         });
 
         // Signal ready
@@ -154,12 +177,11 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
         }
         onReady?.();
       }
-    }, [onReady, eventImageUrl, coverLoaded]);
+    }, [onReady, eventImageUrl, coverLoaded, logoLoaded]);
 
     // Run readiness check on mount and when deps change
     useEffect(() => {
       hasSignaledReady.current = false;
-      // Small delay to let React finish rendering
       const timer = setTimeout(() => {
         checkReadiness();
       }, 50);
@@ -172,7 +194,6 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
         data-ready="false"
         style={{
           position: 'fixed',
-          // Use offscreen positioning for reliable html2canvas capture
           left: debugMode ? 0 : '-10000px',
           top: 0,
           width: '1080px',
@@ -213,44 +234,55 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
             height: '100%',
             display: 'flex',
             flexDirection: 'column',
-            padding: '120px 60px',
+            padding: '100px 60px 80px 60px',
             boxSizing: 'border-box',
           }}
         >
-          {/* Popera Logo - Single logo at top center using actual image */}
+          {/* Popera Logo - Single logo at top center */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              marginBottom: '40px',
+              marginBottom: '32px',
+              minHeight: '64px',
             }}
           >
-            <img
-              src="/Popera.png"
-              alt="Popera"
-              style={{
-                height: '52px',
-                width: 'auto',
-                objectFit: 'contain',
-              }}
-            />
+            {logoDataUrl ? (
+              <img
+                src={logoDataUrl}
+                alt="Popera"
+                style={{
+                  height: '64px',
+                  width: 'auto',
+                  objectFit: 'contain',
+                }}
+              />
+            ) : (
+              // Fallback text logo if image fails to load
+              <div style={{ display: 'flex', alignItems: 'baseline' }}>
+                <span style={{ fontSize: '48px', fontWeight: 700, color: '#ffffff', letterSpacing: '-1px' }}>
+                  Popera
+                </span>
+                <span style={{ display: 'inline-block', width: '10px', height: '10px', backgroundColor: '#e35e25', borderRadius: '50%', marginLeft: '4px' }} />
+              </div>
+            )}
           </div>
 
-          {/* Event Cover Image - Show real image if available, otherwise gradient placeholder */}
+          {/* Event Cover Image */}
           <div
             style={{
               width: '100%',
-              height: '480px',
+              height: '460px',
               borderRadius: '24px',
               overflow: 'hidden',
-              marginBottom: '36px',
+              marginBottom: '28px',
               boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)',
               position: 'relative',
+              flexShrink: 0,
             }}
           >
             {safeCoverDataUrl ? (
-              // Real event cover image (converted to safe data URL)
               <img
                 src={safeCoverDataUrl}
                 alt={event.title}
@@ -258,10 +290,11 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
                   width: '100%',
                   height: '100%',
                   objectFit: 'cover',
+                  display: 'block',
                 }}
               />
             ) : (
-              // Branded gradient placeholder (NO Popera text)
+              // Branded gradient placeholder (NO text)
               <>
                 <div
                   style={{
@@ -270,7 +303,6 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
                     background: 'linear-gradient(135deg, #2a5a60 0%, #1f4d52 50%, #15383c 100%)',
                   }}
                 />
-                {/* Subtle pattern overlay */}
                 <div
                   style={{
                     position: 'absolute',
@@ -280,7 +312,6 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
                                      radial-gradient(circle at 75% 75%, rgba(227,94,37,0.2) 0%, transparent 50%)`,
                   }}
                 />
-                {/* Decorative shapes instead of text */}
                 <div
                   style={{
                     position: 'absolute',
@@ -292,10 +323,10 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
                 >
                   <div
                     style={{
-                      width: '120px',
-                      height: '120px',
+                      width: '100px',
+                      height: '100px',
                       borderRadius: '50%',
-                      background: 'radial-gradient(circle, rgba(227, 94, 37, 0.3) 0%, transparent 70%)',
+                      background: 'radial-gradient(circle, rgba(227, 94, 37, 0.25) 0%, transparent 70%)',
                     }}
                   />
                 </div>
@@ -303,37 +334,42 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
             )}
           </div>
 
-          {/* Event Title - with proper line clamping */}
-          <h1
+          {/* Event Title - flow layout, no fixed height */}
+          <div
             style={{
-              fontSize: '54px',
-              fontWeight: 700,
-              color: '#ffffff',
-              textAlign: 'center',
-              margin: '0 0 12px 0',
-              lineHeight: 1.15,
-              // Line clamping for max 3 lines
-              display: '-webkit-box',
-              WebkitLineClamp: 3,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
+              marginBottom: '8px',
+              paddingBottom: '4px', // Extra padding for descenders
             }}
           >
-            {event.title}
-          </h1>
+            <h1
+              style={{
+                fontSize: '50px',
+                fontWeight: 700,
+                color: '#ffffff',
+                textAlign: 'center',
+                margin: 0,
+                lineHeight: 1.18,
+                display: '-webkit-box',
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                wordBreak: 'break-word',
+              }}
+            >
+              {event.title}
+            </h1>
+          </div>
 
           {/* Hosted by - with proper spacing */}
           <p
             style={{
-              fontSize: '28px',
-              color: 'rgba(255, 255, 255, 0.7)',
+              fontSize: '26px',
+              color: 'rgba(255, 255, 255, 0.75)',
               textAlign: 'center',
-              margin: '0 0 32px 0',
+              margin: '0 0 24px 0',
             }}
           >
-            <span style={{ opacity: 0.8 }}>Hosted by</span>
-            <span style={{ marginLeft: '8px', fontWeight: 500 }}>{hostName}</span>
+            Hosted by <span style={{ fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)' }}>{hostName}</span>
           </p>
 
           {/* Event Details Card */}
@@ -341,37 +377,38 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
             style={{
               backgroundColor: 'rgba(255, 255, 255, 0.08)',
               borderRadius: '20px',
-              padding: '28px 36px',
-              marginBottom: '32px',
+              padding: '24px 32px',
+              marginBottom: '24px',
+              flexShrink: 0,
             }}
           >
             {/* Date */}
-            <div style={{ marginBottom: '20px' }}>
-              <div style={{ fontSize: '16px', color: 'rgba(255, 255, 255, 0.5)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.5)', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                 Date
               </div>
-              <div style={{ fontSize: '30px', fontWeight: 600, color: '#ffffff' }}>
+              <div style={{ fontSize: '28px', fontWeight: 600, color: '#ffffff' }}>
                 {formattedDate}
               </div>
             </div>
 
             {/* Time */}
-            <div style={{ marginBottom: '20px' }}>
-              <div style={{ fontSize: '16px', color: 'rgba(255, 255, 255, 0.5)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.5)', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                 Time
               </div>
-              <div style={{ fontSize: '30px', fontWeight: 600, color: '#ffffff' }}>
+              <div style={{ fontSize: '28px', fontWeight: 600, color: '#ffffff' }}>
                 {event.time || 'TBD'}
               </div>
             </div>
 
-            {/* Location - properly formatted */}
+            {/* Location */}
             <div>
-              <div style={{ fontSize: '16px', color: 'rgba(255, 255, 255, 0.5)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              <div style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.5)', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                 Location
               </div>
-              <div style={{ fontSize: '26px', fontWeight: 600, color: '#ffffff', lineHeight: 1.3 }}>
-                {location.length > 50 ? location.substring(0, 50) + '...' : location}
+              <div style={{ fontSize: '24px', fontWeight: 600, color: '#ffffff', lineHeight: 1.25 }}>
+                {location.length > 45 ? location.substring(0, 45) + '...' : location}
               </div>
             </div>
           </div>
@@ -384,20 +421,20 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
               alignItems: 'center',
               flex: 1,
               justifyContent: 'center',
+              minHeight: 0,
             }}
           >
-            {/* QR Code Container */}
             <div
               style={{
                 backgroundColor: '#ffffff',
-                borderRadius: '24px',
-                padding: '24px',
+                borderRadius: '20px',
+                padding: '20px',
                 boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)',
               }}
             >
               <QRCodeCanvas
                 value={qrUrl}
-                size={260}
+                size={240}
                 level="H"
                 includeMargin={false}
                 fgColor="#15383c"
@@ -405,14 +442,13 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
               />
             </div>
 
-            {/* QR Instruction */}
             <p
               style={{
-                fontSize: '24px',
+                fontSize: '22px',
                 fontWeight: 600,
                 color: '#e35e25',
                 textAlign: 'center',
-                marginTop: '20px',
+                marginTop: '16px',
                 marginBottom: 0,
               }}
             >
@@ -424,12 +460,13 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
           <div
             style={{
               textAlign: 'center',
-              paddingTop: '16px',
+              paddingTop: '12px',
+              flexShrink: 0,
             }}
           >
             <p
               style={{
-                fontSize: '20px',
+                fontSize: '18px',
                 color: 'rgba(255, 255, 255, 0.5)',
                 margin: 0,
               }}
