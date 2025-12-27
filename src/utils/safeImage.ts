@@ -1,6 +1,7 @@
 /**
  * Safely convert an image URL to a data URL to avoid CORS tainting in canvas exports.
  * Returns null if conversion fails or times out.
+ * Preserves PNG transparency.
  */
 export async function getSafeDataUrl(imageUrl: string, timeoutMs: number = 8000): Promise<string | null> {
   if (!imageUrl) return null;
@@ -17,7 +18,7 @@ export async function getSafeDataUrl(imageUrl: string, timeoutMs: number = 8000)
       absoluteUrl = window.location.origin + imageUrl;
     }
 
-    // Check if same-origin - can use directly after verifying it loads
+    // Check if same-origin
     const isSameOrigin = (() => {
       try {
         if (typeof window === 'undefined') return false;
@@ -28,6 +29,9 @@ export async function getSafeDataUrl(imageUrl: string, timeoutMs: number = 8000)
       }
     })();
 
+    // Check if Firebase Storage URL
+    const isFirebaseStorage = absoluteUrl.includes('firebasestorage.googleapis.com');
+
     // Create a timeout promise
     const timeoutPromise = new Promise<null>((resolve) => {
       setTimeout(() => {
@@ -37,20 +41,20 @@ export async function getSafeDataUrl(imageUrl: string, timeoutMs: number = 8000)
     });
 
     if (isSameOrigin) {
-      // For same-origin images, verify they load then convert to data URL
+      // For same-origin images, load and convert to data URL preserving format
       const loadPromise = new Promise<string | null>((resolve) => {
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
           try {
-            // Convert to data URL for reliable canvas capture
             const canvas = document.createElement('canvas');
             canvas.width = img.naturalWidth;
             canvas.height = img.naturalHeight;
             const ctx = canvas.getContext('2d');
             if (ctx) {
               ctx.drawImage(img, 0, 0);
-              const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+              // Use PNG to preserve transparency (important for logos)
+              const dataUrl = canvas.toDataURL('image/png');
               resolve(dataUrl);
             } else {
               resolve(absoluteUrl);
@@ -61,7 +65,7 @@ export async function getSafeDataUrl(imageUrl: string, timeoutMs: number = 8000)
           }
         };
         img.onerror = () => {
-          console.warn('[safeImage] Failed to load same-origin image');
+          console.warn('[safeImage] Failed to load same-origin image:', absoluteUrl);
           resolve(null);
         };
         img.src = absoluteUrl;
@@ -70,16 +74,18 @@ export async function getSafeDataUrl(imageUrl: string, timeoutMs: number = 8000)
       return await Promise.race([loadPromise, timeoutPromise]);
     }
 
-    // For cross-origin images (like Firebase Storage), fetch and convert to data URL
+    // For cross-origin images (Firebase Storage, etc.), fetch and convert to data URL
     const fetchPromise = (async (): Promise<string | null> => {
       try {
+        // Use cache: 'no-store' for Firebase to avoid stale tokens
         const response = await fetch(absoluteUrl, {
           mode: 'cors',
           credentials: 'omit',
+          cache: isFirebaseStorage ? 'no-store' : 'default',
         });
 
         if (!response.ok) {
-          console.warn('[safeImage] Failed to fetch image:', response.status);
+          console.warn('[safeImage] Failed to fetch image:', response.status, absoluteUrl);
           return null;
         }
 

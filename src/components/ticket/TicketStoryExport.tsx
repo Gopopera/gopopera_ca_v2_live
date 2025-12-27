@@ -56,14 +56,17 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
       let cancelled = false;
 
       const loadAssets = async () => {
-        // 1. Load logo
+        // 1. Load logo (PNG with transparency)
+        console.log('[TicketStoryExport] Loading logo...');
         try {
           const logoUrl = await getSafeDataUrl('/Popera.png');
           if (!cancelled) {
             setLogoDataUrl(logoUrl);
             setLogoLoaded(true);
+            console.log('[TicketStoryExport] Logo loaded:', logoUrl ? 'success' : 'fallback');
           }
-        } catch {
+        } catch (err) {
+          console.warn('[TicketStoryExport] Logo load error:', err);
           if (!cancelled) {
             setLogoDataUrl(null);
             setLogoLoaded(true);
@@ -71,14 +74,17 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
         }
 
         // 2. Load cover image (if provided)
+        console.log('[TicketStoryExport] eventImageUrl:', eventImageUrl || '(none)');
         if (eventImageUrl) {
           try {
             const coverUrl = await getSafeDataUrl(eventImageUrl);
             if (!cancelled) {
               setCoverDataUrl(coverUrl);
               setCoverLoaded(true);
+              console.log('[TicketStoryExport] Cover loaded:', coverUrl ? 'success' : 'fallback');
             }
-          } catch {
+          } catch (err) {
+            console.warn('[TicketStoryExport] Cover load error:', err);
             if (!cancelled) {
               setCoverDataUrl(null);
               setCoverLoaded(true);
@@ -86,6 +92,7 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
           }
         } else {
           if (!cancelled) {
+            console.log('[TicketStoryExport] No eventImageUrl, using fallback');
             setCoverLoaded(true);
           }
         }
@@ -130,6 +137,7 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
         if (rootRef.current) {
           rootRef.current.dataset.ready = 'true';
         }
+        console.log('[TicketStoryExport] Ready signal set');
         onReady?.();
       } catch (err) {
         console.error('[TicketStoryExport] Ready check error:', err);
@@ -148,14 +156,14 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
     }, [logoLoaded, coverLoaded, checkAndSignalReady]);
 
     // Liquid glass styles (no backdrop-filter for html-to-image compatibility)
-    const glassCard = {
+    const glassCard: React.CSSProperties = {
       backgroundColor: 'rgba(255, 255, 255, 0.06)',
       border: '1px solid rgba(255, 255, 255, 0.12)',
       borderRadius: '28px',
       boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
     };
 
-    const glassCardInner = {
+    const glassCardInner: React.CSSProperties = {
       backgroundColor: 'rgba(255, 255, 255, 0.04)',
       border: '1px solid rgba(255, 255, 255, 0.08)',
       borderRadius: '22px',
@@ -212,14 +220,14 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
             boxSizing: 'border-box',
           }}
         >
-          {/* Logo - centered, transparent, no box */}
+          {/* Logo - centered, TRANSPARENT background, NO box/border/shadow */}
           <div
             style={{
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
-              marginBottom: '36px',
-              minHeight: '80px',
+              marginBottom: '32px',
+              // NO background, NO border, NO shadow - completely transparent
             }}
           >
             {logoDataUrl ? (
@@ -227,16 +235,17 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
                 src={logoDataUrl}
                 alt="Popera"
                 style={{
-                  height: '72px',
+                  height: '96px',
                   width: 'auto',
                   objectFit: 'contain',
+                  // No background or border on the image itself
                 }}
               />
             ) : (
-              // Text fallback (no box)
+              // Text fallback (no box, no background)
               <div style={{ display: 'flex', alignItems: 'baseline' }}>
                 <span style={{ 
-                  fontSize: '56px', 
+                  fontSize: '64px', 
                   fontWeight: 700, 
                   color: '#ffffff',
                   letterSpacing: '-1px',
@@ -245,8 +254,8 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
                 </span>
                 <span style={{ 
                   display: 'inline-block',
-                  width: '12px', 
-                  height: '12px', 
+                  width: '14px', 
+                  height: '14px', 
                   backgroundColor: '#e35e25', 
                   borderRadius: '50%', 
                   marginLeft: '6px',
@@ -258,14 +267,14 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
           {/* Main glass card */}
           <div style={{ ...glassCard, padding: '28px', flex: 1, display: 'flex', flexDirection: 'column' }}>
             
-            {/* Cover image container */}
+            {/* Cover image container - overflow hidden ONLY here for rounded corners */}
             <div
               style={{
                 width: '100%',
-                height: '460px',
+                height: '440px',
                 borderRadius: '22px',
                 overflow: 'hidden',
-                marginBottom: '24px',
+                marginBottom: '28px',
                 position: 'relative',
                 flexShrink: 0,
               }}
@@ -302,16 +311,22 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
               )}
             </div>
 
-            {/* Title - no fixed height, proper line clamp */}
-            <div style={{ marginBottom: '12px', paddingBottom: '8px' }}>
+            {/* Title container - NO fixed height, NO overflow hidden */}
+            <div
+              style={{
+                marginBottom: '12px',
+                paddingBottom: '16px', // Extra space for descenders (g, y, p, q, j)
+              }}
+            >
               <h1
                 style={{
-                  fontSize: '58px',
+                  fontSize: '52px',
                   fontWeight: 800,
                   color: '#ffffff',
                   textAlign: 'center',
                   margin: 0,
-                  lineHeight: 1.12,
+                  lineHeight: 1.18,
+                  // 3-line clamp
                   display: '-webkit-box',
                   WebkitLineClamp: 3,
                   WebkitBoxOrient: 'vertical',
@@ -323,7 +338,7 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
               </h1>
             </div>
 
-            {/* Hosted by - proper spacing */}
+            {/* Hosted by - with explicit space */}
             <p
               style={{
                 fontSize: '28px',
@@ -416,7 +431,7 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
               >
                 <QRCodeCanvas
                   value={qrUrl}
-                  size={280}
+                  size={260}
                   level="H"
                   includeMargin={false}
                   fgColor="#15383c"
