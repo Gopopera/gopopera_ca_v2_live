@@ -301,9 +301,17 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
       (event.hostId === user.uid || user.hostedEvents?.includes(event.id)) && !event.isDraft && !isEventPast(event)
     );
 
-    const attending = events.filter(event => 
-      user.rsvps?.includes(event.id) && !isEventPast(event)
-    );
+    // FIXED: Exclude cancelled events from attending list
+    // Check both userReservations (from Firestore) and cancelledEvents (local state)
+    const attending = events.filter(event => {
+      if (!user.rsvps?.includes(event.id)) return false;
+      if (isEventPast(event)) return false;
+      // Exclude if we have reservation data showing it's cancelled
+      if (userReservations[event.id]?.status === 'cancelled') return false;
+      // Exclude if in local cancelled state (immediate feedback)
+      if (cancelledEvents.has(event.id)) return false;
+      return true;
+    });
 
     // Combine draft events from main events array with drafts loaded from Firestore
     const draftsFromMain = events.filter(event => 
@@ -329,7 +337,7 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
     );
 
     return { hostingEvents: hosting, attendingEvents: attending, draftEvents: uniqueDrafts, pastEvents: uniquePast };
-  }, [events, user, draftEventsFromFirestore, pastEventsFromFirestore]);
+  }, [events, user, draftEventsFromFirestore, pastEventsFromFirestore, userReservations, cancelledEvents]);
 
   // Load checked-in counts for hosting events (must be after useMemo that defines hostingEvents)
   useEffect(() => {

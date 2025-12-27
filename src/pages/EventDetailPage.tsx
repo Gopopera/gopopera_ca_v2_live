@@ -327,19 +327,22 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const rsvpsRef = useRef<string[]>(rsvps);
   const rsvpsStringRef = useRef<string>(rsvps.join(','));
   
+  // Track rsvps string for dependency - this changes when rsvps array contents change
+  const currentRsvpsString = rsvps.join(',');
+  
   // Only update ref if the actual contents changed (not just the reference)
   // Do this in a useEffect to avoid side effects during render
   useEffect(() => {
-    const currentRsvpsString = rsvps.join(',');
     if (currentRsvpsString !== rsvpsStringRef.current) {
       rsvpsRef.current = rsvps;
       rsvpsStringRef.current = currentRsvpsString;
     }
-  }, [rsvps]);
+  }, [rsvps, currentRsvpsString]);
   
+  // FIXED: Include currentRsvpsString in deps so useMemo recomputes when rsvps changes
   const hasRSVPed = useMemo(() => {
-    return rsvpsRef.current.includes(eventId);
-  }, [eventId]); // Only depend on eventId - ref is updated separately
+    return rsvps.includes(eventId);
+  }, [eventId, currentRsvpsString]); // eslint-disable-line react-hooks/exhaustive-deps
   
   // REFACTORED: Initialize empty - will be populated by real-time subscription
   const [displayHostName, setDisplayHostName] = useState<string>('');
