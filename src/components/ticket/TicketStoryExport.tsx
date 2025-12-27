@@ -112,10 +112,11 @@ export const TicketStoryExport = forwardRef<HTMLDivElement, TicketStoryExportPro
         data-ready="false"
         style={{
           position: 'fixed',
-          inset: 0,
+          // Use offscreen positioning instead of opacity:0 for reliable html2canvas capture
+          left: debugMode ? 0 : '-10000px',
+          top: 0,
           width: '1080px',
           height: '1920px',
-          opacity: debugMode ? 1 : 0,
           pointerEvents: 'none',
           zIndex: debugMode ? 9999 : -1,
           fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',

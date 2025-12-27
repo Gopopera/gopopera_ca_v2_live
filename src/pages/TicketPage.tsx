@@ -19,7 +19,7 @@ import {
   cancelReservation
 } from '../../firebase/db';
 import { TicketStoryExport } from '../components/ticket/TicketStoryExport';
-import { toPng } from 'html-to-image';
+import html2canvas from 'html2canvas';
 
 // Debug mode for export - set to true to see export component before capture
 const DEBUG_EXPORT = false;
@@ -298,7 +298,7 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
     });
   };
 
-  // Handle download - generate high-quality IG Story image
+  // Handle download - generate high-quality IG Story image using html2canvas
   const handleDownload = async () => {
     if (!ticketData) return;
 
@@ -306,7 +306,7 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
     setShowExport(true);
     
     try {
-      // Wait for export component to signal ready (fonts, images, QR canvas all loaded)
+      // Wait for export component to signal ready (fonts, QR canvas loaded)
       await waitForExportReady();
       
       // Extra safety: ensure ref is available
@@ -314,16 +314,45 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
         throw new Error('Export component not mounted');
       }
       
-      console.log('[Ticket Download] exportRef current:', exportRef.current);
+      // Debug: log computed styles to verify element is capturable
+      const styles = window.getComputedStyle(exportRef.current);
+      console.log('[Ticket Download] Computed styles:', {
+        display: styles.display,
+        visibility: styles.visibility,
+        opacity: styles.opacity,
+        width: styles.width,
+        height: styles.height,
+        position: styles.position,
+        left: styles.left,
+      });
       
-      // Capture the export component as PNG with high pixel ratio
-      const dataUrl = await toPng(exportRef.current, {
-        pixelRatio: 2, // 2x for high resolution
+      // Wait for fonts to be ready
+      if (document.fonts?.ready) {
+        await document.fonts.ready;
+      }
+      
+      // Small delay to ensure everything is painted
+      await new Promise(resolve => setTimeout(resolve, 150));
+      
+      // Capture using html2canvas (more reliable than html-to-image for CSP)
+      const canvas = await html2canvas(exportRef.current, {
+        backgroundColor: '#15383c',
+        scale: 2, // 2x for high resolution
         width: 1080,
         height: 1920,
-        backgroundColor: '#15383c',
-        cacheBust: true,
+        useCORS: false, // No external images
+        allowTaint: true, // Allow same-origin content
+        logging: false,
       });
+      
+      // Verify canvas is not blank (quick check on first few pixels)
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        const imageData = ctx.getImageData(540, 200, 1, 1); // Sample a pixel from where content should be
+        console.log('[Ticket Download] Sample pixel RGBA:', imageData.data);
+      }
+      
+      const dataUrl = canvas.toDataURL('image/png');
       
       // Trigger download
       const link = document.createElement('a');
