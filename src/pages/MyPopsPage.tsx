@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ViewState, Event } from '../../types';
-import { ChevronLeft, Calendar, MapPin, Clock, Star, MessageCircle, Edit, Users } from 'lucide-react';
+import { ChevronLeft, Calendar, MapPin, Clock, Star, MessageCircle, Edit, Users, X, Loader2, Ticket, CheckCircle2, XCircle } from 'lucide-react';
 import { useUserStore } from '../../stores/userStore';
-import { getUserProfile } from '../../firebase/db';
+import { getUserProfile, cancelReservation, getCheckedInCountForEvent } from '../../firebase/db';
 import { getDbSafe } from '../lib/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { mapFirestoreEventToEvent } from '../../firebase/db';
-import type { FirestoreEvent } from '../../firebase/types';
+import type { FirestoreEvent, FirestoreReservation } from '../../firebase/types';
 import { subscribeToUserProfile } from '../../firebase/userSubscriptions';
 
 interface MyPopsPageProps {
@@ -62,6 +62,16 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
   const [hostProfilePictures, setHostProfilePictures] = useState<Record<string, string | null>>({});
   const [failedProfilePics, setFailedProfilePics] = useState<Set<string>>(new Set());
   
+  // Reservation data for cancellation and checked-in counts
+  const [userReservations, setUserReservations] = useState<Record<string, { id: string; status: string }>>({});
+  const [checkedInCounts, setCheckedInCounts] = useState<Record<string, number>>({});
+  
+  // Cancel modal state
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancellingEvent, setCancellingEvent] = useState<Event | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelledEvents, setCancelledEvents] = useState<Set<string>>(new Set());
+  
   // Real-time subscription to current user's profile picture from Firestore
   const [currentUserProfilePic, setCurrentUserProfilePic] = useState<string | null>(null);
   
@@ -78,6 +88,69 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
     
     return () => unsubscribe();
   }, [user?.uid]);
+
+  // Load user's reservations for cancellation functionality
+  useEffect(() => {
+    const loadUserReservations = async () => {
+      if (!user?.uid) {
+        setUserReservations({});
+        return;
+      }
+
+      try {
+        const db = getDbSafe();
+        if (!db) return;
+
+        const reservationsCol = collection(db, 'reservations');
+        const q = query(
+          reservationsCol,
+          where('userId', '==', user.uid)
+        );
+        const snapshot = await getDocs(q);
+        
+        const reservationMap: Record<string, { id: string; status: string }> = {};
+        snapshot.docs.forEach((doc) => {
+          const data = doc.data() as FirestoreReservation;
+          if (data.eventId) {
+            reservationMap[data.eventId] = { id: doc.id, status: data.status || 'reserved' };
+          }
+        });
+        
+        setUserReservations(reservationMap);
+      } catch (error) {
+        console.error('[MY_POPS] Error loading user reservations:', error);
+      }
+    };
+
+    loadUserReservations();
+  }, [user?.uid]);
+
+  // Handle cancel reservation
+  const handleCancelReservation = async () => {
+    if (!cancellingEvent || !user?.uid) return;
+
+    const reservation = userReservations[cancellingEvent.id];
+    if (!reservation) {
+      alert('Reservation not found');
+      return;
+    }
+
+    setCancelling(true);
+    try {
+      await cancelReservation(reservation.id, user.uid);
+      setCancelledEvents(prev => new Set(prev).add(cancellingEvent.id));
+      setShowCancelModal(false);
+      setCancellingEvent(null);
+      
+      // Refresh user profile to update rsvps
+      await useUserStore.getState().refreshUserProfile();
+    } catch (error) {
+      console.error('Error cancelling reservation:', error);
+      alert('Failed to cancel reservation. Please try again.');
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   // Update host profile pictures when currentUserProfilePic changes
   React.useEffect(() => {
@@ -257,6 +330,31 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
 
     return { hostingEvents: hosting, attendingEvents: attending, draftEvents: uniqueDrafts, pastEvents: uniquePast };
   }, [events, user, draftEventsFromFirestore, pastEventsFromFirestore]);
+
+  // Load checked-in counts for hosting events (must be after useMemo that defines hostingEvents)
+  useEffect(() => {
+    const loadCheckedInCounts = async () => {
+      if (!user?.uid || hostingEvents.length === 0) {
+        setCheckedInCounts({});
+        return;
+      }
+
+      try {
+        const counts: Record<string, number> = {};
+        await Promise.all(
+          hostingEvents.map(async (event) => {
+            const count = await getCheckedInCountForEvent(event.id);
+            counts[event.id] = count;
+          })
+        );
+        setCheckedInCounts(counts);
+      } catch (error) {
+        console.error('[MY_POPS] Error loading checked-in counts:', error);
+      }
+    };
+
+    loadCheckedInCounts();
+  }, [user?.uid, hostingEvents]);
 
   const currentEvents = 
     activeTab === 'hosting' ? hostingEvents :
@@ -471,33 +569,87 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
 
                       {/* Action buttons for hosting events - Enhanced */}
                       {activeTab === 'hosting' && (
+                        <div className="mt-4">
+                          {/* Checked-in count badge */}
+                          {(checkedInCounts[event.id] || 0) > 0 && (
+                            <div className="mb-3 flex items-center gap-2 text-sm">
+                              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-full font-medium">
+                                <CheckCircle2 size={14} />
+                                Checked-in: {checkedInCounts[event.id]} / {event.attendeesCount || 0}
+                              </div>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2 sm:gap-3">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onChatClick(e, event);
+                              }}
+                              className="flex-1 px-4 py-2.5 bg-[#e35e25] text-white text-sm font-bold rounded-xl hover:bg-[#cf4d1d] transition-colors flex items-center justify-center gap-2 shadow-md shadow-orange-900/20 active:scale-95 touch-manipulation"
+                            >
+                              <MessageCircle size={16} />
+                              Manage
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (onEditEvent) {
+                                  onEditEvent(event);
+                                } else {
+                                  setTimeout(() => {
+                                    window.dispatchEvent(new CustomEvent('editEvent', { detail: { eventId: event.id } }));
+                                  }, 100);
+                                }
+                              }}
+                              className="px-4 py-2.5 bg-white text-[#15383c] text-sm font-bold rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 border-2 border-gray-200 active:scale-95 touch-manipulation"
+                            >
+                              <Edit size={16} />
+                              Edit
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Action buttons for attending events */}
+                      {activeTab === 'attending' && (
                         <div className="mt-4 flex items-center gap-2 sm:gap-3">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onChatClick(e, event);
-                            }}
-                            className="flex-1 px-4 py-2.5 bg-[#e35e25] text-white text-sm font-bold rounded-xl hover:bg-[#cf4d1d] transition-colors flex items-center justify-center gap-2 shadow-md shadow-orange-900/20 active:scale-95 touch-manipulation"
-                          >
-                            <MessageCircle size={16} />
-                            Manage
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (onEditEvent) {
-                                onEditEvent(event);
-                              } else {
-                                setTimeout(() => {
-                                  window.dispatchEvent(new CustomEvent('editEvent', { detail: { eventId: event.id } }));
-                                }, 100);
-                              }
-                            }}
-                            className="px-4 py-2.5 bg-white text-[#15383c] text-sm font-bold rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 border-2 border-gray-200 active:scale-95 touch-manipulation"
-                          >
-                            <Edit size={16} />
-                            Edit
-                          </button>
+                          {/* View Ticket button */}
+                          {userReservations[event.id] && userReservations[event.id].status === 'reserved' && !cancelledEvents.has(event.id) && (
+                            <>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const reservationId = userReservations[event.id]?.id;
+                                  if (reservationId) {
+                                    window.history.pushState({ viewState: ViewState.TICKET }, '', `/ticket/${reservationId}`);
+                                    setViewState(ViewState.TICKET);
+                                  }
+                                }}
+                                className="flex-1 px-4 py-2.5 bg-[#e35e25] text-white text-sm font-bold rounded-xl hover:bg-[#cf4d1d] transition-colors flex items-center justify-center gap-2 shadow-md shadow-orange-900/20 active:scale-95 touch-manipulation"
+                              >
+                                <Ticket size={16} />
+                                View Ticket
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCancellingEvent(event);
+                                  setShowCancelModal(true);
+                                }}
+                                className="px-4 py-2.5 bg-white text-red-600 text-sm font-bold rounded-xl hover:bg-red-50 transition-colors flex items-center justify-center gap-2 border-2 border-red-200 active:scale-95 touch-manipulation"
+                              >
+                                <XCircle size={16} />
+                                Cancel
+                              </button>
+                            </>
+                          )}
+                          {/* Cancelled state */}
+                          {(userReservations[event.id]?.status === 'cancelled' || cancelledEvents.has(event.id)) && (
+                            <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-500 rounded-xl font-medium">
+                              <XCircle size={16} />
+                              Cancelled
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -508,6 +660,78 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
           </div>
         )}
       </div>
+
+      {/* Cancel Confirmation Modal */}
+      {showCancelModal && cancellingEvent && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => {
+            if (!cancelling) {
+              setShowCancelModal(false);
+              setCancellingEvent(null);
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-[#15383c]">Cancel Reservation?</h3>
+              <button
+                onClick={() => {
+                  if (!cancelling) {
+                    setShowCancelModal(false);
+                    setCancellingEvent(null);
+                  }
+                }}
+                disabled={cancelling}
+                className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 disabled:opacity-50"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <p className="text-gray-600 mb-4">
+              Are you sure you want to cancel your reservation for <strong>{cancellingEvent.title}</strong>?
+            </p>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+              <p className="text-sm text-amber-800">
+                <strong>Cancellation Policy:</strong> Cancellations are processed immediately. 
+                For paid events, refunds are subject to our refund policy and may take 5-10 business days to process.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowCancelModal(false);
+                  setCancellingEvent(null);
+                }}
+                disabled={cancelling}
+                className="flex-1 py-3 bg-gray-100 text-[#15383c] rounded-full font-semibold hover:bg-gray-200 transition-all disabled:opacity-50"
+              >
+                Keep Reservation
+              </button>
+              <button
+                onClick={handleCancelReservation}
+                disabled={cancelling}
+                className="flex-1 py-3 bg-red-600 text-white rounded-full font-semibold hover:bg-red-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {cancelling ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Cancelling...
+                  </>
+                ) : (
+                  'Yes, Cancel'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

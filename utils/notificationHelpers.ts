@@ -557,6 +557,7 @@ export async function notifyUserOfReservationConfirmation(
     const preferences = await getUserNotificationPreferences(userId);
     const orderId = `#${reservationId.substring(0, 10).toUpperCase()}`;
     const eventUrl = `${BASE_URL}/event/${eventId}`;
+    const ticketUrl = `${BASE_URL}/ticket/${reservationId}`;
 
     // ALWAYS send in-app notification (cannot be disabled)
     try {
@@ -583,6 +584,7 @@ export async function notifyUserOfReservationConfirmation(
           reservationId,
           orderId,
           eventUrl,
+          ticketUrl,
           attendeeCount,
           totalAmount,
         });

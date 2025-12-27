@@ -154,6 +154,12 @@ export interface FirestoreReservation {
   nextChargeDate?: number; // For subscriptions - when next charge occurs
   optOutRequested?: boolean; // User requested to opt-out of subscription
   optOutProcessed?: boolean; // Whether opt-out was processed
+  // Check-in fields (v1)
+  checkedInAt?: number; // Timestamp when attendee was checked in
+  checkedInBy?: string; // UID of host who checked them in
+  // Cancellation fields (v1)
+  cancelledAt?: number; // Timestamp when reservation was cancelled
+  cancelledByUid?: string; // UID of user who cancelled (can be attendee or host)
 }
 
 export interface FirestoreExpulsion {

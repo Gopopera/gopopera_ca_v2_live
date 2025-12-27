@@ -85,6 +85,7 @@ const PayoutSetupPage = React.lazy(() => import('./src/pages/PayoutPages').then(
 const PayoutsPage = React.lazy(() => import('./src/pages/PayoutPages').then(m => ({ default: m.PayoutsPage })));
 const ReservationConfirmationPage = React.lazy(() => import('./src/pages/ReservationConfirmationPage').then(m => ({ default: m.ReservationConfirmationPage })));
 const ConfirmReservationPage = React.lazy(() => import('./src/pages/ConfirmReservationPage').then(m => ({ default: m.ConfirmReservationPage })));
+const TicketPage = React.lazy(() => import('./src/pages/TicketPage').then(m => ({ default: m.TicketPage })));
 
 import { Event, ViewState } from './types';
 import { Search, ArrowRight, MapPin, PlusCircle, ChevronRight, ChevronLeft, Filter, Sparkles } from 'lucide-react';
@@ -454,6 +455,8 @@ const AppContent: React.FC = () => {
       return ViewState.PAYOUT_SETUP;
     } else if (pathname === '/host/payouts') {
       return ViewState.PAYOUTS;
+    } else if (pathname.startsWith('/ticket/')) {
+      return ViewState.TICKET;
     } else if (pathname === '/debug-seed') {
       return ViewState.DEBUG_SEED_DEMO;
     }
@@ -1178,10 +1181,11 @@ const AppContent: React.FC = () => {
         const newCount = await getReservationCountForEvent(eventId);
         updateEvent(eventId, { attendeesCount: newCount });
         
-        // If we have a reservation ID and event, navigate to confirmation page
+        // If we have a reservation ID and event, navigate to ticket page
         if (resId && event) {
-          setConfirmedReservation({ event, reservationId: resId });
-          setViewState(ViewState.RESERVATION_CONFIRMED);
+          const ticketUrl = `/ticket/${resId}`;
+          window.history.pushState({ viewState: ViewState.TICKET, reservationId: resId }, '', ticketUrl);
+          setViewState(ViewState.TICKET);
         }
       }
     } catch (error) {
@@ -1480,7 +1484,7 @@ const AppContent: React.FC = () => {
             ViewState.PROFILE_REVIEWS, ViewState.PROFILE_FOLLOWING,
             ViewState.PROFILE_FOLLOWERS, ViewState.DELETE_ACCOUNT,
             ViewState.CONFIRM_RESERVATION, ViewState.RESERVATION_CONFIRMED,
-            ViewState.PAYOUT_SETUP, ViewState.PAYOUTS
+            ViewState.PAYOUT_SETUP, ViewState.PAYOUTS, ViewState.TICKET
           ];
           
           if (validViewStates.includes(targetView)) {
@@ -1912,9 +1916,10 @@ const AppContent: React.FC = () => {
                 // Refresh user profile
                 await useUserStore.getState().refreshUserProfile();
 
-                // Navigate to confirmation page
-                setConfirmedReservation({ event: selectedEvent, reservationId });
-                setViewState(ViewState.RESERVATION_CONFIRMED);
+                // Navigate to ticket page
+                const ticketUrl = `/ticket/${reservationId}`;
+                window.history.pushState({ viewState: ViewState.TICKET, reservationId }, '', ticketUrl);
+                setViewState(ViewState.TICKET);
 
                 return reservationId;
               }}
@@ -1922,7 +1927,7 @@ const AppContent: React.FC = () => {
           </React.Suspense>
         )}
 
-        {/* RESERVATION CONFIRMATION */}
+        {/* RESERVATION CONFIRMATION (legacy modal) */}
         {viewState === ViewState.RESERVATION_CONFIRMED && confirmedReservation && (
           <React.Suspense fallback={<PageSkeleton />}>
             <ReservationConfirmationPage 
@@ -1930,6 +1935,13 @@ const AppContent: React.FC = () => {
               reservationId={confirmedReservation.reservationId}
               setViewState={setViewState}
             />
+          </React.Suspense>
+        )}
+
+        {/* TICKET PAGE */}
+        {viewState === ViewState.TICKET && (
+          <React.Suspense fallback={<PageSkeleton />}>
+            <TicketPage setViewState={setViewState} />
           </React.Suspense>
         )}
 

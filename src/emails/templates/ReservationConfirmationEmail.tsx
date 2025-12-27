@@ -3,7 +3,7 @@
  * Modern liquid glass UI design
  */
 
-import { getBaseEmailTemplate, getGlassPanel, getInfoRow, getTipBox } from './base';
+import { getBaseEmailTemplate, getGlassPanel, getInfoRow } from './base';
 
 export function ReservationConfirmationEmailTemplate(data: {
   userName: string;
@@ -14,25 +14,19 @@ export function ReservationConfirmationEmailTemplate(data: {
   reservationId: string;
   orderId: string;
   eventUrl?: string;
+  ticketUrl?: string;
   eventImageUrl?: string;
   attendeeCount?: number;
   totalAmount?: number;
 }): string {
+  // Use ticketUrl if provided, otherwise fall back to eventUrl
+  const ctaUrl = data.ticketUrl || data.eventUrl || '#';
+  
   const content = `
     <!-- Success Header -->
     <table role="presentation" style="width: 100%; margin-bottom: 32px;">
       <tr>
         <td align="center">
-          <!-- Success icon with glow -->
-          <table role="presentation" style="margin-bottom: 20px;">
-            <tr>
-              <td align="center">
-                <div style="width: 64px; height: 64px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(16, 185, 129, 0.1) 100%); border-radius: 50%; border: 2px solid rgba(16, 185, 129, 0.4); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 30px rgba(16, 185, 129, 0.3);">
-                  <span style="font-size: 28px; line-height: 64px;">✓</span>
-                </div>
-              </td>
-            </tr>
-          </table>
           <h1 style="margin: 0 0 8px 0; color: #ffffff; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;">You're All Set! 🎉</h1>
           <p style="margin: 0; color: rgba(255, 255, 255, 0.6); font-size: 15px;">Your reservation has been confirmed</p>
         </td>
@@ -74,10 +68,18 @@ export function ReservationConfirmationEmailTemplate(data: {
         </tr>
       </table>
       ` : ''}
+      
+      ${data.totalAmount && data.totalAmount > 0 ? `
+      <table role="presentation" style="width: 100%; margin-top: 8px;">
+        <tr>
+          <td>
+            ${getInfoRow('Transaction', `$${(data.totalAmount / 100).toFixed(2)} CAD`)}
+          </td>
+        </tr>
+      </table>
+      ` : ''}
     `)}
-    
-    ${getTipBox('Show your QR code at the event entrance for quick check-in! You can view your reservation details in the app.')}
   `;
 
-  return getBaseEmailTemplate(content, 'View Reservation Details', data.eventUrl || '#');
+  return getBaseEmailTemplate(content, 'View Your Ticket', ctaUrl);
 }

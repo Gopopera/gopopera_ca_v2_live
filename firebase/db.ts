@@ -689,7 +689,7 @@ export async function listReservationsForUser(userId: string): Promise<Firestore
   }
 }
 
-export async function cancelReservation(reservationId: string): Promise<void> {
+export async function cancelReservation(reservationId: string, cancelledByUid?: string): Promise<void> {
   const db = getDbSafe();
   if (!db) {
     throw new Error('Firestore not initialized');
@@ -707,7 +707,16 @@ export async function cancelReservation(reservationId: string): Promise<void> {
     const reservationDoc = await getDoc(reservationRef);
     const eventId = reservationDoc.data()?.eventId;
     
-    await updateDoc(reservationRef, { status: "cancelled" });
+    // Update with status, cancelledAt timestamp, and cancelledByUid
+    const updateData: Record<string, any> = { 
+      status: "cancelled",
+      cancelledAt: serverTimestamp(),
+    };
+    if (cancelledByUid) {
+      updateData.cancelledByUid = cancelledByUid;
+    }
+    
+    await updateDoc(reservationRef, updateData);
     
     // Sync attendeeCount on event document for unauthenticated users
     if (eventId) {
@@ -718,6 +727,87 @@ export async function cancelReservation(reservationId: string): Promise<void> {
   } catch (error: any) {
     console.error('Firestore write failed:', { path: `reservations/${reservationId}`, error: error.message || 'Unknown error' });
     throw error;
+  }
+}
+
+/**
+ * Get a single reservation by ID
+ */
+export async function getReservationById(reservationId: string): Promise<FirestoreReservation | null> {
+  const db = getDbSafe();
+  if (!db) {
+    return null;
+  }
+  
+  try {
+    const reservationRef = doc(db, "reservations", reservationId);
+    const reservationDoc = await getDoc(reservationRef);
+    
+    if (!reservationDoc.exists()) {
+      return null;
+    }
+    
+    const data = reservationDoc.data();
+    return {
+      id: reservationDoc.id,
+      ...data,
+    } as FirestoreReservation;
+  } catch (error: any) {
+    console.error('Error fetching reservation:', error);
+    return null;
+  }
+}
+
+/**
+ * Update reservation with check-in info (host only)
+ */
+export async function updateReservationCheckIn(reservationId: string, checkedInByUid: string): Promise<void> {
+  const db = getDbSafe();
+  if (!db) {
+    throw new Error('Firestore not initialized');
+  }
+  
+  try {
+    const reservationRef = doc(db, "reservations", reservationId);
+    
+    await updateDoc(reservationRef, {
+      checkedInAt: serverTimestamp(),
+      checkedInBy: checkedInByUid,
+    });
+    
+    console.log('[CHECK_IN] ✅ Reservation checked in:', { reservationId, checkedInBy: checkedInByUid });
+  } catch (error: any) {
+    console.error('Error checking in reservation:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get count of checked-in reservations for an event
+ */
+export async function getCheckedInCountForEvent(eventId: string): Promise<number> {
+  const db = getDbSafe();
+  if (!db) {
+    return 0;
+  }
+  
+  try {
+    const reservationsCol = collection(db, "reservations");
+    const q = query(
+      reservationsCol, 
+      where("eventId", "==", eventId), 
+      where("status", "==", "reserved")
+    );
+    const snap = await getDocs(q);
+    
+    // Count reservations that have checkedInAt set
+    return snap.docs.filter(doc => {
+      const data = doc.data();
+      return !!data.checkedInAt;
+    }).length;
+  } catch (error: any) {
+    console.error("Error fetching checked-in count:", error);
+    return 0;
   }
 }
 
