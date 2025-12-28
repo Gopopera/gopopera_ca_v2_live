@@ -209,9 +209,10 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
     ? Math.round((reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length) * 10) / 10
     : 0;
   
-  // Filter events: For Popera profile, show launch events (city-launch demoType) and official launch events
-  // For other hosts, show all their events
-  // FIXED: Use hostId for filtering (more reliable than hostName which can change)
+  // Filter events by host - uses same logic as Explore page for consistency
+  // FIXED: Removed Popera-specific filter that was causing mismatch with Explore
+  // Bug: HostProfile showed 0 events while Explore showed 2 for same host
+  // Root cause: Extra filter requiring isOfficialLaunch || demoType === "city-launch"
   const hostEvents = useMemo(() => {
     // Filter by hostId first (primary), fall back to hostName matching (backward compatibility)
     const filtered = allEvents.filter(e => {
@@ -223,24 +224,20 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
       return e.hostName === hostName || e.host === hostName;
     });
     
-    console.log('[HOST_PROFILE] Events filter result:', {
-      hostId,
-      hostName,
-      totalEvents: allEvents.length,
-      filteredCount: filtered.length,
-      filteredTitles: filtered.map(e => e.title),
-    });
-    
-    if (isPoperaProfile) {
-      // Popera profile: show city-launch events (demoType: "city-launch") and official launch events
-      // Check if event has demoType field (from Firestore) - these are the launch events we want to show
-      return filtered.filter(e => {
-        // Show if it's an official launch event OR if it's a city-launch event
-        return e.isOfficialLaunch === true || e.demoType === "city-launch";
+    if (import.meta.env.DEV) {
+      console.log('[HOST_PROFILE] Events filter result:', {
+        hostId,
+        hostName,
+        totalEvents: allEvents.length,
+        filteredCount: filtered.length,
+        filteredTitles: filtered.map(e => e.title),
       });
     }
+    
+    // FIX: Return all events from this host - same as Explore page
+    // This ensures Host Profile and Explore are always consistent
     return filtered;
-  }, [allEvents, hostId, hostName, isPoperaProfile]);
+  }, [allEvents, hostId, hostName]);
   
   // Get primary city from events
   const primaryCity = useMemo(() => {
