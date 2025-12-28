@@ -221,21 +221,14 @@ export const EventCard: React.FC<EventCardProps> = ({
   };
 
   return (
-    <div 
-      onClick={() => onClick(event)}
-      role="button"
-      tabIndex={0}
+    <a 
+      href={`/event/${event.id}`}
+      onClick={() => { try { onClick(event); } catch {} }}
       aria-label={`View event: ${event.title}`}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onClick(event);
-        }
-      }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      style={{ touchAction: 'manipulation' }}
+      style={{ touchAction: 'manipulation', textDecoration: 'none', color: 'inherit', display: 'flex' }}
       className={`group relative bg-white/95 backdrop-blur-sm rounded-[28px] md:rounded-[32px] overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.1)] border border-white/60 transition-all duration-500 cursor-pointer flex flex-col w-full h-full focus:outline-none focus:ring-2 focus:ring-[#15383c] focus:ring-offset-2`}
     >
       {/* Image Container - Premium cinematic design */}
@@ -571,6 +564,6 @@ export const EventCard: React.FC<EventCardProps> = ({
         )}
       </div>
 
-    </div>
+    </a>
   );
 };
