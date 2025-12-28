@@ -2,43 +2,46 @@
  * Dynamic Sitemap Generator for Popera Events
  * 
  * Generates sitemap.xml with all public, non-demo, non-draft events.
- * Uses firebase-admin with service account from environment variable.
+ * Uses Firestore REST API (Edge-compatible, no firebase-admin/gRPC issues).
  * 
  * URL: /api/sitemap.xml
  * 
- * Required env var:
- *   FIREBASE_SERVICE_ACCOUNT = JSON string of service account credentials
+ * Env vars (optional, for project resolution):
+ *   FIREBASE_PROJECT_ID - Firebase project ID
+ *   FIREBASE_SERVICE_ACCOUNT - JSON string (project_id extracted if FIREBASE_PROJECT_ID not set)
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import admin from 'firebase-admin';
 
-// Initialize Firebase Admin with service account from env var
-function getFirestoreDb(): admin.firestore.Firestore | null {
-  if (admin.apps.length > 0) {
-    return admin.firestore();
+export const config = {
+  runtime: 'edge',
+};
+
+// Default project ID fallback
+const DEFAULT_PROJECT_ID = 'gopopera2026';
+
+// Get project ID from environment
+function getProjectId(): string {
+  // Priority 1: Explicit FIREBASE_PROJECT_ID
+  if (process.env.FIREBASE_PROJECT_ID) {
+    return process.env.FIREBASE_PROJECT_ID.trim();
   }
-
+  
+  // Priority 2: Extract from FIREBASE_SERVICE_ACCOUNT JSON
   const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (!serviceAccountJson) {
-    console.error('[SITEMAP] FIREBASE_SERVICE_ACCOUNT env var not set');
-    return null;
-  }
-
-  try {
-    const serviceAccount = JSON.parse(serviceAccountJson);
-    // Handle escaped newlines in private_key
-    if (serviceAccount.private_key) {
-      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+  if (serviceAccountJson) {
+    try {
+      const parsed = JSON.parse(serviceAccountJson);
+      if (parsed.project_id) {
+        return parsed.project_id.trim();
+      }
+    } catch {
+      // Fall through to default
     }
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-    return admin.firestore();
-  } catch (error) {
-    console.error('[SITEMAP] Failed to initialize Firebase Admin:', error);
-    return null;
   }
+  
+  // Priority 3: Default
+  return DEFAULT_PROJECT_ID;
 }
 
 // Escape XML special characters
@@ -51,99 +54,169 @@ function escapeXml(str: string): string {
     .replace(/'/g, '&apos;');
 }
 
-// Format timestamp to YYYY-MM-DD
-function formatDate(timestamp: number | admin.firestore.Timestamp | undefined): string {
-  if (!timestamp) {
+// Build empty sitemap with optional comment
+function emptySitemap(comment?: string): string {
+  const commentLine = comment ? `\n  <!-- ${escapeXml(comment)} -->` : '';
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${commentLine}
+</urlset>`;
+}
+
+// Parse Firestore REST API document fields
+interface FirestoreFields {
+  [key: string]: {
+    stringValue?: string;
+    booleanValue?: boolean;
+    integerValue?: string;
+    timestampValue?: string;
+    nullValue?: null;
+  };
+}
+
+interface FirestoreDocument {
+  name: string;
+  fields?: FirestoreFields;
+  createTime?: string;
+  updateTime?: string;
+}
+
+interface FirestoreListResponse {
+  documents?: FirestoreDocument[];
+  nextPageToken?: string;
+}
+
+// Extract boolean field value (handles missing = undefined)
+function getBooleanField(fields: FirestoreFields | undefined, key: string): boolean | undefined {
+  if (!fields || !fields[key]) return undefined;
+  return fields[key].booleanValue;
+}
+
+// Extract document ID from Firestore REST API document name
+function getDocId(docName: string): string {
+  // Format: projects/{project}/databases/(default)/documents/events/{docId}
+  const parts = docName.split('/');
+  return parts[parts.length - 1] || '';
+}
+
+// Format ISO timestamp to YYYY-MM-DD
+function formatDate(isoString: string | undefined): string {
+  if (!isoString) {
     return new Date().toISOString().split('T')[0];
   }
   try {
-    const date = typeof timestamp === 'number' 
-      ? new Date(timestamp) 
-      : timestamp.toDate();
-    return date.toISOString().split('T')[0];
+    return new Date(isoString).toISOString().split('T')[0];
   } catch {
     return new Date().toISOString().split('T')[0];
   }
 }
 
-interface EventDoc {
-  id: string;
-  isPublic?: boolean;
-  isDraft?: boolean;
-  isDemo?: boolean;
-  updatedAt?: number | admin.firestore.Timestamp;
-  createdAt?: number | admin.firestore.Timestamp;
-}
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Set headers early for consistent response
-  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-  res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
-
-  const emptyResponse = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-</urlset>`;
+export default async function handler(request: Request) {
+  const projectId = getProjectId();
+  const baseUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/events`;
+  
+  console.log('[SITEMAP] Starting sitemap generation for project:', projectId);
 
   try {
-    const db = getFirestoreDb();
-    if (!db) {
-      console.error('[SITEMAP] No Firestore connection');
-      return res.status(200).send(emptyResponse);
-    }
-
     const events: Array<{ id: string; lastmod: string }> = [];
-    const pageSize = 500;
-    let lastDocId: string | null = null;
+    let pageToken: string | undefined;
+    const pageSize = 300;
+    let totalDocs = 0;
+    let filteredOut = { isPublicFalse: 0, isDraftTrue: 0, isDemoTrue: 0 };
+    let fetchErrors: string[] = [];
 
-    // Paginate through all events using documentId ordering
-    while (true) {
-      let query = db.collection('events')
-        .orderBy(admin.firestore.FieldPath.documentId())
-        .limit(pageSize);
-
-      if (lastDocId) {
-        query = query.startAfter(lastDocId);
+    // Paginate through all events
+    do {
+      const url = new URL(baseUrl);
+      url.searchParams.set('pageSize', String(pageSize));
+      if (pageToken) {
+        url.searchParams.set('pageToken', pageToken);
       }
 
-      const snapshot = await query.get();
-
-      if (snapshot.empty) {
-        break;
+      const response = await fetch(url.toString());
+      
+      if (!response.ok) {
+        const status = response.status;
+        let errorBody = '';
+        try {
+          errorBody = await response.text();
+          errorBody = errorBody.substring(0, 200); // Truncate for safety
+        } catch {}
+        
+        const errorMsg = `Firestore API error: HTTP ${status}. Project: ${projectId}. ${errorBody}`;
+        console.error('[SITEMAP]', errorMsg);
+        fetchErrors.push(`HTTP ${status}`);
+        
+        // Return helpful error sitemap
+        return new Response(emptySitemap(errorMsg), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/xml; charset=utf-8',
+            'Cache-Control': 'public, max-age=300, s-maxage=300', // Shorter cache on error
+          },
+        });
       }
 
-      for (const doc of snapshot.docs) {
-        const data = doc.data() as EventDoc;
+      const data: FirestoreListResponse = await response.json();
 
-        // Filter per store logic:
-        // - Exclude if isPublic === false (explicitly private)
-        // - Exclude if isDraft === true
-        // - Exclude if isDemo === true
-        if (data.isPublic === false) continue;
-        if (data.isDraft === true) continue;
-        if (data.isDemo === true) continue;
+      if (data.documents) {
+        for (const doc of data.documents) {
+          totalDocs++;
+          const fields = doc.fields;
+          
+          // Filter per store logic:
+          // - Exclude if isPublic === false (missing = public)
+          // - Exclude if isDraft === true
+          // - Exclude if isDemo === true
+          const isPublic = getBooleanField(fields, 'isPublic');
+          const isDraft = getBooleanField(fields, 'isDraft');
+          const isDemo = getBooleanField(fields, 'isDemo');
 
-        // Get lastmod from updatedAt, createdAt, or doc metadata
-        let lastmod: string;
-        if (data.updatedAt) {
-          lastmod = formatDate(data.updatedAt);
-        } else if (data.createdAt) {
-          lastmod = formatDate(data.createdAt);
-        } else if (doc.updateTime) {
-          lastmod = doc.updateTime.toDate().toISOString().split('T')[0];
-        } else {
-          lastmod = new Date().toISOString().split('T')[0];
+          if (isPublic === false) {
+            filteredOut.isPublicFalse++;
+            continue;
+          }
+          if (isDraft === true) {
+            filteredOut.isDraftTrue++;
+            continue;
+          }
+          if (isDemo === true) {
+            filteredOut.isDemoTrue++;
+            continue;
+          }
+
+          const docId = getDocId(doc.name);
+          if (!docId) continue;
+
+          // Get lastmod from updateTime or createTime
+          const lastmod = formatDate(doc.updateTime || doc.createTime);
+
+          events.push({ id: docId, lastmod });
         }
-
-        events.push({ id: doc.id, lastmod });
       }
 
-      // Update lastDocId for next page
-      lastDocId = snapshot.docs[snapshot.docs.length - 1].id;
+      pageToken = data.nextPageToken;
+    } while (pageToken);
 
-      // If we got fewer than pageSize, we've reached the end
-      if (snapshot.docs.length < pageSize) {
-        break;
-      }
+    console.log('[SITEMAP] Stats:', {
+      projectId,
+      totalDocs,
+      included: events.length,
+      filteredOut
+    });
+
+    // If no events after filtering, explain why
+    if (events.length === 0) {
+      const reason = totalDocs === 0 
+        ? `No events found in Firestore for project ${projectId}`
+        : `0 events after filtering (total: ${totalDocs}, filtered: isPublic=false: ${filteredOut.isPublicFalse}, isDraft=true: ${filteredOut.isDraftTrue}, isDemo=true: ${filteredOut.isDemoTrue})`;
+      
+      return new Response(emptySitemap(reason), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/xml; charset=utf-8',
+          'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+        },
+      });
     }
 
     // Generate sitemap XML
@@ -162,16 +235,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
                             http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
   <!-- Dynamic event sitemap for Popera -->
+  <!-- Project: ${projectId} -->
   <!-- Generated: ${new Date().toISOString()} -->
-  <!-- Total events: ${events.length} -->
+  <!-- Total events: ${events.length} (from ${totalDocs} docs, filtered ${totalDocs - events.length}) -->
 ${urlEntries}
 </urlset>`;
 
-    return res.status(200).send(sitemap);
+    return new Response(sitemap, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/xml; charset=utf-8',
+        'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+      },
+    });
 
-  } catch (error) {
-    console.error('[SITEMAP] Error generating sitemap:', error);
-    return res.status(200).send(emptyResponse);
+  } catch (error: any) {
+    const errorMessage = error.message || 'Unknown error';
+    console.error('[SITEMAP] Error:', errorMessage);
+    
+    return new Response(emptySitemap(`Error generating sitemap: ${errorMessage}`), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/xml; charset=utf-8',
+        'Cache-Control': 'public, max-age=300, s-maxage=300',
+      },
+    });
   }
 }
-
