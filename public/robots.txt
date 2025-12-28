@@ -18,6 +18,9 @@ Allow: /press
 Allow: /cancellation
 Allow: /event/*
 
+# Allow sitemap API endpoint (exception to /api/* disallow below)
+Allow: /api/sitemap.xml
+
 # Disallow API endpoints (server-side routes)
 Disallow: /api/*
 
@@ -38,6 +41,6 @@ Disallow: /event/*/chat
 Disallow: /debug-*
 Disallow: /verify-firebase
 
-# Sitemap location
+# Sitemap locations
 Sitemap: https://gopopera.ca/sitemap.xml
-
+Sitemap: https://gopopera.ca/api/sitemap.xml
