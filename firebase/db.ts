@@ -11,7 +11,6 @@ import { collection, doc, getDoc, getDocs, query, where, orderBy, addDoc, update
 import { FirestoreEvent, FirestoreReservation, FirestoreChatMessage, FirestoreReview, FirestoreUser } from "./types";
 import { Event } from "../types";
 import { validateFirestoreData, removeUndefinedValues, sanitizeFirestoreData } from "../utils/firestoreValidation";
-import { POPERA_EMAIL } from "../stores/userStore";
 
 // Helper to convert FirestoreEvent to Event (frontend type)
 // Exported for use in eventStore
