@@ -104,7 +104,7 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
                 The 10-Seat Event Playbook
               </h1>
               <p className="text-xl sm:text-2xl text-gray-700 mb-8 leading-relaxed">
-                Turn followers into real people. Host a small in-person circle (3–10 seats) and fill it with a simple 7-day plan.
+                Turn followers into real people. Host small paid circles (3–10 seats) and run them again.
               </p>
               
               {/* Badges */}
@@ -142,7 +142,7 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
               </div>
               
               <p className="text-sm text-gray-500">
-                Designed for recurring circles — not one-off events.
+                Test what your community wants. Package an experience. Sell limited seats. Collect reviews to sell out the next one.
               </p>
             </div>
             
@@ -211,7 +211,7 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
               {/* Creator reality callout */}
               <GlassCard>
                 <p className="text-[#15383c] font-medium text-lg leading-relaxed">
-                  You don't need a huge audience. You need a clear offer + small seat count + repeat.
+                  Test what your community wants. Package an experience around your brand. Sell limited seats. Manage attendees via group chat. Collect reviews to sell out the next one.
                 </p>
               </GlassCard>
             </div>
@@ -238,14 +238,14 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
         stepNumber={1}
         title="Pick a circle that's easy to say yes to"
         bullets={[
-          "Choose something simple: coffee, walk, game, beginner session.",
-          "Keep it 60–120 minutes.",
-          "3–10 seats only.",
+          "Start from your brand: host something your followers already want from you.",
+          "Keep it tight: 60–120 minutes, clear plan, clear outcome.",
+          "Small seats = premium vibe: 3–10 seats to keep it personal (and easy to sell out).",
         ]}
         exampleCard={
           <GlassCard>
             <p className="text-[#15383c] font-semibold text-lg">
-              8 seats · Coffee + walk + photos · Mile End · Sunday 2pm
+              8 seats · Restaurant support + tasting · Mile End · Sunday 2pm
             </p>
           </GlassCard>
         }
@@ -288,13 +288,13 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
               {/* Offer cards */}
               <div className="space-y-4">
                 <GlassCard>
-                  <p className="text-[#15383c] font-semibold text-lg">6 seats — No-phone wine bar hang</p>
+                  <p className="text-[#15383c] font-semibold text-lg">6 seats — Chef tasting with the community</p>
                 </GlassCard>
                 <GlassCard>
-                  <p className="text-[#15383c] font-semibold text-lg">8 seats — Ramen crawl + photo walk</p>
+                  <p className="text-[#15383c] font-semibold text-lg">8 seats — Beginner salsa mini-session + drinks</p>
                 </GlassCard>
                 <GlassCard>
-                  <p className="text-[#15383c] font-semibold text-lg">10 seats — Beginner salsa mini-session + drinks</p>
+                  <p className="text-[#15383c] font-semibold text-lg">10 seats — No-phone wine bar hang (community experience)</p>
                 </GlassCard>
               </div>
             </div>
@@ -329,13 +329,13 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
               {/* Day-by-day cards */}
               <div className="space-y-3 mb-8">
                 {[
-                  { day: 7, text: "Poll story: 'Would you join?'" },
-                  { day: 6, text: "Announce details + seat count + link" },
-                  { day: 5, text: "Short reel: why you're hosting" },
-                  { day: 4, text: "FAQ + what to expect" },
-                  { day: 3, text: "Social proof + reminder" },
-                  { day: 2, text: "Last seats + repost replies" },
-                  { day: 1, text: "Final reminder + meetup details" },
+                  { day: 1, text: "Poll story: 'Would you join?' — find out what your followers want (engage + validate)." },
+                  { day: 2, text: "Create the circle on Popera — title, seats, price, location, details." },
+                  { day: 3, text: "Announce: post the offer + seat count + link (bio + story + pinned)." },
+                  { day: 4, text: "Short reel: why you're hosting + what people get — drive sign-ups with the link." },
+                  { day: 5, text: "Nurture in group chat: intros + icebreakers + answer questions (build hype)." },
+                  { day: 6, text: "Final push: social proof + last seats + reminders (reduce no-shows)." },
+                  { day: 7, text: "Host day: run the experience + post recap + collect reviews for next week." },
                 ].map((item) => (
                   <div key={item.day} className="bg-white rounded-xl p-4 border border-gray-200">
                     <span className="font-bold text-[#e35e25] mr-3">Day {item.day}:</span>
@@ -367,22 +367,26 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
       {/* STEP 4: CONVERSION */}
       <StepSection
         stepNumber={4}
-        title="Turn interest into RSVPs"
+        title="Turn your followers into confirmed seats"
         bullets={[
-          "One tap to reserve (no back-and-forth).",
-          "Clear seat count + clear deadline.",
-          "Reminders reduce no-shows.",
+          "One link. One tap. No awkward back-and-forth.",
+          "Small seat count creates urgency without begging.",
+          "Optional paid RSVP filters flaky 'maybes' and boosts show-up rate.",
         ]}
         exampleCard={
           <div className="space-y-4">
             <div className="bg-red-50 border border-red-200 rounded-xl p-4">
               <p className="text-red-800 font-semibold mb-2">Avoid this:</p>
               <ul className="text-red-700 space-y-1 text-sm">
-                <li>• Too many seats</li>
-                <li>• No clear plan</li>
-                <li>• Asking for 'maybe'</li>
+                <li>• Too many seats for your first run</li>
+                <li>• No clear outcome (what they get for showing up)</li>
+                <li>• Free sign-ups with no commitment (invites no-shows)</li>
+                <li>• Sending people to DMs for logistics</li>
               </ul>
             </div>
+            <p className="text-gray-600 text-sm">
+              After they reserve, they unlock the group chat so you can coordinate and build hype.
+            </p>
           </div>
         }
         imageSrc={PLAYBOOK_IMAGES.step4}
@@ -403,17 +407,17 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
               </div>
               
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-[#15383c] mb-8">
-                Set it up in Popera in 10 minutes
+                Launch it in Popera in 10 minutes
               </h2>
               
               {/* Checklist */}
               <ul className="space-y-4 mb-8">
                 {[
-                  "Title + 1 strong photo",
-                  "Seats (3–10) + location",
-                  "Paste the description template",
-                  "Publish + share the link",
-                  "Use group chat to coordinate",
+                  "Name the experience (make it clearly 'you')",
+                  "Set seats and price (small seats, clear value)",
+                  "Drop your description template (copy-paste, done)",
+                  "Publish and share one link (bio, story, pinned post)",
+                  "Use group chat to host (icebreakers, updates, last details)",
                 ].map((item, index) => (
                   <li key={index} className="flex items-start gap-3">
                     <CheckCircle2 className="text-[#e35e25] flex-shrink-0 mt-1" size={24} />
@@ -425,25 +429,27 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
               {/* Product proof cards */}
               <div className="space-y-3 mb-8">
                 <GlassCard>
-                  <p className="text-[#15383c] font-medium">Chat keeps everyone aligned</p>
+                  <p className="text-[#15383c] font-medium">Group chat turns sign-ups into a real crew</p>
                 </GlassCard>
                 <GlassCard>
-                  <p className="text-[#15383c] font-medium">Automatic updates by SMS/email</p>
+                  <p className="text-[#15383c] font-medium">Automatic SMS and email keeps everyone on track</p>
                 </GlassCard>
                 <GlassCard>
-                  <p className="text-[#15383c] font-medium">Recurring circles = repeat attendance</p>
+                  <p className="text-[#15383c] font-medium">Collect reviews after to sell out the next one</p>
                 </GlassCard>
               </div>
             </div>
             
-            {/* Right: Create form UI */}
-            <div className="relative w-full max-w-full overflow-hidden rounded-2xl shadow-xl bg-white/0">
-              <img
-                src={PLAYBOOK_IMAGES.step5}
-                alt={PLAYBOOK_IMAGE_ALTS.step5}
-                className="h-full w-full object-cover"
-                loading="lazy"
-              />
+            {/* Right: Create form UI - Fixed cropping bug */}
+            <div className="relative w-full flex items-center justify-center">
+              <div className="relative w-full max-w-full rounded-2xl shadow-xl bg-white overflow-visible">
+                <img
+                  src={PLAYBOOK_IMAGES.step5}
+                  alt={PLAYBOOK_IMAGE_ALTS.step5}
+                  className="w-full h-auto object-contain"
+                  loading="lazy"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -459,39 +465,60 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
             Use these exactly as written. Edit the details. Post today.
           </p>
           
-          <div className="space-y-6">
+          <div className="space-y-6 mb-12">
             <TemplateAccordion
               title="Event Description Template"
               templateId="event-description"
-              content={`[8 seats] [activity] in [neighborhood] — [day/time]
+              content={`[X seats] Meet the community with me in [neighborhood] • [day/time]
 
-We're doing [activity]. Small group, good energy.
+This is a small in-person experience for people who follow my work and want real connection — not a huge crowd.
 
-Seats: [X]
-Who it's for: [beginner-friendly / social / creatives]
-Plan: quick intros → activity → chill chat
-Bring: [one item]
-Reserve to get the group chat link.`}
+What we're doing: [experience / theme]
+Who it's for: [your community / niche / beginners welcome]
+What you get:
+1) Meet me + other community members
+2) A guided moment or clear vibe (not awkward)
+3) Group chat access for details + follow-ups
+Seats & pricing: [X seats], first come first served. Price: [$X] per person (reduces no-shows).
+Plan: quick intros → experience → chill time + photos
+Reserve to unlock the group chat link.`}
             />
             
             <TemplateAccordion
               title="3 IG Story Scripts"
               templateId="ig-stories"
-              content={`Script 1 (poll):
-I'm hosting a tiny [X-seat] hang in [area] this [day]. Would you join? YES/NO
+              content={`Script 1 (poll / validation):
+Montreal people: if I host a small [experience] this week, would you join? YES/NO
 
-Script 2 (details):
-Details: [activity], [time], [X seats]. Reserve here: [link]
+Script 2 (offer + link):
+I'm hosting a small [X seat] [experience] in [area] on [day/time].
+It's for people who want to meet the community in real life.
+Reserve here: [link]
 
-Script 3 (last call):
-Last seats. If you said yes earlier, reserve now: [link]`}
+Script 3 (last seats):
+Only [X] seats left. Once it's full, that's it.
+Reserve now to join the group chat: [link]`}
             />
             
             <TemplateAccordion
               title="DM Reply Template"
               templateId="dm-reply"
-              content={`Hey! I'm doing a small [activity] in [area] with [X seats]. Want the link to reserve?`}
+              content={`Hey! I'm hosting a small [X seat] in-person [experience] in [area] on [day/time].
+It's for people who follow my work and want to meet the community IRL.
+Want the reserve link?`}
             />
+          </div>
+          
+          {/* Templates section image */}
+          <div className="relative w-full max-w-2xl mx-auto mb-8">
+            <div className="relative w-full rounded-2xl shadow-xl bg-white overflow-hidden">
+              <img
+                src={PLAYBOOK_IMAGES.templates}
+                alt={PLAYBOOK_IMAGE_ALTS.templates}
+                className="w-full h-auto object-contain"
+                loading="lazy"
+              />
+            </div>
           </div>
           
           <p className="mt-8 text-center text-gray-600 font-medium">
