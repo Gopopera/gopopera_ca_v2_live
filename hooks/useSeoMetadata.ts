@@ -323,7 +323,7 @@ export function useSeoMetadata(
       };
       // Handle guide-specific OG image
       if (viewState === ViewState.GUIDE_10_SEAT) {
-        result.ogImage = `${BASE_URL}/guides/10seat/hero.svg`;
+        result.ogImage = `${BASE_URL}/guides/playbook/hero.png`;
       }
       return result;
     }

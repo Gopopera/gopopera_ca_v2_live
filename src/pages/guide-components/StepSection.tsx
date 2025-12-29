@@ -60,11 +60,11 @@ export const StepSection: React.FC<StepSectionProps> = ({
           </div>
           
           {/* Right: Image */}
-          <div className="relative">
+          <div className="relative w-full max-w-full overflow-hidden rounded-2xl shadow-xl bg-white/0">
             <img
               src={imageSrc}
               alt={imageAlt}
-              className="w-full h-auto rounded-2xl shadow-xl object-cover"
+              className="h-full w-full object-cover"
               loading="lazy"
             />
           </div>

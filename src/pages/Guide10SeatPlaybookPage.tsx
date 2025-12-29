@@ -9,6 +9,7 @@ import { StickyCTA } from './guide-components/StickyCTA';
 import { GlassCard } from './guide-components/GlassCard';
 import { useUserStore } from '../../stores/userStore';
 import { trackEvent } from '../lib/ga4';
+import { PLAYBOOK_IMAGES, PLAYBOOK_IMAGE_ALTS } from './guide-components/playbookImages';
 
 interface Guide10SeatPlaybookPageProps {
   setViewState: (view: ViewState) => void;
@@ -146,11 +147,11 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
             </div>
             
             {/* Right: Image */}
-            <div className="relative">
+            <div className="relative w-full max-w-full overflow-hidden rounded-2xl shadow-xl bg-white/0">
               <img
-                src="/guides/10seat/hero.svg"
-                alt="Small circle gathering"
-                className="w-full h-auto rounded-2xl shadow-xl"
+                src={PLAYBOOK_IMAGES.hero}
+                alt={PLAYBOOK_IMAGE_ALTS.hero}
+                className="h-full w-full object-cover"
                 loading="eager"
               />
             </div>
@@ -215,11 +216,11 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
               </GlassCard>
             </div>
             
-            <div className="relative">
+            <div className="relative w-full max-w-full overflow-hidden rounded-2xl shadow-xl bg-white/0">
               <img
-                src="/guides/10seat/model.svg"
-                alt="Small group model"
-                className="w-full h-auto rounded-2xl shadow-xl"
+                src={PLAYBOOK_IMAGES.seats}
+                alt={PLAYBOOK_IMAGE_ALTS.seats}
+                className="h-full w-full object-cover"
                 loading="lazy"
               />
             </div>
@@ -248,8 +249,8 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
             </p>
           </GlassCard>
         }
-        imageSrc="/guides/10seat/model.svg"
-        imageAlt="Circle model example"
+        imageSrc={PLAYBOOK_IMAGES.step1}
+        imageAlt={PLAYBOOK_IMAGE_ALTS.step1}
         id="step-1"
         bgColor="white"
       />
@@ -298,11 +299,11 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
               </div>
             </div>
             
-            <div className="relative">
+            <div className="relative w-full max-w-full overflow-hidden rounded-2xl shadow-xl bg-white/0">
               <img
-                src="/guides/10seat/offer.svg"
-                alt="Offer examples"
-                className="w-full h-auto rounded-2xl shadow-xl"
+                src={PLAYBOOK_IMAGES.step2}
+                alt={PLAYBOOK_IMAGE_ALTS.step2}
+                className="h-full w-full object-cover"
                 loading="lazy"
               />
             </div>
@@ -351,11 +352,11 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
               </button>
             </div>
             
-            <div className="relative">
+            <div className="relative w-full max-w-full overflow-hidden rounded-2xl shadow-xl bg-white/0">
               <img
-                src="/guides/10seat/promo.svg"
-                alt="7-day promotion plan"
-                className="w-full h-auto rounded-2xl shadow-xl"
+                src={PLAYBOOK_IMAGES.step3}
+                alt={PLAYBOOK_IMAGE_ALTS.step3}
+                className="h-full w-full object-cover"
                 loading="lazy"
               />
             </div>
@@ -384,8 +385,8 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
             </div>
           </div>
         }
-        imageSrc="/guides/10seat/convert.svg"
-        imageAlt="Conversion strategies"
+        imageSrc={PLAYBOOK_IMAGES.step4}
+        imageAlt={PLAYBOOK_IMAGE_ALTS.step4}
         id="step-4"
         bgColor="white"
       />
@@ -435,28 +436,14 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
               </div>
             </div>
             
-            {/* Right: UI screenshots */}
-            <div className="space-y-6">
+            {/* Right: Create form UI */}
+            <div className="relative w-full max-w-full overflow-hidden rounded-2xl shadow-xl bg-white/0">
               <img
-                src="/guides/10seat/checklist.svg"
-                alt="Checklist"
-                className="w-full h-auto rounded-2xl shadow-xl"
+                src={PLAYBOOK_IMAGES.step5}
+                alt={PLAYBOOK_IMAGE_ALTS.step5}
+                className="h-full w-full object-cover"
                 loading="lazy"
               />
-              <div className="grid grid-cols-2 gap-4">
-                <img
-                  src="/guides/10seat/ui-1.svg"
-                  alt="Popera UI - Chat"
-                  className="w-full h-auto rounded-2xl shadow-xl"
-                  loading="lazy"
-                />
-                <img
-                  src="/guides/10seat/ui-2.svg"
-                  alt="Popera UI - Event"
-                  className="w-full h-auto rounded-2xl shadow-xl"
-                  loading="lazy"
-                />
-              </div>
             </div>
           </div>
         </div>
