@@ -7,7 +7,8 @@
 import React, { useState } from 'react';
 import { ViewState } from '../../types';
 import { ChevronLeft, CheckCircle, XCircle, Loader, AlertTriangle } from 'lucide-react';
-import { useUserStore, POPERA_EMAIL } from '../../stores/userStore';
+import { useUserStore } from '../../stores/userStore';
+import { POPERA_EMAIL } from '../../src/constants/popera';
 import { cleanupPoperaReviews } from '../../scripts/cleanupPoperaReviews';
 
 interface CleanupReviewsPageProps {

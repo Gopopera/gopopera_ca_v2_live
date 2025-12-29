@@ -7,7 +7,7 @@
 import { getDbSafe } from '../src/lib/firebase';
 import { addDoc, collection, doc, getDoc, getDocs, query, where, setDoc, type Firestore } from 'firebase/firestore';
 import { createOrUpdateUserProfile } from './db';
-import { POPERA_EMAIL, POPERA_HOST_ID, POPERA_HOST_NAME } from '../stores/userStore';
+import { POPERA_EMAIL, POPERA_HOST_ID, POPERA_HOST_NAME } from '../src/constants/popera';
 import type { FirestoreEvent } from './types';
 import type { Event } from '../types';
 import type { User } from 'firebase/auth';

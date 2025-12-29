@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, ArrowLeft, UserPlus, UserCheck } from 'lucide-react';
 import { FAKE_HOSTS } from '@/data/fakeHosts';
-import { POPERA_HOST_NAME } from '@/stores/userStore';
+import { POPERA_HOST_NAME } from '@/src/constants/popera';
 // REFACTORED: No longer using getUserProfile - using real-time subscriptions instead
 import { Event } from '@/types';
 

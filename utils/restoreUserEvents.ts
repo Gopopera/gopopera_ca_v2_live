@@ -14,7 +14,7 @@
 
 import { getDbSafe } from '../src/lib/firebase';
 import { collection, getDocs, query, where, doc, getDoc, updateDoc } from 'firebase/firestore';
-import { POPERA_EMAIL } from '../stores/userStore';
+import { POPERA_EMAIL } from '../src/constants/popera';
 
 interface EventDiagnostic {
   id: string;

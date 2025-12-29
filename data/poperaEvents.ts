@@ -1,5 +1,5 @@
 import { Event } from '../types';
-import { POPERA_HOST_ID, POPERA_HOST_NAME } from '../stores/userStore';
+import { POPERA_HOST_ID, POPERA_HOST_NAME } from '../src/constants/popera';
 
 // Official Popera Launch Cities - One event per value prop per city
 const LAUNCH_CITIES = [

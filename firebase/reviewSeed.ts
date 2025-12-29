@@ -8,7 +8,7 @@ import { getDbSafe } from "../src/lib/firebase";
 import { collection, doc, setDoc, addDoc, query, where, getDocs, deleteDoc } from "firebase/firestore";
 import { FirestoreUser, FirestoreReview } from "./types";
 import { createOrUpdateUserProfile } from "./db";
-import { POPERA_EMAIL } from "../stores/userStore";
+import { POPERA_EMAIL } from "../src/constants/popera";
 import { sanitizeFirestoreData } from "../utils/firestoreValidation";
 
 // Fake review accounts - these will be created as user profiles

@@ -9,7 +9,7 @@
 
 import { getDbSafe } from '../src/lib/firebase';
 import { collection, query, where, getDocs, doc, deleteDoc, addDoc } from 'firebase/firestore';
-import { POPERA_EMAIL } from '../stores/userStore';
+import { POPERA_EMAIL } from '../src/constants/popera';
 import { sanitizeFirestoreData } from '../utils/firestoreValidation';
 import type { FirestoreReview } from '../firebase/types';
 import { recalculateEventRating } from '../firebase/db';

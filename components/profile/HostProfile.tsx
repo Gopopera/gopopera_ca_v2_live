@@ -3,7 +3,8 @@ import { ArrowLeft, MapPin, Star, Users, Instagram, Twitter, Globe, Check, Calen
 import { Event, ViewState } from '@/types';
 import { EventCard } from '../events/EventCard';
 import { useProfileStore } from '@/stores/profileStore';
-import { useUserStore, POPERA_HOST_ID, POPERA_HOST_NAME } from '@/stores/userStore';
+import { useUserStore } from '@/stores/userStore';
+import { POPERA_HOST_ID, POPERA_HOST_NAME } from '@/src/constants/popera';
 import { PoperaProfilePicture } from './PoperaProfilePicture';
 import { SeoHelmet } from '../seo/SeoHelmet';
 import { formatDate } from '@/utils/dateFormatter';

@@ -230,18 +230,6 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const [hostStripeStatus, setHostStripeStatus] = useState<{ enabled: boolean; checked: boolean }>({ enabled: false, checked: false });
   const [showHostPaymentSetupError, setShowHostPaymentSetupError] = useState(false);
   
-  // Use unified host data hook (includes profile picture, display name, bio, followers count)
-  const hostData = useHostData(eventHostId);
-  
-  // Use reviews cache hook
-  const { averageRating, reviewCount, isLoading: reviewsLoading } = useHostReviews(eventHostId);
-  
-  // Extract values from hostData hook
-  const hostProfilePicture = hostData?.photoURL || null;
-  const displayHostName = hostData?.displayName || eventHostName || 'Unknown Host';
-  const followersCount = hostData?.followersCount ?? 0;
-  const hostDataLoading = hostData === null || hostData.isLoading;
-  
   // Store hooks - always called
   const user = useUserStore((state) => state.user);
   const userProfile = useUserStore((state) => state.userProfile);
@@ -300,9 +288,23 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     };
   }
   
-  // Use stable values from ref
+  // Use stable values from ref - MUST be declared before hooks that use them
   const eventHostId = stableValuesRef.current.hostId;
   const eventHostName = stableValuesRef.current.hostName;
+  
+  // Use unified host data hook (includes profile picture, display name, bio, followers count)
+  const hostData = useHostData(eventHostId);
+  
+  // Use reviews cache hook
+  const { averageRating, reviewCount, isLoading: reviewsLoading } = useHostReviews(eventHostId);
+  
+  // Extract values from hostData hook
+  const hostProfilePicture = hostData?.photoURL || null;
+  const displayHostName = hostData?.displayName || eventHostName || 'Unknown Host';
+  const followersCount = hostData?.followersCount ?? 0;
+  const hostDataLoading = hostData === null || hostData.isLoading;
+  
+  // Extract remaining stable values from ref
   const eventRating = stableValuesRef.current.rating;
   const eventReviewCount = stableValuesRef.current.reviewCount;
   const eventAttendeesCount = stableValuesRef.current.attendeesCount;
@@ -1724,8 +1726,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         <HostReviewsModal
           hostId={event.hostId}
           hostName={displayHostName || 'Unknown Host'}
-          hostRating={hostOverallRating}
-          hostReviewCount={hostOverallReviewCount}
+          hostRating={averageRating}
+          hostReviewCount={reviewCount}
           isOpen={showHostReviewsModal}
           onClose={() => setShowHostReviewsModal(false)}
           onReviewerClick={(userId, userName) => {

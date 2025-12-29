@@ -7,7 +7,7 @@
 import { getDbSafe } from '../src/lib/firebase';
 import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
 import { geocodeAddress } from '../utils/geocoding';
-import { POPERA_EMAIL } from '../stores/userStore';
+import { POPERA_EMAIL } from '../src/constants/popera';
 import { sanitizeFirestoreData } from '../utils/firestoreValidation';
 import type { FirestoreEvent } from './types';
 

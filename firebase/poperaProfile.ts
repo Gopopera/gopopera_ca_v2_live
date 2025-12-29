@@ -6,7 +6,7 @@
 import { getDbSafe } from "../src/lib/firebase";
 import { collection, doc, getDoc, getDocs, query, where, setDoc, addDoc, serverTimestamp } from "firebase/firestore";
 import { FirestoreUser, FirestoreEvent } from "./types";
-import { POPERA_EMAIL } from "../stores/userStore";
+import { POPERA_EMAIL } from "../src/constants/popera";
 import { sanitizeFirestoreData } from "../utils/firestoreValidation";
 import { createOrUpdateUserProfile } from "./db";
 import type { User } from "firebase/auth";

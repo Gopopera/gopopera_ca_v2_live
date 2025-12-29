@@ -81,10 +81,9 @@ interface UserStore {
   clearJustLoggedInFlag: () => void; // Clear the redirect login flag after navigation
 }
 
-// Official Popera account constants
-export const POPERA_HOST_ID = 'popera-official';
-export const POPERA_HOST_NAME = 'Popera';
-export const POPERA_EMAIL = 'eatezca@gmail.com';
+// Official Popera account constants - moved to src/constants/popera.ts to break circular dependency
+// Re-exported for backward compatibility
+export { POPERA_HOST_ID, POPERA_HOST_NAME, POPERA_EMAIL } from '../src/constants/popera';
 
 export const useUserStore = create<UserStore>()(
   persist(

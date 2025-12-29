@@ -7,7 +7,8 @@
 import React, { useState, useEffect } from 'react';
 import { ViewState } from '../../types';
 import { ChevronLeft, CheckCircle, XCircle, Loader } from 'lucide-react';
-import { useUserStore, POPERA_EMAIL } from '../../stores/userStore';
+import { useUserStore } from '../../stores/userStore';
+import { POPERA_EMAIL } from '../../src/constants/popera';
 import { getPoperaDemoEventsSnapshot } from '../../firebase/demoSeed';
 import { ensurePoperaProfileAndSeed } from '../../firebase/poperaProfile';
 import { setTenFiveStarReviews } from '../../firebase/reviewSeed';

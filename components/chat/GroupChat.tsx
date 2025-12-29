@@ -15,7 +15,7 @@ import { CreateSurveyModal } from './CreateSurveyModal';
 import { MoreToolsModal } from './MoreToolsModal';
 import { SubscriptionOptOutModal } from '../payments/SubscriptionOptOutModal';
 import { isRecurringEvent } from '../../utils/stripeHelpers';
-import { POPERA_HOST_ID } from '@/stores/userStore';
+import { POPERA_HOST_ID } from '../../src/constants/popera';
 import { getDbSafe } from '../../src/lib/firebase';
 import { doc, updateDoc, arrayUnion, arrayRemove, getDoc, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { processRefundForRemovedUser } from '../../utils/refundHelper';

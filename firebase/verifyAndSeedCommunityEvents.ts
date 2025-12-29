@@ -6,7 +6,7 @@
 import { getDbSafe } from '../src/lib/firebase';
 import { collection, getDocs, query, where, addDoc, doc, getDoc, setDoc } from 'firebase/firestore';
 import { geocodeAddress } from '../utils/geocoding';
-import { POPERA_EMAIL } from '../stores/userStore';
+import { POPERA_EMAIL } from '../src/constants/popera';
 import { sanitizeFirestoreData } from '../utils/firestoreValidation';
 import { seedCommunityEvents } from './seedCommunityEvents';
 

@@ -7,7 +7,7 @@
 
 import { getDbSafe } from '../src/lib/firebase';
 import { collection, query, where, getDocs, deleteDoc, doc, updateDoc, writeBatch } from 'firebase/firestore';
-import { POPERA_EMAIL } from '../stores/userStore';
+import { POPERA_EMAIL } from '../src/constants/popera';
 import { getAuthInstance } from '../src/lib/firebaseAuth';
 
 export async function cleanupPoperaReviews() {
