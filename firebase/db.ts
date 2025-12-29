@@ -651,7 +651,16 @@ async function syncEventAttendeeCount(eventId: string): Promise<void> {
   }
 }
 
-export async function listReservationsForUser(userId: string): Promise<FirestoreReservation[]> {
+/**
+ * Result type for listReservationsForUser with error handling
+ */
+export interface ListReservationsForUserResult {
+  reservations: FirestoreReservation[];
+  errorCode?: string;
+  errorMessage?: string;
+}
+
+export async function listReservationsForUser(userId: string): Promise<ListReservationsForUserResult> {
   // Retry logic: wait for Firestore to be ready
   let db = getDbSafe();
   if (!db) {
@@ -664,27 +673,44 @@ export async function listReservationsForUser(userId: string): Promise<Firestore
   }
   
   if (!db) {
-    console.warn('[listReservationsForUser] Firestore not available after retries');
-    return [];
+    const errorMsg = 'Firestore not available after retries';
+    if (import.meta.env.DEV) {
+      console.error('[listReservationsForUser]', errorMsg);
+    }
+    return { reservations: [], errorCode: 'firestore-unavailable', errorMessage: errorMsg };
   }
   
   // Final validation
   if (typeof db !== 'object' || db === null) {
-    console.error('[listReservationsForUser] Invalid Firestore instance');
-    return [];
+    const errorMsg = 'Invalid Firestore instance';
+    if (import.meta.env.DEV) {
+      console.error('[listReservationsForUser]', errorMsg);
+    }
+    return { reservations: [], errorCode: 'invalid-db', errorMessage: errorMsg };
   }
   
   try {
     const reservationsCol = collection(db, "reservations");
     const q = query(reservationsCol, where("userId", "==", userId), where("status", "==", "reserved"));
     const snap = await getDocs(q);
-    return snap.docs.map(d => ({
-      id: d.id,
-      ...(d.data() as Omit<FirestoreReservation, 'id'>),
-    }));
-  } catch (error) {
-    console.error("Error fetching user reservations:", error);
-    return [];
+    return {
+      reservations: snap.docs.map(d => ({
+        id: d.id,
+        ...(d.data() as Omit<FirestoreReservation, 'id'>),
+      }))
+    };
+  } catch (error: any) {
+    const errorCode = error?.code || 'unknown';
+    const errorMessage = error?.message || 'Unknown error';
+    if (import.meta.env.DEV) {
+      console.error('[listReservationsForUser] Error fetching user reservations:', {
+        code: errorCode,
+        message: errorMessage,
+        userId,
+        error
+      });
+    }
+    return { reservations: [], errorCode, errorMessage };
   }
 }
 

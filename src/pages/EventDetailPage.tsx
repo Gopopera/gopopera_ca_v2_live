@@ -15,7 +15,7 @@ import { ShareModal } from '../../components/share/ShareModal';
 import { SeoHelmet } from '../../components/seo/SeoHelmet';
 import { formatDate } from '../../utils/dateFormatter';
 import { formatRating } from '../../utils/formatRating';
-import { getReservationCountForEvent, subscribeToReservationCount, getUserProfile, listReservationsForUser } from '../../firebase/db';
+import { getReservationCountForEvent, subscribeToReservationCount, getUserProfile, listReservationsForUser, type ListReservationsForUserResult } from '../../firebase/db';
 // REFACTORED: No longer using getUserProfile for host display - using real-time subscriptions instead
 // But we use getUserProfile to check host Stripe status for payments
 import { getMainCategoryLabelFromEvent } from '../../utils/categoryMapper';
@@ -26,6 +26,31 @@ import { useHostReviews } from '../../hooks/useHostReviewsCache';
 import { MetricSkeleton } from '../../components/ui/MetricSkeleton';
 import { PaymentModal } from '../../components/payments/PaymentModal';
 import { hasEventFee, isRecurringEvent, getEventFeeAmount } from '../../utils/stripeHelpers';
+
+/**
+ * VALIDATION CHECKLIST (Manual Testing):
+ * 
+ * After reserving a free event:
+ * 1) EventDetail "Reserved" state:
+ *    - Click "Reserve Spot" → button shows "Confirming..." → then "Reserved ✓"
+ *    - If confirmation fails after 5 attempts, shows inline message "We couldn't confirm..."
+ *    - Verify no false "Reserved" from cached rsvps fallback
+ * 
+ * 2) My Circles → Attending:
+ *    - Navigate to My Circles → Attending tab
+ *    - Event should appear immediately (even if /reservations query fails, falls back to user.rsvps)
+ *    - Verify deduplication works (no duplicate events)
+ * 
+ * 3) Occupancy count:
+ *    - Check "X/10 attending" on EventDetail page
+ *    - Count should increment after reservation (uses subscribeToReservationCount)
+ *    - Verify count updates in real-time when other users reserve
+ * 
+ * Test scenarios:
+ * - Normal flow: reservation write succeeds, reads succeed → all 3 goals pass
+ * - Permission error: reservation write succeeds, reads fail → EventDetail shows confirmation error, My Circles uses fallback, occupancy may be delayed
+ * - Network delay: reservation write succeeds, reads delayed → EventDetail polls and confirms, My Circles shows after delay
+ */
 
 /**
  * Helper to format event price display - matches EventCard logic exactly
@@ -355,44 +380,55 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   // Real-time Firestore check for active reservation (not cancelled)
   // This ensures we don't trust stale cached rsvps from localStorage
   const [hasActiveReservation, setHasActiveReservation] = useState<boolean | null>(null);
+  const [reservationCheckError, setReservationCheckError] = useState<string | null>(null);
+  const [isConfirmingReservation, setIsConfirmingReservation] = useState(false);
   
   useEffect(() => {
     const checkActiveReservation = async () => {
       if (!user?.uid || !eventId) {
         setHasActiveReservation(false);
+        setReservationCheckError(null);
         return;
       }
       
       try {
-        const reservations = await listReservationsForUser(user.uid);
-        const activeReservation = reservations.find(
+        const result = await listReservationsForUser(user.uid);
+        const activeReservation = result.reservations.find(
           r => r.eventId === eventId && r.status === 'reserved'
         );
         console.log('[EVENT_DETAIL] Active reservation check:', { 
           eventId, 
           found: !!activeReservation, 
-          reservationsCount: reservations.length 
+          reservationsCount: result.reservations.length,
+          errorCode: result.errorCode
         });
         setHasActiveReservation(!!activeReservation);
+        setReservationCheckError(result.errorCode || null);
       } catch (error) {
         console.error('[EVENT_DETAIL] Error checking active reservation:', error);
         // On error, assume no active reservation (safer than showing stale data)
         setHasActiveReservation(false);
+        setReservationCheckError('unknown');
       }
     };
     
     checkActiveReservation();
   }, [user?.uid, eventId, currentRsvpsString]); // Re-check when rsvps change
   
-  // FIXED: Use real-time Firestore check when available, fallback to cached
+  // TASK B: 3-state UI - "Reserve", "Confirming...", "Reserved ✓"
+  // Only show "Reserved" when Firestore confirms it exists
   const hasRSVPed = useMemo(() => {
-    // If real-time check completed, trust it over cached
+    // If confirming, show confirming state
+    if (isConfirmingReservation) {
+      return null; // Special state for "Confirming..."
+    }
+    // If real-time check completed, trust it
     if (hasActiveReservation !== null) {
       return hasActiveReservation;
     }
-    // Fallback to cached while real-time is loading
-    return rsvps.includes(eventId);
-  }, [eventId, currentRsvpsString, hasActiveReservation]); // eslint-disable-line react-hooks/exhaustive-deps
+    // While loading, show "Reserve" (not "Reserved")
+    return false;
+  }, [eventId, hasActiveReservation, isConfirmingReservation]);
   
   // Native event listener as backup (capture phase)
   // Use refs to avoid recreating the listener on every render
@@ -606,20 +642,59 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         if (isFree) {
           // For free events, go directly to reservation
           console.log('[EVENT_DETAIL] Free event - creating reservation');
-          const reservationId = await addRSVP(user.uid, event.id);
-          setReservationSuccess(true);
-          // Update local count
-          setReservationCount((prev) => (prev !== null ? prev + 1 : 1));
+          setIsConfirmingReservation(true);
+          setReservationCheckError(null);
           
-          // Refresh user profile to ensure rsvps are synced (so events show in My Pops)
-          await useUserStore.getState().refreshUserProfile();
-          
-          // Navigate to confirmation page after a brief delay
-          setTimeout(() => {
-            if (onRSVP) {
-              onRSVP(event.id, reservationId);
+          try {
+            const reservationId = await addRSVP(user.uid, event.id);
+            setReservationSuccess(true);
+            // Update local count optimistically
+            setReservationCount((prev) => (prev !== null ? prev + 1 : 1));
+            
+            // TASK B: Poll for confirmation up to 5 times with 300ms delay
+            let confirmed = false;
+            for (let attempt = 0; attempt < 5; attempt++) {
+              await new Promise(resolve => setTimeout(resolve, 300));
+              const result = await listReservationsForUser(user.uid);
+              const activeReservation = result.reservations.find(
+                r => r.eventId === event.id && r.status === 'reserved'
+              );
+              if (activeReservation) {
+                confirmed = true;
+                setHasActiveReservation(true);
+                setReservationCheckError(null);
+                break;
+              }
+              if (import.meta.env.DEV) {
+                console.log(`[EVENT_DETAIL] Confirmation attempt ${attempt + 1}/5: reservation not found yet`);
+              }
             }
-          }, 500);
+            
+            if (!confirmed) {
+              // Reservation not confirmed after polling
+              setReservationCheckError('confirmation-failed');
+              setHasActiveReservation(false);
+              if (import.meta.env.DEV) {
+                console.warn('[EVENT_DETAIL] Reservation created but not confirmed after polling');
+              }
+            }
+            
+            setIsConfirmingReservation(false);
+            
+            // Refresh user profile to ensure rsvps are synced (so events show in My Pops)
+            await useUserStore.getState().refreshUserProfile();
+            
+            // Navigate to confirmation page after a brief delay
+            setTimeout(() => {
+              if (onRSVP) {
+                onRSVP(event.id, reservationId);
+              }
+            }, 500);
+          } catch (error) {
+            setIsConfirmingReservation(false);
+            setHasActiveReservation(false);
+            throw error; // Re-throw to be caught by outer catch
+          }
         } else {
           // Check if event has Stripe fee (new payment system)
           console.log('[EVENT_DETAIL] 🔥 NOT FREE - hasFee=', hasFee, 'hostStripeStatus=', hostStripeStatus);
@@ -684,6 +759,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     try {
       // Create reservation with payment info
       const { addRSVP } = useUserStore.getState();
+      setIsConfirmingReservation(true);
+      setReservationCheckError(null);
+      
       const reservationId = await addRSVP(user.uid, event.id, {
         paymentMethod: 'stripe',
         totalAmount: event.feeAmount,
@@ -693,6 +771,29 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       
       setReservationSuccess(true);
       setReservationCount((prev) => (prev !== null ? prev + 1 : 1));
+      
+      // TASK B: Poll for confirmation up to 5 times with 300ms delay
+      let confirmed = false;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+        const result = await listReservationsForUser(user.uid);
+        const activeReservation = result.reservations.find(
+          r => r.eventId === event.id && r.status === 'reserved'
+        );
+        if (activeReservation) {
+          confirmed = true;
+          setHasActiveReservation(true);
+          setReservationCheckError(null);
+          break;
+        }
+      }
+      
+      if (!confirmed) {
+        setReservationCheckError('confirmation-failed');
+        setHasActiveReservation(false);
+      }
+      
+      setIsConfirmingReservation(false);
       
       // Refresh user profile
       await useUserStore.getState().refreshUserProfile();
@@ -704,6 +805,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         }
       }, 500);
     } catch (error) {
+      setIsConfirmingReservation(false);
+      setHasActiveReservation(false);
       console.error('Error creating reservation after payment:', error);
       alert('Payment succeeded but failed to create reservation. Please contact support.');
     }
@@ -1314,20 +1417,34 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   )}
                   {/* Reserve Button - Only for non-hosts (users cannot reserve their own events) */}
                   {user?.uid !== event.hostId && (
-                    <button 
-                      onClick={handleRSVP}
-                      disabled={isDemo || reserving}
-                      aria-label={hasRSVPed ? "Cancel reservation" : "Reserve spot"}
-                      className={`w-full py-2.5 font-semibold text-sm rounded-full transition-all touch-manipulation active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
-                        isDemo 
-                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                          : hasRSVPed
-                          ? 'bg-[#15383c] text-white hover:bg-[#1f4d52]'
-                          : 'bg-[#e35e25] text-white hover:bg-[#cf4d1d]'
-                      }`}
-                    >
-                      {reserving ? t('ui.reserving') : isDemo ? t('ui.demoEvent') : hasRSVPed ? t('event.reserved') : t('ui.reserveSpot')}
-                    </button>
+                    <>
+                      <button 
+                        onClick={handleRSVP}
+                        disabled={isDemo || reserving || isConfirmingReservation}
+                        aria-label={hasRSVPed ? "Cancel reservation" : isConfirmingReservation ? "Confirming reservation" : "Reserve spot"}
+                        className={`w-full py-2.5 font-semibold text-sm rounded-full transition-all touch-manipulation active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
+                          isDemo 
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                            : hasRSVPed
+                            ? 'bg-[#15383c] text-white hover:bg-[#1f4d52]'
+                            : 'bg-[#e35e25] text-white hover:bg-[#cf4d1d]'
+                        }`}
+                      >
+                        {reserving || isConfirmingReservation 
+                          ? (isConfirmingReservation ? 'Confirming...' : t('ui.reserving')) 
+                          : isDemo 
+                          ? t('ui.demoEvent') 
+                          : hasRSVPed 
+                          ? t('event.reserved') 
+                          : t('ui.reserveSpot')}
+                      </button>
+                      {/* TASK B: Show inline message if confirmation failed */}
+                      {reservationCheckError === 'confirmation-failed' && (
+                        <p className="mt-2 text-xs text-amber-600 text-center">
+                          We couldn't confirm your reservation yet. Please refresh the page.
+                        </p>
+                      )}
+                    </>
                   )}
                   <button
                     onClick={handleShare}
@@ -1649,14 +1766,14 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                {/* Main Attend button - Large, takes remaining space */}
                <button 
                  onClick={handleRSVP}
-                 disabled={isDemo}
+                 disabled={isDemo || isConfirmingReservation}
                  className={`flex-1 h-11 font-semibold text-[15px] rounded-full shadow-lg active:scale-[0.97] transition-all whitespace-nowrap flex items-center justify-center touch-manipulation px-5 ${
                    isDemo
                      ? 'bg-gray-300/90 text-gray-500 cursor-not-allowed shadow-none'
                      : 'bg-[#15383c] text-white shadow-[#15383c]/25 hover:bg-[#1f4d52]'
                  }`}
                >
-                 {isDemo ? t('ui.locked') : t('ui.attend')}
+                 {isDemo ? t('ui.locked') : isConfirmingReservation ? 'Confirming...' : t('ui.attend')}
                </button>
              </>
            )}

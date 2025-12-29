@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { ViewState, Event } from '../../types';
 import { ChevronLeft, Calendar, MapPin, Clock, Star, MessageCircle, Edit, Users, X, Loader2, Ticket, CheckCircle2, XCircle } from 'lucide-react';
 import { useUserStore } from '../../stores/userStore';
-import { getUserProfile, cancelReservation, getCheckedInCountForEvent } from '../../firebase/db';
+import { getUserProfile, cancelReservation, getCheckedInCountForEvent, listReservationsForUser, type ListReservationsForUserResult } from '../../firebase/db';
 import { getDbSafe } from '../lib/firebase';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { mapFirestoreEventToEvent } from '../../firebase/db';
@@ -132,6 +132,7 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
 
   // TASK 3 FIX: Load attending events directly from Firestore reservations
   // This ensures events appear in "Attending" even if eventStore hasn't loaded them
+  // TASK C: Fallback to user.rsvps if /reservations read fails
   useEffect(() => {
     const loadAttendingEventsFromReservations = async () => {
       if (!user?.uid) {
@@ -141,26 +142,29 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
 
       setAttendingLoading(true);
       try {
-        const db = getDbSafe();
-        if (!db) {
-          console.warn('[MY_POPS] Firestore not available for attending events');
-          setAttendingEventsFromFirestore([]);
-          return;
+        // Use listReservationsForUser which returns structured result with error info
+        const result = await listReservationsForUser(user.uid);
+        
+        // TASK C: If query failed but user.rsvps has event IDs, fallback to fetching by those IDs
+        let eventIds: string[] = [];
+        if (result.errorCode && user.rsvps && user.rsvps.length > 0) {
+          // Query failed - use fallback to user.rsvps
+          if (import.meta.env.DEV && result.errorCode === 'permission-denied') {
+            console.warn('[MY_POPS] Permission denied loading reservations, falling back to user.rsvps');
+          }
+          eventIds = [...new Set(user.rsvps.filter(Boolean))];
+        } else if (!result.errorCode) {
+          // Query succeeded - use reservation event IDs
+          eventIds = [...new Set(result.reservations.map(r => r.eventId).filter(Boolean))];
         }
-
-        // Get all active reservations for user
-        const reservationsCol = collection(db, 'reservations');
-        const q = query(
-          reservationsCol,
-          where('userId', '==', user.uid),
-          where('status', '==', 'reserved')
-        );
-        const snapshot = await getDocs(q);
         
-        // Get unique event IDs from reservations
-        const eventIds = [...new Set(snapshot.docs.map(d => d.data().eventId).filter(Boolean))];
-        
-        console.log('[MY_POPS] 📋 Found reservations for events:', { userId: user.uid, eventIds, count: eventIds.length });
+        console.log('[MY_POPS] 📋 Found reservations for events:', { 
+          userId: user.uid, 
+          eventIds, 
+          count: eventIds.length,
+          errorCode: result.errorCode,
+          usingFallback: !!result.errorCode && user.rsvps && user.rsvps.length > 0
+        });
         
         if (eventIds.length === 0) {
           setAttendingEventsFromFirestore([]);
@@ -168,6 +172,13 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
         }
         
         // Fetch each event document
+        const db = getDbSafe();
+        if (!db) {
+          console.warn('[MY_POPS] Firestore not available for fetching events');
+          setAttendingEventsFromFirestore([]);
+          return;
+        }
+        
         const eventPromises = eventIds.map(async (eventId) => {
           try {
             const eventDoc = await getDoc(doc(db, 'events', eventId));
@@ -192,18 +203,45 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
         setAttendingEventsFromFirestore(fetchedEvents);
       } catch (error: any) {
         console.error('[MY_POPS] ❌ Error loading attending events:', error);
-        // Check for permission denied
-        if (error?.code === 'permission-denied') {
-          console.warn('[MY_POPS] Permission denied loading attending events');
+        // TASK C: Final fallback to user.rsvps if everything fails
+        if (user.rsvps && user.rsvps.length > 0) {
+          if (import.meta.env.DEV) {
+            console.warn('[MY_POPS] Using final fallback to user.rsvps after error');
+          }
+          // Try to fetch events from user.rsvps
+          const db = getDbSafe();
+          if (db) {
+            const eventPromises = user.rsvps.map(async (eventId) => {
+              try {
+                const eventDoc = await getDoc(doc(db, 'events', eventId));
+                if (eventDoc.exists()) {
+                  const data = eventDoc.data();
+                  const firestoreEvent: FirestoreEvent = {
+                    id: eventDoc.id,
+                    ...(data as Omit<FirestoreEvent, 'id'>),
+                  };
+                  return mapFirestoreEventToEvent(firestoreEvent);
+                }
+                return null;
+              } catch {
+                return null;
+              }
+            });
+            const fetchedEvents = (await Promise.all(eventPromises)).filter((e): e is Event => e !== null);
+            setAttendingEventsFromFirestore(fetchedEvents);
+          } else {
+            setAttendingEventsFromFirestore([]);
+          }
+        } else {
+          setAttendingEventsFromFirestore([]);
         }
-        setAttendingEventsFromFirestore([]);
       } finally {
         setAttendingLoading(false);
       }
     };
 
     loadAttendingEventsFromReservations();
-  }, [user?.uid]);
+  }, [user?.uid, user?.rsvps]);
 
   // Handle cancel reservation
   const handleCancelReservation = async () => {

@@ -449,7 +449,7 @@ export const useUserStore = create<UserStore>()(
 
           // OPTIMIZATION: Run Firestore queries in parallel for faster loading
           // Use lightweight reservation IDs instead of full event objects
-          const [firestoreUser, reservationDocs] = await Promise.all([
+          const [firestoreUser, reservationResult] = await Promise.all([
             getUserProfile(uid),
             listReservationsForUser(uid) // Lightweight - only gets reservation IDs, not full events
           ]);
@@ -470,7 +470,16 @@ export const useUserStore = create<UserStore>()(
             // This ensures we don't block user login/profile fetch
           }
           
-          const rsvps = Array.isArray(reservationDocs) ? reservationDocs.map(r => r.eventId).filter(Boolean) : [];
+          const rsvps = Array.isArray(reservationResult.reservations) ? reservationResult.reservations.map(r => r.eventId).filter(Boolean) : [];
+          
+          // Log reservation read errors in DEV
+          if (import.meta.env.DEV && reservationResult.errorCode) {
+            console.warn('[USER_STORE] Reservation read error during profile fetch:', {
+              errorCode: reservationResult.errorCode,
+              errorMessage: reservationResult.errorMessage,
+              userId: uid
+            });
+          }
           const hostedEvents = Array.isArray(firestoreUser?.hostedEvents) ? firestoreUser.hostedEvents : [];
           
           // FIXED: Prioritize Firestore photoURL over Firebase Auth to ensure consistency
@@ -763,8 +772,8 @@ export const useUserStore = create<UserStore>()(
           // Don't trust local state blindly - verify with Firestore if eventId appears in local rsvps
           if (currentRSVPs.includes(eventId)) {
             // Check Firestore for an actual active reservation
-            const existingReservations = await listReservationsForUser(userId);
-            const activeReservation = existingReservations.find(r => r.eventId === eventId && r.status === 'reserved');
+            const existingResult = await listReservationsForUser(userId);
+            const activeReservation = existingResult.reservations.find(r => r.eventId === eventId && r.status === 'reserved');
             
             if (activeReservation) {
               // Active reservation exists, return its ID (no duplicate needed)
