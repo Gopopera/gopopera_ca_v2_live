@@ -28,7 +28,7 @@ export const StepSection: React.FC<StepSectionProps> = ({
   const bgClass = bgColor === 'white' ? 'bg-white' : 'bg-[#f2f2f2]';
   
   return (
-    <section id={id} className={`scroll-mt-24 py-10 md:py-12 lg:py-16 xl:py-20 ${bgClass}`}>
+    <section id={id} className={`scroll-mt-[88px] md:scroll-mt-24 py-10 md:py-12 lg:py-16 xl:py-20 ${bgClass}`}>
       <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
         <div className="flex flex-col lg:grid lg:grid-cols-2 gap-6 lg:gap-8 xl:gap-12 lg:items-center">
           {/* Left: Content */}

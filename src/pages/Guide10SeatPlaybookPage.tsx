@@ -91,7 +91,7 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
   ];
 
   return (
-    <main className="min-h-screen bg-[#f2f2f2] w-full max-w-full overflow-x-hidden">
+    <main className="min-h-screen bg-[#f2f2f2] w-full max-w-full overflow-x-hidden pt-[72px] md:pt-0">
       <SeoHelmet viewState={ViewState.GUIDE_10_SEAT} />
       
       {/* HERO SECTION */}
@@ -103,12 +103,12 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
               <h1 className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-heading font-bold text-[#15383c] mb-4 md:mb-6 leading-[1.1] md:leading-tight">
                 The 10-Seat Event Playbook
               </h1>
-              <p className="text-lg md:text-xl lg:text-2xl text-gray-700 mb-6 md:mb-8 leading-relaxed">
+              <p className="text-lg md:text-xl lg:text-2xl text-gray-700 mb-4 md:mb-6 lg:mb-8 leading-6 md:leading-relaxed">
                 Turn followers into real people. Host small paid circles (3–10 seats) and run them again.
               </p>
               
               {/* Badges */}
-              <div className="flex flex-wrap gap-2 md:gap-3 mb-6 md:mb-8">
+              <div className="flex flex-wrap gap-2 md:gap-3 mb-4 md:mb-6 lg:mb-8">
                 <span className="inline-block py-1.5 md:py-2 px-3 md:px-4 rounded-full bg-[#15383c]/10 border border-[#15383c]/20 text-[#15383c] text-xs md:text-sm font-bold">
                   Made for creators
                 </span>
@@ -229,7 +229,7 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
       </section>
 
       {/* STEP NAVIGATION */}
-      <div id="steps" className="scroll-mt-24">
+      <div id="steps" className="scroll-mt-[88px] md:scroll-mt-24">
         <StepNav currentStep={currentStep} onStepClick={setCurrentStep} />
       </div>
 
@@ -256,7 +256,7 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
       />
 
       {/* STEP 2: THE OFFER */}
-      <section id="step-2" className="scroll-mt-24 py-10 md:py-12 lg:py-16 xl:py-20 bg-white">
+      <section id="step-2" className="scroll-mt-[88px] md:scroll-mt-24 py-10 md:py-12 lg:py-16 xl:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
           <div className="flex flex-col lg:grid lg:grid-cols-2 gap-6 lg:gap-8 xl:gap-12 lg:items-center">
             <div className="order-1 lg:order-1">
@@ -312,60 +312,47 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
       </section>
 
       {/* STEP 3: THE 7-DAY PLAN */}
-      <section id="step-3" className="scroll-mt-24 py-10 md:py-12 lg:py-16 xl:py-20 bg-[#f2f2f2]">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
-          <div className="flex flex-col lg:grid lg:grid-cols-2 gap-6 lg:gap-8 xl:gap-12 lg:items-center">
-            <div className="order-1 lg:order-1">
-              <div className="mb-3 md:mb-4">
-                <span className="inline-block py-1 md:py-1.5 px-3 md:px-4 rounded-full bg-[#15383c]/10 border border-[#15383c]/20 text-[#15383c] text-xs font-bold tracking-wider uppercase">
-                  STEP 3 / 5
-                </span>
-              </div>
-              
-              <h2 className="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-heading font-bold text-[#15383c] mb-4 md:mb-6 lg:mb-8 leading-tight">
-                Fill it with a simple 7-day plan
-              </h2>
-              
-              {/* Day-by-day timeline (mobile) / cards (desktop) */}
-              <div className="bg-white rounded-2xl p-4 md:p-0 md:bg-transparent mb-6 md:mb-8 md:space-y-3">
-                {[
-                  { day: 1, text: "Poll story: 'Would you join?' — find out what your followers want (engage + validate)." },
-                  { day: 2, text: "Create the circle on Popera — title, seats, price, location, details." },
-                  { day: 3, text: "Announce: post the offer + seat count + link (bio + story + pinned)." },
-                  { day: 4, text: "Short reel: why you're hosting + what people get — drive sign-ups with the link." },
-                  { day: 5, text: "Nurture in group chat: intros + icebreakers + answer questions (build hype)." },
-                  { day: 6, text: "Final push: social proof + last seats + reminders (reduce no-shows)." },
-                  { day: 7, text: "Host day: run the experience + post recap + collect reviews for next week." },
-                ].map((item, index, array) => (
-                  <div key={item.day} className={`pb-3 md:pb-0 md:mb-3 ${index < array.length - 1 ? 'border-b border-black/5 md:border-0 md:bg-white md:rounded-xl md:p-4 md:border md:border-gray-200' : 'md:bg-white md:rounded-xl md:p-4 md:border md:border-gray-200'}`}>
-                    <span className="font-bold text-[#e35e25] text-sm md:text-base mr-2 md:mr-3">Day {item.day}:</span>
-                    <span className="text-gray-700 text-sm md:text-base leading-5 md:leading-normal">{item.text}</span>
-                  </div>
-                ))}
-              </div>
-              
-              <button
-                onClick={handleJumpToTemplates}
-                className="w-full md:w-auto px-6 py-3 bg-[#15383c] text-white rounded-full font-bold hover:bg-[#1a4a4f] transition-colors text-sm md:text-base"
-              >
-                Jump to scripts →
-              </button>
-            </div>
-            
-            <div className="relative w-full max-w-[420px] md:max-w-full mx-auto lg:mx-0 overflow-hidden rounded-2xl shadow-sm md:shadow-xl bg-white/0 order-2 lg:order-2">
-              <img
-                src={PLAYBOOK_IMAGES.step3}
-                alt={PLAYBOOK_IMAGE_ALTS.step3}
-                className="w-full h-full aspect-[4/3] md:aspect-auto object-cover"
-                loading="lazy"
-              />
-            </div>
+      <section id="step-3" className="scroll-mt-[88px] md:scroll-mt-24 py-10 md:py-12 lg:py-16 xl:py-20 bg-[#f2f2f2]">
+        <div className="max-w-3xl mx-auto px-4 md:px-6 lg:px-8">
+          <div className="mb-3 md:mb-4">
+            <span className="inline-block py-1 md:py-1.5 px-3 md:px-4 rounded-full bg-[#15383c]/10 border border-[#15383c]/20 text-[#15383c] text-xs font-bold tracking-wider uppercase">
+              STEP 3 / 5
+            </span>
           </div>
+          
+          <h2 className="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-heading font-bold text-[#15383c] mb-4 md:mb-6 lg:mb-8 leading-tight">
+            Fill it with a simple 7-day plan
+          </h2>
+          
+          {/* Day-by-day timeline (mobile) / cards (desktop) */}
+          <div className="bg-white rounded-2xl p-4 md:p-6 mb-6 md:mb-8 space-y-3 shadow-sm md:shadow-md border border-black/5 md:border-gray-200">
+            {[
+              { day: 1, text: "Poll story: 'Would you join?' — find out what your followers want (engage + validate)." },
+              { day: 2, text: "Create the circle on Popera — title, seats, price, location, details." },
+              { day: 3, text: "Announce: post the offer + seat count + link (bio + story + pinned)." },
+              { day: 4, text: "Short reel: why you're hosting + what people get — drive sign-ups with the link." },
+              { day: 5, text: "Nurture in group chat: intros + icebreakers + answer questions (build hype)." },
+              { day: 6, text: "Final push: social proof + last seats + reminders (reduce no-shows)." },
+              { day: 7, text: "Host day: run the experience + post recap + collect reviews for next week." },
+            ].map((item, index, array) => (
+              <div key={item.day} className={`${index < array.length - 1 ? 'pb-3 border-b border-black/5 md:border-gray-200' : ''}`}>
+                <span className="font-bold text-[#e35e25] text-sm md:text-base mr-2 md:mr-3">Day {item.day}:</span>
+                <span className="text-gray-700 text-sm md:text-base leading-6 md:leading-normal">{item.text}</span>
+              </div>
+            ))}
+          </div>
+          
+          <button
+            onClick={handleJumpToTemplates}
+            className="w-full md:w-auto px-6 py-3 bg-[#15383c] text-white rounded-full font-bold hover:bg-[#1a4a4f] transition-colors text-sm md:text-base"
+          >
+            Jump to scripts →
+          </button>
         </div>
       </section>
 
       {/* STEP 4: CONVERSION */}
-      <section id="step-4" className="scroll-mt-24 py-10 md:py-12 lg:py-16 xl:py-20 bg-white">
+      <section id="step-4" className="scroll-mt-[88px] md:scroll-mt-24 py-10 md:py-12 lg:py-16 xl:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
           <div className="flex flex-col lg:grid lg:grid-cols-2 gap-6 lg:gap-8 xl:gap-12 lg:items-center">
             {/* Left: Content */}
@@ -426,7 +413,7 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
       </section>
 
       {/* STEP 5: POPERA SETUP */}
-      <section id="step-5" className="scroll-mt-24 py-10 md:py-12 lg:py-16 xl:py-20 bg-white">
+      <section id="step-5" className="scroll-mt-[88px] md:scroll-mt-24 py-10 md:py-12 lg:py-16 xl:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
           <div className="flex flex-col lg:grid lg:grid-cols-2 gap-6 lg:gap-8 xl:gap-12">
             <div className="order-1 lg:order-1">
@@ -506,7 +493,7 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
       </section>
 
       {/* TEMPLATES SECTION */}
-      <section id="templates" className="scroll-mt-24 py-10 md:py-12 lg:py-16 xl:py-20 bg-[#f2f2f2]">
+      <section id="templates" className="scroll-mt-[88px] md:scroll-mt-24 py-10 md:py-12 lg:py-16 xl:py-20 bg-[#f2f2f2]">
         <div className="max-w-4xl mx-auto px-4 md:px-6 lg:px-8">
           <h2 className="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-heading font-bold text-[#15383c] mb-3 md:mb-4 text-center leading-tight">
             Copy-paste templates
