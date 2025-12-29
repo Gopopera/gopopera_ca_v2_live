@@ -1,0 +1,25 @@
+<svg width="1200" height="800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="modelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#15383c;stop-opacity:0.95" />
+      <stop offset="100%" style="stop-color:#1a4a4f;stop-opacity:0.9" />
+    </linearGradient>
+    <filter id="noise2">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="4" stitchTiles="stitch"/>
+      <feColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.025 0"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="800" fill="url(#modelGrad)"/>
+  <rect width="1200" height="800" fill="url(#modelGrad)" opacity="0.5" filter="url(#noise2)"/>
+  <!-- Abstract coffee cup pattern -->
+  <ellipse cx="400" cy="300" rx="120" ry="80" fill="#e35e25" opacity="0.4"/>
+  <ellipse cx="600" cy="450" rx="100" ry="70" fill="#e35e25" opacity="0.35"/>
+  <ellipse cx="800" cy="350" rx="110" ry="75" fill="#f2f2f2" opacity="0.3"/>
+  <!-- Coffee cup handle shapes -->
+  <path d="M 450 250 Q 480 240 490 270 Q 500 300 470 310" stroke="#e35e25" stroke-width="8" fill="none" opacity="0.5"/>
+  <path d="M 650 400 Q 680 390 690 420 Q 700 450 670 460" stroke="#e35e25" stroke-width="8" fill="none" opacity="0.5"/>
+  <!-- Steam lines -->
+  <path d="M 400 220 Q 410 200 415 180" stroke="#f2f2f2" stroke-width="4" fill="none" opacity="0.4"/>
+  <path d="M 600 370 Q 610 350 615 330" stroke="#f2f2f2" stroke-width="4" fill="none" opacity="0.4"/>
+</svg>
+

@@ -392,10 +392,43 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       }
       
       try {
+        // TASK A: DEV-only debug logging
+        if (import.meta.env.DEV) {
+          console.log('[EVENT_DETAIL] 🔍 Checking reservation state:', { eventId, userId: user.uid });
+        }
+        
         const result = await listReservationsForUser(user.uid);
+        
+        // TASK A: Log all reservations for this (userId, eventId)
+        const allReservationsForEvent = result.reservations.filter(r => r.eventId === eventId);
+        if (import.meta.env.DEV) {
+          console.log('[EVENT_DETAIL] 📋 All reservations for (userId, eventId):', {
+            eventId,
+            userId: user.uid,
+            count: allReservationsForEvent.length,
+            reservations: allReservationsForEvent.map(r => ({
+              id: r.id,
+              status: r.status,
+              reservedAt: r.reservedAt
+            }))
+          });
+        }
+        
         const activeReservation = result.reservations.find(
           r => r.eventId === eventId && r.status === 'reserved'
         );
+        
+        // TASK A: Check if user.rsvps includes the event
+        const rsvpsIncludesEvent = rsvps.includes(eventId);
+        if (import.meta.env.DEV) {
+          console.log('[EVENT_DETAIL] 👤 user.rsvps check:', {
+            rsvpsArray: rsvps,
+            includesEvent: rsvpsIncludesEvent,
+            hasActiveReservation: !!activeReservation,
+            match: rsvpsIncludesEvent === !!activeReservation
+          });
+        }
+        
         console.log('[EVENT_DETAIL] Active reservation check:', { 
           eventId, 
           found: !!activeReservation, 
@@ -413,7 +446,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     };
     
     checkActiveReservation();
-  }, [user?.uid, eventId, currentRsvpsString]); // Re-check when rsvps change
+  }, [user?.uid, eventId, currentRsvpsString, rsvps]); // Re-check when rsvps change
   
   // TASK B: 3-state UI - "Reserve", "Confirming...", "Reserved ✓"
   // Only show "Reserved" when Firestore confirms it exists
@@ -618,14 +651,45 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       const { addRSVP, removeRSVP } = useUserStore.getState();
       
       if (hasRSVPed) {
-        // Cancel reservation
-        console.log('[EVENT_DETAIL] Cancelling existing reservation');
-        await removeRSVP(user.uid, event.id);
-        setReservationSuccess(false);
-        // Update local count
-        if (reservationCount !== null && reservationCount > 0) {
-          setReservationCount(reservationCount - 1);
+        // TASK C: Cancel reservation - only if we have confirmed reservation from Firestore
+        if (hasActiveReservation === true) {
+          console.log('[EVENT_DETAIL] Cancelling existing reservation');
+          try {
+            await removeRSVP(user.uid, event.id);
+            setReservationSuccess(false);
+            setHasActiveReservation(false);
+            // Update local count
+            if (reservationCount !== null && reservationCount > 0) {
+              setReservationCount(reservationCount - 1);
+            }
+            // Refresh reservation state
+            const result = await listReservationsForUser(user.uid);
+            const stillReserved = result.reservations.find(
+              r => r.eventId === event.id && r.status === 'reserved'
+            );
+            if (!stillReserved) {
+              setHasActiveReservation(false);
+            }
+          } catch (error: any) {
+            console.error('[EVENT_DETAIL] Error cancelling reservation:', error);
+            // Show error to user
+            alert(`Failed to cancel reservation: ${error.message || 'Unknown error'}`);
+          }
+        } else {
+          // TASK C: Stale state - refresh and don't attempt cancel
+          console.warn('[EVENT_DETAIL] hasRSVPed is true but hasActiveReservation is not confirmed, refreshing state');
+          const result = await listReservationsForUser(user.uid);
+          const activeReservation = result.reservations.find(
+            r => r.eventId === event.id && r.status === 'reserved'
+          );
+          setHasActiveReservation(!!activeReservation);
+          if (!activeReservation) {
+            // State was stale, now corrected
+            console.log('[EVENT_DETAIL] State corrected - no active reservation found');
+          }
         }
+        setReserving(false);
+        return;
       } else {
         // Check if event is free (using consistent helper that checks both new and legacy price fields)
         const isFree = isEventFree(event);
@@ -642,11 +706,23 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         if (isFree) {
           // For free events, go directly to reservation
           console.log('[EVENT_DETAIL] Free event - creating reservation');
+          
+          // TASK B: DEV-only diagnostic log when reserve is clicked
+          if (import.meta.env.DEV) {
+            console.log('[EVENT_DETAIL] 🔍 RSVP FLOW START:', { userId: user.uid, eventId: event.id });
+          }
+          
           setIsConfirmingReservation(true);
           setReservationCheckError(null);
           
           try {
             const reservationId = await addRSVP(user.uid, event.id);
+            
+            // TASK B: DEV-only diagnostic log when createReservation returns
+            if (import.meta.env.DEV) {
+              console.log('[EVENT_DETAIL] ✅ createReservation returned:', { reservationId, userId: user.uid, eventId: event.id });
+            }
+            
             setReservationSuccess(true);
             // Update local count optimistically
             setReservationCount((prev) => (prev !== null ? prev + 1 : 1));
@@ -663,6 +739,16 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 confirmed = true;
                 setHasActiveReservation(true);
                 setReservationCheckError(null);
+                
+                // TASK B: DEV-only diagnostic log when confirmation polling succeeds
+                if (import.meta.env.DEV) {
+                  console.log('[EVENT_DETAIL] ✅ Confirmation polling SUCCESS:', { 
+                    attempt: attempt + 1, 
+                    reservationId: activeReservation.id,
+                    userId: user.uid,
+                    eventId: event.id
+                  });
+                }
                 break;
               }
               if (import.meta.env.DEV) {
@@ -674,8 +760,15 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               // Reservation not confirmed after polling
               setReservationCheckError('confirmation-failed');
               setHasActiveReservation(false);
+              
+              // TASK B: DEV-only diagnostic log when confirmation polling fails
               if (import.meta.env.DEV) {
-                console.warn('[EVENT_DETAIL] Reservation created but not confirmed after polling');
+                console.warn('[EVENT_DETAIL] ❌ Confirmation polling FAILED:', {
+                  reservationId,
+                  userId: user.uid,
+                  eventId: event.id,
+                  attempts: 5
+                });
               }
             }
             

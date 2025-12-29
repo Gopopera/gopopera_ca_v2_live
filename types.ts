@@ -114,4 +114,7 @@ export enum ViewState {
   
   // Ticket
   TICKET = 'TICKET',
+  
+  // Guide Pages
+  GUIDE_10_SEAT = 'GUIDE_10_SEAT',
 }

@@ -1,0 +1,28 @@
+<svg width="600" height="800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="ui2Grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f2f2f2;stop-opacity:0.95" />
+      <stop offset="100%" style="stop-color:#e8e8e8;stop-opacity:0.9" />
+    </linearGradient>
+    <filter id="noise8">
+      <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="3" stitchTiles="stitch"/>
+      <feColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.015 0"/>
+    </filter>
+  </defs>
+  <!-- Phone frame -->
+  <rect width="600" height="800" rx="40" fill="url(#ui2Grad)"/>
+  <rect width="600" height="800" rx="40" fill="url(#ui2Grad)" opacity="0.5" filter="url(#noise8)"/>
+  <rect x="50" y="80" width="500" height="640" rx="20" fill="#ffffff"/>
+  <!-- Event card -->
+  <rect x="80" y="150" width="440" height="500" rx="24" fill="#ffffff" stroke="#15383c" stroke-width="2" opacity="0.9"/>
+  <!-- Image area -->
+  <rect x="100" y="180" width="400" height="280" rx="16" fill="#15383c" opacity="0.3"/>
+  <!-- Title area -->
+  <rect x="120" y="480" width="360" height="40" rx="8" fill="#15383c" opacity="0.2"/>
+  <!-- Details -->
+  <rect x="120" y="540" width="200" height="30" rx="6" fill="#e35e25" opacity="0.2"/>
+  <rect x="120" y="580" width="280" height="30" rx="6" fill="#15383c" opacity="0.15"/>
+  <!-- CTA button -->
+  <rect x="120" y="630" width="360" height="60" rx="12" fill="#e35e25" opacity="0.6"/>
+</svg>
+

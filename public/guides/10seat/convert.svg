@@ -1,0 +1,24 @@
+<svg width="1200" height="800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="convertGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#15383c;stop-opacity:0.95" />
+      <stop offset="100%" style="stop-color:#1a4a4f;stop-opacity:0.9" />
+    </linearGradient>
+    <filter id="noise5">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="4" stitchTiles="stitch"/>
+      <feColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.025 0"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="800" fill="url(#convertGrad)"/>
+  <rect width="1200" height="800" fill="url(#convertGrad)" opacity="0.4" filter="url(#noise5)"/>
+  <!-- Checkmark -->
+  <path d="M 300 400 L 380 480 L 500 300" stroke="#e35e25" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.8"/>
+  <!-- Arrow flow -->
+  <path d="M 600 400 L 800 400" stroke="#f2f2f2" stroke-width="12" stroke-linecap="round" opacity="0.6"/>
+  <path d="M 770 380 L 800 400 L 770 420" stroke="#f2f2f2" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.6"/>
+  <!-- Target circle -->
+  <circle cx="1000" cy="400" r="80" stroke="#e35e25" stroke-width="8" fill="none" opacity="0.6"/>
+  <circle cx="1000" cy="400" r="50" stroke="#e35e25" stroke-width="6" fill="none" opacity="0.6"/>
+  <circle cx="1000" cy="400" r="20" fill="#e35e25" opacity="0.6"/>
+</svg>
+

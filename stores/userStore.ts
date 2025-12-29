@@ -766,17 +766,49 @@ export const useUserStore = create<UserStore>()(
 
       addRSVP: async (userId: string, eventId: string, options?: { attendeeCount?: number; supportContribution?: number; paymentMethod?: string; totalAmount?: number; paymentIntentId?: string; subscriptionId?: string }): Promise<string> => {
         try {
+          // TASK A: DEV-only debug logging
+          if (import.meta.env.DEV) {
+            console.log('[USER_STORE] 🔍 addRSVP called:', { userId, eventId });
+          }
+          
           const currentUser = get().user;
           const currentRSVPs = Array.isArray(currentUser?.rsvps) ? currentUser.rsvps : [];
+          
+          // TASK A: Log user.rsvps state
+          if (import.meta.env.DEV) {
+            console.log('[USER_STORE] 👤 user.rsvps check:', {
+              rsvpsArray: currentRSVPs,
+              includesEvent: currentRSVPs.includes(eventId)
+            });
+          }
           
           // Don't trust local state blindly - verify with Firestore if eventId appears in local rsvps
           if (currentRSVPs.includes(eventId)) {
             // Check Firestore for an actual active reservation
             const existingResult = await listReservationsForUser(userId);
+            
+            // TASK A: Log all reservations for this (userId, eventId)
+            const allReservationsForEvent = existingResult.reservations.filter(r => r.eventId === eventId);
+            if (import.meta.env.DEV) {
+              console.log('[USER_STORE] 📋 All reservations for (userId, eventId):', {
+                eventId,
+                userId,
+                count: allReservationsForEvent.length,
+                reservations: allReservationsForEvent.map(r => ({
+                  id: r.id,
+                  status: r.status,
+                  reservedAt: r.reservedAt
+                }))
+              });
+            }
+            
             const activeReservation = existingResult.reservations.find(r => r.eventId === eventId && r.status === 'reserved');
             
             if (activeReservation) {
               // Active reservation exists, return its ID (no duplicate needed)
+              if (import.meta.env.DEV) {
+                console.log('[USER_STORE] ✅ Active reservation already exists, returning existing ID:', activeReservation.id);
+              }
               return activeReservation.id;
             }
             // No active reservation found - local state was stale (e.g., from cancelled reservation)
@@ -785,6 +817,11 @@ export const useUserStore = create<UserStore>()(
           }
           
           const reservationId = await createReservation(eventId, userId, options);
+          
+          // TASK A: Log reservation creation result
+          if (import.meta.env.DEV) {
+            console.log('[USER_STORE] ✅ Reservation created/updated:', { reservationId, eventId, userId });
+          }
           
           const reservationEvents = await listUserReservations(userId);
           const updatedRSVPs = Array.isArray(reservationEvents) ? reservationEvents.map(e => e?.id).filter(Boolean) : [];
@@ -992,12 +1029,24 @@ export const useUserStore = create<UserStore>()(
 
       removeRSVP: async (userId: string, eventId: string) => {
         try {
-          const reservations = await listReservationsForUser(userId);
-          const reservation = reservations.find(r => r.eventId === eventId && r.status === "reserved");
+          const result = await listReservationsForUser(userId);
+          const reservation = result.reservations.find(r => r.eventId === eventId && r.status === "reserved");
           
-          if (reservation) {
-            await cancelReservation(reservation.id);
+          if (!reservation) {
+            // TASK C: If no reservation found, log warning but don't throw (idempotent)
+            if (import.meta.env.DEV) {
+              console.warn('[REMOVE_RSVP] No active reservation found for (userId, eventId):', { userId, eventId });
+            }
+            // Still update rsvps to remove eventId from local state
+            const currentUser = get().user;
+            if (currentUser && currentUser.uid === userId) {
+              const updatedRSVPs = Array.isArray(currentUser.rsvps) ? currentUser.rsvps.filter(id => id !== eventId) : [];
+              set({ user: { ...currentUser, rsvps: updatedRSVPs }, currentUser: { ...currentUser, rsvps: updatedRSVPs } });
+            }
+            return; // Idempotent - no error if already cancelled
           }
+          
+          await cancelReservation(reservation.id);
           
           const reservationEvents = await listUserReservations(userId);
           const updatedRSVPs = Array.isArray(reservationEvents) ? reservationEvents.map(e => e?.id).filter(Boolean) : [];

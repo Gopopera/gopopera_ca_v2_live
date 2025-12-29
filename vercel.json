@@ -3,6 +3,18 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "framework": null,
+  "redirects": [
+    {
+      "source": "/The%2010-Seat%20Event%20Playbook",
+      "destination": "/the-10-seat-event-playbook",
+      "permanent": true
+    },
+    {
+      "source": "/The 10-Seat Event Playbook",
+      "destination": "/the-10-seat-event-playbook",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/(.*)",

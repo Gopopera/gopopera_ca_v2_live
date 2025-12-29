@@ -1,0 +1,28 @@
+<svg width="1200" height="800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="promoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#15383c;stop-opacity:0.9" />
+      <stop offset="50%" style="stop-color:#1a4a4f;stop-opacity:0.85" />
+      <stop offset="100%" style="stop-color:#e35e25;stop-opacity:0.8" />
+    </linearGradient>
+    <filter id="noise4">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" stitchTiles="stitch"/>
+      <feColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.02 0"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="800" fill="url(#promoGrad)"/>
+  <rect width="1200" height="800" fill="url(#promoGrad)" opacity="0.35" filter="url(#noise4)"/>
+  <!-- Calendar shape -->
+  <rect x="300" y="250" width="240" height="200" rx="12" fill="#f2f2f2" opacity="0.4"/>
+  <rect x="300" y="250" width="240" height="50" rx="12" fill="#e35e25" opacity="0.6"/>
+  <!-- Calendar grid -->
+  <line x1="360" y1="300" x2="360" y2="450" stroke="#15383c" stroke-width="2" opacity="0.3"/>
+  <line x1="420" y1="300" x2="420" y2="450" stroke="#15383c" stroke-width="2" opacity="0.3"/>
+  <line x1="480" y1="300" x2="480" y2="450" stroke="#15383c" stroke-width="2" opacity="0.3"/>
+  <line x1="300" y1="350" x2="540" y2="350" stroke="#15383c" stroke-width="2" opacity="0.3"/>
+  <line x1="300" y1="400" x2="540" y2="400" stroke="#15383c" stroke-width="2" opacity="0.3"/>
+  <!-- Megaphone shape -->
+  <path d="M 700 300 L 700 500 L 950 450 L 950 350 Z" fill="#e35e25" opacity="0.5"/>
+  <ellipse cx="950" cy="400" rx="30" ry="50" fill="#f2f2f2" opacity="0.4"/>
+</svg>
+

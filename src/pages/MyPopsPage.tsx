@@ -190,10 +190,16 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
               };
               return mapFirestoreEventToEvent(firestoreEvent);
             }
-            console.warn('[MY_POPS] Event not found:', eventId);
+            // TASK D: Log when event doc fetch fails
+            if (import.meta.env.DEV) {
+              console.warn('[MY_POPS] ⚠️ Event document not found:', eventId);
+            }
             return null;
           } catch (err) {
-            console.error('[MY_POPS] Error fetching event:', eventId, err);
+            // TASK D: Log when event doc fetch fails with error
+            if (import.meta.env.DEV) {
+              console.error('[MY_POPS] ❌ Error fetching event:', eventId, err);
+            }
             return null;
           }
         });

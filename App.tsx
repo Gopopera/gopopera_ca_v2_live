@@ -59,6 +59,7 @@ const ReportPage = React.lazy(() => import('./src/pages/ReportPage').then(m => (
 const HelpPage = React.lazy(() => import('./src/pages/HelpPage').then(m => ({ default: m.HelpPage })));
 const SafetyPage = React.lazy(() => import('./src/pages/SafetyPage').then(m => ({ default: m.SafetyPage })));
 const PressPage = React.lazy(() => import('./src/pages/PressPage').then(m => ({ default: m.PressPage })));
+const Guide10SeatPlaybookPage = React.lazy(() => import('./src/pages/Guide10SeatPlaybookPage').then(m => ({ default: m.Guide10SeatPlaybookPage })));
 const AuthPage = React.lazy(() => import('./src/pages/AuthPage').then(m => ({ default: m.AuthPage })));
 const ProfilePage = React.lazy(() => import('./src/pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
 const NotificationsPage = React.lazy(() => import('./src/pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
@@ -452,6 +453,8 @@ const AppContent: React.FC = () => {
       return ViewState.SAFETY;
     } else if (pathname === '/press') {
       return ViewState.PRESS;
+    } else if (pathname === '/the-10-seat-event-playbook') {
+      return ViewState.GUIDE_10_SEAT;
     } else if (pathname === '/host/payouts/setup') {
       return ViewState.PAYOUT_SETUP;
     } else if (pathname === '/host/payouts') {
@@ -1303,6 +1306,10 @@ const AppContent: React.FC = () => {
       if (currentUrl !== '/press') {
         window.history.replaceState({ viewState: ViewState.PRESS }, '', '/press');
       }
+    } else if (viewState === ViewState.GUIDE_10_SEAT) {
+      if (currentUrl !== '/the-10-seat-event-playbook') {
+        window.history.replaceState({ viewState: ViewState.GUIDE_10_SEAT }, '', '/the-10-seat-event-playbook');
+      }
     } else if (viewState === ViewState.HOST_PROFILE && selectedHost) {
       // HOST_PROFILE doesn't need URL sync - it's a modal-like overlay
       // Keep current URL to allow back button to work
@@ -1464,7 +1471,7 @@ const AppContent: React.FC = () => {
             ViewState.HOST_PROFILE, ViewState.ABOUT, ViewState.CAREERS, ViewState.CONTACT,
             ViewState.TERMS, ViewState.PRIVACY, ViewState.CANCELLATION, ViewState.GUIDELINES,
             ViewState.REPORT_EVENT, ViewState.HELP, ViewState.SAFETY, ViewState.PRESS,
-            ViewState.AUTH, ViewState.CREATE_EVENT, ViewState.EDIT_EVENT,
+            ViewState.GUIDE_10_SEAT, ViewState.AUTH, ViewState.CREATE_EVENT, ViewState.EDIT_EVENT,
             ViewState.PROFILE, ViewState.NOTIFICATIONS, ViewState.MY_POPS,
             ViewState.FAVORITES, ViewState.MY_CALENDAR,
             ViewState.PROFILE_BASIC, ViewState.PROFILE_NOTIFICATIONS,
@@ -1997,6 +2004,7 @@ const AppContent: React.FC = () => {
         {viewState === ViewState.HELP && <HelpPage setViewState={setViewState} />}
         {viewState === ViewState.SAFETY && <SafetyPage setViewState={setViewState} />}
         {viewState === ViewState.PRESS && <PressPage setViewState={setViewState} />}
+        {viewState === ViewState.GUIDE_10_SEAT && <Guide10SeatPlaybookPage setViewState={setViewState} />}
 
             {viewState === ViewState.HOST_PROFILE && selectedHost && (
               <React.Suspense fallback={<PageSkeleton />}>

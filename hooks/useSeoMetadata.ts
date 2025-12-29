@@ -177,6 +177,12 @@ const STATIC_METADATA: Partial<Record<ViewState, Partial<SeoMetadata>>> = {
     canonicalUrl: `${BASE_URL}/auth`,
     ogType: 'website',
   },
+  [ViewState.GUIDE_10_SEAT]: {
+    title: `The 10-Seat Event Playbook | ${BRAND_NAME}`,
+    description: 'Practical 5-step guide for creators to host and fill small in-person circles (3–10 seats) in their city — plus copy-paste templates.',
+    canonicalUrl: `${BASE_URL}/the-10-seat-event-playbook`,
+    ogType: 'website',
+  },
 };
 
 /**
@@ -308,13 +314,18 @@ export function useSeoMetadata(
     // Use static metadata for known view states
     const staticMeta = STATIC_METADATA[viewState];
     if (staticMeta) {
-      return {
+      const result = {
         ...defaultMeta,
         ...staticMeta,
         ogTitle: staticMeta.title || defaultMeta.ogTitle,
         ogDescription: staticMeta.description || defaultMeta.ogDescription,
         ogUrl: staticMeta.canonicalUrl || defaultMeta.ogUrl,
       };
+      // Handle guide-specific OG image
+      if (viewState === ViewState.GUIDE_10_SEAT) {
+        result.ogImage = `${BASE_URL}/guides/10seat/hero.svg`;
+      }
+      return result;
     }
 
     // Fallback to default for unknown views

@@ -1,0 +1,29 @@
+<svg width="1200" height="800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="checklistGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#15383c;stop-opacity:0.9" />
+      <stop offset="100%" style="stop-color:#1a4a4f;stop-opacity:0.85" />
+    </linearGradient>
+    <filter id="noise6">
+      <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/>
+      <feColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.02 0"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="800" fill="url(#checklistGrad)"/>
+  <rect width="1200" height="800" fill="url(#checklistGrad)" opacity="0.4" filter="url(#noise6)"/>
+  <!-- Checkbox grid pattern -->
+  <rect x="350" y="200" width="500" height="400" rx="16" fill="#f2f2f2" opacity="0.15"/>
+  <!-- Checkboxes with checkmarks -->
+  <rect x="400" y="250" width="40" height="40" rx="4" fill="#15383c" opacity="0.5" stroke="#e35e25" stroke-width="3"/>
+  <path d="M 410 275 L 425 290 L 435 270" stroke="#e35e25" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <rect x="400" y="320" width="40" height="40" rx="4" fill="#15383c" opacity="0.5" stroke="#e35e25" stroke-width="3"/>
+  <path d="M 410 345 L 425 360 L 435 340" stroke="#e35e25" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <rect x="400" y="390" width="40" height="40" rx="4" fill="#15383c" opacity="0.5" stroke="#e35e25" stroke-width="3"/>
+  <path d="M 410 415 L 425 430 L 435 410" stroke="#e35e25" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <rect x="400" y="460" width="40" height="40" rx="4" fill="#15383c" opacity="0.5" stroke="#f2f2f2" stroke-width="3"/>
+  <rect x="400" y="530" width="40" height="40" rx="4" fill="#15383c" opacity="0.5" stroke="#f2f2f2" stroke-width="3"/>
+  <!-- Accent circles -->
+  <circle cx="800" cy="300" r="60" fill="#e35e25" opacity="0.3"/>
+  <circle cx="900" cy="500" r="50" fill="#f2f2f2" opacity="0.2"/>
+</svg>
+

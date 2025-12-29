@@ -573,6 +573,156 @@ export async function createReservation(
   
   try {
     const reservationsCol = collection(db, "reservations");
+    
+    // TASK B: Make reservation creation idempotent
+    // Query for existing reservations for this (userId, eventId) regardless of status
+    const existingQuery = query(
+      reservationsCol,
+      where("userId", "==", userId),
+      where("eventId", "==", eventId)
+    );
+    const existingSnapshot = await getDocs(existingQuery);
+    
+    // DEV-only debug logging
+    if (import.meta.env.DEV) {
+      console.log('[CREATE_RESERVATION] 🔍 Checking existing reservations:', {
+        eventId,
+        userId,
+        existingCount: existingSnapshot.size
+      });
+      existingSnapshot.docs.forEach((doc, index) => {
+        const data = doc.data();
+        console.log(`   [${index + 1}] Doc ID: ${doc.id}, Status: ${data.status}, ReservedAt: ${data.reservedAt}`);
+      });
+    }
+    
+    // If a doc exists with status: 'reserved', return existing ID (idempotent)
+    const reservedDoc = existingSnapshot.docs.find(doc => doc.data().status === 'reserved');
+    if (reservedDoc) {
+      if (import.meta.env.DEV) {
+        console.log('[CREATE_RESERVATION] ✅ Reservation already exists with status="reserved", returning existing ID:', reservedDoc.id);
+      }
+      return reservedDoc.id;
+    }
+    
+    // If a doc exists with status: 'cancelled', update it back to 'reserved'
+    const cancelledDoc = existingSnapshot.docs.find(doc => doc.data().status === 'cancelled');
+    if (cancelledDoc) {
+      if (import.meta.env.DEV) {
+        console.log('[CREATE_RESERVATION] ♻️  Found cancelled reservation, reactivating:', cancelledDoc.id);
+      }
+      
+      const updateData: Record<string, any> = {
+        status: "reserved",
+        reservedAt: Date.now(),
+        attendeeCount: options?.attendeeCount || 1,
+      };
+      
+      // Update optional fields if provided
+      if (options?.supportContribution !== undefined) {
+        updateData.supportContribution = options.supportContribution;
+      }
+      if (options?.paymentMethod) {
+        updateData.paymentMethod = options.paymentMethod;
+      }
+      if (options?.totalAmount !== undefined) {
+        updateData.totalAmount = options.totalAmount;
+      }
+      if (options?.paymentIntentId) {
+        updateData.paymentIntentId = options.paymentIntentId;
+        updateData.paymentStatus = 'succeeded';
+      }
+      if (options?.subscriptionId) {
+        updateData.subscriptionId = options.subscriptionId;
+        updateData.paymentStatus = 'succeeded';
+      }
+      if (options?.paymentIntentId) {
+        updateData.payoutStatus = 'held';
+      }
+      
+      // Remove cancelledAt and cancelledByUid if they exist
+      updateData.cancelledAt = null;
+      updateData.cancelledByUid = null;
+      
+      const reservationRef = doc(db, "reservations", cancelledDoc.id);
+      await updateDoc(reservationRef, sanitizeFirestoreData(updateData));
+      
+      // Sync attendeeCount on event document
+      syncEventAttendeeCount(eventId).catch(err => {
+        console.warn('[CREATE_RESERVATION] ⚠️ Failed to sync attendeeCount:', err);
+      });
+      
+      return cancelledDoc.id;
+    }
+    
+    // If multiple docs exist (edge case), pick the most recent and log warning
+    if (existingSnapshot.docs.length > 1) {
+      if (import.meta.env.DEV) {
+        console.warn('[CREATE_RESERVATION] ⚠️ Multiple reservations found for (userId, eventId):', {
+          count: existingSnapshot.docs.length,
+          docIds: existingSnapshot.docs.map(d => d.id)
+        });
+      }
+      
+      // Sort by reservedAt (or createdAt) descending, pick most recent
+      const sortedDocs = existingSnapshot.docs.sort((a, b) => {
+        const aTime = a.data().reservedAt || a.data().createdAt || 0;
+        const bTime = b.data().reservedAt || b.data().createdAt || 0;
+        return bTime - aTime;
+      });
+      
+      const mostRecent = sortedDocs[0];
+      const mostRecentData = mostRecent.data();
+      
+      // If most recent is reserved, return it
+      if (mostRecentData.status === 'reserved') {
+        if (import.meta.env.DEV) {
+          console.log('[CREATE_RESERVATION] ✅ Using most recent reserved reservation:', mostRecent.id);
+        }
+        return mostRecent.id;
+      }
+      
+      // If most recent is cancelled, reactivate it
+      if (mostRecentData.status === 'cancelled') {
+        if (import.meta.env.DEV) {
+          console.log('[CREATE_RESERVATION] ♻️  Reactivating most recent cancelled reservation:', mostRecent.id);
+        }
+        
+        const updateData: Record<string, any> = {
+          status: "reserved",
+          reservedAt: Date.now(),
+          attendeeCount: options?.attendeeCount || 1,
+          cancelledAt: null,
+          cancelledByUid: null,
+        };
+        
+        if (options?.supportContribution !== undefined) updateData.supportContribution = options.supportContribution;
+        if (options?.paymentMethod) updateData.paymentMethod = options.paymentMethod;
+        if (options?.totalAmount !== undefined) updateData.totalAmount = options.totalAmount;
+        if (options?.paymentIntentId) {
+          updateData.paymentIntentId = options.paymentIntentId;
+          updateData.paymentStatus = 'succeeded';
+        }
+        if (options?.subscriptionId) {
+          updateData.subscriptionId = options.subscriptionId;
+          updateData.paymentStatus = 'succeeded';
+        }
+        if (options?.paymentIntentId) {
+          updateData.payoutStatus = 'held';
+        }
+        
+        const reservationRef = doc(db, "reservations", mostRecent.id);
+        await updateDoc(reservationRef, sanitizeFirestoreData(updateData));
+        
+        syncEventAttendeeCount(eventId).catch(err => {
+          console.warn('[CREATE_RESERVATION] ⚠️ Failed to sync attendeeCount:', err);
+        });
+        
+        return mostRecent.id;
+      }
+    }
+    
+    // No existing reservation found - create new one
     const reservationRaw: Omit<FirestoreReservation, 'id'> = {
       eventId,
       userId,
@@ -600,6 +750,10 @@ export async function createReservation(
 
     const docRef = await addDoc(reservationsCol, sanitizedReservation);
     
+    if (import.meta.env.DEV) {
+      console.log('[CREATE_RESERVATION] ✅ Created new reservation:', docRef.id);
+    }
+    
     // Sync attendeeCount on event document for unauthenticated users
     // This is done in background - don't block reservation creation
     syncEventAttendeeCount(eventId).catch(err => {
@@ -608,8 +762,21 @@ export async function createReservation(
     
     return docRef.id;
   } catch (error: any) {
-    console.error('Firestore write failed:', { path: 'reservations', error: error.message || 'Unknown error' });
-    throw error;
+    // TASK B: Ensure error messages are not swallowed
+    const errorMessage = error.message || 'Unknown error';
+    const errorCode = error.code || 'unknown';
+    console.error('[CREATE_RESERVATION] ❌ Firestore write failed:', { 
+      path: 'reservations', 
+      eventId,
+      userId,
+      error: errorMessage,
+      code: errorCode
+    });
+    
+    // Propagate clear error with code
+    const enhancedError = new Error(`Failed to create reservation: ${errorMessage}`);
+    (enhancedError as any).code = errorCode;
+    throw enhancedError;
   }
 }
 
