@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, MessageSquareOff, Lock, BellOff, Download, CreditCard } from 'lucide-react';
+import { X, MessageSquareOff, Lock, BellOff, Download, CreditCard, Users } from 'lucide-react';
 
 interface MoreToolsModalProps {
   isOpen: boolean;
@@ -9,6 +9,7 @@ interface MoreToolsModalProps {
   onToggleMuteAll: () => void;
   onDownloadHistory: () => void;
   onManageSubscription?: () => void;
+  onViewAttendees?: () => void;
   chatLocked: boolean;
   muteAll: boolean;
   hasSubscription?: boolean;
@@ -22,6 +23,7 @@ export const MoreToolsModal: React.FC<MoreToolsModalProps> = ({
   onToggleMuteAll,
   onDownloadHistory,
   onManageSubscription,
+  onViewAttendees,
   chatLocked,
   muteAll,
   hasSubscription,
@@ -129,6 +131,25 @@ export const MoreToolsModal: React.FC<MoreToolsModalProps> = ({
               <p className="text-sm text-gray-600">Export conversation as JSON file</p>
             </div>
           </button>
+
+          {/* View Attendees */}
+          {onViewAttendees && (
+            <button
+              onClick={() => {
+                onViewAttendees();
+                onClose();
+              }}
+              className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 hover:border-[#e35e25] hover:bg-[#e35e25]/5 transition-all text-left"
+            >
+              <div className="w-10 h-10 bg-[#15383c]/10 rounded-full flex items-center justify-center shrink-0">
+                <Users size={20} className="text-[#15383c]" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-[#15383c]">View Attendees</h3>
+                <p className="text-sm text-gray-600">See who's attending and their status</p>
+              </div>
+            </button>
+          )}
 
           {/* Manage Subscription (only for recurring events with subscription) */}
           {hasSubscription && onManageSubscription && (

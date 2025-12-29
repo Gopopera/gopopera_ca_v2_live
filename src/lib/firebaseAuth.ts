@@ -164,8 +164,18 @@ export async function signInWithGoogle(): Promise<UserCredential | null> {
       });
       
       try {
-        return await Promise.race([popupPromise, timeoutPromise]);
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firebaseAuth.ts:166',message:'Starting Promise.race for popup',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
+        const result = await Promise.race([popupPromise, timeoutPromise]);
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firebaseAuth.ts:169',message:'Promise.race completed successfully',data:{hasResult:!!result},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
+        return result;
       } catch (popupErr: any) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firebaseAuth.ts:172',message:'ERROR in Promise.race catch block',data:{errorCode:popupErr?.code,errorMessage:popupErr?.message,errorName:popupErr?.name,errorStack:popupErr?.stack?.substring(0,300)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
         // Check if it's a timeout or known popup error
         const popupErrorCodes = [
           'auth/popup-blocked',
@@ -187,6 +197,9 @@ export async function signInWithGoogle(): Promise<UserCredential | null> {
             message: popupErr?.message,
             isCOOPIssue
           });
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firebaseAuth.ts:184',message:'Falling back to redirect',data:{errorCode:popupErr?.code,isCOOPIssue,popupErrorCodes:popupErrorCodes.includes(popupErr?.code)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+          // #endregion
           
           // Clear any stale sessionStorage before redirect
           try {
@@ -201,7 +214,13 @@ export async function signInWithGoogle(): Promise<UserCredential | null> {
             console.warn('[AUTH] Could not clear sessionStorage:', e);
           }
           
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firebaseAuth.ts:203',message:'About to call signInWithRedirect',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+          // #endregion
           await signInWithRedirect(auth, provider);
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firebaseAuth.ts:205',message:'signInWithRedirect completed, returning null',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+          // #endregion
           return null;
         }
         throw popupErr;
@@ -209,6 +228,9 @@ export async function signInWithGoogle(): Promise<UserCredential | null> {
     }
   } catch (err: any) {
     console.error("[AUTH] Google sign-in error:", err);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'firebaseAuth.ts:210',message:'FINAL catch block - outer error handler',data:{errorCode:err?.code,errorMessage:err?.message,errorName:err?.name,errorStack:err?.stack?.substring(0,300)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
     // Final fallback: try redirect if popup fails
     const fallbackCodes = [
       'auth/popup-blocked',

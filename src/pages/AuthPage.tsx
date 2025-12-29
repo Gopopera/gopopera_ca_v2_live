@@ -54,18 +54,45 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
     setIsGoogleLoading(true);
     setEmailError(null);
     console.log('[AUTH_UI] Google button clicked');
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthPage.tsx:56',message:'Google button clicked',data:{timestamp:Date.now(),url:typeof window!=='undefined'?window.location.href:'unknown'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // Check COOP header
+    if (typeof window !== 'undefined') {
+      fetch(window.location.href, { method: 'HEAD' }).then(r => {
+        const coopHeader = r.headers.get('Cross-Origin-Opener-Policy');
+        fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthPage.tsx:58',message:'COOP header check',data:{coopHeader:coopHeader||'NOT_SET',allHeaders:Object.fromEntries(r.headers.entries())},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      }).catch(()=>{});
+    }
+    // #endregion
     
     try {
       const userStore = useUserStore.getState();
-      await userStore.signInWithGoogle();
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthPage.tsx:67',message:'About to call userStore.signInWithGoogle',data:{hasUserStore:!!userStore},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      const result = await userStore.signInWithGoogle();
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthPage.tsx:70',message:'userStore.signInWithGoogle returned',data:{hasResult:!!result,isNull:result===null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      
+      // If redirect was used, result will be null and page should navigate away
+      if (result === null) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthPage.tsx:75',message:'Redirect used, should navigate away',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+        // Don't clear loading state - redirect should navigate away
+        return;
+      }
       
       // Clear loading state quickly - auth listener will handle state update
-      // If redirect was used, page will navigate away so this won't run
       setTimeout(() => {
         setIsGoogleLoading(false);
       }, 100);
     } catch (error: any) {
       console.error("[AUTH] Google sign-in error:", error);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthPage.tsx:86',message:'ERROR caught in handleGoogleSignIn',data:{errorCode:error?.code,errorMessage:error?.message,errorStack:error?.stack?.substring(0,200),errorName:error?.name,fullError:JSON.stringify(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       setGoogleError(error?.message || "Something went wrong signing you in. Please try again.");
       setIsGoogleLoading(false);
     }

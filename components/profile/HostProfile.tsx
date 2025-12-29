@@ -8,11 +8,12 @@ import { PoperaProfilePicture } from './PoperaProfilePicture';
 import { SeoHelmet } from '../seo/SeoHelmet';
 import { formatDate } from '@/utils/dateFormatter';
 import { formatRating } from '@/utils/formatRating';
-import { listHostReviews, getUserProfile } from '@/firebase/db';
+import { getUserProfile } from '@/firebase/db';
 import { FirestoreReview } from '@/firebase/types';
-import { subscribeToUserProfile } from '@/firebase/userSubscriptions';
-import { subscribeToFollowersCount } from '@/firebase/follow';
+import { useHostData } from '@/hooks/useHostProfileCache';
+import { useHostReviews } from '@/hooks/useHostReviewsCache';
 import { getInitials, getAvatarBgColor } from '@/utils/avatarUtils';
+import { MetricSkeleton } from '@/components/ui/MetricSkeleton';
 
 interface HostProfileProps {
   hostName: string;
@@ -45,134 +46,29 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
   const unfollowHost = useProfileStore((state) => state.unfollowHost);
   const profileStore = useProfileStore();
   
-  // State for reviews fetched from Firestore (source of truth)
-  // Extended to include userPhoto for consistent profile picture display
+  // Use unified host data hook (includes profile picture, followers count)
+  const hostData = useHostData(hostId);
+  
+  // Use reviews cache hook
+  const { reviews: cachedReviews, averageRating, reviewCount, isLoading: reviewsLoading } = useHostReviews(hostId);
+  
+  // State for reviews with user photos (fetched separately for display)
   interface ReviewWithPhoto extends FirestoreReview {
     userPhoto?: string | null;
   }
   const [firestoreReviews, setFirestoreReviews] = useState<ReviewWithPhoto[]>([]);
-  const [reviewsLoading, setReviewsLoading] = useState(false);
   
-  // State for host profile picture (synced from Firestore)
-  const [hostProfilePicture, setHostProfilePicture] = useState<string | null>(null);
-  const [hostCoverPhoto, setHostCoverPhoto] = useState<string | null>(null);
-  const [hostMemberSince, setHostMemberSince] = useState<number | null>(null);
-  
-  // Generate a consistent random color for default cover based on host ID
-  const getDefaultCoverGradient = useMemo(() => {
-    if (!hostId) return 'linear-gradient(135deg, #e35e25 0%, #15383c 100%)';
-    // Use host ID to generate a consistent color
-    const hash = hostId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const hue = hash % 360;
-    return `linear-gradient(135deg, hsl(${hue}, 40%, 35%) 0%, hsl(${(hue + 40) % 360}, 35%, 25%) 100%)`;
-  }, [hostId]);
-  
-  // Get real data from profile store - call hooks unconditionally, then use conditionally
-  const isFollowing = hostId ? profileStore.isFollowing(currentUser?.id || '', hostId) : false;
-  
-  // Real-time follower count from Firestore (source of truth)
-  const [followersCount, setFollowersCount] = useState<number>(0);
-  
-  // CRITICAL: Always fetch host profile picture from Firestore (source of truth)
-  // This ensures profile pictures are synchronized across all views for ALL users
-  // REFACTORED: Real-time subscription to /users/{hostId} - single source of truth
-  // FIX: Removed isPoperaProfile check to allow custom photos for Popera profile
+  // Fetch reviewer profile pictures for display (only when reviews are loaded)
   useEffect(() => {
-    if (!hostId) {
-      setHostProfilePicture(null);
-      setHostCoverPhoto(null);
-      setHostMemberSince(null);
+    if (!hostId || reviewsLoading || cachedReviews.length === 0) {
+      setFirestoreReviews([]);
       return;
     }
     
-    if (import.meta.env.DEV) {
-      console.log('[HOST_PROFILE] 📡 Subscribing to host profile:', { hostId, isPoperaProfile });
-    }
-    
-    let unsubscribe: (() => void) | null = null;
-    
-    // Real-time subscription to host user document
-    try {
-      unsubscribe = subscribeToUserProfile(hostId, (hostData) => {
-        if (hostData) {
-          setHostProfilePicture(hostData.photoURL || null);
-          setHostCoverPhoto(hostData.coverPhotoURL || null);
-          setHostMemberSince(hostData.createdAt || null);
-          
-          if (import.meta.env.DEV) {
-            console.log('[HOST_PROFILE] ✅ Host profile updated:', {
-              hostId,
-              displayName: hostData.displayName,
-              hasPhoto: !!hostData.photoURL,
-              hasCoverPhoto: !!hostData.coverPhotoURL,
-              createdAt: hostData.createdAt,
-            });
-          }
-        } else {
-          setHostProfilePicture(null);
-          setHostCoverPhoto(null);
-          setHostMemberSince(null);
-        }
-      });
-    } catch (error) {
-      console.error('[HOST_PROFILE] ❌ Error loading user subscriptions:', error);
-      setHostProfilePicture(null);
-      setHostCoverPhoto(null);
-      setHostMemberSince(null);
-    }
-    
-    return () => {
-      if (unsubscribe) {
-        if (import.meta.env.DEV) {
-          console.log('[HOST_PROFILE] 🧹 Unsubscribing from host profile:', { hostId });
-        }
-        unsubscribe();
-      }
-    };
-  }, [hostId]);
-  
-  // Subscribe to real-time followers count
-  useEffect(() => {
-    if (!hostId) {
-      setFollowersCount(0);
-      return;
-    }
-    
-    let unsubscribe: (() => void) | null = null;
-    
-    try {
-      unsubscribe = subscribeToFollowersCount(hostId, (count: number) => {
-        setFollowersCount(count);
-      });
-    } catch (error) {
-      console.error('[HOST_PROFILE] Error loading follow subscriptions:', error);
-      setFollowersCount(0);
-    }
-    
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, [hostId]);
-  
-  // Fetch reviews from Firestore (only accepted reviews for accurate count)
-  // FIX: Also fetch reviewer profile pictures for consistent display
-  useEffect(() => {
-    const loadReviews = async () => {
-      if (!hostId) {
-        setFirestoreReviews([]);
-        return;
-      }
-      
+    const loadReviewPhotos = async () => {
       try {
-        setReviewsLoading(true);
-        // Only get accepted reviews (includePending=false) to ensure count matches displayed reviews
-        const acceptedReviews = await listHostReviews(hostId, false);
-        
-        // Fetch reviewer profile pictures for each review
         const reviewsWithPhotos = await Promise.all(
-          acceptedReviews.map(async (review) => {
+          cachedReviews.map(async (review) => {
             // First check if review has stored photo URL (for seeded/migrated reviews)
             if ((review as any).userPhotoURL) {
               return { ...review, userPhoto: (review as any).userPhotoURL };
@@ -192,22 +88,35 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
         
         setFirestoreReviews(reviewsWithPhotos);
       } catch (error) {
-        console.error('[HOST_PROFILE] Error loading reviews:', error);
-        setFirestoreReviews([]);
-      } finally {
-        setReviewsLoading(false);
+        console.error('[HOST_PROFILE] Error loading review photos:', error);
+        setFirestoreReviews(cachedReviews.map(r => ({ ...r, userPhoto: null })));
       }
     };
     
-    loadReviews();
+    loadReviewPhotos();
+  }, [hostId, cachedReviews, reviewsLoading]);
+  
+  // Use reviews with photos if available, otherwise use cached reviews
+  const reviews = firestoreReviews.length > 0 ? firestoreReviews : cachedReviews.map(r => ({ ...r, userPhoto: null }));
+  
+  // Generate a consistent random color for default cover based on host ID
+  const getDefaultCoverGradient = useMemo(() => {
+    if (!hostId) return 'linear-gradient(135deg, #e35e25 0%, #15383c 100%)';
+    // Use host ID to generate a consistent color
+    const hash = hostId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const hue = hash % 360;
+    return `linear-gradient(135deg, hsl(${hue}, 40%, 35%) 0%, hsl(${(hue + 40) % 360}, 35%, 25%) 100%)`;
   }, [hostId]);
   
-  // Calculate rating and count from Firestore reviews (source of truth)
-  const reviews = firestoreReviews;
-  const reviewCount = reviews.length;
-  const averageRating = reviews.length > 0
-    ? Math.round((reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length) * 10) / 10
-    : 0;
+  // Get real data from profile store - call hooks unconditionally, then use conditionally
+  const isFollowing = hostId ? profileStore.isFollowing(currentUser?.id || '', hostId) : false;
+  
+  // Extract values from hostData hook
+  const hostProfilePicture = hostData?.photoURL || null;
+  const hostCoverPhoto = hostData?.coverPhotoURL || null;
+  const hostMemberSince = hostData?.createdAt || null;
+  const followersCount = hostData?.followersCount ?? 0;
+  const hostDataLoading = hostData === null || hostData.isLoading;
   
   // Filter events by host - uses same logic as Explore page for consistency
   // FIXED: Removed Popera-specific filter that was causing mismatch with Explore
@@ -469,12 +378,26 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
               <Users size={16} className="sm:w-[18px] sm:h-[18px] text-[#e35e25]" />
             </div>
             <div className="text-left flex-1">
-              <div className="text-xl sm:text-2xl font-heading font-bold text-[#15383c]">{followersCount.toLocaleString()}</div>
+              {hostDataLoading ? (
+                <MetricSkeleton width="w-12" height="h-6" />
+              ) : (
+                <div className="text-xl sm:text-2xl font-heading font-bold text-[#15383c]">{followersCount.toLocaleString()}</div>
+              )}
               <div className="text-xs sm:text-sm text-gray-500">Followers</div>
             </div>
           </div>
           
-          {reviewCount > 0 && (
+          {reviewsLoading ? (
+            <div className="bg-white/90 backdrop-blur-sm p-4 sm:p-5 rounded-2xl shadow-sm border border-white/60 flex items-center gap-3">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 bg-[#e35e25]/10 rounded-full flex items-center justify-center">
+                <Star size={16} className="sm:w-[18px] sm:h-[18px] text-[#e35e25] fill-[#e35e25]" />
+              </div>
+              <div className="text-left flex-1">
+                <MetricSkeleton width="w-12" height="h-6" />
+                <div className="text-xs sm:text-sm text-gray-500">Reviews</div>
+              </div>
+            </div>
+          ) : reviewCount > 0 ? (
             <div className="bg-white/90 backdrop-blur-sm p-4 sm:p-5 rounded-2xl shadow-sm border border-white/60 flex items-center gap-3">
               <div className="w-10 h-10 sm:w-11 sm:h-11 bg-[#e35e25]/10 rounded-full flex items-center justify-center">
                 <Star size={16} className="sm:w-[18px] sm:h-[18px] text-[#e35e25] fill-[#e35e25]" />
@@ -484,7 +407,7 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
                 <div className="text-xs sm:text-sm text-gray-500">{reviewCount} {reviewCount === 1 ? 'Review' : 'Reviews'}</div>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Tabs - Enhanced */}

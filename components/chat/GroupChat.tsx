@@ -262,8 +262,22 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   const isOfficialLaunch = event.isOfficialLaunch === true;
   const isFakeEvent = event.isFakeEvent === true;
   const isDemo = event.isDemo === true || isFakeEvent; // Check both flags for compatibility
-  // CRITICAL: Host identification - must be accurate for message visibility
-  const isHost = currentUser && currentUser.id && event.hostId && currentUser.id === event.hostId;
+  
+  // CRITICAL: Host identification - use canonical uid with fallback to id
+  // Prefer uid (primary) over id (alias) for consistent host detection
+  const currentUserId = currentUser?.uid || currentUser?.id;
+  const isHost = !!(currentUserId && event.hostId && currentUserId === event.hostId);
+  
+  // DEV-ONLY: Log if uid/id mismatch detected (helps debug role gating issues)
+  if (import.meta.env.DEV && currentUser && currentUser.uid && currentUser.id && currentUser.uid !== currentUser.id) {
+    console.warn('[GROUP_CHAT] ⚠️ uid/id mismatch detected:', {
+      uid: currentUser.uid,
+      id: currentUser.id,
+      hostId: event.hostId,
+      isHost,
+    });
+  }
+  
   // CRITICAL: Check RSVPs from current user - this updates when user reserves
   const hasReserved = currentUser ? currentUser.rsvps.includes(event.id) : false;
   
@@ -819,6 +833,9 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   const handleAskGuide = async () => {
     if (!askGuideQuestion.trim() || askGuideLoading || !currentUser) return;
     
+    // Clear any previous error
+    setAskGuideError(null);
+    
     // Check cooldown
     const now = Date.now();
     const timeSinceLastRequest = now - lastGuideRequestRef.current;
@@ -853,7 +870,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
             isHost: m.isHost,
             timestamp: m.timestamp,
           })),
-          userId: currentUser.id,
+          userId: currentUserId, // Use canonical UID
           eventId: event.id,
         }),
       });
@@ -868,6 +885,9 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
       
       if (!response.ok || !data.success || !data.reply) {
         console.error('[ASK_GUIDE] Failed to get response:', data.error);
+        // Show user-visible error for 5 seconds
+        setAskGuideError(data.error || 'Unable to get a response. Please try again.');
+        setTimeout(() => setAskGuideError(null), 5000);
         return;
       }
       
@@ -875,9 +895,12 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
       const db = getDbSafe();
       if (!db) {
         console.error('[ASK_GUIDE] Firestore not available');
+        setAskGuideError('Chat service unavailable. Please try again.');
+        setTimeout(() => setAskGuideError(null), 5000);
         return;
       }
       
+      // Use same message shape as normal chat messages for consistency
       const AI_SENDER_ID = 'popera-guide-ai';
       const messagesRef = collection(db, 'events', event.id, 'messages');
       await addDoc(messagesRef, {
@@ -905,8 +928,11 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
       
       console.log('[ASK_GUIDE] ✅ AI response posted');
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('[ASK_GUIDE] Error:', error);
+      // Show user-visible error for 5 seconds
+      setAskGuideError(error?.message || 'Something went wrong. Please try again.');
+      setTimeout(() => setAskGuideError(null), 5000);
     } finally {
       setAskGuideLoading(false);
     }
@@ -1325,6 +1351,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   const [askGuideQuestion, setAskGuideQuestion] = useState('');
   const [askGuideLoading, setAskGuideLoading] = useState(false);
   const [askGuideCooldown, setAskGuideCooldown] = useState(false);
+  const [askGuideError, setAskGuideError] = useState<string | null>(null);
   const lastGuideRequestRef = useRef<number>(0);
   const GUIDE_COOLDOWN_MS = 30 * 1000; // 30 seconds
   
@@ -1790,6 +1817,9 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                     </div>
                     {askGuideCooldown && (
                       <p className="text-[10px] text-amber-600 mt-1.5">Please wait a moment before asking again.</p>
+                    )}
+                    {askGuideError && (
+                      <p className="text-[10px] text-red-600 mt-1.5">{askGuideError}</p>
                     )}
                   </div>
                 )}
@@ -2361,6 +2391,10 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
           alert(muteAll ? 'All notifications unmuted' : 'All notifications muted');
         }}
         onDownloadHistory={handleDownloadChatHistory}
+        onViewAttendees={() => {
+          setShowMoreToolsModal(false);
+          setShowAttendeeList(true);
+        }}
         onManageSubscription={() => setShowSubscriptionOptOut(true)}
         hasSubscription={!!userSubscription}
         chatLocked={chatLocked}

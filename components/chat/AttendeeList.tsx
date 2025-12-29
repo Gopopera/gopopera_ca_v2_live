@@ -12,6 +12,9 @@ interface Attendee {
   isHost: boolean;
   hasRSVP: boolean;
   isBanned?: boolean;
+  reservedAt?: number;
+  cancelledAt?: number;
+  checkedInAt?: number;
 }
 
 interface AttendeeListProps {
@@ -113,6 +116,9 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
             isHost: true,
             hasRSVP: true,
             isBanned: false,
+            reservedAt: undefined, // Host doesn't have a reservation timestamp
+            cancelledAt: undefined,
+            checkedInAt: undefined,
           });
         } catch (error) {
           console.error('Error loading host:', error);
@@ -141,8 +147,11 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
             userName: userData?.displayName || userData?.name || 'User',
             userPhoto: userData?.photoURL || userData?.imageUrl, // Backward compatibility
             isHost: false,
-            hasRSVP: true,
+            hasRSVP: rsvpData.status === 'reserved',
             isBanned,
+            reservedAt: rsvpData.reservedAt,
+            cancelledAt: rsvpData.cancelledAt,
+            checkedInAt: rsvpData.checkedInAt,
           });
         } catch (error) {
           console.error('Error loading user:', error);
@@ -244,6 +253,26 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
                     <p className="text-xs text-gray-500">
                       {attendee.hasRSVP ? 'RSVP\'d' : 'No RSVP'}
                     </p>
+                    {/* Action history log */}
+                    {(attendee.reservedAt || attendee.cancelledAt || attendee.checkedInAt) && (
+                      <div className="text-[10px] text-gray-400 mt-0.5 space-y-0.5">
+                        {attendee.reservedAt && (
+                          <p>Reserved {new Date(attendee.reservedAt).toLocaleString('en-US', { 
+                            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+                          })}</p>
+                        )}
+                        {attendee.cancelledAt && (
+                          <p className="text-red-400/70">Cancelled {new Date(attendee.cancelledAt).toLocaleString('en-US', { 
+                            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+                          })}</p>
+                        )}
+                        {attendee.checkedInAt && (
+                          <p className="text-green-500">Checked in {new Date(attendee.checkedInAt).toLocaleString('en-US', { 
+                            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+                          })}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                   {isHost && !attendee.isHost && onExpelUser && (
                     <button

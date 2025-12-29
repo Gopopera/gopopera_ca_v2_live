@@ -618,15 +618,27 @@ export const useUserStore = create<UserStore>()(
       signInWithGoogle: async () => {
         try {
           set({ loading: true });
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'userStore.ts:618',message:'signInWithGoogle called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+          // #endregion
           const cred = await loginWithGoogle();
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'userStore.ts:622',message:'loginWithGoogle returned',data:{hasCred:!!cred,hasUser:!!cred?.user,isRedirect:cred===null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+          // #endregion
           if (cred?.user) {
             await get().handleAuthSuccess(cred.user);
             await ensurePoperaProfileAndSeed(cred.user);
             return get().user;
           }
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'userStore.ts:627',message:'Returning null (redirect path)',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+          // #endregion
           return null; // redirect path
         } catch (error: any) {
           console.error("Google sign in error:", error);
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'userStore.ts:631',message:'ERROR in signInWithGoogle',data:{errorCode:error?.code,errorMessage:error?.message,errorName:error?.name,errorStack:error?.stack?.substring(0,300)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+          // #endregion
           set({ loading: false, ready: true, isAuthReady: true });
           throw error;
         }
@@ -940,10 +952,32 @@ export const useUserStore = create<UserStore>()(
             });
           }
           
+          // DEV-ONLY: Debug log for RSVP consistency tracking
+          if (import.meta.env.DEV) {
+            console.log('[RSVP_DEBUG] ✅ Reservation created successfully:', {
+              userId,
+              eventId,
+              reservationId,
+              updatedRsvpsCount: updatedRSVPs.length,
+              updatedRsvps: updatedRSVPs,
+              eventTitle: eventData?.title || 'Unknown',
+              attendeeCount: eventData?.attendeeCount,
+              timestamp: new Date().toISOString(),
+            });
+          }
+          
           // Return reservation ID for confirmation page
           return reservationId;
         } catch (error) {
           console.error("Add RSVP error:", error);
+          // DEV-ONLY: Log detailed error for debugging
+          if (import.meta.env.DEV) {
+            console.error('[RSVP_DEBUG] ❌ Reservation failed:', {
+              userId,
+              eventId,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
           throw error;
         }
       },

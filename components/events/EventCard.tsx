@@ -4,7 +4,7 @@ import { Event } from '@/types';
 import { formatDate } from '@/utils/dateFormatter';
 import { formatRating } from '@/utils/formatRating';
 import { useUserStore } from '@/stores/userStore';
-import { listHostReviews, subscribeToReservationCount } from '../../firebase/db';
+import { subscribeToReservationCount } from '../../firebase/db';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   getCircleContinuityText, 
@@ -17,13 +17,17 @@ import { getInitials, getAvatarColor } from '../../utils/avatarUtils';
 import { EventImage } from './EventImage';
 // PERFORMANCE: Use cached host profile hook to share subscriptions across cards
 import { useHostProfile } from '../../hooks/useHostProfileCache';
+import { useHostReviews } from '../../hooks/useHostReviewsCache';
 
 // PERFORMANCE: Real-time attendees count component (logging removed for performance)
 const EventAttendeesCount: React.FC<{ eventId: string; capacity?: number; inline?: boolean }> = ({ eventId, capacity, inline = false }) => {
-  const [attendeesCount, setAttendeesCount] = React.useState<number>(0);
+  const [attendeesCount, setAttendeesCount] = React.useState<number | null>(null);
   
   React.useEffect(() => {
-    if (!eventId) return;
+    if (!eventId) {
+      setAttendeesCount(null);
+      return;
+    }
     
     const unsubscribe = subscribeToReservationCount(eventId, (count) => {
       setAttendeesCount(count);
@@ -37,6 +41,9 @@ const EventAttendeesCount: React.FC<{ eventId: string; capacity?: number; inline
   const capacityNum = typeof capacity === 'number' ? capacity : null;
   
   if (inline) {
+    if (attendeesCount === null) {
+      return <span className="text-xs sm:text-sm w-12 h-4 bg-gray-200 animate-pulse rounded inline-block" />;
+    }
     return (
       <span className="text-xs sm:text-sm">
         {capacityNum
@@ -47,6 +54,15 @@ const EventAttendeesCount: React.FC<{ eventId: string; capacity?: number; inline
   }
   
   // Note: translations will be passed via props if needed
+  if (attendeesCount === null) {
+    return (
+      <div className="flex items-center text-gray-600 text-sm">
+        <Users size={16} className="sm:w-4 sm:h-4 mr-2 text-popera-orange shrink-0" />
+        <span className="w-12 h-4 bg-gray-200 animate-pulse rounded" />
+      </div>
+    );
+  }
+  
   return (
     <div className="flex items-center text-gray-600 text-sm">
       <Users size={16} className="sm:w-4 sm:h-4 mr-2 text-popera-orange shrink-0" />
@@ -114,45 +130,8 @@ export const EventCard: React.FC<EventCardProps> = ({
   const hostProfilePicture = hostProfile?.photoURL || null;
   const displayHostName = hostProfile?.displayName || 'Unknown Host';
   
-  // State for host's overall rating (from all their events)
-  const [hostOverallRating, setHostOverallRating] = React.useState<number | null>(null);
-  const [hostOverallReviewCount, setHostOverallReviewCount] = React.useState<number>(0);
-  
-  // Fetch host's overall rating from all their events
-  React.useEffect(() => {
-    const fetchHostOverallRating = async () => {
-      if (!event.hostId) {
-        setHostOverallRating(null);
-        setHostOverallReviewCount(0);
-        return;
-      }
-      
-      try {
-        // Only get accepted reviews (includePending=false) to ensure count matches displayed reviews
-        const acceptedReviews = await listHostReviews(event.hostId, false);
-        
-        if (acceptedReviews.length === 0) {
-          setHostOverallRating(null);
-          setHostOverallReviewCount(0);
-          return;
-        }
-        
-        // Calculate average rating
-        const totalRating = acceptedReviews.reduce((sum, review) => sum + review.rating, 0);
-        const averageRating = totalRating / acceptedReviews.length;
-        
-        setHostOverallRating(averageRating);
-        setHostOverallReviewCount(acceptedReviews.length);
-      } catch (error) {
-        console.warn('[EVENT_CARD] Failed to fetch host overall rating:', error);
-        // Fallback to event rating if host rating fetch fails
-        setHostOverallRating(null);
-        setHostOverallReviewCount(0);
-      }
-    };
-    
-    fetchHostOverallRating();
-  }, [event.hostId]);
+  // Use reviews cache hook for host's overall rating
+  const { averageRating: hostOverallRating, reviewCount: hostOverallReviewCount } = useHostReviews(event.hostId);
   
   const handleFavoriteClick = (e: React.MouseEvent | React.TouchEvent) => {
     // CRITICAL: Prevent any navigation or card click

@@ -4,7 +4,7 @@ import { ChevronLeft, Calendar, MapPin, Clock, Star, MessageCircle, Edit, Users,
 import { useUserStore } from '../../stores/userStore';
 import { getUserProfile, cancelReservation, getCheckedInCountForEvent } from '../../firebase/db';
 import { getDbSafe } from '../lib/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { mapFirestoreEventToEvent } from '../../firebase/db';
 import type { FirestoreEvent, FirestoreReservation } from '../../firebase/types';
 import { subscribeToUserProfile } from '../../firebase/userSubscriptions';
@@ -75,6 +75,11 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
   // Real-time subscription to current user's profile picture from Firestore
   const [currentUserProfilePic, setCurrentUserProfilePic] = useState<string | null>(null);
   
+  // TASK 3 FIX: Attending events fetched directly from Firestore reservations
+  // This ensures events appear even if eventStore hasn't loaded them
+  const [attendingEventsFromFirestore, setAttendingEventsFromFirestore] = useState<Event[]>([]);
+  const [attendingLoading, setAttendingLoading] = useState(false);
+  
   useEffect(() => {
     if (!user?.uid) {
       setCurrentUserProfilePic(null);
@@ -123,6 +128,81 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
     };
 
     loadUserReservations();
+  }, [user?.uid]);
+
+  // TASK 3 FIX: Load attending events directly from Firestore reservations
+  // This ensures events appear in "Attending" even if eventStore hasn't loaded them
+  useEffect(() => {
+    const loadAttendingEventsFromReservations = async () => {
+      if (!user?.uid) {
+        setAttendingEventsFromFirestore([]);
+        return;
+      }
+
+      setAttendingLoading(true);
+      try {
+        const db = getDbSafe();
+        if (!db) {
+          console.warn('[MY_POPS] Firestore not available for attending events');
+          setAttendingEventsFromFirestore([]);
+          return;
+        }
+
+        // Get all active reservations for user
+        const reservationsCol = collection(db, 'reservations');
+        const q = query(
+          reservationsCol,
+          where('userId', '==', user.uid),
+          where('status', '==', 'reserved')
+        );
+        const snapshot = await getDocs(q);
+        
+        // Get unique event IDs from reservations
+        const eventIds = [...new Set(snapshot.docs.map(d => d.data().eventId).filter(Boolean))];
+        
+        console.log('[MY_POPS] 📋 Found reservations for events:', { userId: user.uid, eventIds, count: eventIds.length });
+        
+        if (eventIds.length === 0) {
+          setAttendingEventsFromFirestore([]);
+          return;
+        }
+        
+        // Fetch each event document
+        const eventPromises = eventIds.map(async (eventId) => {
+          try {
+            const eventDoc = await getDoc(doc(db, 'events', eventId));
+            if (eventDoc.exists()) {
+              const data = eventDoc.data();
+              const firestoreEvent: FirestoreEvent = {
+                id: eventDoc.id,
+                ...(data as Omit<FirestoreEvent, 'id'>),
+              };
+              return mapFirestoreEventToEvent(firestoreEvent);
+            }
+            console.warn('[MY_POPS] Event not found:', eventId);
+            return null;
+          } catch (err) {
+            console.error('[MY_POPS] Error fetching event:', eventId, err);
+            return null;
+          }
+        });
+        
+        const fetchedEvents = (await Promise.all(eventPromises)).filter((e): e is Event => e !== null);
+        console.log('[MY_POPS] ✅ Loaded attending events from Firestore:', fetchedEvents.length);
+        setAttendingEventsFromFirestore(fetchedEvents);
+      } catch (error: any) {
+        console.error('[MY_POPS] ❌ Error loading attending events:', error);
+        // Check for permission denied
+        if (error?.code === 'permission-denied') {
+          console.warn('[MY_POPS] Permission denied loading attending events');
+        }
+        setAttendingEventsFromFirestore([]);
+      } finally {
+        setAttendingLoading(false);
+      }
+    };
+
+    loadAttendingEventsFromReservations();
   }, [user?.uid]);
 
   // Handle cancel reservation
@@ -301,9 +381,8 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
       (event.hostId === user.uid || user.hostedEvents?.includes(event.id)) && !event.isDraft && !isEventPast(event)
     );
 
-    // FIXED: Exclude cancelled events from attending list
-    // Check both userReservations (from Firestore) and cancelledEvents (local state)
-    const attending = events.filter(event => {
+    // TASK 3 FIX: Get attending events from main array filtered by user.rsvps
+    const attendingFromMain = events.filter(event => {
       if (!user.rsvps?.includes(event.id)) return false;
       if (isEventPast(event)) return false;
       // Exclude if we have reservation data showing it's cancelled
@@ -312,6 +391,21 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
       if (cancelledEvents.has(event.id)) return false;
       return true;
     });
+    
+    // TASK 3 FIX: Merge with events fetched directly from Firestore reservations
+    // This ensures events appear even if eventStore hasn't loaded them
+    const attendingFromFirestore = attendingEventsFromFirestore.filter(event => {
+      if (isEventPast(event)) return false;
+      if (userReservations[event.id]?.status === 'cancelled') return false;
+      if (cancelledEvents.has(event.id)) return false;
+      return true;
+    });
+    
+    // Merge and deduplicate attending events by event ID
+    const allAttending = [...attendingFromMain, ...attendingFromFirestore];
+    const attending = allAttending.filter((event, index, self) => 
+      index === self.findIndex(e => e.id === event.id)
+    );
 
     // Combine draft events from main events array with drafts loaded from Firestore
     const draftsFromMain = events.filter(event => 
@@ -337,7 +431,7 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
     );
 
     return { hostingEvents: hosting, attendingEvents: attending, draftEvents: uniqueDrafts, pastEvents: uniquePast };
-  }, [events, user, draftEventsFromFirestore, pastEventsFromFirestore, userReservations, cancelledEvents]);
+  }, [events, user, draftEventsFromFirestore, pastEventsFromFirestore, attendingEventsFromFirestore, userReservations, cancelledEvents]);
 
   // Load checked-in counts for hosting events (must be after useMemo that defines hostingEvents)
   useEffect(() => {
@@ -452,7 +546,13 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
         </div>
 
         {/* Events List - Enhanced Design */}
-        {currentEvents.length === 0 ? (
+        {/* Loading state for attending tab */}
+        {activeTab === 'attending' && attendingLoading ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm">
+            <Loader2 size={32} className="text-[#e35e25] animate-spin mb-4" />
+            <p className="text-gray-500 text-sm">Loading attending circles…</p>
+          </div>
+        ) : currentEvents.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center bg-white rounded-2xl sm:rounded-3xl border-2 border-dashed border-gray-200 shadow-sm">
             <div className="w-20 h-20 bg-[#e35e25]/10 rounded-full flex items-center justify-center mb-4">
               <Calendar size={40} className="text-[#e35e25]" />

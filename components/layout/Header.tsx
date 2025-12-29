@@ -76,12 +76,12 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
   
   // Get user initials for fallback
   const userInitials = displayName?.[0] || user?.displayName?.[0] || user?.name?.[0] || userProfile?.displayName?.[0] || userProfile?.name?.[0] || 'P';
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadCount, setUnreadCount] = useState<number | null>(null);
 
   // Real-time subscription to unread notification count
   useEffect(() => {
     if (!user?.uid || !isLoggedIn) {
-      setUnreadCount(0);
+      setUnreadCount(null);
       return;
     }
 
@@ -94,7 +94,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
       });
     }).catch((error) => {
       console.error('[HEADER] Error loading notifications module:', error);
-      setUnreadCount(0);
+      setUnreadCount(null);
     });
     
     return () => {
@@ -260,12 +260,12 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
                      : 'bg-white/80 backdrop-blur-sm border border-gray-200/60 hover:bg-white hover:border-gray-300'
                  } ${getTextColor(false)}`}
                >
-                 <Bell size={18} />
-                 {unreadCount > 0 && (
-                   <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#e35e25] text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white">
-                     {unreadCount > 9 ? '9+' : unreadCount}
-                   </span>
-                 )}
+                <Bell size={18} />
+                {unreadCount !== null && unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#e35e25] text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
                </button>
 
                {/* Profile Button */}
@@ -311,7 +311,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
             aria-label="Toggle menu"
           >
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            {unreadCount > 0 && (
+            {unreadCount !== null && unreadCount > 0 && (
               <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-[#e35e25] rounded-full border-2 border-white"></span>
             )}
           </button>
@@ -370,7 +370,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
             aria-label="Toggle menu"
           >
             {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
-            {unreadCount > 0 && (
+            {unreadCount !== null && unreadCount > 0 && (
               <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-[#e35e25] rounded-full border border-white"></span>
             )}
           </button>
@@ -430,8 +430,8 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
                  
                  <button onClick={onNotificationsClick} className="text-right hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all flex items-center justify-end gap-2 sm:gap-2 touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]">
                    <div className="relative shrink-0">
-                     <Bell size={20} className="sm:w-5 sm:h-5" />
-                     {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 sm:w-2 sm:h-2 bg-[#e35e25] rounded-full"></span>}
+                    <Bell size={20} className="sm:w-5 sm:h-5" />
+                    {unreadCount !== null && unreadCount > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 sm:w-2 sm:h-2 bg-[#e35e25] rounded-full"></span>}
                    </div>
                    <span>{t('header.notifications')}</span>
                  </button>

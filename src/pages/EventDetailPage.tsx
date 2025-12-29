@@ -15,16 +15,17 @@ import { ShareModal } from '../../components/share/ShareModal';
 import { SeoHelmet } from '../../components/seo/SeoHelmet';
 import { formatDate } from '../../utils/dateFormatter';
 import { formatRating } from '../../utils/formatRating';
-import { getReservationCountForEvent, listHostReviews, subscribeToReservationCount, getUserProfile, listReservationsForUser } from '../../firebase/db';
+import { getReservationCountForEvent, subscribeToReservationCount, getUserProfile, listReservationsForUser } from '../../firebase/db';
 // REFACTORED: No longer using getUserProfile for host display - using real-time subscriptions instead
 // But we use getUserProfile to check host Stripe status for payments
 import { getMainCategoryLabelFromEvent } from '../../utils/categoryMapper';
 import { getSessionFrequencyText, getSessionModeText } from '../../utils/eventHelpers';
 import { getInitials, getAvatarBgColor } from '../../utils/avatarUtils';
-import { subscribeToFollowersCount } from '../../firebase/follow';
+import { useHostData } from '../../hooks/useHostProfileCache';
+import { useHostReviews } from '../../hooks/useHostReviewsCache';
+import { MetricSkeleton } from '../../components/ui/MetricSkeleton';
 import { PaymentModal } from '../../components/payments/PaymentModal';
 import { hasEventFee, isRecurringEvent, getEventFeeAmount } from '../../utils/stripeHelpers';
-import { AttendeeList } from '../components/host/AttendeeList';
 
 /**
  * Helper to format event price display - matches EventCard logic exactly
@@ -225,12 +226,21 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const [showShareModal, setShowShareModal] = useState(false);
   const [reserving, setReserving] = useState(false);
   const [reservationSuccess, setReservationSuccess] = useState(false);
-  const [hostProfilePicture, setHostProfilePicture] = useState<string | null>(null);
-  const [hostBio, setHostBio] = useState<string | null>(null);
-  const [followersCount, setFollowersCount] = useState<number>(0);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [hostStripeStatus, setHostStripeStatus] = useState<{ enabled: boolean; checked: boolean }>({ enabled: false, checked: false });
   const [showHostPaymentSetupError, setShowHostPaymentSetupError] = useState(false);
+  
+  // Use unified host data hook (includes profile picture, display name, bio, followers count)
+  const hostData = useHostData(eventHostId);
+  
+  // Use reviews cache hook
+  const { averageRating, reviewCount, isLoading: reviewsLoading } = useHostReviews(eventHostId);
+  
+  // Extract values from hostData hook
+  const hostProfilePicture = hostData?.photoURL || null;
+  const displayHostName = hostData?.displayName || eventHostName || 'Unknown Host';
+  const followersCount = hostData?.followersCount ?? 0;
+  const hostDataLoading = hostData === null || hostData.isLoading;
   
   // Store hooks - always called
   const user = useUserStore((state) => state.user);
@@ -382,9 +392,6 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     return rsvps.includes(eventId);
   }, [eventId, currentRsvpsString, hasActiveReservation]); // eslint-disable-line react-hooks/exhaustive-deps
   
-  // REFACTORED: Initialize empty - will be populated by real-time subscription
-  const [displayHostName, setDisplayHostName] = useState<string>('');
-  
   // Native event listener as backup (capture phase)
   // Use refs to avoid recreating the listener on every render
   const onHostClickRef = useRef(onHostClick);
@@ -412,157 +419,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     return () => document.removeEventListener('click', handleNativeClick, true);
   }, []); // Empty deps - refs are used instead
   
-  // State for host's overall rating (from all their events)
-  const [hostOverallRating, setHostOverallRating] = useState<number | null>(null);
-  const [hostOverallReviewCount, setHostOverallReviewCount] = useState<number>(0);
-  
-  // State for rating - use host's overall rating computed from actual reviews
-  // FIXED: Initialize with 0 instead of stale event document values to prevent showing old cached data
-  const [currentRating, setCurrentRating] = useState<{ rating: number; reviewCount: number }>({
-    rating: 0,
-    reviewCount: 0
-  });
-  // Track if rating has been loaded from reviews
-  const [ratingLoaded, setRatingLoaded] = useState(false);
-  
-  // Fetch host's overall rating from all their events
-  useEffect(() => {
-    const fetchHostOverallRating = async () => {
-      if (!eventHostId) {
-        setHostOverallRating(null);
-        setHostOverallReviewCount(0);
-        return;
-      }
-      
-      try {
-        // Only get accepted reviews (includePending=false) to ensure count matches displayed reviews
-        const acceptedReviews = await listHostReviews(eventHostId, false);
-        
-        if (acceptedReviews.length === 0) {
-          // FIXED: Set rating to 0 instead of null so we don't fall back to stale values
-          setHostOverallRating(0);
-          setHostOverallReviewCount(0);
-          setRatingLoaded(true);
-          return;
-        }
-        
-        // Calculate average rating
-        const totalRating = acceptedReviews.reduce((sum, review) => sum + review.rating, 0);
-        const averageRating = totalRating / acceptedReviews.length;
-        
-        setHostOverallRating(averageRating);
-        setHostOverallReviewCount(acceptedReviews.length);
-        setRatingLoaded(true);
-      } catch (error) {
-        console.warn('[EVENT_DETAIL] Failed to fetch host overall rating:', error);
-        // Set to 0 on error instead of falling back to stale values
-        setHostOverallRating(0);
-        setHostOverallReviewCount(0);
-        setRatingLoaded(true);
-      }
-    };
-    
-    fetchHostOverallRating();
-  }, [eventHostId]); // Use stable primitive value
-  
-  // Update rating when host overall rating or event changes
-  // Use refs to track previous values and only update if they actually changed
-  const prevRatingRef = useRef<{ rating: number; reviewCount: number } | null>(null);
-  
-  useEffect(() => {
-    // Always use computed rating from actual reviews, never fall back to stale event document values
-    const newRating = {
-      rating: hostOverallRating ?? 0,
-      reviewCount: hostOverallReviewCount
-    };
-    
-    // Only update if values actually changed
-    if (!prevRatingRef.current || 
-        prevRatingRef.current.rating !== newRating.rating || 
-        prevRatingRef.current.reviewCount !== newRating.reviewCount) {
-      setCurrentRating(newRating);
-      prevRatingRef.current = newRating;
-    }
-  }, [hostOverallRating, hostOverallReviewCount, ratingLoaded]); // Use computed values from actual reviews
-  
-  // REFACTORED: Real-time subscription to /users/{hostId} - single source of truth
-  // No polling, no fallbacks to stale event data - always fresh from Firestore
-  useEffect(() => {
-    if (!eventHostId) {
-      setHostProfilePicture(null);
-      setDisplayHostName('Unknown Host');
-      return;
-    }
-    
-    if (import.meta.env.DEV) {
-      console.log('[EVENT_DETAIL] 📡 Subscribing to host profile:', { hostId: eventHostId });
-    }
-    
-    let unsubscribe: (() => void) | null = null;
-    
-    // Real-time subscription to host user document
-    import('../../firebase/userSubscriptions').then(({ subscribeToUserProfile }) => {
-      unsubscribe = subscribeToUserProfile(eventHostId, (hostData) => {
-        if (hostData) {
-          setHostProfilePicture(hostData.photoURL || null);
-          setDisplayHostName(hostData.displayName || 'Unknown Host');
-          setHostBio(hostData.bio || null);
-          
-          if (import.meta.env.DEV) {
-            console.log('[EVENT_DETAIL] ✅ Host profile updated:', {
-              hostId: eventHostId,
-              displayName: hostData.displayName,
-              hasPhoto: !!hostData.photoURL,
-              hasBio: !!hostData.bio,
-            });
-          }
-        } else {
-          setHostProfilePicture(null);
-          setDisplayHostName('Unknown Host');
-          setHostBio(null);
-        }
-      });
-    }).catch((error) => {
-      console.error('[EVENT_DETAIL] ❌ Error loading user subscriptions:', error);
-      setHostProfilePicture(null);
-      setDisplayHostName('Unknown Host');
-      setHostBio(null);
-    });
-    
-    return () => {
-      if (unsubscribe) {
-        if (import.meta.env.DEV) {
-          console.log('[EVENT_DETAIL] 🧹 Unsubscribing from host profile:', { hostId: eventHostId });
-        }
-        unsubscribe();
-      }
-    };
-  }, [eventHostId]);
-  
-  // Subscribe to followers count in real-time
-  useEffect(() => {
-    if (!eventHostId) {
-      setFollowersCount(0);
-      return;
-    }
-    
-    let unsubscribe: (() => void) | null = null;
-    
-    try {
-      unsubscribe = subscribeToFollowersCount(eventHostId, (count: number) => {
-        setFollowersCount(count);
-      });
-    } catch (error) {
-      console.error('[EVENT_DETAIL] ❌ Error loading followers count:', error);
-      setFollowersCount(0);
-    }
-    
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, [eventHostId]);
+  // Use rating from reviews cache hook
+  const currentRating = { rating: averageRating, reviewCount };
   
   // Check if host has Stripe enabled (for paid events)
   // FIX: Use specific event fields in dependency, not the whole event object (prevents infinite re-renders)
@@ -1213,7 +1071,12 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                         <MapPin size={16} className="text-[#e35e25] shrink-0" />
                         <span className="text-sm sm:text-base truncate">{event.location}</span>
                       </div>
-                      {reservationCount !== null && (
+                      {reservationCount === null ? (
+                        <div className="flex items-center gap-2.5 text-gray-600">
+                          <User size={16} className="text-[#e35e25] shrink-0" />
+                          <MetricSkeleton width="w-24" height="h-4" />
+                        </div>
+                      ) : (
                         <div className="flex items-center gap-2.5 text-gray-600">
                           <User size={16} className="text-[#e35e25] shrink-0" />
                           <span className="text-sm sm:text-base">
@@ -1246,24 +1109,32 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                     
                     {/* Rating + Followers - Inline */}
                     <div className="flex items-center gap-3 mb-3">
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (event.hostId) {
-                            setShowHostReviewsModal(true);
-                          }
-                        }} 
-                        className="flex items-center gap-1.5 bg-[#e35e25]/10 hover:bg-[#e35e25]/20 px-3 py-1.5 rounded-full transition-colors border border-[#e35e25]/20 hover:border-[#e35e25]/40 touch-manipulation active:scale-95"
-                      >
-                        <Star size={14} className="text-[#e35e25] fill-[#e35e25]" />
-                        <span className="text-xs font-bold text-[#15383c]">{formatRating(currentRating.rating)}</span>
-                        <span className="text-[10px] text-gray-600">({currentRating.reviewCount})</span>
-                      </button>
+                      {reviewsLoading ? (
+                        <MetricSkeleton width="w-16" height="h-5" />
+                      ) : currentRating.reviewCount > 0 ? (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (event.hostId) {
+                              setShowHostReviewsModal(true);
+                            }
+                          }} 
+                          className="flex items-center gap-1.5 bg-[#e35e25]/10 hover:bg-[#e35e25]/20 px-3 py-1.5 rounded-full transition-colors border border-[#e35e25]/20 hover:border-[#e35e25]/40 touch-manipulation active:scale-95"
+                        >
+                          <Star size={14} className="text-[#e35e25] fill-[#e35e25]" />
+                          <span className="text-xs font-bold text-[#15383c]">{formatRating(currentRating.rating)}</span>
+                          <span className="text-[10px] text-gray-600">({currentRating.reviewCount})</span>
+                        </button>
+                      ) : null}
                       
-                      <div className="flex items-center gap-1.5 text-gray-500">
-                        <Users size={14} />
-                        <span className="text-xs">{followersCount} {followersCount === 1 ? t('ui.follower') : t('ui.followers')}</span>
-                      </div>
+                      {hostDataLoading ? (
+                        <MetricSkeleton width="w-12" height="h-4" />
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-gray-500">
+                          <Users size={14} />
+                          <span className="text-xs">{followersCount} {followersCount === 1 ? t('ui.follower') : t('ui.followers')}</span>
+                        </div>
+                      )}
                     </div>
                     
                     {/* Follow Button - Liquid Glass Style */}
@@ -1364,24 +1235,32 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   
                   {/* Rating + Followers */}
                   <div className="flex items-center justify-center gap-3 mb-3">
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (event.hostId) {
-                          setShowHostReviewsModal(true);
-                        }
-                      }} 
-                      className="flex items-center gap-1.5 bg-[#e35e25]/10 hover:bg-[#e35e25]/20 px-3 py-1.5 rounded-full transition-colors border border-[#e35e25]/20 hover:border-[#e35e25]/40 touch-manipulation active:scale-95"
-                    >
-                      <Star size={14} className="text-[#e35e25] fill-[#e35e25]" />
-                      <span className="text-xs font-bold text-[#15383c]">{formatRating(currentRating.rating)}</span>
-                      <span className="text-[10px] text-gray-600">({currentRating.reviewCount})</span>
-                    </button>
+                    {reviewsLoading ? (
+                      <MetricSkeleton width="w-16" height="h-5" />
+                    ) : currentRating.reviewCount > 0 ? (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (event.hostId) {
+                            setShowHostReviewsModal(true);
+                          }
+                        }} 
+                        className="flex items-center gap-1.5 bg-[#e35e25]/10 hover:bg-[#e35e25]/20 px-3 py-1.5 rounded-full transition-colors border border-[#e35e25]/20 hover:border-[#e35e25]/40 touch-manipulation active:scale-95"
+                      >
+                        <Star size={14} className="text-[#e35e25] fill-[#e35e25]" />
+                        <span className="text-xs font-bold text-[#15383c]">{formatRating(currentRating.rating)}</span>
+                        <span className="text-[10px] text-gray-600">({currentRating.reviewCount})</span>
+                      </button>
+                    ) : null}
                     
-                    <div className="flex items-center gap-1.5 text-gray-500">
-                      <Users size={14} />
-                      <span className="text-xs">{followersCount} {followersCount === 1 ? t('ui.follower') : t('ui.followers')}</span>
-                    </div>
+                    {hostDataLoading ? (
+                      <MetricSkeleton width="w-12" height="h-4" />
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-gray-500">
+                        <Users size={14} />
+                        <span className="text-xs">{followersCount} {followersCount === 1 ? t('ui.follower') : t('ui.followers')}</span>
+                      </div>
+                    )}
                   </div>
                   
                   {/* Follow Button */}
@@ -1519,12 +1398,6 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             </p>
           </div>
 
-          {/* Host Attendee List - Only visible to event host */}
-          {isLoggedIn && user?.uid === event.hostId && (
-            <div className="mb-12 sm:mb-16 lg:mb-12">
-              <AttendeeList eventId={event.id} hostUid={user.uid} />
-            </div>
-          )}
 
           {/* Cancellation Policy Section - Compact */}
           <div className="mb-10 sm:mb-12 md:mb-16 pt-6 sm:pt-8 border-t border-gray-100">

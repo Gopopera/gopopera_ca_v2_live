@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { X, Star } from 'lucide-react';
 import { formatRating } from '@/utils/formatRating';
-import { listHostReviews, getUserProfile } from '@/firebase/db';
+import { getUserProfile } from '@/firebase/db';
 import { FirestoreReview } from '@/firebase/types';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getInitials, getAvatarBgColor } from '@/utils/avatarUtils';
+import { useHostReviews } from '@/hooks/useHostReviewsCache';
 
 interface HostReviewsModalProps {
   hostId: string;
@@ -30,39 +31,30 @@ export const HostReviewsModal: React.FC<HostReviewsModalProps> = ({
   onClose,
   onReviewerClick
 }) => {
+  // Use reviews cache hook for reviews data
+  const { reviews: cachedReviews, averageRating, reviewCount, isLoading: reviewsLoading } = useHostReviews(hostId);
+  
   const [reviews, setReviews] = useState<ReviewWithUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [calculatedRating, setCalculatedRating] = useState<number>(0);
-  const [calculatedCount, setCalculatedCount] = useState<number>(0);
+  const [loading, setLoading] = useState(false);
   const { language, t } = useLanguage();
 
+  // Fetch user photos for reviews when modal opens and reviews are loaded
   useEffect(() => {
-    if (!isOpen || !hostId) return;
+    if (!isOpen || !hostId || reviewsLoading || cachedReviews.length === 0) {
+      setReviews([]);
+      setLoading(reviewsLoading);
+      return;
+    }
 
-    const loadHostReviews = async () => {
+    const loadReviewPhotos = async () => {
       try {
         setLoading(true);
-        console.log('[HOST_REVIEWS_MODAL] Loading reviews for host:', hostId);
-        
-        // Fetch all accepted reviews for this host (across all their events)
-        const hostReviews = await listHostReviews(hostId, false);
-        console.log('[HOST_REVIEWS_MODAL] Fetched reviews:', hostReviews.length);
-        
-        // Calculate rating from fetched reviews
-        if (hostReviews.length > 0) {
-          const totalRating = hostReviews.reduce((sum, review) => sum + review.rating, 0);
-          const avgRating = totalRating / hostReviews.length;
-          setCalculatedRating(Math.round(avgRating * 10) / 10);
-          setCalculatedCount(hostReviews.length);
-        } else {
-          setCalculatedRating(0);
-          setCalculatedCount(0);
-        }
+        console.log('[HOST_REVIEWS_MODAL] Loading user photos for reviews:', cachedReviews.length);
         
         // Fetch user profiles and event titles for each review
         // FIX: First check review.userPhotoURL, then fetch from profile, use consistent fallback
         const reviewsWithUsers = await Promise.all(
-          hostReviews.map(async (review) => {
+          cachedReviews.map(async (review) => {
             try {
               // First check if review has stored photo URL (for seeded/migrated reviews)
               if ((review as any).userPhotoURL) {
@@ -96,17 +88,19 @@ export const HostReviewsModal: React.FC<HostReviewsModalProps> = ({
         console.log('[HOST_REVIEWS_MODAL] Loaded reviews with user data:', reviewsWithUsers.length);
         setReviews(reviewsWithUsers);
       } catch (error) {
-        console.error('[HOST_REVIEWS_MODAL] Error loading host reviews:', error);
-        setReviews([]);
-        setCalculatedRating(0);
-        setCalculatedCount(0);
+        console.error('[HOST_REVIEWS_MODAL] Error loading review photos:', error);
+        setReviews(cachedReviews.map(r => ({ ...r, userPhoto: null, eventTitle: 'Event' })));
       } finally {
         setLoading(false);
       }
     };
 
-    loadHostReviews();
-  }, [isOpen, hostId]);
+    loadReviewPhotos();
+  }, [isOpen, hostId, cachedReviews, reviewsLoading]);
+  
+  // Use calculated values from cache hook
+  const calculatedRating = averageRating;
+  const calculatedCount = reviewCount;
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);

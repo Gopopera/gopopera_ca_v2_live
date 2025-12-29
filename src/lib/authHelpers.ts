@@ -33,11 +33,21 @@ function mapAuthError(err: any, context: 'google' | 'email-signin' | 'email-sign
 
 export async function loginWithGoogle(): Promise<UserCredential | null> {
   console.log('[AUTH] loginWithGoogle: starting');
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'authHelpers.ts:35',message:'loginWithGoogle starting',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+  // #endregion
   try {
-    return await signInWithGoogle();
+    const result = await signInWithGoogle();
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'authHelpers.ts:38',message:'signInWithGoogle returned',data:{hasResult:!!result,isRedirect:result===null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+    return result;
   } catch (err: any) {
     const mapped = mapAuthError(err, 'google');
     console.error('[AUTH] Google sign-in error:', { code: mapped.code, original: err });
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'authHelpers.ts:42',message:'ERROR in loginWithGoogle',data:{mappedCode:mapped.code,mappedMessage:mapped.message,originalCode:err?.code,originalMessage:err?.message,originalName:err?.name,originalStack:err?.stack?.substring(0,300)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
     const errorToThrow = new Error(mapped.message);
     (errorToThrow as any).code = mapped.code;
     throw errorToThrow;
