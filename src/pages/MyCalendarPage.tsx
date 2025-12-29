@@ -14,6 +14,7 @@ interface MyCalendarPageProps {
 
 // Minimized Event Component for bottom panel
 const MinimizedEventCard: React.FC<{ event: Event; onClick: () => void }> = ({ event, onClick }) => {
+  const { language } = useLanguage();
   const imageUrl = event.imageUrls && event.imageUrls.length > 0 
     ? event.imageUrls[0] 
     : (event.imageUrl || `https://picsum.photos/seed/${event.id}/200/150`);
