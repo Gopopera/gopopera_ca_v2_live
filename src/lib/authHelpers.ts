@@ -22,6 +22,9 @@ function mapAuthError(err: any, context: 'google' | 'email-signin' | 'email-sign
     'auth/operation-not-supported-in-this-environment': 'This sign-in method is not supported in this environment.',
     'auth/network-request-failed': 'Network error. Please check your connection and try again.',
     'auth/too-many-requests': 'Too many attempts. Please try again later.',
+    'auth/unauthorized-domain': 'This domain is not authorized for sign-in. Please contact support.',
+    'auth/internal-error': 'An authentication error occurred. Please try again.',
+    'auth/web-storage-unsupported': 'Please enable cookies and try again.',
   };
 
   const message = common[code] || 'Something went wrong signing you in. Please try again.';

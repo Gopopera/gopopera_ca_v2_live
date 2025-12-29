@@ -117,9 +117,19 @@ export async function signInWithGoogle(): Promise<UserCredential | null> {
           'auth/popup-closed-by-user',
           'auth/cancelled-popup-request',
           'auth/operation-not-supported-in-this-environment',
+          'auth/popup-timeout',
         ];
-        if (popupErrorCodes.includes(popupErr?.code)) {
-          console.warn('[AUTH] Popup blocked/failed on mobile, falling back to redirect', popupErr?.code);
+        
+        // Check for COOP-related issues
+        const isCOOPIssue = popupErr?.message?.toLowerCase().includes('cross-origin-opener-policy') ||
+                           popupErr?.message?.toLowerCase().includes('coop');
+        
+        if (popupErrorCodes.includes(popupErr?.code) || isCOOPIssue) {
+          console.warn('[AUTH] Popup blocked/failed on mobile (possibly due to COOP), falling back to redirect', {
+            code: popupErr?.code,
+            message: popupErr?.message,
+            isCOOPIssue
+          });
           // Clear any stale sessionStorage before redirect to avoid "missing initial state" error
           try {
             if (typeof window !== 'undefined' && window.sessionStorage) {
@@ -139,9 +149,63 @@ export async function signInWithGoogle(): Promise<UserCredential | null> {
         throw popupErr;
       }
     } else {
-      // Desktop: use popup
+      // Desktop: use popup with COOP-aware timeout fallback
       console.log('[AUTH] Using signInWithPopup (desktop)');
-      return await signInWithPopup(auth, provider, browserPopupRedirectResolver);
+      
+      // COOP-aware timeout: If popup doesn't respond within 5 seconds, 
+      // it's likely blocked by COOP policy - fallback to redirect
+      const popupPromise = signInWithPopup(auth, provider, browserPopupRedirectResolver);
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          const timeoutError = new Error('auth/popup-timeout');
+          (timeoutError as any).code = 'auth/popup-timeout';
+          reject(timeoutError);
+        }, 5000); // 5 second timeout
+      });
+      
+      try {
+        return await Promise.race([popupPromise, timeoutPromise]);
+      } catch (popupErr: any) {
+        // Check if it's a timeout or known popup error
+        const popupErrorCodes = [
+          'auth/popup-blocked',
+          'auth/popup-closed-by-user',
+          'auth/cancelled-popup-request',
+          'auth/operation-not-supported-in-this-environment',
+          'auth/popup-timeout',
+        ];
+        
+        // Check for COOP-related issues: if error message contains COOP or if it's a timeout
+        const isCOOPIssue = popupErr?.message?.toLowerCase().includes('cross-origin-opener-policy') ||
+                           popupErr?.message?.toLowerCase().includes('coop') ||
+                           popupErr?.code === 'auth/popup-timeout' ||
+                           (!popupErr?.code && popupErr?.message);
+        
+        if (popupErrorCodes.includes(popupErr?.code) || isCOOPIssue) {
+          console.warn('[AUTH] Popup failed or timed out (possibly due to COOP), falling back to redirect', {
+            code: popupErr?.code,
+            message: popupErr?.message,
+            isCOOPIssue
+          });
+          
+          // Clear any stale sessionStorage before redirect
+          try {
+            if (typeof window !== 'undefined' && window.sessionStorage) {
+              Object.keys(window.sessionStorage).forEach(key => {
+                if (key.startsWith('firebase:') || key.includes('auth')) {
+                  window.sessionStorage.removeItem(key);
+                }
+              });
+            }
+          } catch (e) {
+            console.warn('[AUTH] Could not clear sessionStorage:', e);
+          }
+          
+          await signInWithRedirect(auth, provider);
+          return null;
+        }
+        throw popupErr;
+      }
     }
   } catch (err: any) {
     console.error("[AUTH] Google sign-in error:", err);
@@ -151,9 +215,32 @@ export async function signInWithGoogle(): Promise<UserCredential | null> {
       'auth/popup-closed-by-user',
       'auth/cancelled-popup-request',
       'auth/operation-not-supported-in-this-environment',
+      'auth/popup-timeout',
     ];
-    if (fallbackCodes.includes(err?.code) && !isMobile) {
-      console.warn('[AUTH] Popup failed, falling back to redirect', err?.code);
+    // Check for COOP-related issues in final fallback
+    const isCOOPIssue = err?.message?.toLowerCase().includes('cross-origin-opener-policy') ||
+                       err?.message?.toLowerCase().includes('coop');
+    
+    if ((fallbackCodes.includes(err?.code) || isCOOPIssue) && !isMobile) {
+      console.warn('[AUTH] Popup failed (possibly due to COOP), falling back to redirect', {
+        code: err?.code,
+        message: err?.message,
+        isCOOPIssue
+      });
+      
+      // Clear any stale sessionStorage before redirect
+      try {
+        if (typeof window !== 'undefined' && window.sessionStorage) {
+          Object.keys(window.sessionStorage).forEach(key => {
+            if (key.startsWith('firebase:') || key.includes('auth')) {
+              window.sessionStorage.removeItem(key);
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('[AUTH] Could not clear sessionStorage:', e);
+      }
+      
       await signInWithRedirect(auth, provider);
       return null;
     }
