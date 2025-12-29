@@ -51,16 +51,16 @@ export const TemplateAccordion: React.FC<TemplateAccordionProps> = ({ title, con
   };
 
   return (
-    <div className="border border-gray-200 rounded-2xl overflow-hidden bg-white">
+    <div className="border border-gray-200 md:border-gray-200 rounded-2xl overflow-hidden bg-white shadow-sm md:shadow-none">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+        className="w-full px-4 md:px-6 py-3 md:py-5 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
         aria-expanded={isOpen}
         aria-controls={`template-${templateId}`}
       >
-        <span className="font-bold text-[#15383c] text-lg">{title}</span>
+        <span className="font-bold text-[#15383c] text-base md:text-lg">{title}</span>
         <ChevronDown
-          size={20}
+          size={18}
           className={`text-gray-400 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
         />
       </button>
@@ -71,13 +71,13 @@ export const TemplateAccordion: React.FC<TemplateAccordionProps> = ({ title, con
           isOpen ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
         }`}
       >
-        <div className="px-6 pb-6">
-          <div className="bg-gray-50 rounded-xl p-5 mb-4 font-mono text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+        <div className="px-4 md:px-6 pb-4 md:pb-6">
+          <div className="bg-gray-50 rounded-xl p-3 md:p-5 mb-3 md:mb-4 font-mono text-xs md:text-sm text-gray-700 whitespace-pre-wrap leading-6 md:leading-relaxed overflow-x-auto">
             {content}
           </div>
           <button
             onClick={handleCopy}
-            className="flex items-center gap-2 px-4 py-2 bg-[#15383c] text-white rounded-full font-medium hover:bg-[#1a4a4f] transition-colors text-sm"
+            className="w-full md:w-auto flex items-center justify-center md:justify-start gap-2 px-4 py-2.5 md:py-2 bg-[#15383c] text-white rounded-full font-medium hover:bg-[#1a4a4f] transition-colors text-sm"
           >
             {copied ? (
               <>

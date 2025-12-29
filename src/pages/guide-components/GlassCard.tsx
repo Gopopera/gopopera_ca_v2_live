@@ -11,7 +11,7 @@ interface GlassCardProps {
  */
 export const GlassCard: React.FC<GlassCardProps> = ({ children, className = '' }) => {
   return (
-    <div className={`bg-white/30 backdrop-blur-md border border-white/40 rounded-2xl p-6 shadow-lg ${className}`}>
+    <div className={`bg-white/30 backdrop-blur-md border border-white/40 rounded-2xl p-4 md:p-6 shadow-sm md:shadow-lg ${className}`}>
       {children}
     </div>
   );
