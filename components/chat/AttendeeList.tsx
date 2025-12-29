@@ -94,13 +94,53 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
       const db = getDbSafe();
       if (!db) return;
 
-      // Get all RSVPs for this event
+      // FIX: Only get ACTIVE reservations (status="reserved") to match EventDetailPage count
       const rsvpsRef = collection(db, 'reservations');
-      const rsvpsQuery = query(rsvpsRef, where('eventId', '==', eventId));
+      const rsvpsQuery = query(
+        rsvpsRef, 
+        where('eventId', '==', eventId),
+        where('status', '==', 'reserved')
+      );
       const rsvpsSnapshot = await getDocs(rsvpsQuery);
+      
+      // DEV-only diagnostics
+      if (import.meta.env.DEV) {
+        console.log('[ATTENDEE_LIST] 🔍 Reservations query result:', {
+          eventId,
+          totalDocs: rsvpsSnapshot.docs.length,
+        });
+      }
       
       const attendeeList: Attendee[] = [];
       const userIds = new Set<string>();
+      
+      // FIX: Deduplicate by userId - keep newest reservation (by reservedAt)
+      const reservationsByUser = new Map<string, { doc: any; reservedAt: number }>();
+      
+      for (const rsvpDoc of rsvpsSnapshot.docs) {
+        const rsvpData = rsvpDoc.data();
+        const userId = rsvpData.userId;
+        if (!userId || userId === hostId) continue;
+        
+        const reservedAt = rsvpData.reservedAt || 0;
+        const existing = reservationsByUser.get(userId);
+        
+        if (!existing || reservedAt > existing.reservedAt) {
+          reservationsByUser.set(userId, { doc: rsvpDoc, reservedAt });
+        }
+      }
+      
+      // DEV-only: log duplicates
+      if (import.meta.env.DEV) {
+        const hostAdjustment = rsvpsSnapshot.docs.some(d => d.data().userId === hostId) ? 1 : 0;
+        const duplicateCount = rsvpsSnapshot.docs.length - reservationsByUser.size - hostAdjustment;
+        if (duplicateCount > 0) {
+          console.log('[ATTENDEE_LIST] ⚠️ Found duplicate reservations:', {
+            eventId,
+            duplicateCount,
+          });
+        }
+      }
 
       // Add host first
       if (hostId) {
@@ -108,15 +148,14 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
         try {
           const hostDoc = await getDoc(doc(db, 'users', hostId));
           const hostData = hostDoc.data();
-          // REFACTORED: Use standardized fields only
           attendeeList.push({
             userId: hostId,
             userName: hostData?.displayName || hostData?.name || 'Host',
-            userPhoto: hostData?.photoURL || hostData?.imageUrl, // Backward compatibility
+            userPhoto: hostData?.photoURL || hostData?.imageUrl,
             isHost: true,
             hasRSVP: true,
             isBanned: false,
-            reservedAt: undefined, // Host doesn't have a reservation timestamp
+            reservedAt: undefined,
             cancelledAt: undefined,
             checkedInAt: undefined,
           });
@@ -125,29 +164,26 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
         }
       }
 
-      // Add attendees
-      for (const rsvpDoc of rsvpsSnapshot.docs) {
-        const rsvpData = rsvpDoc.data();
-        const userId = rsvpData.userId;
-        
-        if (!userId || userIds.has(userId) || userId === hostId) continue;
+      // Add attendees from deduplicated map
+      for (const [userId, { doc: rsvpDoc }] of reservationsByUser) {
+        if (userIds.has(userId)) continue;
         userIds.add(userId);
+        
+        const rsvpData = rsvpDoc.data();
 
         try {
           const userDoc = await getDoc(doc(db, 'users', userId));
           const userData = userDoc.data();
           
-          // Check if banned
           const bannedEvents = userData?.bannedEvents || [];
           const isBanned = bannedEvents.includes(eventId);
 
-          // REFACTORED: Use standardized fields only
           attendeeList.push({
             userId,
             userName: userData?.displayName || userData?.name || 'User',
-            userPhoto: userData?.photoURL || userData?.imageUrl, // Backward compatibility
+            userPhoto: userData?.photoURL || userData?.imageUrl,
             isHost: false,
-            hasRSVP: rsvpData.status === 'reserved',
+            hasRSVP: true, // Always true since we only query status="reserved"
             isBanned,
             reservedAt: rsvpData.reservedAt,
             cancelledAt: rsvpData.cancelledAt,
@@ -156,6 +192,15 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
         } catch (error) {
           console.error('Error loading user:', error);
         }
+      }
+      
+      // DEV-only: final count log
+      if (import.meta.env.DEV) {
+        console.log('[ATTENDEE_LIST] ✅ Final attendee list:', {
+          eventId,
+          count: attendeeList.length,
+          rsvpdCount: attendeeList.filter(a => a.hasRSVP && !a.isHost).length,
+        });
       }
 
       setAttendees(attendeeList);
@@ -168,19 +213,22 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
 
   if (!isOpen) return null;
 
+  // FIX: Compute RSVP'd count (excluding host) to match EventDetailPage
+  const rsvpdCount = attendees.filter(a => a.hasRSVP && !a.isHost).length;
+
   return (
     <div className="fixed inset-0 z-[70] flex items-end md:items-center justify-end md:justify-center p-0 md:p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div 
         className="bg-white w-full md:w-96 h-[60vh] md:h-[80vh] rounded-t-3xl md:rounded-3xl shadow-2xl flex flex-col animate-slide-up md:animate-fade-in"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
+        {/* Header - FIX: Show RSVP'd count, not total attendees.length */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <Users size={24} className="text-[#15383c]" />
             <h2 className="text-2xl font-heading font-bold text-[#15383c]">Attendees</h2>
             <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded-full">
-              {attendees.length}
+              {rsvpdCount}
             </span>
           </div>
           <button
@@ -250,23 +298,17 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500">
-                      {attendee.hasRSVP ? 'RSVP\'d' : 'No RSVP'}
-                    </p>
-                    {/* Action history log */}
-                    {(attendee.reservedAt || attendee.cancelledAt || attendee.checkedInAt) && (
+                    {/* FIX: Always show RSVP'd since query only returns reserved status */}
+                    <p className="text-xs text-gray-500">RSVP'd</p>
+                    {/* Action history log - FIX: Handle Invalid Date by checking type and value */}
+                    {(attendee.reservedAt || attendee.checkedInAt) && (
                       <div className="text-[10px] text-gray-400 mt-0.5 space-y-0.5">
-                        {attendee.reservedAt && (
+                        {attendee.reservedAt && typeof attendee.reservedAt === 'number' && attendee.reservedAt > 0 && (
                           <p>Reserved {new Date(attendee.reservedAt).toLocaleString('en-US', { 
                             month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
                           })}</p>
                         )}
-                        {attendee.cancelledAt && (
-                          <p className="text-red-400/70">Cancelled {new Date(attendee.cancelledAt).toLocaleString('en-US', { 
-                            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
-                          })}</p>
-                        )}
-                        {attendee.checkedInAt && (
+                        {attendee.checkedInAt && typeof attendee.checkedInAt === 'number' && attendee.checkedInAt > 0 && (
                           <p className="text-green-500">Checked in {new Date(attendee.checkedInAt).toLocaleString('en-US', { 
                             month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
                           })}</p>
