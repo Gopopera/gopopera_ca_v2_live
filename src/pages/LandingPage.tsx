@@ -1,9 +1,12 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, Suspense, lazy } from 'react';
 import { Hero } from '../../components/landing/Hero';
-import { Pillars } from '../../components/landing/Pillars';
 import { EventFeed } from '../../components/events/EventFeed';
 import { EventCard } from '../../components/events/EventCard';
-import { ChatMockupSection } from '../../components/landing/ChatMockupSection';
+
+// PERFORMANCE: Lazy load below-fold components to reduce initial bundle size
+// These components load after the hero and event feed are visible
+const Pillars = lazy(() => import('../../components/landing/Pillars').then(m => ({ default: m.Pillars })));
+const ChatMockupSection = lazy(() => import('../../components/landing/ChatMockupSection').then(m => ({ default: m.ChatMockupSection })));
 import { CityInput } from '../../components/layout/CityInput';
 import { FilterDrawer } from '../../components/filters/FilterDrawer';
 import { SeoHelmet } from '../../components/seo/SeoHelmet';
@@ -340,7 +343,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* 3. Pillars / Types of Circles section */}
-      <section className="relative overflow-hidden bg-white lazy-section">
+      <section className="relative overflow-hidden bg-[#FAFAFA] lazy-section">
         {/* Left image panel - desktop only */}
         <div className="pointer-events-none absolute inset-y-0 left-0 hidden lg:block lg:w-[38%]">
           <img
@@ -401,10 +404,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* 4. Every Great Circle Starts With Real Connection */}
-      <ChatMockupSection />
+      <Suspense fallback={<div className="min-h-[600px] bg-[#f8fafb]" />}>
+        <ChatMockupSection />
+      </Suspense>
 
       {/* 5. How To Move Your Crowd */}
-      <Pillars />
+      <Suspense fallback={<div className="min-h-[500px] bg-white" />}>
+        <Pillars />
+      </Suspense>
 
       {/* 6. Community Guidelines */}
       <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] border-t border-white/5 lazy-section">

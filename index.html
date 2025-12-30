@@ -1,19 +1,43 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <!-- Google Analytics 4 -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-2YRPWD6C0G"></script>
+    <!-- Google Analytics 4 - DEFERRED for faster LCP -->
+    <!-- GA loads after page is interactive to improve Core Web Vitals -->
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-2YRPWD6C0G');
+      // Defer GA loading until after LCP (uses requestIdleCallback or 2.5s fallback)
+      function loadGA() {
+        var s = document.createElement('script');
+        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-2YRPWD6C0G';
+        s.async = true;
+        document.head.appendChild(s);
+        gtag('js', new Date());
+        gtag('config', 'G-2YRPWD6C0G');
+      }
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(loadGA, { timeout: 2500 });
+      } else {
+        setTimeout(loadGA, 2500);
+      }
     </script>
-    <!-- Reddit Pixel -->
+    <!-- Reddit Pixel - DEFERRED for faster LCP -->
     <script>
-      !function(w,d){if(!w.rdt){var p=w.rdt=function(){p.sendEvent?p.sendEvent.apply(p,arguments):p.callQueue.push(arguments)};p.callQueue=[];var t=d.createElement("script");t.src="https://www.redditstatic.com/ads/pixel.js",t.async=!0;var s=d.getElementsByTagName("script")[0];s.parentNode.insertBefore(t,s)}}(window,document);
+      !function(w,d){if(!w.rdt){var p=w.rdt=function(){p.sendEvent?p.sendEvent.apply(p,arguments):p.callQueue.push(arguments)};p.callQueue=[]}}(window,document);
       rdt('init','a2_hgtx9a7083va');
-      rdt('track', 'PageVisit');
+      // Defer Reddit pixel loading
+      function loadRedditPixel() {
+        var t=document.createElement("script");
+        t.src="https://www.redditstatic.com/ads/pixel.js";
+        t.async=true;
+        document.head.appendChild(t);
+        rdt('track', 'PageVisit');
+      }
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(loadRedditPixel, { timeout: 3000 });
+      } else {
+        setTimeout(loadRedditPixel, 3000);
+      }
     </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
