@@ -246,18 +246,18 @@ export async function seedCommunityEvents(): Promise<void> {
           continue;
         }
 
-        // Geocode address
+        // Geocode address - requires (address, city) as separate arguments
         let lat: number | undefined;
         let lng: number | undefined;
         try {
-          const coords = await geocodeAddress(eventConfig.address);
+          const coords = await geocodeAddress(eventConfig.address, cityConfig.city);
           if (coords) {
             lat = coords.lat;
             lng = coords.lng;
-            console.log(`[SEED_COMMUNITY_EVENTS] Geocoded ${eventConfig.address}:`, coords);
+            console.log(`[SEED_COMMUNITY_EVENTS] Geocoded ${eventConfig.address}, ${cityConfig.city}:`, coords);
           }
         } catch (error) {
-          console.warn(`[SEED_COMMUNITY_EVENTS] Geocoding failed for ${eventConfig.address}:`, error);
+          console.warn(`[SEED_COMMUNITY_EVENTS] Geocoding failed for ${eventConfig.address}, ${cityConfig.city}:`, error);
         }
 
         // Create event data

@@ -280,7 +280,8 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
       let lng = initialEvent?.lng;
       if (address && (address !== initialEvent?.address || city !== initialEvent?.city)) {
         try {
-          const coords = await geocodeAddress(`${address}, ${city}`);
+          // geocodeAddress requires (address, city) as separate arguments
+          const coords = await geocodeAddress(address, city);
           if (coords) {
             lat = coords.lat;
             lng = coords.lng;
