@@ -1095,13 +1095,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
 
       {/* DESKTOP: 2-column grid layout for hero + sidebar */}
       <div className="lg:max-w-7xl lg:mx-auto lg:px-8 lg:pt-4">
-        <div className="lg:grid lg:grid-cols-[1fr_360px] lg:gap-8 lg:items-start">
+        <div className="lg:grid lg:grid-cols-[1fr_360px] lg:gap-8 lg:items-stretch">
 
           {/* LEFT COLUMN: Hero + Title/Meta (desktop grid participant) */}
-          <div>
-      {/* Hero Section - Image-driven height (no dead space) */}
-            <div className="pt-16 sm:pt-0">
-              <div className="relative w-full overflow-hidden lg:rounded-2xl lg:max-h-[360px]">
+          <div className="lg:self-stretch lg:h-full lg:flex lg:flex-col">
+            {/* Hero Section - Image-driven height (no dead space) */}
+            <div className="pt-16 sm:pt-0 lg:flex-1 lg:min-h-0">
+              <div className="relative w-full h-full overflow-hidden lg:rounded-2xl lg:bg-black/5">
         {validImageUrls.length > 1 ? (
           // Multiple images - horizontal snap gallery (image-driven height)
           <div 
@@ -1121,13 +1121,14 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             }}
           >
             {validImageUrls.map((url, index) => (
-                      <div key={index} className="min-w-full snap-start flex-shrink-0 lg:h-[360px]">
+                      <div key={index} className="min-w-full snap-start flex-shrink-0 lg:h-full">
                 <EventImage
                   src={url}
                   alt={`${event.title} - Image ${index + 1}`}
                   variant="hero"
                   priority={index === 0}
                   eventId={event.id}
+                  className="lg:object-contain"
                 />
               </div>
             ))}
@@ -1135,7 +1136,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         ) : (
           // Single image - image-driven height (no dead space)
           <div
-                    className="w-full cursor-pointer lg:h-[360px]"
+                    className="w-full h-full cursor-pointer"
             onClick={() => {
               const images = validImageUrls.length > 0 
                 ? validImageUrls 
@@ -1152,6 +1153,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               variant="hero"
               priority={true}
               eventId={event.id}
+              className="lg:object-contain"
             />
           </div>
         )}
@@ -1260,8 +1262,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           </div>{/* End LEFT COLUMN */}
 
           {/* RIGHT COLUMN: Host + Action Cards - Desktop only (in top grid) */}
-          <div className="hidden lg:block">
-            <div className="sticky top-28 space-y-4">
+          <div className="hidden lg:block lg:self-stretch">
+            <div className="space-y-4">
               {/* Hosted-by Card */}
               <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.05)] border border-white/60 p-4 hover:shadow-[0_6px_24px_rgb(0,0,0,0.08)] transition-shadow">
                 {/* Host Avatar */}
