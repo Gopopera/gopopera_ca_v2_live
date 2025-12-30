@@ -53,6 +53,8 @@ export const EventImage: React.FC<EventImageProps> = ({
       <img
         src={src}
         alt={alt}
+        width={800}
+        height={600}
         className={`w-full h-full object-cover transition-transform duration-700 ${
           hoverScale ? 'group-hover:scale-105' : ''
         } ${className}`}
@@ -77,6 +79,8 @@ export const EventImage: React.FC<EventImageProps> = ({
     <img
       src={src}
       alt={alt}
+      width={1200}
+      height={800}
       className={`block w-full h-auto ${className}`}
       loading={priority ? 'eager' : 'lazy'}
       decoding="async"

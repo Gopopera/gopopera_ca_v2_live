@@ -28,21 +28,21 @@ export const Pillars: React.FC = () => {
       title: t('pillars.moveFlow.title'),
       category: t('pillars.moveFlow.category'),
       description: t('pillars.moveFlow.description'),
-      image: "https://images.unsplash.com/photo-1531206715517-5c0ba140b2b8?q=80&w=2074&auto=format&fit=crop",
+      image: "https://images.unsplash.com/photo-1531206715517-5c0ba140b2b8?q=75&w=600&auto=format&fit=crop",
     },
     {
       id: "04",
       title: t('pillars.talkThink.title'),
       category: t('pillars.talkThink.category'),
       description: t('pillars.talkThink.description'),
-      image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2071&auto=format&fit=crop",
+      image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=75&w=600&auto=format&fit=crop",
     },
     {
       id: "05",
       title: t('pillars.communitySupport.title'),
       category: t('pillars.communitySupport.category'),
       description: t('pillars.communitySupport.description'),
-      image: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?q=80&w=2074&auto=format&fit=crop",
+      image: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?q=75&w=600&auto=format&fit=crop",
     }
   ];
 
@@ -136,10 +136,14 @@ export const Pillars: React.FC = () => {
               {/* Background Image - No filters, crisp and clean */}
               <img 
                 src={pillar.image} 
-                alt={pillar.title} 
+                alt={pillar.title}
+                width={600}
+                height={800}
                 className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-110 pointer-events-none"
                 style={{ filter: 'none', touchAction: 'none' }}
                 loading="lazy"
+                decoding="async"
+                fetchPriority="low"
                 draggable="false"
               />
               

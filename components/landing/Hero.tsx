@@ -63,8 +63,9 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
     window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
-  // Hero image URL - coffee circle gathering
-  const heroImageUrl = '/hero-circle-gathering.png';
+  // Hero image URL - coffee circle gathering (WebP for faster loading)
+  const heroImageUrl = '/hero-circle-gathering.webp';
+  const heroImageUrlMobile = '/hero-circle-gathering-mobile.webp';
 
   return (
     <section className="relative min-h-[90vh] sm:min-h-[85vh] md:min-h-[80vh] lg:min-h-[70vh] xl:min-h-[75vh] flex items-center overflow-hidden bg-[#15383c] pt-20 sm:pt-24 md:pt-28 lg:pt-20 xl:pt-24 pb-12 sm:pb-16 lg:pb-0 w-full">
@@ -76,8 +77,12 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
       >
         {/* The image with left-edge fade using mask-image */}
         <img 
-          src={heroImageUrl}
+          src={heroImageUrlMobile}
+          srcSet={`${heroImageUrlMobile} 800w, ${heroImageUrl} 1920w`}
+          sizes="(max-width: 768px) 800px, 1920px"
           alt=""
+          width={800}
+          height={600}
           className="w-full h-full object-cover"
           style={{ 
             objectPosition: '35% 40%',
@@ -85,6 +90,8 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
             maskImage: 'linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 25%, rgba(0,0,0,1) 100%)',
           }}
           loading="eager"
+          fetchPriority="high"
+          decoding="async"
         />
       </div>
       
@@ -193,6 +200,8 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
         <img
           src={heroImageUrl}
           alt="People enjoying a circle gathering"
+          width={1920}
+          height={1080}
           className="h-full w-full object-cover object-center"
           style={{
             WebkitMaskImage:
@@ -201,6 +210,8 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
               "linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 22%, rgba(0,0,0,1) 100%)",
           }}
           loading="eager"
+          fetchPriority="high"
+          decoding="async"
         />
       </div>
     </section>

@@ -340,15 +340,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* 3. Pillars / Types of Circles section */}
-      <section className="relative overflow-hidden bg-white">
+      <section className="relative overflow-hidden bg-white lazy-section">
         {/* Left image panel - desktop only */}
         <div className="pointer-events-none absolute inset-y-0 left-0 hidden lg:block lg:w-[38%]">
           <img
-            src="/images/landing/yoga-circle.jpg"
+            src="/images/landing/yoga-circle.webp"
             alt="Small indoor yoga circle"
+            width={800}
+            height={600}
             className="h-full w-full object-cover"
             loading="lazy"
             decoding="async"
+            fetchPriority="low"
             style={{
               WebkitMaskImage:
                 "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 85%)",
@@ -404,7 +407,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       <Pillars />
 
       {/* 6. Community Guidelines */}
-      <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] border-t border-white/5">
+      <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] border-t border-white/5 lazy-section">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
            <span className="inline-block py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-white/5 border border-white/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase mb-4 sm:mb-6 backdrop-blur-sm shadow-sm">
               {t('landing.safetyTrust')}
@@ -479,7 +482,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* 7. FAQs */}
-      <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c]">
+      <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] lazy-section">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white rounded-2xl sm:rounded-[2.5rem] md:rounded-[3rem] lg:rounded-[4rem] p-6 sm:p-8 md:p-12 lg:p-16 shadow-2xl">
             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-[#e35e25] text-center mb-8 sm:mb-12 md:mb-16 uppercase tracking-tight">
@@ -514,7 +517,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* Stay Updated */}
-      <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] text-white relative overflow-hidden border-t border-white/5">
+      <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] text-white relative overflow-hidden border-t border-white/5 lazy-section">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-[#e35e25] mb-4 sm:mb-6 tracking-tight uppercase leading-none">
             {t('landing.stayUpdated')}
