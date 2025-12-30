@@ -427,26 +427,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({
              </h2>
           </div>
 
-          <div className="space-y-4 sm:space-y-6 max-w-2xl mx-auto mb-8 sm:mb-12 text-left md:text-center px-4 relative z-10">
-            <div className="flex items-center md:justify-center gap-3 sm:gap-4 text-white text-base sm:text-lg md:text-xl font-light">
+          <div className="inline-flex flex-col space-y-4 sm:space-y-6 mb-8 sm:mb-12 text-left relative z-10">
+            <div className="flex items-center gap-3 sm:gap-4 text-white text-base sm:text-lg md:text-xl font-light">
               <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white">
                 <Check size={14} strokeWidth={3} />
               </div>
               <span>{t('landing.guidelineVerified')}</span>
             </div>
-            <div className="flex items-center md:justify-center gap-3 sm:gap-4 text-white text-base sm:text-lg md:text-xl font-light">
+            <div className="flex items-center gap-3 sm:gap-4 text-white text-base sm:text-lg md:text-xl font-light">
               <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white">
                 <Check size={14} strokeWidth={3} />
               </div>
               <span>{t('landing.guidelineReviews')}</span>
             </div>
-            <div className="flex items-center md:justify-center gap-3 sm:gap-4 text-white text-base sm:text-lg md:text-xl font-light">
+            <div className="flex items-center gap-3 sm:gap-4 text-white text-base sm:text-lg md:text-xl font-light">
               <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white">
                 <Check size={14} strokeWidth={3} />
               </div>
               <span>{t('landing.guidelineModerated')}</span>
             </div>
-            <div className="flex items-center md:justify-center gap-3 sm:gap-4 text-white text-base sm:text-lg md:text-xl font-light">
+            <div className="flex items-center gap-3 sm:gap-4 text-white text-base sm:text-lg md:text-xl font-light">
               <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white">
                 <Check size={14} strokeWidth={3} />
               </div>

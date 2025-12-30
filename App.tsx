@@ -1577,8 +1577,8 @@ const AppContent: React.FC = () => {
           return;
         }
         
-        // Don't reset viewState if we're on HOST_PROFILE or AUTH (user clicked Profile button or Sign In)
-        if (viewState === ViewState.HOST_PROFILE || viewState === ViewState.AUTH) {
+        // Don't reset viewState if we're on HOST_PROFILE, AUTH, or EDIT_EVENT (user clicked Profile, Sign In, or Edit Event)
+        if (viewState === ViewState.HOST_PROFILE || viewState === ViewState.AUTH || viewState === ViewState.EDIT_EVENT) {
           return;
         }
         

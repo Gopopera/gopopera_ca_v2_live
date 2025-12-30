@@ -22,6 +22,7 @@ export const Pillars: React.FC = () => {
       category: t('pillars.eatDrink.category'),
       description: t('pillars.eatDrink.description'),
       image: "/corey-oconnell-crowd.webp",
+      objectPosition: "50% 30%", // Show the upper portion where people are visible
     },
     {
       id: "03",
@@ -139,8 +140,8 @@ export const Pillars: React.FC = () => {
                 alt={pillar.title}
                 width={600}
                 height={800}
-                className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-110 pointer-events-none"
-                style={{ filter: 'none', touchAction: 'none' }}
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 pointer-events-none"
+                style={{ filter: 'none', touchAction: 'none', objectPosition: pillar.objectPosition || 'center' }}
                 loading="lazy"
                 decoding="async"
                 fetchPriority="low"
