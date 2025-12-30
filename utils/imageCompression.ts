@@ -1,6 +1,9 @@
 /**
  * Client-side image compression utility
  * Compresses images before upload to reduce file size and upload time
+ * 
+ * PERFORMANCE OPTIMIZATION: Outputs WebP format for ~30% smaller files
+ * WebP is supported by all modern browsers (Chrome, Firefox, Safari 14+, Edge)
  */
 
 export interface CompressionOptions {
@@ -8,6 +11,7 @@ export interface CompressionOptions {
   maxHeight?: number;
   quality?: number; // 0.1 to 1.0
   maxSizeMB?: number; // Target max size in MB
+  outputFormat?: 'webp' | 'jpeg'; // Default: webp
 }
 
 /**
@@ -22,7 +26,8 @@ export async function compressImage(
     maxWidth = 1600, // Reduced from 1920 for faster uploads
     maxHeight = 1600, // Reduced from 1920 for faster uploads
     quality = 0.80, // Slightly lower quality for faster compression and smaller files
-    maxSizeMB = 2 // Reduced from 5MB for faster uploads
+    maxSizeMB = 2, // Reduced from 5MB for faster uploads
+    outputFormat = 'webp' // WebP is ~30% smaller than JPEG at same quality
   } = options;
 
   // Check for HEIC files (browsers can't read them)
@@ -106,13 +111,41 @@ export async function compressImage(
             // Draw image to canvas
             ctx.drawImage(img, 0, 0, width, height);
             
-            // Use JPEG for better compression (unless it's already WebP or PNG with transparency)
-            const outputType = file.type === 'image/png' && file.size > 500000 ? 'image/jpeg' : (file.type || 'image/jpeg');
+            // PERFORMANCE: Output WebP for ~30% smaller files than JPEG
+            // WebP is supported by all modern browsers (Chrome 23+, Firefox 65+, Safari 14+, Edge 18+)
+            // Fallback to JPEG if WebP fails (extremely rare)
+            const outputMimeType = outputFormat === 'webp' ? 'image/webp' : 'image/jpeg';
+            const outputExtension = outputFormat === 'webp' ? '.webp' : '.jpeg';
+            
+            // Update filename with new extension
+            const newFileName = file.name.replace(/\.(jpg|jpeg|png|gif|heic|heif)$/i, outputExtension);
             
             // Convert to blob with quality settings - CRITICAL: use safeResolve/safeReject
             canvas.toBlob(
               (blob) => {
                 if (!blob) {
+                  // WebP may not be supported on very old browsers - fallback to JPEG
+                  if (outputMimeType === 'image/webp') {
+                    console.warn('[COMPRESS_IMAGE] WebP not supported, falling back to JPEG');
+                    canvas.toBlob(
+                      (jpegBlob) => {
+                        if (!jpegBlob) {
+                          safeReject(new Error('Failed to compress image - toBlob returned null'));
+                          return;
+                        }
+                        const jpegFileName = file.name.replace(/\.(jpg|jpeg|png|gif|heic|heif|webp)$/i, '.jpeg');
+                        const compressedFile = new File([jpegBlob], jpegFileName, {
+                          type: 'image/jpeg',
+                          lastModified: Date.now()
+                        });
+                        console.log(`[COMPRESS_IMAGE] ✅ Compressed to JPEG: ${(compressedFile.size / 1024).toFixed(0)}KB`);
+                        safeResolve(compressedFile);
+                      },
+                      'image/jpeg',
+                      quality
+                    );
+                    return;
+                  }
                   safeReject(new Error('Failed to compress image - toBlob returned null'));
                   return;
                 }
@@ -125,32 +158,34 @@ export async function compressImage(
                     (smallerBlob) => {
                       if (!smallerBlob) {
                         // Fallback: use original blob even if large
-                        const compressedFile = new File([blob], file.name, {
-                          type: outputType,
+                        const compressedFile = new File([blob], newFileName, {
+                          type: outputMimeType,
                           lastModified: Date.now()
                         });
                         safeResolve(compressedFile);
                         return;
                       }
                       
-                      const compressedFile = new File([smallerBlob], file.name, {
-                        type: outputType,
+                      const compressedFile = new File([smallerBlob], newFileName, {
+                        type: outputMimeType,
                         lastModified: Date.now()
                       });
+                      console.log(`[COMPRESS_IMAGE] ✅ Compressed to WebP (extra): ${(compressedFile.size / 1024).toFixed(0)}KB`);
                       safeResolve(compressedFile);
                     },
-                    outputType,
+                    outputMimeType,
                     lowerQuality
                   );
                 } else {
-                  const compressedFile = new File([blob], file.name, {
-                    type: outputType,
+                  const compressedFile = new File([blob], newFileName, {
+                    type: outputMimeType,
                     lastModified: Date.now()
                   });
+                  console.log(`[COMPRESS_IMAGE] ✅ Compressed to WebP: ${(compressedFile.size / 1024).toFixed(0)}KB`);
                   safeResolve(compressedFile);
                 }
               },
-              outputType,
+              outputMimeType,
               quality
             );
           } catch (error: any) {

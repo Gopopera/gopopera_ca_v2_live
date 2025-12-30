@@ -1,6 +1,8 @@
 /**
  * Image processing utility - handles HEIC conversion and compression
  * Based on Gemini recommendations for robust image handling
+ * 
+ * PERFORMANCE OPTIMIZATION: Outputs WebP format for ~30% smaller files
  */
 
 import heic2any from 'heic2any';

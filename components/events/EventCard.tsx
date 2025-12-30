@@ -323,8 +323,12 @@ export const EventCard: React.FC<EventCardProps> = ({
                 {hostProfilePicture ? (
                   <img 
                     src={hostProfilePicture} 
-                    alt={displayHostName} 
+                    alt={displayHostName}
+                    width={28}
+                    height={28}
                     className="w-full h-full object-cover"
+                    loading="lazy"
+                    decoding="async"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.src = `https://picsum.photos/seed/${displayHostName}/50/50`;
@@ -394,8 +398,12 @@ export const EventCard: React.FC<EventCardProps> = ({
                   {hostProfilePicture ? (
                     <img 
                       src={hostProfilePicture} 
-                      alt={displayHostName} 
+                      alt={displayHostName}
+                      width={24}
+                      height={24}
                       className="w-full h-full object-cover"
+                      loading="lazy"
+                      decoding="async"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.src = `https://picsum.photos/seed/${displayHostName}/50/50`;
@@ -479,8 +487,12 @@ export const EventCard: React.FC<EventCardProps> = ({
                   {hostProfilePicture ? (
                     <img 
                       src={hostProfilePicture} 
-                      alt={displayHostName} 
+                      alt={displayHostName}
+                      width={28}
+                      height={28}
                       className="w-full h-full object-cover"
+                      loading="lazy"
+                      decoding="async"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.src = `https://picsum.photos/seed/${displayHostName}/50/50`;

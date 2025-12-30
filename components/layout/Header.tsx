@@ -276,8 +276,12 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
                 {userPhoto ? (
                   <img 
                     src={userPhoto} 
-                    alt="Profile" 
+                    alt="Profile"
+                    width={36}
+                    height={36}
                     className="w-full h-full object-cover"
+                    loading="eager"
+                    decoding="async"
                     onError={(e) => {
                       // Fallback to initials if image fails to load
                       const target = e.target as HTMLImageElement;
@@ -339,8 +343,12 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
                {userPhoto ? (
                  <img 
                    src={userPhoto} 
-                   alt="Profile" 
+                   alt="Profile"
+                   width={40}
+                   height={40}
                    className="w-full h-full object-cover"
+                   loading="eager"
+                   decoding="async"
                    onError={(e) => {
                      // Fallback to initials if image fails to load
                      const target = e.target as HTMLImageElement;
