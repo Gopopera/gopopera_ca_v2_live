@@ -1093,11 +1093,15 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         <button onClick={() => window.history.back()} className="flex items-center text-gray-500 hover:text-popera-teal transition-colors font-medium"><ChevronLeft size={20} className="mr-1" /> {t('ui.backToEvents')}</button>
       </div>
 
+      {/* DESKTOP: 2-column grid layout for hero + sidebar */}
+      <div className="lg:max-w-7xl lg:mx-auto lg:px-8 lg:pt-4">
+        <div className="lg:grid lg:grid-cols-[1fr_360px] lg:gap-8 lg:items-start">
 
+          {/* LEFT COLUMN: Hero + Title/Meta (desktop grid participant) */}
+          <div>
       {/* Hero Section - Image-driven height (no dead space) */}
-      {/* Container adapts to image's natural aspect ratio */}
-      <div className="pt-16 sm:pt-0 lg:max-w-7xl lg:mx-auto lg:px-8 lg:pt-4">
-      <div className="relative w-full overflow-hidden lg:rounded-2xl">
+            <div className="pt-16 sm:pt-0">
+              <div className="relative w-full overflow-hidden lg:rounded-2xl lg:max-h-[360px]">
         {validImageUrls.length > 1 ? (
           // Multiple images - horizontal snap gallery (image-driven height)
           <div 
@@ -1117,7 +1121,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             }}
           >
             {validImageUrls.map((url, index) => (
-              <div key={index} className="min-w-full snap-start flex-shrink-0">
+                      <div key={index} className="min-w-full snap-start flex-shrink-0 lg:h-[360px]">
                 <EventImage
                   src={url}
                   alt={`${event.title} - Image ${index + 1}`}
@@ -1131,7 +1135,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         ) : (
           // Single image - image-driven height (no dead space)
           <div
-            className="w-full cursor-pointer"
+                    className="w-full cursor-pointer lg:h-[360px]"
             onClick={() => {
               const images = validImageUrls.length > 0 
                 ? validImageUrls 
@@ -1208,8 +1212,229 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             {getMainCategoryLabelFromEvent(event, language)}
           </span>
         </div>
+              </div>{/* End hero image container */}
+            </div>{/* End hero pt-16 wrapper */}
+
+            {/* Title + Meta Section - Desktop: directly under hero in left column */}
+            <div className="hidden lg:block pt-6">
+              {/* Title */}
+              <h1 className="text-3xl font-heading font-bold text-[#15383c] leading-tight mb-4">
+                {event.title}
+              </h1>
+              
+              {/* Metadata - Compact, clean */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2.5 text-gray-600">
+                  <Calendar size={16} className="text-[#e35e25] shrink-0" />
+                  <span className="text-base">{formatDate(event.date)} • {event.time}</span>
       </div>
-      </div>{/* Close desktop container wrapper */}
+                <div className="flex items-center gap-2.5 text-gray-600">
+                  <MapPin size={16} className="text-[#e35e25] shrink-0" />
+                  <span className="text-base truncate">{event.location}</span>
+                </div>
+                {reservationCount === null ? (
+                  <div className="flex items-center gap-2.5 text-gray-600">
+                    <User size={16} className="text-[#e35e25] shrink-0" />
+                    <MetricSkeleton width="w-24" height="h-4" />
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2.5 text-gray-600">
+                    <User size={16} className="text-[#e35e25] shrink-0" />
+                    <span className="text-base">
+                      {event.capacity 
+                        ? `${reservationCount}/${event.capacity} attending`
+                        : `${reservationCount} attending`
+                      }
+                    </span>
+                  </div>
+                )}
+                {/* Cost */}
+                <div className="flex items-center gap-2.5 text-gray-600">
+                  <DollarSign size={16} className="text-[#e35e25] shrink-0" />
+                  <span className="text-base">
+                    {formatEventPrice(event, true)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>{/* End LEFT COLUMN */}
+
+          {/* RIGHT COLUMN: Host + Action Cards - Desktop only (in top grid) */}
+          <div className="hidden lg:block">
+            <div className="sticky top-28 space-y-4">
+              {/* Hosted-by Card */}
+              <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.05)] border border-white/60 p-4 hover:shadow-[0_6px_24px_rgb(0,0,0,0.08)] transition-shadow">
+                {/* Host Avatar */}
+                <div className="flex justify-center mb-3">
+                  <div 
+                    className="w-16 h-16 rounded-full bg-gradient-to-br from-[#e35e25] to-[#15383c] overflow-hidden ring-2 ring-white shadow-lg cursor-pointer hover:ring-[#e35e25]/30 transition-all"
+                    onClick={() => onHostClick?.(displayHostName, event.hostId)}
+                  >
+                    {hostProfilePicture ? (
+                      <img 
+                        src={hostProfilePicture} 
+                        alt={displayHostName} 
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
+                        }} 
+                      />
+                    ) : (
+                      <div className={`w-full h-full flex items-center justify-center ${getAvatarBgColor(displayHostName, event.hostId)} text-white font-bold text-lg`}>
+                        {getInitials(displayHostName)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Hosted by label + name */}
+                <div className="text-center mb-3">
+                  <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">{t('event.hostedBy')}</p>
+                  <h3 
+                    className="text-lg font-heading font-bold text-[#15383c] cursor-pointer hover:text-[#e35e25] transition-colors"
+                    onClick={() => onHostClick?.(displayHostName, event.hostId)}
+                  >
+                    {displayHostName}
+                  </h3>
+                </div>
+                
+                {/* Rating + Followers */}
+                <div className="flex items-center justify-center gap-3 mb-3">
+                  {reviewsLoading ? (
+                    <MetricSkeleton width="w-16" height="h-5" />
+                  ) : currentRating.reviewCount > 0 ? (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (event.hostId) {
+                          setShowHostReviewsModal(true);
+                        }
+                      }} 
+                      className="flex items-center gap-1.5 bg-[#e35e25]/10 hover:bg-[#e35e25]/20 px-3 py-1.5 rounded-full transition-colors border border-[#e35e25]/20 hover:border-[#e35e25]/40 touch-manipulation active:scale-95"
+                    >
+                      <Star size={14} className="text-[#e35e25] fill-[#e35e25]" />
+                      <span className="text-xs font-bold text-[#15383c]">{formatRating(currentRating.rating)}</span>
+                      <span className="text-[10px] text-gray-600">({currentRating.reviewCount})</span>
+                    </button>
+                  ) : null}
+                  
+                  {hostDataLoading ? (
+                    <MetricSkeleton width="w-12" height="h-4" />
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-gray-500">
+                      <Users size={14} />
+                      <span className="text-xs">{followersCount} {followersCount === 1 ? t('ui.follower') : t('ui.followers')}</span>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Follow Button */}
+                {isLoggedIn && user?.uid !== event.hostId && (
+                  <div className="flex justify-center">
+                    <button
+                      onClick={handleFollowToggle}
+                      disabled={followLoading}
+                      aria-label={isFollowingHost ? `Unfollow ${displayHostName}` : `Follow ${displayHostName}`}
+                      className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-1.5 ${
+                        isFollowingHost
+                          ? 'bg-white/80 backdrop-blur-sm text-[#15383c] border border-gray-200/60 hover:bg-white hover:border-gray-300'
+                          : 'bg-[#e35e25] text-white shadow-lg shadow-[#e35e25]/25 hover:shadow-xl hover:shadow-[#e35e25]/30'
+                      } disabled:opacity-50`}
+                    >
+                      {isFollowingHost ? (
+                        <>
+                          <UserCheck size={14} /> {t('event.following')}
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus size={14} /> {t('event.follow')}
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Card - Reserve/Share/Join */}
+              <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.05)] border border-white/60 p-4 hover:shadow-[0_6px_24px_rgb(0,0,0,0.08)] transition-shadow">
+                <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-100/80">
+                  <div>
+                    <span className="text-2xl font-heading font-bold text-[#15383c]">
+                      {isEventFree(event) ? t('event.free') : formatEventPrice(event, false)}
+                    </span>
+                    <p className="text-xs text-gray-500 font-medium mt-0.5">{t('ui.perPerson')}</p>
+                  </div>
+                </div>
+                <div className="space-y-2.5">
+                  {/* Edit Event Button */}
+                  {isLoggedIn && user?.uid === event.hostId && onEditEvent && (
+                    <button
+                      onClick={() => onEditEvent(event)}
+                      className="w-full py-2 bg-white/80 backdrop-blur-sm border border-[#15383c]/30 text-[#15383c] rounded-full text-sm font-semibold hover:bg-white hover:border-[#15383c] transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      <Edit size={14} /> {t('eventDetail.editEvent')}
+                    </button>
+                  )}
+                  {/* Reserve Button */}
+                  {user?.uid !== event.hostId && (
+                    <>
+                      <button 
+                        onClick={handleRSVP}
+                        disabled={isDemo || reserving || isConfirmingReservation}
+                        aria-label={hasRSVPed ? "Cancel reservation" : isConfirmingReservation ? "Confirming reservation" : "Reserve spot"}
+                        className={`w-full py-2.5 font-semibold text-sm rounded-full transition-all touch-manipulation active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
+                          isDemo 
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                            : hasRSVPed
+                            ? 'bg-[#15383c] text-white hover:bg-[#1f4d52]'
+                            : 'bg-[#e35e25] text-white hover:bg-[#cf4d1d]'
+                        }`}
+                      >
+                        {reserving || isConfirmingReservation 
+                          ? (isConfirmingReservation ? 'Confirming...' : t('ui.reserving')) 
+                          : isDemo 
+                          ? t('ui.demoEvent') 
+                          : hasRSVPed 
+                          ? t('event.reserved') 
+                          : t('ui.reserveSpot')}
+                      </button>
+                      {reservationCheckError === 'confirmation-failed' && (
+                        <p className="mt-2 text-xs text-amber-600 text-center">
+                          We couldn't confirm your reservation yet. Please refresh the page.
+                        </p>
+                      )}
+                    </>
+                  )}
+                  <button
+                    onClick={handleShare}
+                    aria-label="Share event"
+                    className="w-full py-2 bg-white border border-[#15383c] text-[#15383c] rounded-full text-sm font-semibold hover:bg-[#15383c] hover:text-white transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    <Share2 size={14} /> {t('ui.shareEvent')}
+                  </button>
+                  <button 
+                    onClick={handleConversationClick}
+                    disabled={isDemo}
+                    className={`w-full py-2 font-semibold text-sm rounded-full border flex items-center justify-center gap-2 touch-manipulation active:scale-95 transition-colors ${
+                      isDemo
+                        ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                        : 'bg-white border-[#15383c] text-[#15383c] hover:bg-[#15383c] hover:text-white'
+                    }`}
+                  >
+                    <MessageCircle size={14} /> 
+                    {isDemo ? t('ui.chatLocked') : t('ui.joinGroupChat')}
+                  </button>
+                </div>
+                <div className="mt-4 pt-3 border-t border-gray-100 text-center">
+                  <p className="text-[10px] text-gray-400 leading-relaxed">{t('ui.securePayment')}</p>
+                </div>
+              </div>
+            </div>
+          </div>{/* End RIGHT COLUMN (top grid) */}
+          
+        </div>{/* End desktop 2-column grid */}
+      </div>{/* End desktop container wrapper */}
 
       {/* Content Sections - Premium clean design */}
       <div className="bg-white relative">
@@ -1248,17 +1473,15 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             </div>
           )}
 
-          {/* Desktop: Two-column layout with sidebar on right; Mobile: stacked */}
-          <div className="lg:grid lg:grid-cols-12 lg:gap-8">
-            {/* LEFT COLUMN: Event Info + Description */}
-            <div className="lg:col-span-7">
-              {/* Event Info + Host Section */}
-              <div className="mb-8 lg:mb-6">
-                <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 items-start">
+          {/* Content area - Mobile/Tablet: full layout; Desktop: just About section */}
+          <div className="lg:max-w-3xl">
+            {/* Event Info + Host Section - MOBILE/TABLET ONLY (desktop shows this in top grid) */}
+            <div className="mb-8 lg:hidden">
+              <div className="grid grid-cols-1 gap-6 items-start">
                   {/* Event Info (Title, Date, Location, Attending) */}
                   <div>
                     {/* Title */}
-                    <h1 className="text-2xl sm:text-3xl lg:text-3xl font-heading font-bold text-[#15383c] leading-tight mb-4">
+                  <h1 className="text-2xl sm:text-3xl font-heading font-bold text-[#15383c] leading-tight mb-4">
                       {event.title}
                     </h1>
                     
@@ -1393,183 +1616,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               </div>
             )}
           </div>
-            </div>{/* End LEFT COLUMN */}
-
-            {/* RIGHT COLUMN: Hosted-by Card + Reservation Sidebar - Desktop only */}
-            <div className="hidden lg:block lg:col-span-5">
-              <div className="sticky top-28 space-y-4">
-                {/* Hosted-by Card - Desktop only */}
-                <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.05)] border border-white/60 p-4 hover:shadow-[0_6px_24px_rgb(0,0,0,0.08)] transition-shadow">
-                  {/* Host Avatar */}
-                  <div className="flex justify-center mb-3">
-                    <div 
-                      className="w-16 h-16 rounded-full bg-gradient-to-br from-[#e35e25] to-[#15383c] overflow-hidden ring-2 ring-white shadow-lg cursor-pointer hover:ring-[#e35e25]/30 transition-all"
-                      onClick={() => onHostClick?.(displayHostName, event.hostId)}
-                    >
-                      {hostProfilePicture ? (
-                        <img 
-                          src={hostProfilePicture} 
-                          alt={displayHostName} 
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
-                          }} 
-                        />
-                      ) : (
-                        <div className={`w-full h-full flex items-center justify-center ${getAvatarBgColor(displayHostName, event.hostId)} text-white font-bold text-lg`}>
-                          {getInitials(displayHostName)}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {/* Hosted by label + name */}
-                  <div className="text-center mb-3">
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">{t('event.hostedBy')}</p>
-                    <h3 
-                      className="text-lg font-heading font-bold text-[#15383c] cursor-pointer hover:text-[#e35e25] transition-colors"
-                      onClick={() => onHostClick?.(displayHostName, event.hostId)}
-                    >
-                      {displayHostName}
-                    </h3>
-                  </div>
-                  
-                  {/* Rating + Followers */}
-                  <div className="flex items-center justify-center gap-3 mb-3">
-                    {reviewsLoading ? (
-                      <MetricSkeleton width="w-16" height="h-5" />
-                    ) : currentRating.reviewCount > 0 ? (
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (event.hostId) {
-                            setShowHostReviewsModal(true);
-                          }
-                        }} 
-                        className="flex items-center gap-1.5 bg-[#e35e25]/10 hover:bg-[#e35e25]/20 px-3 py-1.5 rounded-full transition-colors border border-[#e35e25]/20 hover:border-[#e35e25]/40 touch-manipulation active:scale-95"
-                      >
-                        <Star size={14} className="text-[#e35e25] fill-[#e35e25]" />
-                        <span className="text-xs font-bold text-[#15383c]">{formatRating(currentRating.rating)}</span>
-                        <span className="text-[10px] text-gray-600">({currentRating.reviewCount})</span>
-                      </button>
-                    ) : null}
-                    
-                    {hostDataLoading ? (
-                      <MetricSkeleton width="w-12" height="h-4" />
-                    ) : (
-                      <div className="flex items-center gap-1.5 text-gray-500">
-                        <Users size={14} />
-                        <span className="text-xs">{followersCount} {followersCount === 1 ? t('ui.follower') : t('ui.followers')}</span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Follow Button */}
-                  {isLoggedIn && user?.uid !== event.hostId && (
-                    <div className="flex justify-center">
-                      <button
-                        onClick={handleFollowToggle}
-                        disabled={followLoading}
-                        aria-label={isFollowingHost ? `Unfollow ${displayHostName}` : `Follow ${displayHostName}`}
-                        className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-1.5 ${
-                          isFollowingHost
-                            ? 'bg-white/80 backdrop-blur-sm text-[#15383c] border border-gray-200/60 hover:bg-white hover:border-gray-300'
-                            : 'bg-[#e35e25] text-white shadow-lg shadow-[#e35e25]/25 hover:shadow-xl hover:shadow-[#e35e25]/30'
-                        } disabled:opacity-50`}
-                      >
-                        {isFollowingHost ? (
-                          <>
-                            <UserCheck size={14} /> {t('event.following')}
-                          </>
-                        ) : (
-                          <>
-                            <UserPlus size={14} /> {t('event.follow')}
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Action Card - Reserve/Share/Join */}
-                <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.05)] border border-white/60 p-4 hover:shadow-[0_6px_24px_rgb(0,0,0,0.08)] transition-shadow">
-                <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-100/80">
-                  <div>
-                    <span className="text-2xl font-heading font-bold text-[#15383c]">
-                      {isEventFree(event) ? t('event.free') : formatEventPrice(event, false)}
-                    </span>
-                    <p className="text-xs text-gray-500 font-medium mt-0.5">{t('ui.perPerson')}</p>
-                  </div>
-                </div>
-                <div className="space-y-2.5">
-                  {/* Edit Event Button - Only for host - Glass Style */}
-                  {isLoggedIn && user?.uid === event.hostId && onEditEvent && (
-                    <button
-                      onClick={() => onEditEvent(event)}
-                      className="w-full py-2 bg-white/80 backdrop-blur-sm border border-[#15383c]/30 text-[#15383c] rounded-full text-sm font-semibold hover:bg-white hover:border-[#15383c] transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2"
-                    >
-                      <Edit size={14} /> {t('eventDetail.editEvent')}
-                    </button>
-                  )}
-                  {/* Reserve Button - Only for non-hosts (users cannot reserve their own events) */}
-                  {user?.uid !== event.hostId && (
-                    <>
-                      <button 
-                        onClick={handleRSVP}
-                        disabled={isDemo || reserving || isConfirmingReservation}
-                        aria-label={hasRSVPed ? "Cancel reservation" : isConfirmingReservation ? "Confirming reservation" : "Reserve spot"}
-                        className={`w-full py-2.5 font-semibold text-sm rounded-full transition-all touch-manipulation active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
-                          isDemo 
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                            : hasRSVPed
-                            ? 'bg-[#15383c] text-white hover:bg-[#1f4d52]'
-                            : 'bg-[#e35e25] text-white hover:bg-[#cf4d1d]'
-                        }`}
-                      >
-                        {reserving || isConfirmingReservation 
-                          ? (isConfirmingReservation ? 'Confirming...' : t('ui.reserving')) 
-                          : isDemo 
-                          ? t('ui.demoEvent') 
-                          : hasRSVPed 
-                          ? t('event.reserved') 
-                          : t('ui.reserveSpot')}
-                      </button>
-                      {/* TASK B: Show inline message if confirmation failed */}
-                      {reservationCheckError === 'confirmation-failed' && (
-                        <p className="mt-2 text-xs text-amber-600 text-center">
-                          We couldn't confirm your reservation yet. Please refresh the page.
-                        </p>
-                      )}
-                    </>
-                  )}
-                  <button
-                    onClick={handleShare}
-                    aria-label="Share event"
-                    className="w-full py-2 bg-white border border-[#15383c] text-[#15383c] rounded-full text-sm font-semibold hover:bg-[#15383c] hover:text-white transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2"
-                  >
-                    <Share2 size={14} /> {t('ui.shareEvent')}
-                  </button>
-                  <button 
-                    onClick={handleConversationClick}
-                    disabled={isDemo}
-                    className={`w-full py-2 font-semibold text-sm rounded-full border flex items-center justify-center gap-2 touch-manipulation active:scale-95 transition-colors ${
-                      isDemo
-                        ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                        : 'bg-white border-[#15383c] text-[#15383c] hover:bg-[#15383c] hover:text-white'
-                    }`}
-                  >
-                    <MessageCircle size={14} /> 
-                    {isDemo ? t('ui.chatLocked') : t('ui.joinGroupChat')}
-                  </button>
-                </div>
-                <div className="mt-4 pt-3 border-t border-gray-100 text-center">
-                  <p className="text-[10px] text-gray-400 leading-relaxed">{t('ui.securePayment')}</p>
-                </div>
-                </div>{/* End Action Card */}
-              </div>{/* End sticky wrapper */}
-            </div>{/* End RIGHT COLUMN */}
-          </div>{/* End grid */}
+          </div>{/* End content area */}
 
           {/* What to Expect Section */}
           {event.whatToExpect && (
