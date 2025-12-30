@@ -79,11 +79,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     initializeGeoLocation();
   }, []);
 
+  // PERFORMANCE: Preload lazy component chunks immediately after initial render
+  // This starts loading the JS bundles before user scrolls to them
+  useEffect(() => {
+    // Small delay to not block initial render
+    const timer = setTimeout(() => {
+      import('../../components/landing/ChatMockupSection');
+      import('../../components/landing/Pillars');
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Preload key landing page images for instant scroll-back display
   useEffect(() => {
     preloadImages([
       '/hero-private-chef-vertical.png',
-      // Pillar images will be preloaded by Pillars component
+      '/images/pillars/yoga-class.webp',
+      '/images/pillars/book-club.webp',
+      '/images/pillars/community.webp',
     ]);
   }, []);
   
@@ -415,12 +428,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* 4. Every Great Circle Starts With Real Connection */}
-      <Suspense fallback={<div className="min-h-[600px] bg-[#f8fafb]" />}>
+      <Suspense fallback={
+        <div className="min-h-[600px] bg-[#f8fafb] flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 rounded-full border-4 border-[#e35e25] border-t-transparent animate-spin" />
+            <p className="text-gray-400 text-sm font-medium">Loading...</p>
+          </div>
+        </div>
+      }>
         <ChatMockupSection />
       </Suspense>
 
       {/* 5. How To Move Your Crowd */}
-      <Suspense fallback={<div className="min-h-[500px] bg-white" />}>
+      <Suspense fallback={
+        <div className="min-h-[500px] bg-white flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 rounded-full border-4 border-[#15383c] border-t-transparent animate-spin" />
+            <p className="text-gray-400 text-sm font-medium">Loading...</p>
+          </div>
+        </div>
+      }>
         <Pillars />
       </Suspense>
 
