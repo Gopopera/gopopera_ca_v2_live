@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { preloadImages } from '../../hooks/useImageCache';
 
 export const Pillars: React.FC = () => {
   const { t } = useLanguage();
@@ -58,6 +59,12 @@ export const Pillars: React.FC = () => {
     setShowLeftArrow(scrollLeft > 0);
     setShowRightArrow(scrollWidth - clientWidth - scrollLeft > 10); // 10px threshold for smooth UX
   };
+
+  // Preload all pillar images on mount for instant display
+  useEffect(() => {
+    const imageUrls = pillars.map(p => p.image);
+    preloadImages(imageUrls);
+  }, []);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -134,7 +141,7 @@ export const Pillars: React.FC = () => {
               className="group relative h-auto min-h-[425px] sm:min-h-[560px] md:min-h-[550px] lg:min-h-[400px] xl:min-h-[430px] flex-none w-[280px] sm:w-[300px] md:w-[320px] lg:w-[340px] xl:w-[360px] snap-start rounded-3xl sm:rounded-[2rem] md:rounded-[2.5rem] lg:rounded-[3rem] overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-3"
               style={{ touchAction: 'pan-x pan-y' }}
             >
-              {/* Background Image - No filters, crisp and clean */}
+              {/* Background Image - Eager loading for instant scroll-back display */}
               <img 
                 src={pillar.image} 
                 alt={pillar.title}
@@ -142,9 +149,9 @@ export const Pillars: React.FC = () => {
                 height={800}
                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 pointer-events-none"
                 style={{ filter: 'none', touchAction: 'none', objectPosition: pillar.objectPosition || 'center' }}
-                loading="lazy"
+                loading="eager"
                 decoding="async"
-                fetchPriority="low"
+                fetchPriority="auto"
                 draggable="false"
               />
               

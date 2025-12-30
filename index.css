@@ -19,16 +19,26 @@
   scrollbar-width: none;
 }
 
-/* Performance: Skip rendering off-screen sections until near viewport */
-/* This improves scroll performance by avoiding painting hidden content */
+/* Performance: Keep rendered sections in GPU memory for instant scroll-back */
+/* content-visibility: auto skips layout/paint for offscreen content while preserving rendered state */
 .lazy-section {
   content-visibility: auto;
-  contain-intrinsic-size: auto 600px;
+  contain-intrinsic-size: auto 800px; /* Larger estimate to prevent layout shift */
+  contain: layout style paint; /* Isolate containment for better performance */
 }
 
-/* Optimize image rendering for smoother scrolling */
-img {
-  content-visibility: auto;
+/* Prevent browser from unloading images when scrolled far away */
+/* will-change hints to GPU to keep these in memory */
+img[loading="lazy"],
+img[loading="eager"] {
+  will-change: opacity;
+  contain: layout paint;
+}
+
+/* Force hardware acceleration for smooth scrolling on mobile */
+.scroll-smooth {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
 }
 
 /* Skeleton shimmer animation for image loading placeholders */

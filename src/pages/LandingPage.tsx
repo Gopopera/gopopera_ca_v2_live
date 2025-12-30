@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, Suspense, lazy } from 'react';
 import { Hero } from '../../components/landing/Hero';
 import { EventFeed } from '../../components/events/EventFeed';
 import { EventCard } from '../../components/events/EventCard';
+import { preloadImages } from '../../hooks/useImageCache';
 
 // PERFORMANCE: Lazy load below-fold components to reduce initial bundle size
 // These components load after the hero and event feed are visible
@@ -76,6 +77,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   // Initialize location from IP geolocation on mount
   useEffect(() => {
     initializeGeoLocation();
+  }, []);
+
+  // Preload key landing page images for instant scroll-back display
+  useEffect(() => {
+    preloadImages([
+      '/hero-private-chef-vertical.png',
+      // Pillar images will be preloaded by Pillars component
+    ]);
   }, []);
   
   // PERFORMANCE OPTIMIZED: Filter events based on location and vibes (logging removed)

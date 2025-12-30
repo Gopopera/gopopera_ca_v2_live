@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { MessageCircle, BarChart2, Megaphone, Send, Sparkles, Users, DollarSign, ArrowLeft, X, Info, FileText, MoreVertical } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { preloadImage } from '../../hooks/useImageCache';
 
 // Mock messages factory - returns translated messages
 const getMockMessages = (t: (key: string) => string) => [
@@ -115,9 +116,18 @@ const getMockMessages = (t: (key: string) => string) => [
   }
 ];
 
+// Host avatar used in chat mockup
+const hostAvatarUrl = 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop&crop=face';
+
 export const ChatMockupSection: React.FC = () => {
   const { t } = useLanguage();
   const mockMessages = getMockMessages(t);
+
+  // Preload the host avatar image on mount for instant display
+  useEffect(() => {
+    preloadImage(hostAvatarUrl);
+  }, []);
+
   return (
     <section className="py-8 sm:py-10 md:py-12 lg:py-6 xl:py-8 bg-[#f8fafb] overflow-hidden relative lg:min-h-[calc(100vh-80px)] flex items-center lazy-section">
       {/* Background Decor - Enhanced with gradient flow */}

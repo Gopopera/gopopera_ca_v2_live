@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useImageCache } from '../../hooks/useImageCache';
 
 /**
  * EventImage - Smart image component for event display
@@ -8,9 +9,12 @@ import React, { useState } from 'react';
  * - "hero": For event detail page - full width, natural height (no dead space)
  * 
  * Features:
- * - Skeleton placeholder while loading
+ * - GLOBAL image cache - no white flash when scrolling back to images
+ * - Skeleton placeholder while loading (only on first load)
  * - Smooth fade-in transition when loaded
  * - Native image decode for jank-free rendering
+ * 
+ * Apple-like experience: Images appear instantly when scrolling back.
  */
 
 interface EventImageProps {
@@ -40,7 +44,8 @@ export const EventImage: React.FC<EventImageProps> = ({
   hoverScale = true,
   onError,
 }) => {
-  const [isLoaded, setIsLoaded] = useState(false);
+  // Use global image cache - prevents white flash on scroll back
+  const { isLoaded, markLoaded } = useImageCache(src);
 
   const handleLoad = async (e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.target as HTMLImageElement;
@@ -52,7 +57,7 @@ export const EventImage: React.FC<EventImageProps> = ({
         // Decode failed, show image anyway
       }
     }
-    setIsLoaded(true);
+    markLoaded(); // Mark in global cache
   };
 
   const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
@@ -64,8 +69,8 @@ export const EventImage: React.FC<EventImageProps> = ({
       target.src = placeholder;
     }
     
-    // Still mark as loaded to hide skeleton
-    setIsLoaded(true);
+    // Still mark as loaded in global cache to hide skeleton
+    markLoaded();
     onError?.(e);
   };
 
