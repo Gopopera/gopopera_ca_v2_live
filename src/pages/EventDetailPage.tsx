@@ -1098,7 +1098,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[auto_auto] lg:gap-x-8 lg:gap-y-6 lg:items-stretch">
 
           {/* HERO IMAGE - Row 1, Col 1 (desktop grid) */}
-          <div className="pt-16 sm:pt-0 lg:col-start-1 lg:row-start-1 lg:pt-0">
+          <div className="pt-16 sm:pt-0 lg:col-start-1 lg:row-start-1 lg:pt-0 lg:h-full lg:self-stretch">
             <div className="relative w-full h-full overflow-hidden lg:rounded-2xl">
         {validImageUrls.length > 1 ? (
           // Multiple images - horizontal snap gallery (image-driven height)
@@ -1126,6 +1126,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   variant="hero"
                   priority={index === 0}
                   eventId={event.id}
+                  className="lg:!h-full lg:object-cover"
                 />
               </div>
             ))}
@@ -1150,6 +1151,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               variant="hero"
               priority={true}
               eventId={event.id}
+              className="lg:!h-full lg:object-cover"
             />
           </div>
         )}
@@ -1213,47 +1215,50 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               </div>{/* End hero image container */}
           </div>{/* End HERO IMAGE grid item */}
 
-          {/* TITLE + META - Row 2, Col 1 (desktop grid) */}
-          <div className="hidden lg:block lg:col-start-1 lg:row-start-2">
-                    {/* Title */}
-              <h1 className="text-3xl font-heading font-bold text-[#15383c] leading-tight mb-4">
-                      {event.title}
-                    </h1>
-                    
-                    {/* Metadata - Compact, clean */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2.5 text-gray-600">
-                        <Calendar size={16} className="text-[#e35e25] shrink-0" />
-                  <span className="text-base">{formatDate(event.date)} • {event.time}</span>
-                      </div>
-                      <div className="flex items-center gap-2.5 text-gray-600">
-                        <MapPin size={16} className="text-[#e35e25] shrink-0" />
-                  <span className="text-base truncate">{event.location}</span>
-                      </div>
-                      {reservationCount === null ? (
-                        <div className="flex items-center gap-2.5 text-gray-600">
-                          <User size={16} className="text-[#e35e25] shrink-0" />
-                          <MetricSkeleton width="w-24" height="h-4" />
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2.5 text-gray-600">
-                          <User size={16} className="text-[#e35e25] shrink-0" />
-                    <span className="text-base">
-                            {event.capacity 
-                              ? `${reservationCount}/${event.capacity} attending`
-                              : `${reservationCount} attending`
-                            }
-                          </span>
-                        </div>
-                      )}
-                {/* Cost */}
+          {/* Empty placeholder - Row 2, Col 1 (desktop grid) */}
+          <div className="hidden lg:block lg:col-start-1 lg:row-start-2" />
+
+          {/* TITLE + META - Row 2, Col 2 (desktop grid - under Free card) */}
+          <div className="hidden lg:block lg:col-start-2 lg:row-start-2">
+            {/* Title */}
+            <h1 className="text-3xl font-heading font-bold text-[#15383c] leading-tight mb-4">
+              {event.title}
+            </h1>
+            
+            {/* Metadata - Compact, clean */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2.5 text-gray-600">
+                <Calendar size={16} className="text-[#e35e25] shrink-0" />
+                <span className="text-base">{formatDate(event.date)} • {event.time}</span>
+              </div>
+              <div className="flex items-center gap-2.5 text-gray-600">
+                <MapPin size={16} className="text-[#e35e25] shrink-0" />
+                <span className="text-base truncate">{event.location}</span>
+              </div>
+              {reservationCount === null ? (
                 <div className="flex items-center gap-2.5 text-gray-600">
-                  <DollarSign size={16} className="text-[#e35e25] shrink-0" />
+                  <User size={16} className="text-[#e35e25] shrink-0" />
+                  <MetricSkeleton width="w-24" height="h-4" />
+                </div>
+              ) : (
+                <div className="flex items-center gap-2.5 text-gray-600">
+                  <User size={16} className="text-[#e35e25] shrink-0" />
                   <span className="text-base">
-                    {formatEventPrice(event, true)}
+                    {event.capacity 
+                      ? `${reservationCount}/${event.capacity} attending`
+                      : `${reservationCount} attending`
+                    }
                   </span>
                 </div>
+              )}
+              {/* Cost */}
+              <div className="flex items-center gap-2.5 text-gray-600">
+                <DollarSign size={16} className="text-[#e35e25] shrink-0" />
+                <span className="text-base">
+                  {formatEventPrice(event, true)}
+                </span>
               </div>
+            </div>
           </div>{/* End TITLE + META grid item */}
 
           {/* RIGHT COLUMN: Host + Action Cards - Row 1, Col 2 (desktop grid) */}
