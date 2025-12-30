@@ -215,6 +215,7 @@ interface EventDetailPageProps {
   onToggleFavorite?: (e: React.MouseEvent, eventId: string) => void;
   onRSVP?: (eventId: string, reservationId?: string) => void;
   rsvps?: string[];
+  onEditEvent?: (event: Event) => void;
 }
 
 // Reusable constant to avoid creating new array references in selectors
@@ -231,7 +232,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   favorites = [],
   onToggleFavorite,
   onRSVP,
-  rsvps = []
+  rsvps = [],
+  onEditEvent
 }) => {
   // CRITICAL: All hooks must be called unconditionally and in the same order every render
   // Call ALL hooks first, before any conditional logic or early returns
@@ -1500,9 +1502,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 </div>
                 <div className="space-y-2.5">
                   {/* Edit Event Button - Only for host - Glass Style */}
-                  {isLoggedIn && user?.uid === event.hostId && (
+                  {isLoggedIn && user?.uid === event.hostId && onEditEvent && (
                     <button
-                      onClick={() => setViewState(ViewState.EDIT_EVENT)}
+                      onClick={() => onEditEvent(event)}
                       className="w-full py-2 bg-white/80 backdrop-blur-sm border border-[#15383c]/30 text-[#15383c] rounded-full text-sm font-semibold hover:bg-white hover:border-[#15383c] transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-2"
                     >
                       <Edit size={14} /> {t('eventDetail.editEvent')}

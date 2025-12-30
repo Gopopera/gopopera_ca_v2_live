@@ -2328,6 +2328,10 @@ const AppContent: React.FC = () => {
                   onToggleFavorite={handleToggleFavorite}
                   onRSVP={handleRSVP}
                   rsvps={rsvps}
+                  onEditEvent={(event) => {
+                    setSelectedEvent(event);
+                    setViewState(ViewState.EDIT_EVENT);
+                  }}
                 />
               </React.Suspense>
             )}
