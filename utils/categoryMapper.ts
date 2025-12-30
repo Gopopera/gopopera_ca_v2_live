@@ -4,18 +4,18 @@
  * This file defines all category-related constants, types, and helper functions.
  * All UI surfaces that display/select/filter categories should use this file.
  * 
- * NEW CATEGORIES (as of Dec 2024):
- * - MAKE & CREATE
- * - EAT & DRINK
- * - MOVE & FLOW
- * - TALK & THINK
- * - COMMUNITY & SUPPORT
+ * CURRENT CATEGORIES (as of Dec 2024):
+ * - Workshops & Skills (makeCreate)
+ * - Food & Drink (eatDrink)
+ * - Sports & Recreation (moveFlow)
+ * - Arts & Culture (talkThink)
+ * - Community & Causes (communitySupport)
  * 
  * LEGACY CATEGORIES (for backward compatibility):
- * - SELL & SHOP (curatedSales) → MAKE & CREATE
- * - CONNECT & PROMOTE (connectPromote) → TALK & THINK
- * - MOBILIZE & SUPPORT (mobilizeSupport) → COMMUNITY & SUPPORT
- * - LEARN & GROW (learnGrow) → TALK & THINK
+ * - SELL & SHOP (curatedSales) → makeCreate
+ * - CONNECT & PROMOTE (connectPromote) → talkThink
+ * - MOBILIZE & SUPPORT (mobilizeSupport) → communitySupport
+ * - LEARN & GROW (learnGrow) → talkThink
  */
 
 import type { Language } from '../translations';
@@ -73,19 +73,19 @@ export const LEGACY_CATEGORIES: LegacyCategory[] = [
 // ============================================================================
 
 export const MAIN_CATEGORY_LABELS: Record<MainCategory, string> = {
-  makeCreate: 'MAKE & CREATE',
-  eatDrink: 'EAT & DRINK',
-  moveFlow: 'MOVE & FLOW',
-  talkThink: 'TALK & THINK',
-  communitySupport: 'COMMUNITY & SUPPORT',
+  makeCreate: 'Workshops & Skills',
+  eatDrink: 'Food & Drink',
+  moveFlow: 'Sports & Recreation',
+  talkThink: 'Arts & Culture',
+  communitySupport: 'Community & Causes',
 };
 
 export const MAIN_CATEGORY_LABELS_FR: Record<MainCategory, string> = {
-  makeCreate: 'CRÉER & FABRIQUER',
-  eatDrink: 'MANGER & BOIRE',
-  moveFlow: 'BOUGER & RESPIRER',
-  talkThink: 'DISCUTER & RÉFLÉCHIR',
-  communitySupport: 'COMMUNAUTÉ & SOUTIEN',
+  makeCreate: 'Ateliers & Compétences',
+  eatDrink: 'Nourriture & Boissons',
+  moveFlow: 'Sports & Loisirs',
+  talkThink: 'Arts & Culture',
+  communitySupport: 'Communauté & Causes',
 };
 
 // ============================================================================
@@ -128,12 +128,18 @@ const LEGACY_LABEL_MAP: Record<string, MainCategory> = {
   'connectpromote': 'talkThink',
   'mobilizesupport': 'communitySupport',
   'learngrow': 'talkThink',
-  // New labels (for validation)
+  // Old labels (for backward compatibility)
   'make & create': 'makeCreate',
   'eat & drink': 'eatDrink',
   'move & flow': 'moveFlow',
   'talk & think': 'talkThink',
   'community & support': 'communitySupport',
+  // New labels (current)
+  'workshops & skills': 'makeCreate',
+  'food & drink': 'eatDrink',
+  'sports & recreation': 'moveFlow',
+  'arts & culture': 'talkThink',
+  'community & causes': 'communitySupport',
   // New keys
   'makecreate': 'makeCreate',
   'eatdrink': 'eatDrink',
@@ -152,27 +158,27 @@ const LEGACY_LABEL_MAP: Record<string, MainCategory> = {
  * Used for fallback derivation when mainCategory is not set
  */
 export const VIBE_TO_CATEGORY: Record<string, MainCategory> = {
-  // MAKE & CREATE
+  // Workshops & Skills
   'Markets': 'makeCreate',
   'Hands-On': 'makeCreate',
   'Creative': 'makeCreate',
   'Workshops': 'makeCreate',
   
-  // EAT & DRINK
+  // Food & Drink
   'Food & Drink': 'eatDrink',
   
-  // MOVE & FLOW
+  // Sports & Recreation
   'Sports': 'moveFlow',
   'Movement': 'moveFlow',
   'Wellness': 'moveFlow',
   'Outdoors': 'moveFlow',
   
-  // TALK & THINK
+  // Arts & Culture
   'Learning': 'talkThink',
   'Curious': 'talkThink',
   'Social': 'talkThink',
   
-  // COMMUNITY & SUPPORT
+  // Community & Causes
   'Community': 'communitySupport',
   'Purposeful': 'communitySupport',
   'Spiritual': 'communitySupport',

@@ -61,6 +61,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
       try {
         const { getDbSafe } = await import('../../src/lib/firebase');
         const { collection, query, orderBy, limit, onSnapshot } = await import('firebase/firestore');
+        type QuerySnapshotType = import('firebase/firestore').QuerySnapshot<import('firebase/firestore').DocumentData>;
         
         const db = getDbSafe();
         if (!db) {
@@ -84,7 +85,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({ isOpen, 
         
         unsubscribe = onSnapshot(
           q,
-          (snapshot) => {
+          (snapshot: QuerySnapshotType) => {
             console.log('[NOTIFICATIONS_MODAL] 📊 Real-time update received:', {
               userId: user.uid,
               path,

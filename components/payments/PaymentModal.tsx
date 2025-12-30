@@ -11,8 +11,9 @@ import {
   Elements,
   CardElement,
   useStripe,
-  useElements
+  useElements,
 } from '@stripe/react-stripe-js';
+import type { StripeCardElement } from '@stripe/stripe-js';
 import { formatPaymentAmount, calculateTotalAmount, calculatePlatformFee } from '../../utils/stripeHelpers';
 
 // Initialize Stripe (you'll need to set VITE_STRIPE_PUBLISHABLE_KEY in your .env)
@@ -147,7 +148,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
       const { clientSecret, paymentIntentId, subscriptionId } = data;
 
       // Confirm payment with Stripe
-      const cardElement = elements.getElement(CardElement);
+      // Type assertion needed due to Stripe types mismatch
+      const cardElement = elements.getElement(CardElement) as unknown as StripeCardElement | null;
       if (!cardElement) {
         throw new Error('Card element not found');
       }

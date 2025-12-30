@@ -5,10 +5,13 @@
  * No imports from stores or App
  * 
  * Updated to use uploadBytesResumable per Gemini recommendations for better error handling and progress tracking
+ * 
+ * NOTE: This file was renamed from storage.ts to imageStorage.ts to avoid naming conflict
+ * with the firebase/storage npm package which caused TypeScript circular import errors.
  */
 
 import { getStorageSafe } from "../src/lib/firebase";
-import { ref, uploadBytesResumable, getDownloadURL, UploadTask, deleteObject } from "firebase/storage";
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 
 export interface UploadProgress {
   progress: number; // 0-100
@@ -261,3 +264,4 @@ export async function deleteImage(path: string): Promise<void> {
     throw new Error(`Failed to delete image: ${error?.message || 'Unknown error'}`);
   }
 }
+

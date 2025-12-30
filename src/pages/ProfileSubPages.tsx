@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ViewState } from '../../types';
 import { X, DollarSign, ArrowRight, Star, Camera, CheckCircle2, AlertCircle, Loader2, Clock, Lock, ExternalLink, HelpCircle } from 'lucide-react';
 import { useUserStore } from '../../stores/userStore';
-import { uploadImage } from '../../firebase/storage';
+import { uploadImage } from '../../firebase/imageStorage';
 import { createOrUpdateUserProfile } from '../../firebase/db';
 import { getDbSafe, getAuthSafe } from '../lib/firebase';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getAppSafe, getStorageSafe, getAuthSafe, getDbSafe } from '../lib/firebase';
 import { ref, uploadBytesResumable } from 'firebase/storage';
-import { uploadImage } from '../../firebase/storage';
+import { uploadImage } from '../../firebase/imageStorage';
 import { updateAllEventsHostInfo } from '../../firebase/db';
 
 interface VerificationResult {

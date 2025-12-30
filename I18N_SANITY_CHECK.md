@@ -27,11 +27,11 @@ The French category labels precisely match the required taxonomy:
 
 | English | French (Exact) |
 |---------|----------------|
-| MAKE & CREATE | CRÉER & FABRIQUER |
-| EAT & DRINK | MANGER & BOIRE |
-| MOVE & FLOW | BOUGER & RESPIRER |
-| TALK & THINK | DISCUTER & RÉFLÉCHIR |
-| COMMUNITY & SUPPORT | COMMUNAUTÉ & SOUTIEN |
+| Workshops & Skills | Ateliers & Compétences |
+| Food & Drink | Nourriture & Boissons |
+| Sports & Recreation | Sports & Loisirs |
+| Arts & Culture | Arts & Culture |
+| Community & Causes | Communauté & Causes |
 | ALL | TOUT |
 
 ## 3. Key Changes Made

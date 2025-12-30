@@ -1,5 +1,17 @@
 // Firestore types aligned with existing frontend Event and User interfaces
 
+/**
+ * Localized vibe structure for Firestore
+ */
+export interface FirestoreEventVibe {
+  key: string;
+  label: {
+    en: string;
+    fr: string;
+  };
+  isCustom?: boolean;
+}
+
 export interface FirestoreEvent {
   id: string;
   title: string;
@@ -24,8 +36,9 @@ export interface FirestoreEvent {
   imageUrls?: string[]; // Array of image URLs (first one is the main photo)
   rating?: number;
   reviewCount?: number;
-  // REMOVED: attendeesCount - computed in real-time from reservations collection
+  // DEPRECATED: attendeesCount - prefer computing from reservations collection
   // Use subscribeToReservationCount(eventId) for real-time updates
+  attendeesCount?: number; // Kept for seed files backward compatibility
   createdAt: number;   // Timestamp
   updatedAt?: number;  // Timestamp
   // Map coordinates
@@ -53,7 +66,8 @@ export interface FirestoreEvent {
   isDraft?: boolean; // True for draft events (not published)
   hostPhoneNumber?: string; // Host's phone number for event contact
   // New fields for event cards and filtering
-  vibes?: string[]; // Array of vibe tags (e.g., ["Creative", "Social", "Wellness"])
+  // vibes supports both new localized format and legacy string format
+  vibes?: (FirestoreEventVibe | string)[];
   sessionFrequency?: string; // "weekly" | "monthly" | "one-time"
   sessionMode?: string; // "in-person" | "remote"
   country?: string; // Country name (e.g., "Canada", "United States")
@@ -76,6 +90,7 @@ export interface FirestoreUser {
   uid: string;
   email: string;
   displayName: string; // Single field for user display name
+  fullName?: string; // User's full legal name (for payment/identity verification)
   photoURL?: string; // Single field for profile picture
   coverPhotoURL?: string; // Profile background/cover image
   bio?: string | null;
@@ -109,7 +124,7 @@ export interface FirestoreUser {
   
   // Stripe Connect fields for host payouts
   stripeAccountId?: string; // Stripe Connect account ID
-  stripeOnboardingStatus?: 'pending' | 'incomplete' | 'complete'; // Onboarding status
+  stripeOnboardingStatus?: 'pending' | 'incomplete' | 'complete' | 'pending_verification'; // Onboarding status
   stripeOnboardingUrl?: string; // Link to complete onboarding
   stripeAccountEnabled?: boolean; // Whether account can receive payouts
   

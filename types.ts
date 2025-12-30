@@ -7,7 +7,7 @@ export interface Event {
   date: string;
   time: string;
   tags: string[];
-  hostId: string; // Single field - host data fetched from /users/{hostId} in real-time
+  hostId?: string; // Single field - host data fetched from /users/{hostId} in real-time
   imageUrls?: string[]; // Array of image URLs (first one is the main photo)
   // REMOVED: attendeesCount - computed in real-time from reservations
   // DEPRECATED FIELDS - kept for backward compatibility during migration
@@ -40,13 +40,17 @@ export interface Event {
   demoPurpose?: string; // Optional short explanation shown in UI for demo events
   demoType?: string; // Type of demo event (e.g., "city-launch")
   isOfficialLaunch?: boolean; // True for official Popera launch events (fully functional)
-  hostId?: string; // User ID of the host
-  hostPhotoURL?: string; // Host profile picture URL (for better performance and consistency)
+  // Note: hostId is defined above as required field (line 10)
+  // Note: hostPhotoURL is defined above as deprecated field (line 19)
   aboutEvent?: string; // "About this event" section
   whatToExpect?: string; // "What to expect" section
   isDraft?: boolean; // True for draft events (not published)
+  isPublic?: boolean; // True for public events (visible to all users)
   // New fields for event cards and filtering
-  vibes?: string[]; // Array of vibe tags (e.g., ["Creative", "Social", "Wellness"])
+  // vibes supports both new localized format and legacy string format
+  // New format: EventVibe[] with { key, label: { en, fr }, isCustom? }
+  // Legacy format: string[] (treated as fallback labels in both languages)
+  vibes?: (import('./src/constants/vibes').EventVibe | string)[];
   sessionFrequency?: string; // "weekly" | "monthly" | "one-time"
   sessionMode?: string; // "in-person" | "remote"
   country?: string; // Country name (e.g., "Canada", "United States")
@@ -56,6 +60,7 @@ export interface Event {
   weeklyDayOfWeek?: number; // 0-6 for weekly sessions (0 = Sunday)
   monthlyDayOfMonth?: number; // 1-31 for monthly sessions
   startDateTime?: number; // Timestamp for session start (alternative to startDate)
+  startDate?: string; // ISO date string for session start
   // Payment fields
   hasFee?: boolean; // Whether event charges a fee
   feeAmount?: number; // Fee amount in cents

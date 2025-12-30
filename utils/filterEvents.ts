@@ -62,11 +62,22 @@ export function applyEventFilters(events: Event[], filters: EventFilters): Event
   }
 
   // Vibes filter (event must have at least one of the selected vibes)
+  // Handles both new EventVibe format and legacy string format
   if (filters.vibes.length > 0) {
     filtered = filtered.filter(event => {
       if (!event.vibes || event.vibes.length === 0) return false;
       // Event must have at least one of the selected vibes
-      return filters.vibes.some(vibe => event.vibes?.includes(vibe));
+      // Check by key for new format, or by string match for legacy format
+      return filters.vibes.some(filterVibeKey => 
+        event.vibes?.some(eventVibe => {
+          // If eventVibe is a string (legacy), compare directly
+          if (typeof eventVibe === 'string') {
+            return eventVibe === filterVibeKey || eventVibe.toLowerCase().replace(/[^a-z0-9]+/g, '_') === filterVibeKey;
+          }
+          // If eventVibe is an object (new format), compare by key
+          return eventVibe.key === filterVibeKey;
+        })
+      );
     });
   }
 

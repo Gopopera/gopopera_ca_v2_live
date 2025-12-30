@@ -181,25 +181,38 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
   const isLightPage = !isLandingPage || isScrolled;
   const isLandingAtTop = isLandingPage && !isScrolled;
   
-  // Header background: transparent on landing at top, solid white otherwise
+  // Header background: 
+  // - Mobile on landing page: always transparent (even when scrolled)
+  // - Desktop on landing at top: transparent
+  // - Otherwise: white with border/shadow
   const navClasses = isLandingAtTop
     ? 'fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-transparent py-4'
-    : 'fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white border-b border-gray-100 shadow-sm py-4';
+    : isLandingPage
+      ? 'fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-transparent lg:bg-white lg:border-b lg:border-gray-100 lg:shadow-sm py-4'
+      : 'fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white border-b border-gray-100 shadow-sm py-4';
 
-  // Header text/icons: white on landing at top, teal otherwise
-  const getTextColor = (_isMobile: boolean) => isLandingAtTop ? 'text-white' : 'text-popera-teal';
+  // Header text/icons: 
+  // - Mobile on landing page: always white (even when scrolled)
+  // - Desktop on landing at top: white
+  // - Otherwise: teal
+  const getTextColor = (isMobile: boolean) => {
+    if (isLandingAtTop) return 'text-white';
+    if (isMobile && isLandingPage) return 'text-white';
+    return 'text-popera-teal';
+  };
 
   return (
     <header className={navClasses}>
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 flex items-center justify-between">
         {/* Logo - Animates from "Popera." to "P." on scroll */}
+        {/* On mobile + landing page: always white. On desktop: white at top, teal when scrolled */}
         <div 
           className="cursor-pointer z-50 group" 
           onClick={() => handleNav(isLoggedIn ? ViewState.FEED : ViewState.LANDING)}
         >
           <Logo 
             size="md" 
-            textColor={getTextColor(false)} 
+            textColor={isLandingAtTop ? 'text-white' : isLandingPage ? 'text-white lg:text-popera-teal' : 'text-popera-teal'} 
             onClick={() => handleNav(isLoggedIn ? ViewState.FEED : ViewState.LANDING)}
             isCollapsed={isScrolled}
           />
@@ -324,10 +337,11 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
         {/* Mobile Toggle - Right Side */}
         <div className="lg:hidden z-[55] flex items-center gap-2 relative">
           {/* Language Toggle - Mobile - Glass Style */}
+          {/* On landing page (even when scrolled): keep transparent/white style */}
           <button
             onClick={() => setLanguage(language === 'en' ? 'fr' : 'en')}
             className={`w-9 h-9 rounded-full font-bold text-xs transition-all active:scale-[0.95] touch-manipulation flex items-center justify-center ${
-              isLandingAtTop && !mobileMenuOpen
+              isLandingPage && !mobileMenuOpen
                 ? 'border border-white/30 text-white hover:bg-white/10 backdrop-blur-sm'
                 : 'bg-white/80 backdrop-blur-sm border border-gray-200/60 text-[#15383c] hover:bg-white'
             }`}
@@ -368,10 +382,11 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
           )}
           
           {/* Menu Toggle - Glass Style */}
+          {/* On landing page (even when scrolled): keep transparent/white style */}
           <button 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className={`w-10 h-10 flex items-center justify-center active:scale-[0.95] touch-manipulation rounded-full transition-all relative ${
-              isLandingAtTop && !mobileMenuOpen 
+              isLandingPage && !mobileMenuOpen 
                 ? 'text-white hover:bg-white/10' 
                 : 'bg-white/80 backdrop-blur-sm border border-gray-200/60 text-[#15383c] hover:bg-white'
             }`}

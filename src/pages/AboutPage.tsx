@@ -70,7 +70,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ setViewState }) => {
           
           {/* 5 Category Cards Grid */}
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {/* MAKE & CREATE */}
+            {/* Workshops & Skills */}
             <div className="bg-[#1a454a] p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] border border-white/5 hover:-translate-y-2 transition-transform duration-500">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/10 rounded-xl sm:rounded-2xl flex items-center justify-center text-[#e35e25] mb-4 sm:mb-6">
                 <Palette size={20} className="sm:w-6 sm:h-6" />
@@ -79,7 +79,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ setViewState }) => {
               <p className="text-gray-400 leading-relaxed text-sm sm:text-base">{t('about.makeCreateDesc')}</p>
             </div>
 
-            {/* EAT & DRINK */}
+            {/* Food & Drink */}
             <div className="bg-[#1a454a] p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] border border-white/5 hover:-translate-y-2 transition-transform duration-500">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/10 rounded-xl sm:rounded-2xl flex items-center justify-center text-[#e35e25] mb-4 sm:mb-6">
                 <Utensils size={20} className="sm:w-6 sm:h-6" />
@@ -88,7 +88,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ setViewState }) => {
               <p className="text-gray-400 leading-relaxed text-sm sm:text-base">{t('about.eatDrinkDesc')}</p>
             </div>
 
-            {/* MOVE & FLOW */}
+            {/* Sports & Recreation */}
             <div className="bg-[#1a454a] p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] border border-white/5 hover:-translate-y-2 transition-transform duration-500">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/10 rounded-xl sm:rounded-2xl flex items-center justify-center text-[#e35e25] mb-4 sm:mb-6">
                 <Activity size={20} className="sm:w-6 sm:h-6" />
@@ -97,7 +97,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ setViewState }) => {
               <p className="text-gray-400 leading-relaxed text-sm sm:text-base">{t('about.moveFlowDesc')}</p>
             </div>
 
-            {/* TALK & THINK */}
+            {/* Arts & Culture */}
             <div className="bg-[#1a454a] p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] border border-white/5 hover:-translate-y-2 transition-transform duration-500">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/10 rounded-xl sm:rounded-2xl flex items-center justify-center text-[#e35e25] mb-4 sm:mb-6">
                 <BookOpen size={20} className="sm:w-6 sm:h-6" />
@@ -106,7 +106,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ setViewState }) => {
               <p className="text-gray-400 leading-relaxed text-sm sm:text-base">{t('about.talkThinkDesc')}</p>
             </div>
 
-            {/* COMMUNITY & SUPPORT */}
+            {/* Community & Causes */}
             <div className="bg-[#1a454a] p-6 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] border border-white/5 hover:-translate-y-2 transition-transform duration-500">
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/10 rounded-xl sm:rounded-2xl flex items-center justify-center text-[#e35e25] mb-4 sm:mb-6">
                 <HandHeart size={20} className="sm:w-6 sm:h-6" />

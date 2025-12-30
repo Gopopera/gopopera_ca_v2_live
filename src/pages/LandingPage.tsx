@@ -30,6 +30,7 @@ interface LandingCTAParams {
   section: string;
   destination: string;
   is_external: boolean;
+  [key: string]: unknown; // Index signature for Record<string, unknown> compatibility
 }
 
 function trackLandingCTA(params: LandingCTAParams): void {

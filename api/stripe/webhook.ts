@@ -24,7 +24,7 @@ const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || process.env.VITE_STRI
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || process.env.VITE_STRIPE_WEBHOOK_SECRET;
 
 const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY, {
-  apiVersion: '2024-12-18.acacia',
+  apiVersion: '2025-11-17.clover',
 }) : null;
 
 export default async function handler(req: any, res: any) {
@@ -237,8 +237,10 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
       };
 
       // Calculate next charge date
-      if (subscription.current_period_end) {
-        updates.nextChargeDate = subscription.current_period_end * 1000; // Convert to milliseconds
+      // Use type assertion for API compatibility
+      const periodEnd = (subscription as any).current_period_end;
+      if (periodEnd) {
+        updates.nextChargeDate = periodEnd * 1000; // Convert to milliseconds
       }
 
       await snapshot.docs[0].ref.update(updates);

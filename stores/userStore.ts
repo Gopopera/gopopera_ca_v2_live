@@ -40,6 +40,11 @@ export interface User {
   profileImageUrl?: string; // Alias for photoURL
   phone_verified?: boolean;
   phone_number?: string;
+  notification_settings?: {
+    email_opt_in?: boolean;
+    sms_opt_in?: boolean;
+    notification_opt_in?: boolean;
+  };
 }
 
 interface UserStore {
@@ -67,7 +72,7 @@ interface UserStore {
   addFavorite: (userId: string, eventId: string) => Promise<void>;
   removeFavorite: (userId: string, eventId: string) => Promise<void>;
   cleanupEndedFavorites: (userId: string, allEvents: any[]) => Promise<string[]>; // Remove ended events from favorites
-  addRSVP: (userId: string, eventId: string) => Promise<string>; // Returns reservation ID
+  addRSVP: (userId: string, eventId: string, options?: { attendeeCount?: number; supportContribution?: number; paymentMethod?: string; totalAmount?: number; paymentIntentId?: string; subscriptionId?: string }) => Promise<string>; // Returns reservation ID
   removeRSVP: (userId: string, eventId: string) => Promise<void>;
   getUserFavorites: (userId: string) => string[];
   getUserRSVPs: (userId: string) => string[];

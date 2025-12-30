@@ -11,6 +11,7 @@ export interface StoryImageOptions {
   eventTime: string;
   eventLocation: string;
   eventPrice?: string;
+  eventUrl?: string;
 }
 
 /**

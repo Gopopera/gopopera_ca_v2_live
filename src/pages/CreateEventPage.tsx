@@ -5,11 +5,21 @@ import { useEventStore } from '../../stores/eventStore';
 import { useUserStore } from '../../stores/userStore';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { HostPhoneVerificationModal } from '../../components/auth/HostPhoneVerificationModal';
-import { uploadImage } from '../../firebase/storage';
+import { uploadImage } from '../../firebase/imageStorage';
 import { processImageForUploadLazy, prefetchImageProcessing } from '../lib/imageProcessingLoader';
 import { geocodeAddress } from '../../utils/geocoding';
-import { ALL_VIBES } from '../../utils/vibes';
-import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS, MAIN_CATEGORY_LABELS_FR, getVibesForCategory, type MainCategory } from '../../utils/categoryMapper';
+import { 
+  type EventVibe,
+  getVibePresetsForCategory,
+  getVibeLabel,
+  presetToEventVibe,
+  createCustomVibe,
+  validateCustomVibeLabel,
+  MAX_VIBES,
+  MIN_VIBES,
+  MAX_VIBE_LABEL_LENGTH,
+} from '../../src/constants/vibes';
+import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS, MAIN_CATEGORY_LABELS_FR, type MainCategory } from '../../utils/categoryMapper';
 
 interface CreateEventPageProps {
   setViewState: (view: ViewState) => void;
@@ -51,7 +61,11 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
   const [sessionFrequency, setSessionFrequency] = useState<'weekly' | 'monthly' | 'oneTime' | ''>('');
   const [sessionMode, setSessionMode] = useState<'inPerson' | 'remote' | ''>('');
   const [mainCategory, setMainCategory] = useState<MainCategory | ''>('');
-  const [selectedVibes, setSelectedVibes] = useState<string[]>([]);
+  const [selectedVibes, setSelectedVibes] = useState<EventVibe[]>([]);
+  // Custom vibe input fields
+  const [customVibeEN, setCustomVibeEN] = useState('');
+  const [customVibeFR, setCustomVibeFR] = useState('');
+  const [customVibeError, setCustomVibeError] = useState<string | null>(null);
   const [groupSize, setGroupSize] = useState<{ min: number; max: number } | null>(null);
   const [repeatDay, setRepeatDay] = useState<string>('');
   const [repeatTime, setRepeatTime] = useState<string>('');
@@ -265,9 +279,11 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       return;
     }
     
-    // Validate vibes selection (1-5)
-    if (selectedVibes.length === 0 || selectedVibes.length > 5) {
-      alert('Please select 1 to 5 vibes for your circle.');
+    // Validate vibes selection (1-3)
+    if (selectedVibes.length < MIN_VIBES || selectedVibes.length > MAX_VIBES) {
+      alert(language === 'fr' 
+        ? `Veuillez sélectionner entre ${MIN_VIBES} et ${MAX_VIBES} vibes pour votre cercle.`
+        : `Please select ${MIN_VIBES} to ${MAX_VIBES} vibes for your circle.`);
       return;
     }
     
@@ -868,10 +884,12 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
             </div>
             
             {/* Vibes / Subcategories - Multi-select, filtered by Main Category */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
-                {t('createEvent.vibes')} <span className="text-red-500">*</span> <span className="text-gray-400 font-normal text-xs">{t('createEvent.selectVibesHint')}</span>
+                {t('createEvent.vibes')} <span className="text-red-500">*</span> <span className="text-gray-400 font-normal text-xs">{language === 'fr' ? `(Sélectionnez ${MIN_VIBES}-${MAX_VIBES})` : `(Select ${MIN_VIBES}-${MAX_VIBES})`}</span>
               </label>
+              
+              {/* Selected vibes display */}
               <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl min-h-[60px]">
                 {selectedVibes.length === 0 ? (
                   <span className="text-gray-400 text-sm">
@@ -880,13 +898,14 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                 ) : (
                   selectedVibes.map((vibe) => (
                     <span
-                      key={vibe}
+                      key={vibe.key}
                       className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#15383c] text-white text-sm font-medium"
                     >
-                      {vibe}
+                      {getVibeLabel(vibe, language)}
+                      {vibe.isCustom && <span className="text-xs opacity-70">✨</span>}
                       <button
                         type="button"
-                        onClick={() => setSelectedVibes(selectedVibes.filter(v => v !== vibe))}
+                        onClick={() => setSelectedVibes(selectedVibes.filter(v => v.key !== vibe.key))}
                         className="ml-1 hover:text-red-200"
                       >
                         <X size={14} />
@@ -895,31 +914,106 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                   ))
                 )}
               </div>
-              {/* Show vibes filtered by selected main category */}
+              
+              {/* Preset vibes filtered by selected main category */}
               {mainCategory ? (
-                <div className="flex flex-wrap gap-2">
-                  {getVibesForCategory(mainCategory as MainCategory)
-                    .filter(vibe => !selectedVibes.includes(vibe))
-                    .map((vibe) => (
-                      <button
-                        key={vibe}
-                        type="button"
-                        onClick={() => {
-                          if (selectedVibes.length < 5) {
-                            setSelectedVibes([...selectedVibes, vibe]);
-                          } else {
-                            alert(t('createEvent.youCanSelectUpTo'));
-                          }
-                        }}
-                        disabled={selectedVibes.length >= 5}
-                        className="px-3 py-1.5 rounded-full bg-white border border-gray-300 text-gray-700 text-sm font-medium hover:border-[#15383c] hover:text-[#15383c] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {vibe}
-                      </button>
-                    ))}
-                </div>
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {getVibePresetsForCategory(mainCategory as MainCategory)
+                      .filter(preset => !selectedVibes.some(v => v.key === preset.key))
+                      .map((preset) => (
+                        <button
+                          key={preset.key}
+                          type="button"
+                          onClick={() => {
+                            if (selectedVibes.length < MAX_VIBES) {
+                              setSelectedVibes([...selectedVibes, presetToEventVibe(preset)]);
+                            }
+                          }}
+                          disabled={selectedVibes.length >= MAX_VIBES}
+                          className="px-3 py-1.5 rounded-full bg-white border border-gray-300 text-gray-700 text-sm font-medium hover:border-[#15383c] hover:text-[#15383c] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {language === 'fr' ? preset.label.fr : preset.label.en}
+                        </button>
+                      ))}
+                  </div>
+                  
+                  {/* Custom vibe input */}
+                  <div className="mt-4 p-4 bg-white border border-gray-200 rounded-xl">
+                    <p className="text-sm font-medium text-gray-700 mb-3">
+                      {language === 'fr' ? 'Ajouter un vibe personnalisé' : 'Add a custom vibe'}
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-2 mb-2">
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          placeholder={language === 'fr' ? 'Vibe en anglais (EN)' : 'Custom vibe (EN)'}
+                          value={customVibeEN}
+                          onChange={(e) => {
+                            setCustomVibeEN(e.target.value.slice(0, MAX_VIBE_LABEL_LENGTH));
+                            setCustomVibeError(null);
+                          }}
+                          maxLength={MAX_VIBE_LABEL_LENGTH}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#15383c]"
+                        />
+                        <span className="text-xs text-gray-400">{customVibeEN.length}/{MAX_VIBE_LABEL_LENGTH}</span>
+                      </div>
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          placeholder={language === 'fr' ? 'Vibe en français (FR)' : 'Vibe in French (FR)'}
+                          value={customVibeFR}
+                          onChange={(e) => {
+                            setCustomVibeFR(e.target.value.slice(0, MAX_VIBE_LABEL_LENGTH));
+                            setCustomVibeError(null);
+                          }}
+                          maxLength={MAX_VIBE_LABEL_LENGTH}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#15383c]"
+                        />
+                        <span className="text-xs text-gray-400">{customVibeFR.length}/{MAX_VIBE_LABEL_LENGTH}</span>
+                      </div>
+                    </div>
+                    {customVibeError && (
+                      <p className="text-xs text-red-500 mb-2">{customVibeError}</p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const error = validateCustomVibeLabel(customVibeEN, customVibeFR, selectedVibes);
+                        if (error) {
+                          setCustomVibeError(language === 'fr' ? 'Les deux labels sont requis et doivent être uniques' : error);
+                          return;
+                        }
+                        if (selectedVibes.length >= MAX_VIBES) {
+                          setCustomVibeError(language === 'fr' 
+                            ? `Maximum ${MAX_VIBES} vibes atteint`
+                            : `Maximum ${MAX_VIBES} vibes reached`);
+                          return;
+                        }
+                        const newVibe = createCustomVibe(customVibeEN, customVibeFR);
+                        setSelectedVibes([...selectedVibes, newVibe]);
+                        setCustomVibeEN('');
+                        setCustomVibeFR('');
+                        setCustomVibeError(null);
+                      }}
+                      disabled={!customVibeEN.trim() || !customVibeFR.trim() || selectedVibes.length >= MAX_VIBES}
+                      className="px-4 py-2 bg-[#15383c] text-white rounded-lg text-sm font-medium hover:bg-[#1a454a] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {language === 'fr' ? 'Ajouter' : 'Add'}
+                    </button>
+                  </div>
+                </>
               ) : (
                 <p className="text-xs text-gray-400 pl-1">{t('createEvent.selectMainCategoryFirst')}</p>
+              )}
+              
+              {/* Max vibes warning */}
+              {selectedVibes.length >= MAX_VIBES && (
+                <p className="text-xs text-amber-600 pl-1">
+                  {language === 'fr' 
+                    ? `Maximum de ${MAX_VIBES} vibes atteint`
+                    : `Maximum of ${MAX_VIBES} vibes reached`}
+                </p>
               )}
             </div>
 

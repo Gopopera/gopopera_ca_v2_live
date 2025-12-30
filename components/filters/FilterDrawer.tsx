@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { X, ChevronDown, ChevronUp, Filter } from 'lucide-react';
 import { useFilterStore } from '../../stores/filterStore';
-import { ALL_VIBES } from '../../utils/vibes';
+import { VIBE_PRESETS_BY_CATEGORY, type VibePreset } from '../../src/constants/vibes';
 import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS, MAIN_CATEGORY_LABELS_FR, type MainCategory } from '../../utils/categoryMapper';
+
+// Get all vibes as a flat array for filter UI
+const ALL_VIBE_PRESETS: VibePreset[] = Object.values(VIBE_PRESETS_BY_CATEGORY).flat();
 import { useLanguage } from '../../contexts/LanguageContext';
 import { createPortal } from 'react-dom';
 
@@ -435,17 +438,17 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
             
             {expandedSections.vibes && (
               <div className="flex flex-wrap gap-2">
-                {ALL_VIBES.map(vibe => (
+                {ALL_VIBE_PRESETS.map(preset => (
                   <button
-                    key={vibe}
-                    onClick={() => handleVibeToggle(vibe)}
+                    key={preset.key}
+                    onClick={() => handleVibeToggle(preset.key)}
                     className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                      filters.vibes.includes(vibe)
+                      filters.vibes.includes(preset.key)
                         ? 'bg-[#15383c] text-white border-[#15383c]'
                         : 'bg-white text-[#15383c] border-[#15383c]/20 hover:border-[#e35e25] hover:text-[#e35e25]'
                     }`}
                   >
-                    {vibe}
+                    {language === 'fr' ? preset.label.fr : preset.label.en}
                   </button>
                 ))}
               </div>

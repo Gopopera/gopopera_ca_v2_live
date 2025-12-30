@@ -3,7 +3,7 @@
  * Updates UI immediately, writes to Firestore after delay
  */
 
-import { useCallback, useRef, useEffect } from 'react';
+import React, { useCallback, useRef, useEffect } from 'react';
 import { useUserStore } from '../stores/userStore';
 
 const DEBOUNCE_MS = 500;
@@ -71,7 +71,7 @@ export function useDebouncedFavorite() {
 
       // Debounce Firestore write
       timeoutRef.current = setTimeout(async () => {
-        const eventIdsToWrite = Array.from(pendingWrites.current);
+        const eventIdsToWrite: string[] = Array.from(pendingWrites.current);
         pendingWrites.current.clear();
 
         // Get current state to determine what needs to be written
@@ -98,8 +98,8 @@ export function useDebouncedFavorite() {
             // Revert optimistic update on error
             const updatedUser = useUserStore.getState().user;
             if (updatedUser) {
-              const revertedFavorites = shouldBeFavorite
-                ? currentFavorites.filter(favId => favId !== id)
+              const revertedFavorites: string[] = shouldBeFavorite
+                ? currentFavorites.filter((favId: string) => favId !== id)
                 : [...currentFavorites, id];
               useUserStore.setState({
                 user: { ...updatedUser, favorites: revertedFavorites },
@@ -132,7 +132,7 @@ export function useDebouncedFavorite() {
       timeoutRef.current = null;
     }
     
-    const eventIdsToWrite = Array.from(pendingWrites.current);
+    const eventIdsToWrite: string[] = Array.from(pendingWrites.current);
     if (eventIdsToWrite.length === 0) {
       return;
     }

@@ -2543,7 +2543,7 @@ export async function deleteEvent(eventId: string, deleteImages: boolean = true)
     // Delete associated images from Storage if requested
     if (deleteImages) {
       try {
-        const { deleteImage } = await import('./storage');
+        const { deleteImage } = await import('./imageStorage');
         const imagesToDelete: string[] = [];
         
         // Collect all image URLs

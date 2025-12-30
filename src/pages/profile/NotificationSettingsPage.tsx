@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { ViewState } from '../../../types';
 import { ChevronLeft, Bell, Mail, MessageSquare, Calendar, Users, XCircle, Smartphone } from 'lucide-react';
-import { useUserStore } from '../../stores/userStore';
-import { getUserProfile, createOrUpdateUserProfile } from '../../firebase/db';
+import { useUserStore } from '../../../stores/userStore';
+import { getUserProfile, createOrUpdateUserProfile } from '../../../firebase/db';
 
 interface NotificationSettingsPageProps {
   setViewState: (view: ViewState) => void;

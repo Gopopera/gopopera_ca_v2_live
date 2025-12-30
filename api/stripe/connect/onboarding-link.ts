@@ -13,7 +13,7 @@ const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || process.env.VITE_STRI
 const APP_URL = process.env.APP_URL || process.env.VITE_APP_URL || 'https://gopopera.ca';
 
 const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY, {
-  apiVersion: '2024-12-18.acacia',
+  apiVersion: '2025-11-17.clover',
 }) : null;
 
 export default async function handler(req: any, res: any) {

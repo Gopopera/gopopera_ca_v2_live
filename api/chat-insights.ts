@@ -281,24 +281,30 @@ const PROMPT_BANK: Record<CategoryKey, Record<TimingMode, string[]>> = {
 };
 
 // Map event categories to prompt bank keys
+// Note: CategoryKey values are internal keys for PROMPT_BANK, not user-facing labels
 function mapCategoryToKey(category?: string): CategoryKey {
   if (!category) return 'DEFAULT';
   
   const normalized = category.toLowerCase();
   
-  if (normalized.includes('make') || normalized.includes('create') || normalized.includes('workshop') || normalized.includes('craft')) {
+  // Workshops & Skills (makeCreate)
+  if (normalized.includes('make') || normalized.includes('create') || normalized.includes('workshop') || normalized.includes('craft') || normalized.includes('skill')) {
     return 'MAKE & CREATE';
   }
+  // Food & Drink (eatDrink)
   if (normalized.includes('eat') || normalized.includes('drink') || normalized.includes('food') || normalized.includes('beverage') || normalized.includes('coffee') || normalized.includes('wine')) {
     return 'EAT & DRINK';
   }
-  if (normalized.includes('move') || normalized.includes('flow') || normalized.includes('wellness') || normalized.includes('fitness') || normalized.includes('yoga') || normalized.includes('sport')) {
+  // Sports & Recreation (moveFlow)
+  if (normalized.includes('move') || normalized.includes('flow') || normalized.includes('wellness') || normalized.includes('fitness') || normalized.includes('yoga') || normalized.includes('sport') || normalized.includes('recreation')) {
     return 'MOVE & FLOW';
   }
-  if (normalized.includes('talk') || normalized.includes('think') || normalized.includes('discuss') || normalized.includes('book') || normalized.includes('club') || normalized.includes('lecture')) {
+  // Arts & Culture (talkThink)
+  if (normalized.includes('talk') || normalized.includes('think') || normalized.includes('discuss') || normalized.includes('book') || normalized.includes('club') || normalized.includes('lecture') || normalized.includes('art') || normalized.includes('culture')) {
     return 'TALK & THINK';
   }
-  if (normalized.includes('community') || normalized.includes('support') || normalized.includes('group') || normalized.includes('peer') || normalized.includes('mutual')) {
+  // Community & Causes (communitySupport)
+  if (normalized.includes('community') || normalized.includes('support') || normalized.includes('group') || normalized.includes('peer') || normalized.includes('mutual') || normalized.includes('cause')) {
     return 'COMMUNITY & SUPPORT';
   }
   

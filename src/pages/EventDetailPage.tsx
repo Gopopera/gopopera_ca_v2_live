@@ -19,6 +19,7 @@ import { getReservationCountForEvent, subscribeToReservationCount, getUserProfil
 // REFACTORED: No longer using getUserProfile for host display - using real-time subscriptions instead
 // But we use getUserProfile to check host Stripe status for payments
 import { getMainCategoryLabelFromEvent } from '../../utils/categoryMapper';
+import { getVibeLabel, normalizeLegacyVibes } from '../../utils/vibes';
 import { getSessionFrequencyText, getSessionModeText } from '../../utils/eventHelpers';
 import { getInitials, getAvatarBgColor } from '../../utils/avatarUtils';
 import { useHostData } from '../../hooks/useHostProfileCache';
@@ -1379,12 +1380,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             {event.vibes && event.vibes.length > 0 && (
               <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-gray-100">
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                  {event.vibes.map((vibe, index) => (
+                  {normalizeLegacyVibes(event.vibes).map((vibe) => (
                     <span
-                      key={index}
+                      key={vibe.key}
                       className="inline-flex items-center px-3 py-1.5 rounded-full bg-gray-50 text-gray-600 border border-gray-200 text-xs sm:text-sm font-medium hover:border-[#e35e25]/30 hover:text-[#e35e25] transition-colors"
                     >
-                      {vibe}
+                      {getVibeLabel(vibe, language)}
+                      {vibe.isCustom && <span className="ml-1 text-[10px] opacity-50">✨</span>}
                     </span>
                   ))}
                 </div>

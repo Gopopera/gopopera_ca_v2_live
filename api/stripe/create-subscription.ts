@@ -8,7 +8,7 @@ import Stripe from 'stripe';
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || process.env.VITE_STRIPE_SECRET_KEY;
 
 const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY, {
-  apiVersion: '2024-12-18.acacia',
+  apiVersion: '2025-11-17.clover',
 }) : null;
 
 export default async function handler(req: any, res: any) {
@@ -90,7 +90,8 @@ export default async function handler(req: any, res: any) {
     });
 
     const invoice = subscription.latest_invoice as Stripe.Invoice;
-    const paymentIntent = invoice?.payment_intent as Stripe.PaymentIntent;
+    // Use type assertion for API compatibility
+    const paymentIntent = (invoice as any)?.payment_intent as Stripe.PaymentIntent;
 
     console.log('[API] Subscription created:', { 
       subscriptionId: subscription.id, 

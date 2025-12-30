@@ -156,7 +156,8 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
       acc[city] = (acc[city] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-    const mostCommonCity = Object.entries(cityCounts).sort((a, b) => b[1] - a[1])[0];
+    const entries = Object.entries(cityCounts) as [string, number][];
+    const mostCommonCity = entries.sort((a, b) => b[1] - a[1])[0];
     return mostCommonCity ? `${mostCommonCity[0]}, CA` : 'Montreal, CA';
   }, [hostEvents]);
   

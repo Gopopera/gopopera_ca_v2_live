@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Event } from '@/types';
-import { categoryMatches } from '@/utils/categoryMapper';
+import { categoryMatches, type MainCategory } from '@/utils/categoryMapper';
 import { useEventStore } from '@/stores/eventStore';
 
 interface UseEventFiltersOptions {
@@ -51,7 +51,7 @@ export const useEventFilters = (
     // Apply category filter
     if (category && category !== 'All') {
       filtered = filtered.filter(event => 
-        categoryMatches(event.category, category)
+        categoryMatches(event.category, category as MainCategory)
       );
     }
 

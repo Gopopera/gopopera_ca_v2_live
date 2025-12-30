@@ -106,7 +106,7 @@ async function getUserContactInfo(userId: string): Promise<{ email?: string; pho
 export async function sendComprehensiveNotification(
   userId: string,
   notification: {
-    type: 'new-event' | 'new-rsvp' | 'announcement' | 'poll' | 'new-message' | 'followed-host-event' | 'new-follower' | 'new-favorite' | 'event-getting-full' | 'event-trending' | 'follow-host-suggestion';
+    type: 'new-event' | 'new-rsvp' | 'announcement' | 'poll' | 'new-message' | 'followed-host-event' | 'new-follower' | 'new-favorite' | 'event-getting-full' | 'event-trending' | 'follow-host-suggestion' | 'subscription-reminder';
     title: string;
     body: string;
     eventId?: string;

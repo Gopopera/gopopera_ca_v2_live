@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Event } from '../types';
-import { categoryMatches } from '../utils/categoryMapper';
+import { categoryMatches, type MainCategory } from '../utils/categoryMapper';
 import { createEvent as createFirestoreEvent, mapFirestoreEventToEvent } from '../firebase/db';
 import { getDbSafe } from '../src/lib/firebase';
 import { collection, onSnapshot, query, type Unsubscribe } from 'firebase/firestore';
@@ -304,7 +304,7 @@ export const useEventStore = create<EventStore>((set, get) => ({
 
   filterByCategory: (category) => {
     if (!category || category === 'All') return get().events;
-    return get().events.filter(event => categoryMatches(event.category, category));
+    return get().events.filter(event => categoryMatches(event.category, category as MainCategory));
   },
 
   filterByDate: (startDate, endDate) => {

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Instagram, MessageCircle, Music } from 'lucide-react';
+import { Instagram } from 'lucide-react';
+import { FaReddit, FaTiktok } from 'react-icons/fa';
 import { ViewState } from '@/types';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Logo } from './Logo';
@@ -100,7 +101,7 @@ export const Footer: React.FC<FooterProps> = ({ setViewState, isLoggedIn = false
             <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
                {/* Reddit */}
               <a href="https://www.reddit.com/user/Visible-Citron-4632/" target="_blank" rel="noopener noreferrer" className="text-[#e35e25] hover:bg-[#e35e25] hover:text-white transition-all bg-white/10 backdrop-blur-sm border border-white/20 rounded-full p-2.5 touch-manipulation active:scale-95">
-                <MessageCircle size={16} />
+                <FaReddit size={16} />
               </a>
               {/* Instagram */}
               <a href="https://www.instagram.com/gopopera.ca/" target="_blank" rel="noopener noreferrer" className="text-[#e35e25] hover:bg-[#e35e25] hover:text-white transition-all bg-white/10 backdrop-blur-sm border border-white/20 rounded-full p-2.5 touch-manipulation active:scale-95">
@@ -108,7 +109,7 @@ export const Footer: React.FC<FooterProps> = ({ setViewState, isLoggedIn = false
               </a>
               {/* TikTok */}
               <a href="https://www.tiktok.com/@gopopera.ca?lang=en" target="_blank" rel="noopener noreferrer" className="text-[#e35e25] hover:bg-[#e35e25] hover:text-white transition-all bg-white/10 backdrop-blur-sm border border-white/20 rounded-full p-2.5 touch-manipulation active:scale-95">
-                <Music size={16} />
+                <FaTiktok size={16} />
               </a>
             </div>
           </div>
