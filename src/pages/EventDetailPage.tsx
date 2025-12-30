@@ -1093,15 +1093,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         <button onClick={() => window.history.back()} className="flex items-center text-gray-500 hover:text-popera-teal transition-colors font-medium"><ChevronLeft size={20} className="mr-1" /> {t('ui.backToEvents')}</button>
       </div>
 
-      {/* DESKTOP: 2-column grid layout for hero + sidebar */}
+      {/* DESKTOP: 2-row grid layout for hero + sidebar alignment */}
       <div className="lg:max-w-7xl lg:mx-auto lg:px-8 lg:pt-4">
-        <div className="lg:grid lg:grid-cols-[1fr_360px] lg:gap-8 lg:items-start">
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[auto_auto] lg:gap-x-8 lg:gap-y-6 lg:items-stretch">
 
-          {/* LEFT COLUMN: Hero + Title/Meta (desktop grid participant) */}
-          <div>
-            {/* Hero Section - Image-driven height (no dead space) */}
-            <div className="pt-16 sm:pt-0">
-              <div className="relative w-full overflow-hidden lg:rounded-2xl lg:h-[320px]">
+          {/* HERO IMAGE - Row 1, Col 1 (desktop grid) */}
+          <div className="pt-16 sm:pt-0 lg:col-start-1 lg:row-start-1 lg:pt-0">
+            <div className="relative w-full h-full overflow-hidden lg:rounded-2xl">
         {validImageUrls.length > 1 ? (
           // Multiple images - horizontal snap gallery (image-driven height)
           <div 
@@ -1121,7 +1119,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             }}
           >
             {validImageUrls.map((url, index) => (
-                      <div key={index} className="min-w-full snap-start flex-shrink-0 lg:h-[320px]">
+                      <div key={index} className="min-w-full snap-start flex-shrink-0 lg:h-full">
                 <EventImage
                   src={url}
                   alt={`${event.title} - Image ${index + 1}`}
@@ -1135,7 +1133,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         ) : (
           // Single image - image-driven height (no dead space)
           <div
-                    className="w-full h-full cursor-pointer lg:h-[320px]"
+                    className="w-full h-full cursor-pointer"
             onClick={() => {
               const images = validImageUrls.length > 0 
                 ? validImageUrls 
@@ -1213,41 +1211,41 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           </span>
         </div>
               </div>{/* End hero image container */}
-            </div>{/* End hero pt-16 wrapper */}
+          </div>{/* End HERO IMAGE grid item */}
 
-            {/* Title + Meta Section - Desktop: directly under hero in left column */}
-            <div className="hidden lg:block pt-6">
-              {/* Title */}
+          {/* TITLE + META - Row 2, Col 1 (desktop grid) */}
+          <div className="hidden lg:block lg:col-start-1 lg:row-start-2">
+                    {/* Title */}
               <h1 className="text-3xl font-heading font-bold text-[#15383c] leading-tight mb-4">
-                {event.title}
-              </h1>
-              
-              {/* Metadata - Compact, clean */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2.5 text-gray-600">
-                  <Calendar size={16} className="text-[#e35e25] shrink-0" />
+                      {event.title}
+                    </h1>
+                    
+                    {/* Metadata - Compact, clean */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2.5 text-gray-600">
+                        <Calendar size={16} className="text-[#e35e25] shrink-0" />
                   <span className="text-base">{formatDate(event.date)} • {event.time}</span>
-      </div>
-                <div className="flex items-center gap-2.5 text-gray-600">
-                  <MapPin size={16} className="text-[#e35e25] shrink-0" />
+                      </div>
+                      <div className="flex items-center gap-2.5 text-gray-600">
+                        <MapPin size={16} className="text-[#e35e25] shrink-0" />
                   <span className="text-base truncate">{event.location}</span>
-                </div>
-                {reservationCount === null ? (
-                  <div className="flex items-center gap-2.5 text-gray-600">
-                    <User size={16} className="text-[#e35e25] shrink-0" />
-                    <MetricSkeleton width="w-24" height="h-4" />
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2.5 text-gray-600">
-                    <User size={16} className="text-[#e35e25] shrink-0" />
+                      </div>
+                      {reservationCount === null ? (
+                        <div className="flex items-center gap-2.5 text-gray-600">
+                          <User size={16} className="text-[#e35e25] shrink-0" />
+                          <MetricSkeleton width="w-24" height="h-4" />
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2.5 text-gray-600">
+                          <User size={16} className="text-[#e35e25] shrink-0" />
                     <span className="text-base">
-                      {event.capacity 
-                        ? `${reservationCount}/${event.capacity} attending`
-                        : `${reservationCount} attending`
-                      }
-                    </span>
-                  </div>
-                )}
+                            {event.capacity 
+                              ? `${reservationCount}/${event.capacity} attending`
+                              : `${reservationCount} attending`
+                            }
+                          </span>
+                        </div>
+                      )}
                 {/* Cost */}
                 <div className="flex items-center gap-2.5 text-gray-600">
                   <DollarSign size={16} className="text-[#e35e25] shrink-0" />
@@ -1256,108 +1254,107 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   </span>
                 </div>
               </div>
-            </div>
-          </div>{/* End LEFT COLUMN */}
+          </div>{/* End TITLE + META grid item */}
 
-          {/* RIGHT COLUMN: Host + Action Cards - Desktop only (in top grid) */}
-          <div className="hidden lg:block">
-            <div className="sticky top-28 space-y-4">
+          {/* RIGHT COLUMN: Host + Action Cards - Row 1, Col 2 (desktop grid) */}
+          <div className="hidden lg:block lg:col-start-2 lg:row-start-1 lg:self-stretch">
+            <div className="h-full flex flex-col space-y-4">
               {/* Hosted-by Card */}
-              <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.05)] border border-white/60 p-4 hover:shadow-[0_6px_24px_rgb(0,0,0,0.08)] transition-shadow">
-                {/* Host Avatar */}
-                <div className="flex justify-center mb-3">
-                  <div 
-                    className="w-16 h-16 rounded-full bg-gradient-to-br from-[#e35e25] to-[#15383c] overflow-hidden ring-2 ring-white shadow-lg cursor-pointer hover:ring-[#e35e25]/30 transition-all"
-                    onClick={() => onHostClick?.(displayHostName, event.hostId)}
-                  >
-                    {hostProfilePicture ? (
-                      <img 
-                        src={hostProfilePicture} 
-                        alt={displayHostName} 
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
+                <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.05)] border border-white/60 p-4 hover:shadow-[0_6px_24px_rgb(0,0,0,0.08)] transition-shadow">
+                  {/* Host Avatar */}
+                  <div className="flex justify-center mb-3">
+                    <div 
+                      className="w-16 h-16 rounded-full bg-gradient-to-br from-[#e35e25] to-[#15383c] overflow-hidden ring-2 ring-white shadow-lg cursor-pointer hover:ring-[#e35e25]/30 transition-all"
+                      onClick={() => onHostClick?.(displayHostName, event.hostId)}
+                    >
+                      {hostProfilePicture ? (
+                        <img 
+                          src={hostProfilePicture} 
+                          alt={displayHostName} 
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = `https://picsum.photos/seed/${displayHostName}/100/100`;
+                          }} 
+                        />
+                      ) : (
+                        <div className={`w-full h-full flex items-center justify-center ${getAvatarBgColor(displayHostName, event.hostId)} text-white font-bold text-lg`}>
+                          {getInitials(displayHostName)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Hosted by label + name */}
+                  <div className="text-center mb-3">
+                    <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">{t('event.hostedBy')}</p>
+                    <h3 
+                      className="text-lg font-heading font-bold text-[#15383c] cursor-pointer hover:text-[#e35e25] transition-colors"
+                      onClick={() => onHostClick?.(displayHostName, event.hostId)}
+                    >
+                      {displayHostName}
+                    </h3>
+                  </div>
+                  
+                  {/* Rating + Followers */}
+                  <div className="flex items-center justify-center gap-3 mb-3">
+                    {reviewsLoading ? (
+                      <MetricSkeleton width="w-16" height="h-5" />
+                    ) : currentRating.reviewCount > 0 ? (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (event.hostId) {
+                            setShowHostReviewsModal(true);
+                          }
                         }} 
-                      />
+                        className="flex items-center gap-1.5 bg-[#e35e25]/10 hover:bg-[#e35e25]/20 px-3 py-1.5 rounded-full transition-colors border border-[#e35e25]/20 hover:border-[#e35e25]/40 touch-manipulation active:scale-95"
+                      >
+                        <Star size={14} className="text-[#e35e25] fill-[#e35e25]" />
+                        <span className="text-xs font-bold text-[#15383c]">{formatRating(currentRating.rating)}</span>
+                        <span className="text-[10px] text-gray-600">({currentRating.reviewCount})</span>
+                      </button>
+                    ) : null}
+                    
+                    {hostDataLoading ? (
+                      <MetricSkeleton width="w-12" height="h-4" />
                     ) : (
-                      <div className={`w-full h-full flex items-center justify-center ${getAvatarBgColor(displayHostName, event.hostId)} text-white font-bold text-lg`}>
-                        {getInitials(displayHostName)}
+                      <div className="flex items-center gap-1.5 text-gray-500">
+                        <Users size={14} />
+                        <span className="text-xs">{followersCount} {followersCount === 1 ? t('ui.follower') : t('ui.followers')}</span>
                       </div>
                     )}
                   </div>
-                </div>
-                
-                {/* Hosted by label + name */}
-                <div className="text-center mb-3">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">{t('event.hostedBy')}</p>
-                  <h3 
-                    className="text-lg font-heading font-bold text-[#15383c] cursor-pointer hover:text-[#e35e25] transition-colors"
-                    onClick={() => onHostClick?.(displayHostName, event.hostId)}
-                  >
-                    {displayHostName}
-                  </h3>
-                </div>
-                
-                {/* Rating + Followers */}
-                <div className="flex items-center justify-center gap-3 mb-3">
-                  {reviewsLoading ? (
-                    <MetricSkeleton width="w-16" height="h-5" />
-                  ) : currentRating.reviewCount > 0 ? (
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (event.hostId) {
-                          setShowHostReviewsModal(true);
-                        }
-                      }} 
-                      className="flex items-center gap-1.5 bg-[#e35e25]/10 hover:bg-[#e35e25]/20 px-3 py-1.5 rounded-full transition-colors border border-[#e35e25]/20 hover:border-[#e35e25]/40 touch-manipulation active:scale-95"
-                    >
-                      <Star size={14} className="text-[#e35e25] fill-[#e35e25]" />
-                      <span className="text-xs font-bold text-[#15383c]">{formatRating(currentRating.rating)}</span>
-                      <span className="text-[10px] text-gray-600">({currentRating.reviewCount})</span>
-                    </button>
-                  ) : null}
                   
-                  {hostDataLoading ? (
-                    <MetricSkeleton width="w-12" height="h-4" />
-                  ) : (
-                    <div className="flex items-center gap-1.5 text-gray-500">
-                      <Users size={14} />
-                      <span className="text-xs">{followersCount} {followersCount === 1 ? t('ui.follower') : t('ui.followers')}</span>
+                  {/* Follow Button */}
+                  {isLoggedIn && user?.uid !== event.hostId && (
+                    <div className="flex justify-center">
+                      <button
+                        onClick={handleFollowToggle}
+                        disabled={followLoading}
+                        aria-label={isFollowingHost ? `Unfollow ${displayHostName}` : `Follow ${displayHostName}`}
+                        className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-1.5 ${
+                          isFollowingHost
+                            ? 'bg-white/80 backdrop-blur-sm text-[#15383c] border border-gray-200/60 hover:bg-white hover:border-gray-300'
+                            : 'bg-[#e35e25] text-white shadow-lg shadow-[#e35e25]/25 hover:shadow-xl hover:shadow-[#e35e25]/30'
+                        } disabled:opacity-50`}
+                      >
+                        {isFollowingHost ? (
+                          <>
+                            <UserCheck size={14} /> {t('event.following')}
+                          </>
+                        ) : (
+                          <>
+                            <UserPlus size={14} /> {t('event.follow')}
+                          </>
+                        )}
+                      </button>
                     </div>
                   )}
                 </div>
-                
-                {/* Follow Button */}
-                {isLoggedIn && user?.uid !== event.hostId && (
-                  <div className="flex justify-center">
-                    <button
-                      onClick={handleFollowToggle}
-                      disabled={followLoading}
-                      aria-label={isFollowingHost ? `Unfollow ${displayHostName}` : `Follow ${displayHostName}`}
-                      className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap touch-manipulation active:scale-95 flex items-center justify-center gap-1.5 ${
-                        isFollowingHost
-                          ? 'bg-white/80 backdrop-blur-sm text-[#15383c] border border-gray-200/60 hover:bg-white hover:border-gray-300'
-                          : 'bg-[#e35e25] text-white shadow-lg shadow-[#e35e25]/25 hover:shadow-xl hover:shadow-[#e35e25]/30'
-                      } disabled:opacity-50`}
-                    >
-                      {isFollowingHost ? (
-                        <>
-                          <UserCheck size={14} /> {t('event.following')}
-                        </>
-                      ) : (
-                        <>
-                          <UserPlus size={14} /> {t('event.follow')}
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
-              </div>
 
-              {/* Action Card - Reserve/Share/Join */}
-              <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.05)] border border-white/60 p-4 hover:shadow-[0_6px_24px_rgb(0,0,0,0.08)] transition-shadow">
+                {/* Action Card - Reserve/Share/Join */}
+                <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.05)] border border-white/60 p-4 hover:shadow-[0_6px_24px_rgb(0,0,0,0.08)] transition-shadow">
                 <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-100/80">
                   <div>
                     <span className="text-2xl font-heading font-bold text-[#15383c]">
