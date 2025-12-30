@@ -30,21 +30,21 @@ export const Pillars: React.FC = () => {
       title: t('pillars.moveFlow.title'),
       category: t('pillars.moveFlow.category'),
       description: t('pillars.moveFlow.description'),
-      image: "https://images.unsplash.com/photo-1531206715517-5c0ba140b2b8?q=75&w=600&auto=format&fit=crop",
+      image: "/images/pillars/yoga-class.webp",
     },
     {
       id: "04",
       title: t('pillars.talkThink.title'),
       category: t('pillars.talkThink.category'),
       description: t('pillars.talkThink.description'),
-      image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=75&w=600&auto=format&fit=crop",
+      image: "/images/pillars/book-club.webp",
     },
     {
       id: "05",
       title: t('pillars.communitySupport.title'),
       category: t('pillars.communitySupport.category'),
       description: t('pillars.communitySupport.description'),
-      image: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?q=75&w=600&auto=format&fit=crop",
+      image: "/images/pillars/community.webp",
     }
   ];
 

@@ -3,6 +3,9 @@ import { MessageCircle, BarChart2, Megaphone, Send, Sparkles, Users, DollarSign,
 import { useLanguage } from '../../contexts/LanguageContext';
 import { preloadImage } from '../../hooks/useImageCache';
 
+// Local host avatar for better performance
+const HOST_AVATAR_URL = '/images/avatars/host-marcus.jpg';
+
 // Mock messages factory - returns translated messages
 const getMockMessages = (t: (key: string) => string) => [
   {
@@ -13,7 +16,7 @@ const getMockMessages = (t: (key: string) => string) => [
     isHost: true,
     text: t('chatMockup.mockMsg1'),
     time: '06:45',
-    avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop&crop=face'
+    avatar: HOST_AVATAR_URL
   },
   {
     id: 2,
@@ -47,7 +50,7 @@ const getMockMessages = (t: (key: string) => string) => [
     isHost: true,
     text: t('chatMockup.mockMsg4'),
     time: '07:08',
-    avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop&crop=face'
+    avatar: '/images/avatars/host-marcus.jpg'
   },
   {
     id: 6,
@@ -84,7 +87,7 @@ const getMockMessages = (t: (key: string) => string) => [
     isHost: true,
     text: t('chatMockup.mockMsg8'),
     time: '07:20',
-    avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop&crop=face'
+    avatar: '/images/avatars/host-marcus.jpg'
   },
   {
     id: 10,
@@ -112,12 +115,12 @@ const getMockMessages = (t: (key: string) => string) => [
     isHost: true,
     text: t('chatMockup.mockMsg11'),
     time: '07:25',
-    avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop&crop=face'
+    avatar: '/images/avatars/host-marcus.jpg'
   }
 ];
 
-// Host avatar used in chat mockup
-const hostAvatarUrl = 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop&crop=face';
+// Host avatar used in chat mockup - use local image for performance
+const hostAvatarUrl = HOST_AVATAR_URL;
 
 export const ChatMockupSection: React.FC = () => {
   const { t } = useLanguage();
@@ -237,7 +240,7 @@ export const ChatMockupSection: React.FC = () => {
                       {/* Avatar */}
                       <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full overflow-hidden border-2 border-white/30 shrink-0">
                         <img 
-                          src="https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop&crop=face" 
+                          src="/images/avatars/host-marcus.jpg" 
                           alt="Host"
                           width={100}
                           height={100}
