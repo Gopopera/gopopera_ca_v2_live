@@ -11,7 +11,7 @@ import { CityInput } from '../../components/layout/CityInput';
 import { FilterDrawer } from '../../components/filters/FilterDrawer';
 import { SeoHelmet } from '../../components/seo/SeoHelmet';
 import { Event, ViewState } from '../../types';
-import { ArrowRight, Sparkles, Check, ChevronDown, Search, MapPin, PlusCircle, CheckCircle2, ChevronRight, ChevronLeft, Filter } from 'lucide-react';
+import { Sparkles, Check, ChevronDown, Search, CheckCircle2, ChevronRight, ChevronLeft, Filter } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useSelectedCity, useSetCity, initializeGeoLocation, type City } from '../stores/cityStore';
 import { useFilterStore } from '../../stores/filterStore';

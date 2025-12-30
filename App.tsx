@@ -72,6 +72,7 @@ const EditEventPage = React.lazy(() => import('./src/pages/EditEventPage').then(
 const DebugEnvPage = React.lazy(() => import('./src/pages/DebugEnvPage').then(m => ({ default: m.DebugEnvPage })));
 const DebugSeedDemoEventsPage = React.lazy(() => import('./src/pages/DebugSeedDemoEventsPage').then(m => ({ default: m.DebugSeedDemoEventsPage })));
 const CleanupReviewsPage = React.lazy(() => import('./src/pages/CleanupReviewsPage').then(m => ({ default: m.CleanupReviewsPage })));
+const DebugReservationsPage = React.lazy(() => import('./src/pages/DebugReservationsPage').then(m => ({ default: m.DebugReservationsPage })));
 const VerifyFirebasePage = React.lazy(() => import('./src/pages/VerifyFirebasePage').then(m => ({ default: m.VerifyFirebasePage })));
 
 // Consolidated Imports - lazy loaded
@@ -463,6 +464,8 @@ const AppContent: React.FC = () => {
       return ViewState.TICKET;
     } else if (pathname === '/debug-seed') {
       return ViewState.DEBUG_SEED_DEMO;
+    } else if (pathname === '/debug-reservations') {
+      return ViewState.DEBUG_RESERVATIONS;
     }
     
     // Default to landing page for unknown routes
@@ -1332,6 +1335,10 @@ const AppContent: React.FC = () => {
       if (currentUrl !== '/debug-seed') {
         window.history.replaceState({ viewState: ViewState.DEBUG_SEED_DEMO }, '', '/debug-seed');
       }
+    } else if (viewState === ViewState.DEBUG_RESERVATIONS) {
+      if (currentUrl !== '/debug-reservations') {
+        window.history.replaceState({ viewState: ViewState.DEBUG_RESERVATIONS }, '', '/debug-reservations');
+      }
     }
   }, [viewState, selectedEvent, selectedHost]);
 
@@ -1994,6 +2001,11 @@ const AppContent: React.FC = () => {
         {viewState === ViewState.DEBUG_CLEANUP_REVIEWS && (
           <React.Suspense fallback={<PageSkeleton />}>
             <CleanupReviewsPage setViewState={setViewState} />
+          </React.Suspense>
+        )}
+        {viewState === ViewState.DEBUG_RESERVATIONS && (
+          <React.Suspense fallback={<PageSkeleton />}>
+            <DebugReservationsPage onBack={() => setViewState(ViewState.PROFILE)} />
           </React.Suspense>
         )}
         {viewState === ViewState.TERMS && <TermsPage setViewState={setViewState} />}

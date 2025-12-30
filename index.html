@@ -214,13 +214,18 @@
     <!-- Font Loading Optimization: preconnect + preload critical font + async CSS -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- Preload Inter 400 (body font) to reduce FOIT on mobile -->
+    <!-- Preload Inter 400 (body font) - critical for LCP -->
     <link rel="preload" href="https://fonts.gstatic.com/s/inter/v13/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa1ZL7.woff2" as="font" type="font/woff2" crossorigin>
+    <!-- Preload Outfit 700 (headings) - used in hero -->
+    <link rel="preload" href="https://fonts.gstatic.com/s/outfit/v11/QGYyz_MVcBeNP4NjuGObqx1XmO1I4TC1C4G-EiAou6Y.woff2" as="font" type="font/woff2" crossorigin>
     <!-- Preload hero image for faster LCP -->
     <link rel="preload" href="/hero-circle-gathering-mobile.webp" as="image" type="image/webp" media="(max-width: 768px)" fetchpriority="high">
     <link rel="preload" href="/hero-circle-gathering.webp" as="image" type="image/webp" media="(min-width: 769px)" fetchpriority="high">
-    <!-- Load fonts with display=swap (already present in URL) -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Critical fonts: Inter 400 only (render-blocking but minimal) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400&display=swap" rel="stylesheet">
+    <!-- Non-critical fonts: load async after page starts rendering -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Inter:wght@600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Inter:wght@600;700&display=swap" rel="stylesheet"></noscript>
     <!-- Preconnect to Firebase/external services for faster data fetching -->
     <link rel="dns-prefetch" href="https://firestore.googleapis.com">
     <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com">

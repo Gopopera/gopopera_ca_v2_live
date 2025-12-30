@@ -22,14 +22,14 @@ export const AboutPage: React.FC<AboutPageProps> = ({ setViewState }) => {
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         {/* Hero Section */}
         <div className="text-center mb-12 sm:mb-16 md:mb-20">
-          <h1 className="font-heading font-bold text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-white mb-4 sm:mb-6 md:mb-8 leading-tight px-2">
+          <h1 className="font-heading font-bold text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-white mb-6 sm:mb-8 md:mb-10 leading-tight px-2">
             {t('about.title')}
           </h1>
-          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-300 font-light max-w-3xl mx-auto leading-relaxed px-4 mb-4 sm:mb-6">
+          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-300 font-light max-w-3xl mx-auto leading-[1.8] sm:leading-relaxed px-4 sm:px-6 mb-6 sm:mb-8">
             {t('about.description')}
           </p>
           {/* Micro-line */}
-          <p className="text-xs sm:text-sm text-[#e35e25] font-medium tracking-wide">
+          <p className="text-xs sm:text-sm text-[#e35e25] font-medium tracking-wide mt-4 sm:mt-2">
             {t('about.microLine')}
           </p>
         </div>
