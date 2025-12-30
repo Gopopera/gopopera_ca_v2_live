@@ -1095,7 +1095,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
 
       {/* DESKTOP: 2-row grid layout for hero + sidebar alignment */}
       <div className="lg:max-w-7xl lg:mx-auto lg:px-8 lg:pt-4">
-        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[auto_auto] lg:gap-x-8 lg:gap-y-6 lg:items-stretch">
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[auto_auto] lg:gap-x-8 lg:gap-y-3 lg:items-stretch">
 
           {/* HERO IMAGE - Row 1, Col 1 (desktop grid) */}
           <div className="pt-16 sm:pt-0 lg:col-start-1 lg:row-start-1 lg:pt-0 lg:h-full lg:self-stretch">
@@ -1220,45 +1220,45 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
 
           {/* TITLE + META - Row 2, Col 2 (desktop grid - under Free card) */}
           <div className="hidden lg:block lg:col-start-2 lg:row-start-2">
-            {/* Title */}
+                    {/* Title */}
             <h1 className="text-3xl font-heading font-bold text-[#15383c] leading-tight mb-4">
-              {event.title}
-            </h1>
-            
-            {/* Metadata - Compact, clean */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2.5 text-gray-600">
-                <Calendar size={16} className="text-[#e35e25] shrink-0" />
+                      {event.title}
+                    </h1>
+                    
+                    {/* Metadata - Compact, clean */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2.5 text-gray-600">
+                        <Calendar size={16} className="text-[#e35e25] shrink-0" />
                 <span className="text-base">{formatDate(event.date)} • {event.time}</span>
-              </div>
-              <div className="flex items-center gap-2.5 text-gray-600">
-                <MapPin size={16} className="text-[#e35e25] shrink-0" />
+                      </div>
+                      <div className="flex items-center gap-2.5 text-gray-600">
+                        <MapPin size={16} className="text-[#e35e25] shrink-0" />
                 <span className="text-base truncate">{event.location}</span>
-              </div>
-              {reservationCount === null ? (
-                <div className="flex items-center gap-2.5 text-gray-600">
-                  <User size={16} className="text-[#e35e25] shrink-0" />
-                  <MetricSkeleton width="w-24" height="h-4" />
-                </div>
-              ) : (
-                <div className="flex items-center gap-2.5 text-gray-600">
-                  <User size={16} className="text-[#e35e25] shrink-0" />
+                      </div>
+                      {reservationCount === null ? (
+                        <div className="flex items-center gap-2.5 text-gray-600">
+                          <User size={16} className="text-[#e35e25] shrink-0" />
+                          <MetricSkeleton width="w-24" height="h-4" />
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2.5 text-gray-600">
+                          <User size={16} className="text-[#e35e25] shrink-0" />
                   <span className="text-base">
-                    {event.capacity 
-                      ? `${reservationCount}/${event.capacity} attending`
-                      : `${reservationCount} attending`
-                    }
-                  </span>
-                </div>
-              )}
+                            {event.capacity 
+                              ? `${reservationCount}/${event.capacity} attending`
+                              : `${reservationCount} attending`
+                            }
+                          </span>
+                        </div>
+                      )}
               {/* Cost */}
-              <div className="flex items-center gap-2.5 text-gray-600">
-                <DollarSign size={16} className="text-[#e35e25] shrink-0" />
+                      <div className="flex items-center gap-2.5 text-gray-600">
+                        <DollarSign size={16} className="text-[#e35e25] shrink-0" />
                 <span className="text-base">
-                  {formatEventPrice(event, true)}
-                </span>
-              </div>
-            </div>
+                          {formatEventPrice(event, true)}
+                        </span>
+                      </div>
+                    </div>
           </div>{/* End TITLE + META grid item */}
 
           {/* RIGHT COLUMN: Host + Action Cards - Row 1, Col 2 (desktop grid) */}
@@ -1466,7 +1466,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         </div>
 
         {/* Desktop: tighter padding to reduce gap under hero; Mobile: unchanged */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-14 lg:pt-8 pb-12 sm:pb-16 md:pb-20 lg:pb-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-14 lg:pt-4 pb-12 sm:pb-16 md:pb-20 lg:pb-24">
           {/* Reservation Success Message */}
           {reservationSuccess && (
             <div className="mb-6 bg-green-50 border border-green-200 rounded-2xl p-4 sm:p-5 flex items-center gap-3 animate-fade-in">
