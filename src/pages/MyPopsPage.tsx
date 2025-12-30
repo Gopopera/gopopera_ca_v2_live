@@ -309,10 +309,13 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
   }, [events, user?.uid, user?.hostedEvents, currentUserProfilePic]);
 
   // Filter events by hosting vs attending vs draft vs past
-  // Load draft and past events separately from Firestore (they may be filtered out from main event store)
+  // Load draft, hosted, and past events separately from Firestore (they may be filtered out from main event store)
+  // This ensures private events are always visible to hosts in "My Circles"
   const [draftEventsFromFirestore, setDraftEventsFromFirestore] = useState<Event[]>([]);
+  const [hostedEventsFromFirestore, setHostedEventsFromFirestore] = useState<Event[]>([]);
   const [pastEventsFromFirestore, setPastEventsFromFirestore] = useState<Event[]>([]);
   const [draftsLoading, setDraftsLoading] = useState(false);
+  const [hostedLoading, setHostedLoading] = useState(false);
   const [pastLoading, setPastLoading] = useState(false);
 
   useEffect(() => {
@@ -358,6 +361,69 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
     };
 
     loadDraftEvents();
+  }, [user?.uid]);
+
+  // Load hosted events (including private ones) directly from Firestore
+  // This ensures private events are always visible to hosts in "My Hosting" tab
+  useEffect(() => {
+    const loadHostedEvents = async () => {
+      if (!user?.uid) {
+        setHostedEventsFromFirestore([]);
+        return;
+      }
+
+      setHostedLoading(true);
+      try {
+        const db = getDbSafe();
+        if (!db) {
+          setHostedEventsFromFirestore([]);
+          return;
+        }
+
+        // Query for all events where user is the host (includes private events)
+        const eventsCol = collection(db, 'events');
+        const q = query(
+          eventsCol,
+          where('hostId', '==', user.uid)
+        );
+        const snapshot = await getDocs(q);
+        
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        
+        // Filter to only current (not past, not draft) events
+        const hostedEvents: Event[] = snapshot.docs
+          .map((docSnap) => {
+            const data = docSnap.data();
+            const firestoreEvent: FirestoreEvent = {
+              id: docSnap.id,
+              ...(data as Omit<FirestoreEvent, 'id'>),
+            };
+            return mapFirestoreEventToEvent(firestoreEvent);
+          })
+          .filter(event => {
+            // Exclude drafts (they're handled separately)
+            if (event.isDraft) return false;
+            // Exclude past events (they're handled separately)
+            if (event.date) {
+              const eventDate = new Date(event.date);
+              eventDate.setHours(0, 0, 0, 0);
+              if (eventDate < now) return false;
+            }
+            return true;
+          });
+
+        console.log('[MY_POPS] ✅ Loaded hosted events from Firestore:', hostedEvents.length, '(includes private events)');
+        setHostedEventsFromFirestore(hostedEvents);
+      } catch (error) {
+        console.error('[MY_POPS] Error loading hosted events:', error);
+        setHostedEventsFromFirestore([]);
+      } finally {
+        setHostedLoading(false);
+      }
+    };
+
+    loadHostedEvents();
   }, [user?.uid]);
 
   // Load past events from Firestore to ensure they're always available
@@ -421,8 +487,16 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
       return { hostingEvents: [], attendingEvents: [], draftEvents: [], pastEvents: [] };
     }
 
-    const hosting = events.filter(event => 
+    // Get hosting events from main events array (public events only)
+    const hostingFromMain = events.filter(event => 
       (event.hostId === user.uid || user.hostedEvents?.includes(event.id)) && !event.isDraft && !isEventPast(event)
+    );
+    
+    // Merge with events fetched directly from Firestore (includes private events)
+    // This ensures private events are always visible to hosts in "My Hosting" tab
+    const allHosting = [...hostingFromMain, ...hostedEventsFromFirestore];
+    const hosting = allHosting.filter((event, index, self) => 
+      index === self.findIndex(e => e.id === event.id)
     );
 
     // TASK 3 FIX: Get attending events from main array filtered by user.rsvps
@@ -475,7 +549,7 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
     );
 
     return { hostingEvents: hosting, attendingEvents: attending, draftEvents: uniqueDrafts, pastEvents: uniquePast };
-  }, [events, user, draftEventsFromFirestore, pastEventsFromFirestore, attendingEventsFromFirestore, userReservations, cancelledEvents]);
+  }, [events, user, draftEventsFromFirestore, hostedEventsFromFirestore, pastEventsFromFirestore, attendingEventsFromFirestore, userReservations, cancelledEvents]);
 
   // Load checked-in counts for hosting events (must be after useMemo that defines hostingEvents)
   useEffect(() => {
@@ -590,8 +664,13 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
         </div>
 
         {/* Events List - Enhanced Design */}
-        {/* Loading state for attending tab */}
-        {activeTab === 'attending' && attendingLoading ? (
+        {/* Loading state for hosting tab */}
+        {activeTab === 'hosting' && hostedLoading ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm">
+            <Loader2 size={32} className="text-[#e35e25] animate-spin mb-4" />
+            <p className="text-gray-500 text-sm">Loading your circles…</p>
+          </div>
+        ) : activeTab === 'attending' && attendingLoading ? (
           <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm">
             <Loader2 size={32} className="text-[#e35e25] animate-spin mb-4" />
             <p className="text-gray-500 text-sm">Loading attending circles…</p>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ViewState } from '../../types';
-import { ChevronLeft, Upload, MapPin, Calendar, Clock, X, ArrowUp, ArrowDown, Sparkles } from 'lucide-react';
+import { ChevronLeft, Upload, MapPin, Calendar, Clock, X, ArrowUp, ArrowDown, Sparkles, Info } from 'lucide-react';
 import { useEventStore } from '../../stores/eventStore';
 import { useUserStore } from '../../stores/userStore';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -75,6 +75,10 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
   const [hasFee, setHasFee] = useState(false);
   const [feeAmount, setFeeAmount] = useState<number>(0); // Fee in dollars (will convert to cents)
   const [currency, setCurrency] = useState<'cad' | 'usd'>('cad');
+  
+  // Privacy settings
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [showPrivateTooltip, setShowPrivateTooltip] = useState(false);
 
   // Auto-calculate groupSize from attendeesCount
   useEffect(() => {
@@ -699,8 +703,9 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         rating: 0,
         reviewCount: 0,
         capacity: attendeesCount || undefined,
-        // Ensure events are public and joinable by default (unless draft)
-        isPublic: !saveAsDraft,
+        // Ensure events are public and joinable by default (unless draft or explicitly private)
+        // isPublic is false if: saving as draft OR marked as private
+        isPublic: !saveAsDraft && !isPrivate,
         allowRsvp: !saveAsDraft,
         allowChat: !saveAsDraft,
         isDraft: saveAsDraft,
@@ -768,6 +773,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       setHasFee(false);
       setFeeAmount(0);
       setCurrency('cad');
+      setIsPrivate(false);
       setSessionFrequency('');
       setSessionMode('');
       setMainCategory('');
@@ -1430,6 +1436,45 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Private Event Option */}
+            <div className="space-y-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="isPrivate"
+                  checked={isPrivate}
+                  onChange={(e) => setIsPrivate(e.target.checked)}
+                  className="w-5 h-5 text-[#15383c] border-gray-300 rounded focus:ring-[#15383c]"
+                />
+                <label htmlFor="isPrivate" className="text-sm font-medium text-gray-700 cursor-pointer">
+                  {t('createEvent.makeEventPrivate')}
+                </label>
+                {/* Info icon with tooltip */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowPrivateTooltip(!showPrivateTooltip)}
+                    onMouseEnter={() => setShowPrivateTooltip(true)}
+                    onMouseLeave={() => setShowPrivateTooltip(false)}
+                    className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-200"
+                    aria-label="More info about private events"
+                  >
+                    <Info size={16} />
+                  </button>
+                  {/* Tooltip */}
+                  {showPrivateTooltip && (
+                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 sm:w-72 p-3 bg-[#15383c] text-white text-xs sm:text-sm rounded-lg shadow-lg z-50">
+                      <div className="relative">
+                        {t('createEvent.privateEventTooltip')}
+                        {/* Arrow pointing down */}
+                        <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-[#15383c]"></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
