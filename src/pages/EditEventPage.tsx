@@ -10,17 +10,22 @@ import { geocodeAddress } from '../../utils/geocoding';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   type EventVibe,
-  VIBE_PRESETS_BY_CATEGORY,
   getVibeLabel,
   presetToEventVibe,
   createCustomVibe,
   validateCustomVibeLabel,
   normalizeLegacyVibes,
+  getVibePresetsForCategory,
   MAX_VIBES,
   MIN_VIBES,
   MAX_VIBE_LABEL_LENGTH,
 } from '../../src/constants/vibes';
-import { type MainCategory } from '../../utils/categoryMapper';
+import { 
+  MAIN_CATEGORIES, 
+  MAIN_CATEGORY_LABELS, 
+  MAIN_CATEGORY_LABELS_FR, 
+  type MainCategory 
+} from '../../utils/categoryMapper';
 
 interface EditEventPageProps {
   setViewState: (view: ViewState) => void;
@@ -56,9 +61,9 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
   const [customVibeEN, setCustomVibeEN] = useState('');
   const [customVibeFR, setCustomVibeFR] = useState('');
   const [customVibeError, setCustomVibeError] = useState<string | null>(null);
-  // Store mainCategory for preset filtering
-  const [mainCategory] = useState<MainCategory | null>(
-    (initialEvent?.mainCategory as MainCategory) || null
+  // Store mainCategory for preset filtering - now editable
+  const [mainCategory, setMainCategory] = useState<MainCategory | ''>(
+    (initialEvent?.mainCategory as MainCategory) || ''
   );
   const [tags, setTags] = useState<string[]>(initialEvent?.tags || []);
   const [tagInput, setTagInput] = useState('');
@@ -94,6 +99,7 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
             setAddress(event.address);
             setDate(event.date);
             setTime(event.time);
+            setMainCategory((event.mainCategory as MainCategory) || '');
             setSelectedVibes(event.vibes ? normalizeLegacyVibes(event.vibes) : []);
             setTags(event.tags || []);
             setImageUrl(event.imageUrl);
@@ -332,6 +338,7 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
         city,
         address,
         time, // Date is NOT editable
+        mainCategory: mainCategory || undefined, // Category can now be updated
         vibes: selectedVibes.length > 0 ? selectedVibes : undefined,
         tags,
         imageUrl: finalImageUrl,
@@ -353,6 +360,7 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
         city,
         address,
         time,
+        mainCategory: mainCategory || undefined, // Category can now be updated
         vibes: selectedVibes.length > 0 ? selectedVibes : undefined,
         tags,
         imageUrl: finalImageUrl,
@@ -578,6 +586,33 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
               />
             </div>
 
+            {/* Main Category Selector */}
+            <div className="space-y-2">
+              <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
+                {language === 'fr' ? 'Catégorie principale' : 'Main Category'} <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <select 
+                  value={mainCategory}
+                  onChange={(e) => {
+                    const newCategory = e.target.value as MainCategory | '';
+                    setMainCategory(newCategory);
+                    // Clear vibes when category changes (they're filtered by category)
+                    setSelectedVibes([]);
+                  }}
+                  required
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all appearance-none cursor-pointer"
+                >
+                  <option value="">{language === 'fr' ? 'Sélectionner une catégorie' : 'Select a category'}</option>
+                  {MAIN_CATEGORIES.map(cat => (
+                    <option key={cat} value={cat}>
+                      {language === 'fr' ? MAIN_CATEGORY_LABELS_FR[cat] : MAIN_CATEGORY_LABELS[cat]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             {/* Vibes / Subcategories - Multi-select */}
             <div className="space-y-3">
               <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
@@ -587,7 +622,12 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
               {/* Selected vibes display */}
               <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl min-h-[60px]">
                 {selectedVibes.length === 0 ? (
-                  <span className="text-gray-400 text-sm">{language === 'fr' ? 'Aucun vibe sélectionné' : 'No vibes selected'}</span>
+                  <span className="text-gray-400 text-sm">
+                    {mainCategory 
+                      ? (language === 'fr' ? 'Aucun vibe sélectionné' : 'No vibes selected')
+                      : (language === 'fr' ? 'Sélectionnez d\'abord une catégorie principale' : 'Select a main category first')
+                    }
+                  </span>
                 ) : (
                   selectedVibes.map((vibe) => (
                     <span
@@ -608,29 +648,32 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
                 )}
               </div>
               
-              {/* Preset vibes - show based on mainCategory or all */}
-              <div className="flex flex-wrap gap-2">
-                {(mainCategory 
-                  ? VIBE_PRESETS_BY_CATEGORY[mainCategory] || []
-                  : Object.values(VIBE_PRESETS_BY_CATEGORY).flat()
-                )
-                  .filter(preset => !selectedVibes.some(v => v.key === preset.key))
-                  .map((preset) => (
-                    <button
-                      key={preset.key}
-                      type="button"
-                      onClick={() => {
-                        if (selectedVibes.length < MAX_VIBES) {
-                          setSelectedVibes([...selectedVibes, presetToEventVibe(preset)]);
-                        }
-                      }}
-                      disabled={selectedVibes.length >= MAX_VIBES}
-                      className="px-3 py-1.5 rounded-full bg-white border border-gray-300 text-gray-700 text-sm font-medium hover:border-[#15383c] hover:text-[#15383c] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {language === 'fr' ? preset.label.fr : preset.label.en}
-                    </button>
-                  ))}
-              </div>
+              {/* Preset vibes - show based on mainCategory */}
+              {mainCategory ? (
+                <div className="flex flex-wrap gap-2">
+                  {getVibePresetsForCategory(mainCategory as MainCategory)
+                    .filter(preset => !selectedVibes.some(v => v.key === preset.key))
+                    .map((preset) => (
+                      <button
+                        key={preset.key}
+                        type="button"
+                        onClick={() => {
+                          if (selectedVibes.length < MAX_VIBES) {
+                            setSelectedVibes([...selectedVibes, presetToEventVibe(preset)]);
+                          }
+                        }}
+                        disabled={selectedVibes.length >= MAX_VIBES}
+                        className="px-3 py-1.5 rounded-full bg-white border border-gray-300 text-gray-700 text-sm font-medium hover:border-[#15383c] hover:text-[#15383c] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {language === 'fr' ? preset.label.fr : preset.label.en}
+                      </button>
+                    ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 italic">
+                  {language === 'fr' ? 'Veuillez d\'abord sélectionner une catégorie principale ci-dessus' : 'Please select a main category above first'}
+                </p>
+              )}
               
               {/* Custom vibe input */}
               <div className="mt-4 p-4 bg-white border border-gray-200 rounded-xl">

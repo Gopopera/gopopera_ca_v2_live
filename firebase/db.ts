@@ -401,6 +401,9 @@ export async function updateEvent(eventId: string, eventData: Partial<Omit<Event
     if ((eventData as any).isPublic !== undefined) updateData.isPublic = (eventData as any).isPublic === true;
     if ((eventData as any).allowChat !== undefined) updateData.allowChat = (eventData as any).allowChat === true;
     if ((eventData as any).allowRsvp !== undefined) updateData.allowRsvp = (eventData as any).allowRsvp === true;
+    // Handle mainCategory and vibes updates
+    if ((eventData as any).mainCategory !== undefined) updateData.mainCategory = (eventData as any).mainCategory;
+    if ((eventData as any).vibes !== undefined) updateData.vibes = (eventData as any).vibes;
     
     // Validate and sanitize update data
     const sanitizedUpdate = sanitizeFirestoreData(updateData);
