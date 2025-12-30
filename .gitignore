@@ -28,3 +28,6 @@ storybook-static
 .env.local
 .env
 firebase-service-account.json
+
+# Lighthouse reports (may contain sensitive data in captured requests)
+lighthouse-report*
