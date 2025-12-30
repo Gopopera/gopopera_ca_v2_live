@@ -1095,7 +1095,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
 
       {/* DESKTOP: 2-row grid layout for hero + sidebar alignment */}
       <div className="lg:max-w-7xl lg:mx-auto lg:px-8 lg:pt-4">
-        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[auto_auto] lg:gap-x-8 lg:gap-y-3 lg:items-stretch">
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:grid-rows-[auto_auto] lg:gap-x-8 lg:gap-y-3 lg:items-start">
 
           {/* HERO IMAGE - Row 1, Col 1 (desktop grid) */}
           <div className="pt-16 sm:pt-0 lg:col-start-1 lg:row-start-1 lg:pt-0 lg:h-full lg:self-stretch">
@@ -1215,10 +1215,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               </div>{/* End hero image container */}
           </div>{/* End HERO IMAGE grid item */}
 
-          {/* Empty placeholder - Row 2, Col 1 (desktop grid) */}
-          <div className="hidden lg:block lg:col-start-1 lg:row-start-2" />
-
-          {/* TITLE + META - Row 2, Col 2 (desktop grid - under Free card) */}
+          {/* TITLE + META - flows naturally in right column after action cards */}
           <div className="hidden lg:block lg:col-start-2 lg:row-start-2">
                     {/* Title */}
             <h1 className="text-3xl font-heading font-bold text-[#15383c] leading-tight mb-4">
