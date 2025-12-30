@@ -1,13 +1,13 @@
-import React, { useState, useMemo, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Hero } from '../../components/landing/Hero';
 import { EventFeed } from '../../components/events/EventFeed';
 import { EventCard } from '../../components/events/EventCard';
 import { preloadImages } from '../../hooks/useImageCache';
 
-// PERFORMANCE: Lazy load below-fold components to reduce initial bundle size
-// These components load after the hero and event feed are visible
-const Pillars = lazy(() => import('../../components/landing/Pillars').then(m => ({ default: m.Pillars })));
-const ChatMockupSection = lazy(() => import('../../components/landing/ChatMockupSection').then(m => ({ default: m.ChatMockupSection })));
+// PERFORMANCE: Direct imports for instant scroll - no lazy loading
+// These components are small (~200 lines each) and critical for scroll experience
+import { Pillars } from '../../components/landing/Pillars';
+import { ChatMockupSection } from '../../components/landing/ChatMockupSection';
 import { CityInput } from '../../components/layout/CityInput';
 import { FilterDrawer } from '../../components/filters/FilterDrawer';
 import { SeoHelmet } from '../../components/seo/SeoHelmet';
@@ -79,21 +79,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     initializeGeoLocation();
   }, []);
 
-  // PERFORMANCE: Preload lazy component chunks immediately after initial render
-  // This starts loading the JS bundles before user scrolls to them
-  useEffect(() => {
-    // Small delay to not block initial render
-    const timer = setTimeout(() => {
-      import('../../components/landing/ChatMockupSection');
-      import('../../components/landing/Pillars');
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []);
-
   // Preload key landing page images for instant scroll-back display
+  // These are also preloaded in index.html but JS preload ensures browser cache is warm
   useEffect(() => {
     preloadImages([
       '/hero-private-chef-vertical.png',
+      '/justin-lim-sale.webp',
+      '/corey-oconnell-crowd.webp',
       '/images/pillars/yoga-class.webp',
       '/images/pillars/book-club.webp',
       '/images/pillars/community.webp',
@@ -428,28 +420,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* 4. Every Great Circle Starts With Real Connection */}
-      <Suspense fallback={
-        <div className="min-h-[600px] bg-[#f8fafb] flex items-center justify-center">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-12 h-12 rounded-full border-4 border-[#e35e25] border-t-transparent animate-spin" />
-            <p className="text-gray-400 text-sm font-medium">Loading...</p>
-          </div>
-        </div>
-      }>
-        <ChatMockupSection />
-      </Suspense>
+      <ChatMockupSection />
 
       {/* 5. How To Move Your Crowd */}
-      <Suspense fallback={
-        <div className="min-h-[500px] bg-white flex items-center justify-center">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-12 h-12 rounded-full border-4 border-[#15383c] border-t-transparent animate-spin" />
-            <p className="text-gray-400 text-sm font-medium">Loading...</p>
-          </div>
-        </div>
-      }>
-        <Pillars />
-      </Suspense>
+      <Pillars />
 
       {/* 6. Community Guidelines */}
       <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] border-t border-white/5 lazy-section">
