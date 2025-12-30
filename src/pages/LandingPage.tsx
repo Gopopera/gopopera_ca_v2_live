@@ -348,15 +348,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         {/* Left image panel - desktop only */}
         <div className="pointer-events-none absolute inset-y-0 left-0 hidden lg:block lg:w-[38%]">
           <img
-            src="/images/landing/yoga-circle.webp"
-            alt="Small indoor yoga circle"
+            src="/hero-private-chef-vertical.png"
+            alt="Private chef serving a group dinner"
             width={800}
-            height={600}
+            height={1200}
             className="h-full w-full object-cover"
             loading="lazy"
             decoding="async"
             fetchPriority="low"
             style={{
+              objectPosition: 'center 25%',
               WebkitMaskImage:
                 "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 85%)",
               maskImage:
