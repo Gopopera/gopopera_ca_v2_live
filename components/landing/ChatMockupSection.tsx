@@ -119,7 +119,7 @@ export const ChatMockupSection: React.FC = () => {
   const { t } = useLanguage();
   const mockMessages = getMockMessages(t);
   return (
-    <section className="py-8 sm:py-10 md:py-12 lg:py-6 xl:py-8 bg-[#f8fafb] overflow-hidden relative lg:min-h-[calc(100vh-80px)] flex items-center">
+    <section className="py-8 sm:py-10 md:py-12 lg:py-6 xl:py-8 bg-[#f8fafb] overflow-hidden relative lg:min-h-[calc(100vh-80px)] flex items-center lazy-section">
       {/* Background Decor - Enhanced with gradient flow */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
          <div className="absolute top-[-5%] right-[-5%] w-[600px] h-[600px] bg-gradient-to-br from-[#e35e25]/8 to-[#e35e25]/3 rounded-full blur-[180px]"></div>
@@ -228,7 +228,11 @@ export const ChatMockupSection: React.FC = () => {
                         <img 
                           src="https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop&crop=face" 
                           alt="Host"
+                          width={100}
+                          height={100}
                           className="w-full h-full object-cover"
+                          loading="lazy"
+                          decoding="async"
                         />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -280,7 +284,11 @@ export const ChatMockupSection: React.FC = () => {
                               <img 
                                 src={msg.avatar}
                                 alt="Host"
+                                width={32}
+                                height={32}
                                 className="w-full h-full object-cover"
+                                loading="lazy"
+                                decoding="async"
                               />
                             </div>
                           ) : (

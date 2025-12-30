@@ -95,7 +95,7 @@ export const Pillars: React.FC = () => {
   };
 
   return (
-    <section className="py-12 sm:py-16 md:py-20 lg:py-24 xl:py-28 bg-white relative w-full">
+    <section className="py-12 sm:py-16 md:py-20 lg:py-24 xl:py-28 bg-white relative w-full lazy-section">
       {/* Section Header - Constrained */}
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 relative z-10">
         <div className="text-center mb-10 sm:mb-12 md:mb-16 lg:mb-20">
