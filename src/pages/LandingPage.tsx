@@ -445,52 +445,69 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* 5. How To Move Your Crowd */}
       <Pillars />
 
-      {/* 6-7. Trust & FAQ - Combined 2-column layout */}
-      <section className="py-8 sm:py-10 md:py-12 lg:py-14 bg-[#15383c] border-t border-white/5 lazy-section far-below-fold">
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Desktop: 12-col grid (Trust 5 cols, FAQ 7 cols), Mobile: stack */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+      {/* 6-7. Trust & FAQ - Unified premium section */}
+      <section className="py-10 sm:py-12 lg:py-14 bg-[#15383c] border-t border-white/5 lazy-section far-below-fold relative overflow-hidden">
+        {/* Subtle background treatment - soft radial glow */}
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(255,255,255,0.03) 0%, transparent 70%)'
+          }}
+        />
+        
+        <div className="max-w-[1120px] mx-auto px-4 sm:px-6 relative z-10">
+          {/* Section Header */}
+          <div className="mb-8 lg:mb-10">
+            <span className="inline-block py-1.5 px-4 rounded-full bg-[#e35e25]/15 text-[#e35e25] text-[11px] font-bold tracking-[0.18em] uppercase mb-4">
+              {t('landing.safetyTrust')}
+            </span>
+            <h2 className="text-2xl sm:text-3xl lg:text-[34px] font-heading font-bold text-white tracking-tight leading-tight">
+              {t('landing.communityGuidelines')} & FAQs
+            </h2>
+          </div>
+
+          {/* Desktop: 12-col grid (4 cols left, 8 cols right), Mobile: stack */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start">
             
-            {/* Trust Card - Compact */}
-            <div className="lg:col-span-5 bg-white/5 backdrop-blur-sm rounded-xl p-5 sm:p-6 border border-white/10">
-              <span className="inline-block py-1 px-3 rounded-full bg-[#e35e25]/10 border border-[#e35e25]/20 text-[#e35e25] text-[10px] font-bold tracking-[0.15em] uppercase mb-3">
-                {t('landing.safetyTrust')}
-              </span>
-              
-              <h3 className="text-lg sm:text-xl font-heading font-bold text-white mb-4 tracking-tight">
+            {/* Trust Panel - Compact info card */}
+            <div 
+              className="lg:col-span-4 bg-[#faf9f7] rounded-[20px] lg:rounded-[24px] p-5 sm:p-6 lg:p-7 border border-slate-200/60"
+              style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)' }}
+            >
+              <h3 className="text-[17px] sm:text-lg font-heading font-semibold text-[#15383c] mb-4 tracking-tight">
                 {t('landing.communityGuidelines')}
               </h3>
 
-              {/* 4 compact bullet points */}
+              {/* Tight checklist */}
               <div className="space-y-2.5 mb-5">
-                <div className="flex items-center gap-2.5 text-white/90 text-sm font-light">
-                  <div className="flex-shrink-0 w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
-                    <Check size={12} strokeWidth={3} />
+                <div className="flex items-start gap-2.5 text-[#15383c]/80 text-[14px] leading-snug">
+                  <div className="flex-shrink-0 w-[18px] h-[18px] mt-0.5 rounded-full bg-[#e35e25]/10 flex items-center justify-center text-[#e35e25]">
+                    <Check size={11} strokeWidth={3} />
                   </div>
                   <span>{t('landing.guidelineVerified')}</span>
                 </div>
-                <div className="flex items-center gap-2.5 text-white/90 text-sm font-light">
-                  <div className="flex-shrink-0 w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
-                    <Check size={12} strokeWidth={3} />
+                <div className="flex items-start gap-2.5 text-[#15383c]/80 text-[14px] leading-snug">
+                  <div className="flex-shrink-0 w-[18px] h-[18px] mt-0.5 rounded-full bg-[#e35e25]/10 flex items-center justify-center text-[#e35e25]">
+                    <Check size={11} strokeWidth={3} />
                   </div>
                   <span>{t('landing.guidelineReviews')}</span>
                 </div>
-                <div className="flex items-center gap-2.5 text-white/90 text-sm font-light">
-                  <div className="flex-shrink-0 w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
-                    <Check size={12} strokeWidth={3} />
+                <div className="flex items-start gap-2.5 text-[#15383c]/80 text-[14px] leading-snug">
+                  <div className="flex-shrink-0 w-[18px] h-[18px] mt-0.5 rounded-full bg-[#e35e25]/10 flex items-center justify-center text-[#e35e25]">
+                    <Check size={11} strokeWidth={3} />
                   </div>
                   <span>{t('landing.guidelineModerated')}</span>
                 </div>
-                <div className="flex items-center gap-2.5 text-white/90 text-sm font-light">
-                  <div className="flex-shrink-0 w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
-                    <Check size={12} strokeWidth={3} />
+                <div className="flex items-start gap-2.5 text-[#15383c]/80 text-[14px] leading-snug">
+                  <div className="flex-shrink-0 w-[18px] h-[18px] mt-0.5 rounded-full bg-[#e35e25]/10 flex items-center justify-center text-[#e35e25]">
+                    <Check size={11} strokeWidth={3} />
                   </div>
                   <span>{t('landing.guidelineSafety')}</span>
                 </div>
               </div>
 
-              {/* CTAs: Primary Sign Up, Secondary See Guidelines */}
-              <div className="flex flex-col sm:flex-row gap-2.5">
+              {/* CTAs: inline row */}
+              <div className="flex items-center gap-4">
                 <button 
                   onClick={() => {
                     trackLandingCTA({
@@ -502,7 +519,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     });
                     setViewState(ViewState.AUTH);
                   }} 
-                  className="flex-1 px-5 py-2.5 bg-[#e35e25] text-white rounded-full font-semibold text-sm hover:bg-[#cf4d1d] transition-colors touch-manipulation active:scale-[0.98]"
+                  className="px-4 py-2 bg-[#e35e25] text-white rounded-full font-semibold text-[13px] hover:bg-[#cf4d1d] transition-colors touch-manipulation active:scale-[0.98]"
                 >
                   {t('landing.signUp')}
                 </button>
@@ -517,36 +534,42 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     });
                     setViewState(ViewState.GUIDELINES);
                   }} 
-                  className="flex-1 px-5 py-2.5 text-white/70 text-sm font-medium hover:text-white transition-colors touch-manipulation underline underline-offset-2"
+                  className="text-[#15383c]/60 text-[13px] font-medium hover:text-[#e35e25] transition-colors touch-manipulation"
                 >
-                  {t('landing.seeGuidelines')}
+                  {t('landing.seeGuidelines')} →
                 </button>
               </div>
             </div>
 
-            {/* FAQ Card - Compact */}
-            <div className="lg:col-span-7 bg-white rounded-xl p-4 sm:p-5 shadow-lg">
-              <h3 className="text-lg sm:text-xl font-heading font-bold text-[#e35e25] mb-3 tracking-tight">
+            {/* FAQ Panel - Refined accordion */}
+            <div 
+              className="lg:col-span-8 bg-[#faf9f7] rounded-[20px] lg:rounded-[24px] p-5 sm:p-6 lg:p-7 border border-slate-200/60"
+              style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)' }}
+            >
+              <h3 className="text-[17px] sm:text-lg font-heading font-semibold text-[#15383c] mb-4 tracking-tight">
                 FAQs
               </h3>
               
-              <div className="divide-y divide-gray-100">
+              <div className="space-y-0">
                 {faqs.map((faq, index) => (
-                  <div key={index}>
+                  <div 
+                    key={index} 
+                    className={`border-b border-slate-200/70 last:border-b-0 ${index === 0 ? 'border-t border-slate-200/70' : ''}`}
+                  >
                     <button 
                       onClick={() => toggleFaq(index)}
-                      className="w-full py-3 flex items-center justify-between text-left group hover:bg-gray-50/50 transition-colors rounded"
+                      className="w-full py-3.5 flex items-center justify-between text-left group hover:bg-slate-100/50 -mx-2 px-2 rounded-lg transition-colors"
                     >
-                      <span className={`text-sm font-medium transition-colors pr-3 ${openFaqIndex === index ? 'text-[#e35e25]' : 'text-[#15383c]'}`}>
+                      <span className={`text-[14px] font-medium transition-colors pr-4 leading-snug ${openFaqIndex === index ? 'text-[#e35e25]' : 'text-[#15383c]'}`}>
                         {faq.question}
                       </span>
-                      <span className={`flex-shrink-0 text-gray-400 transition-transform duration-300 ${openFaqIndex === index ? 'rotate-180 text-[#e35e25]' : ''}`}>
-                        <ChevronDown size={18} />
+                      <span className={`flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full transition-all duration-300 ${openFaqIndex === index ? 'bg-[#e35e25]/10 text-[#e35e25] rotate-180' : 'text-slate-400 group-hover:text-slate-600'}`}>
+                        <ChevronDown size={16} strokeWidth={2.5} />
                       </span>
                     </button>
                     
-                    <div className={`overflow-hidden transition-all duration-300 ease-in-out ${openFaqIndex === index ? 'max-h-96 opacity-100 pb-3' : 'max-h-0 opacity-0'}`}>
-                      <p className="text-gray-500 text-sm leading-relaxed">
+                    <div className={`overflow-hidden transition-all duration-300 ease-in-out ${openFaqIndex === index ? 'max-h-[400px] opacity-100 pb-4' : 'max-h-0 opacity-0'}`}>
+                      <p className="text-[#15383c]/65 text-[14px] leading-relaxed pr-8">
                         {faq.answer}
                       </p>
                     </div>
