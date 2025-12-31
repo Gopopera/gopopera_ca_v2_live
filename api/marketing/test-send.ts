@@ -6,7 +6,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyAdminToken } from '../lib/firebaseAdmin';
+import { verifyAdminToken } from '../_lib/firebaseAdmin';
 
 // Force Node.js runtime (not Edge)
 export const config = { runtime: 'nodejs' };
