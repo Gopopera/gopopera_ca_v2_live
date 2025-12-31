@@ -152,3 +152,62 @@ The Marketing Hub respects user email preferences:
 - [ ] Send small campaign (limit audience first)
 - [ ] Check `email_logs` collection for send records
 
+---
+
+## Validation Checklist (Admin Auth Flow)
+
+Use this checklist to diagnose "403 Access denied" errors:
+
+### 1. Verify Admin Token is Being Sent
+
+**Browser Console**:
+```
+[MarketingHub] Getting token for: eatezca@gmail.com
+[MarketingHub] Token obtained, length: 1234
+[MarketingHub] Sending test email, auth token obtained
+```
+
+**DevTools → Network → test-send request → Headers**:
+- Request Headers should include: `Authorization: Bearer eyJhbGci...` (long JWT)
+
+### 2. Expected Responses
+
+**Success (admin):**
+```json
+{ "success": true, "messageId": "xxxxx-yyyy-zzzz" }
+```
+
+**403 (non-admin or token issues):**
+```json
+{ "success": false, "error": "Access denied - admin auth required" }
+```
+
+### 3. Vercel Logs Debug Lines
+
+Go to **Vercel Dashboard → Project → Logs** and search for `[Test Send]`:
+
+```
+[Test Send] === REQUEST START ===
+[Test Send] Headers received: { hasAuth: true, authPrefix: "Bearer eyJhbGc..." }
+[Test Send] verifyAdminToken called, hasHeader: true
+[Test Send] Env check: { hasProjectId: true, hasClientEmail: true, hasPrivateKey: true, privateKeyLength: 1704 }
+[Test Send] Firebase Admin initialized successfully
+[Test Send] Token extracted, length: 1234
+[Test Send] Token verified successfully: { uid: "xxx", email: "eatezca@gmail.com", aud: "gopopera2026", iss: "..." }
+[Test Send] Email check: { tokenEmail: "eatezca@gmail.com", adminEmail: "eatezca@gmail.com", matches: true }
+[Test Send] Admin verified: eatezca@gmail.com
+[Test Send] Sending email to: eatezca@gmail.com
+[Test Send] === SUCCESS === messageId: ...
+```
+
+### 4. Common Issues
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `hasClientEmail: false` | Missing `FIREBASE_CLIENT_EMAIL` in Vercel | Add env var |
+| `hasPrivateKey: false` | Missing `FIREBASE_PRIVATE_KEY` in Vercel | Add env var |
+| `privateKeyLength: 0` | Private key not properly formatted | Use full JSON or escape newlines |
+| `verifyIdToken FAILED: code=auth/argument-error` | Malformed private key | Re-download service account JSON |
+| `verifyIdToken FAILED: code=auth/invalid-credential` | Wrong project or expired key | Regenerate service account key |
+| `ACCESS DENIED - email mismatch` | Logged in with wrong account | Sign out and sign in as admin |
+

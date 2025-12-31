@@ -93,12 +93,18 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
   // Auth check
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
   
-  // Get Firebase ID token
+  // Get Firebase ID token (force refresh to ensure validity)
   const getIdToken = async (): Promise<string> => {
     const auth = getAuthInstance();
     const currentUser = auth.currentUser;
-    if (!currentUser) throw new Error('Not authenticated');
-    return currentUser.getIdToken();
+    if (!currentUser) {
+      console.error('[MarketingHub] No currentUser - user not authenticated');
+      throw new Error('You must be logged in to perform this action');
+    }
+    console.log('[MarketingHub] Getting token for:', currentUser.email);
+    const token = await currentUser.getIdToken(true); // force refresh
+    console.log('[MarketingHub] Token obtained, length:', token.length);
+    return token;
   };
   
   // Load campaigns

@@ -3,7 +3,6 @@
  * POST /api/marketing/test-send
  * 
  * Protected: Admin only (eatezca@gmail.com)
- * 
  * NOTE: Firebase Admin + email builder are INLINED to avoid Vercel module resolution issues.
  */
 
@@ -24,17 +23,26 @@ function getFirebaseAdmin(): admin.app.App | null {
   
   try {
     adminApp = admin.app(APP_NAME);
+    console.log('[Test Send] Reusing existing Firebase Admin app');
     return adminApp;
   } catch {
     // App doesn't exist, continue to initialize
   }
   
+  // Log env var presence (NEVER log actual values)
   const projectId = process.env.FIREBASE_PROJECT_ID || 'gopopera2026';
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
   
+  console.log('[Test Send] Env check:', {
+    hasProjectId: !!projectId,
+    hasClientEmail: !!clientEmail,
+    hasPrivateKey: !!privateKey,
+    privateKeyLength: privateKey?.length || 0,
+  });
+  
   if (!clientEmail || !privateKey) {
-    console.error('[Test Send] Missing FIREBASE_CLIENT_EMAIL or FIREBASE_PRIVATE_KEY');
+    console.error('[Test Send] MISSING CREDENTIALS - check Vercel env vars');
     return null;
   }
   
@@ -43,35 +51,62 @@ function getFirebaseAdmin(): admin.app.App | null {
       credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
       projectId,
     }, APP_NAME);
-    console.log('[Test Send] Firebase Admin initialized');
+    console.log('[Test Send] Firebase Admin initialized successfully');
     return adminApp;
-  } catch (error) {
-    console.error('[Test Send] Firebase Admin init failed:', error);
+  } catch (error: any) {
+    console.error('[Test Send] Firebase Admin init FAILED:', error?.message || error);
     return null;
   }
 }
 
 async function verifyAdminToken(authHeader: string | undefined): Promise<{ uid: string; email: string } | null> {
+  console.log('[Test Send] verifyAdminToken called, hasHeader:', !!authHeader);
+  
   if (!authHeader?.startsWith('Bearer ')) {
-    console.warn('[Test Send] Missing Authorization header');
+    console.warn('[Test Send] Invalid auth header format');
     return null;
   }
   
   const app = getFirebaseAdmin();
-  if (!app) return null;
+  if (!app) {
+    console.error('[Test Send] Firebase Admin app is null - cannot verify token');
+    return null;
+  }
+  
+  const token = authHeader.split('Bearer ')[1];
+  console.log('[Test Send] Token extracted, length:', token?.length || 0);
   
   try {
-    const token = authHeader.split('Bearer ')[1];
     const decoded = await app.auth().verifyIdToken(token);
     
-    if (decoded.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-      console.warn('[Test Send] Access denied for:', decoded.email);
+    console.log('[Test Send] Token verified successfully:', {
+      uid: decoded.uid,
+      email: decoded.email,
+      aud: decoded.aud,
+      iss: decoded.iss,
+    });
+    
+    const tokenEmail = decoded.email?.toLowerCase();
+    const adminEmail = ADMIN_EMAIL.toLowerCase();
+    
+    console.log('[Test Send] Email check:', {
+      tokenEmail,
+      adminEmail,
+      matches: tokenEmail === adminEmail,
+    });
+    
+    if (tokenEmail !== adminEmail) {
+      console.warn('[Test Send] ACCESS DENIED - email mismatch');
       return null;
     }
     
     return { uid: decoded.uid, email: decoded.email || '' };
-  } catch (error) {
-    console.error('[Test Send] Token verification failed:', error);
+  } catch (error: any) {
+    console.error('[Test Send] verifyIdToken FAILED:', {
+      message: error?.message,
+      code: error?.code,
+      errorInfo: error?.errorInfo,
+    });
     return null;
   }
 }
@@ -101,7 +136,6 @@ function buildMarketingEmailHtml(params: EmailParams): { html: string } {
   const t = themes[theme] || themes.dark;
   const d = density === 'compact' ? { padding: '24px', lineHeight: '1.5', gap: '12px' } : { padding: '40px', lineHeight: '1.7', gap: '20px' };
   
-  // Simple markdown conversion
   let bodyHtml = (markdownBody || '')
     .replace(/^### (.+)$/gm, '<h3 style="margin:0 0 12px;font-size:18px;font-weight:600;">$1</h3>')
     .replace(/^## (.+)$/gm, '<h2 style="margin:0 0 16px;font-size:22px;font-weight:700;">$1</h2>')
@@ -150,33 +184,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'OPTIONS') return res.status(200).json({ success: true });
     if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
     
-    console.log('[Test Send] Request received');
+    console.log('[Test Send] === REQUEST START ===');
+    console.log('[Test Send] Headers received:', {
+      hasAuth: !!req.headers.authorization,
+      authPrefix: req.headers.authorization?.substring(0, 15) + '...',
+    });
     
+    // Verify admin FIRST
+    const adminUser = await verifyAdminToken(req.headers.authorization);
+    if (!adminUser) {
+      console.error('[Test Send] Admin verification FAILED - returning 403');
+      return res.status(403).json({ success: false, error: 'Access denied - admin auth required' });
+    }
+    console.log('[Test Send] Admin verified:', adminUser.email);
+    
+    // Check Resend config
     const RESEND_API_KEY = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY;
     const RESEND_FROM = process.env.RESEND_FROM || 'support@gopopera.ca';
     
     if (!RESEND_API_KEY) {
+      console.error('[Test Send] Missing RESEND_API_KEY');
       return res.status(500).json({ success: false, error: 'Missing RESEND_API_KEY' });
     }
-    
-    // Verify admin
-    const adminUser = await verifyAdminToken(req.headers.authorization);
-    if (!adminUser) {
-      return res.status(403).json({ success: false, error: 'Access denied - admin auth required' });
-    }
-    console.log('[Test Send] Admin verified:', adminUser.email);
     
     const emailParams = req.body;
     if (!emailParams?.subject || !emailParams?.markdownBody) {
       return res.status(400).json({ success: false, error: 'Missing subject or body' });
     }
     
+    // Build and send email
     const { html } = buildMarketingEmailHtml(emailParams);
     const finalHtml = html.replace(/\{\{UNSUBSCRIBE_URL\}\}/g, 'https://gopopera.ca/unsubscribe?uid=test&token=test');
     
     const { Resend } = await import('resend');
     const resend = new Resend(RESEND_API_KEY);
     
+    console.log('[Test Send] Sending email to:', ADMIN_EMAIL);
     const result = await resend.emails.send({
       from: RESEND_FROM,
       to: [ADMIN_EMAIL],
@@ -189,11 +232,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ success: false, error: result.error.message });
     }
     
-    console.log('[Test Send] Email sent, messageId:', result.data?.id);
+    console.log('[Test Send] === SUCCESS === messageId:', result.data?.id);
     return res.status(200).json({ success: true, messageId: result.data?.id });
     
   } catch (error: any) {
-    console.error('[Test Send] Error:', error?.message, error?.stack);
+    console.error('[Test Send] UNHANDLED ERROR:', error?.message, error?.stack);
     return res.status(500).json({ success: false, error: error?.message || 'Internal error' });
   }
 }

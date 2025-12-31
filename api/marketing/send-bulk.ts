@@ -21,21 +21,39 @@ let adminApp: admin.app.App | null = null;
 
 function getFirebaseAdmin(): admin.app.App | null {
   if (adminApp) return adminApp;
-  try { adminApp = admin.app(APP_NAME); return adminApp; } catch {}
+  try { 
+    adminApp = admin.app(APP_NAME); 
+    console.log('[Bulk Send] Reusing existing Firebase Admin app');
+    return adminApp; 
+  } catch {}
   
   const projectId = process.env.FIREBASE_PROJECT_ID || 'gopopera2026';
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
   
-  if (!clientEmail || !privateKey) return null;
+  console.log('[Bulk Send] Env check:', {
+    hasProjectId: !!projectId,
+    hasClientEmail: !!clientEmail,
+    hasPrivateKey: !!privateKey,
+    privateKeyLength: privateKey?.length || 0,
+  });
+  
+  if (!clientEmail || !privateKey) {
+    console.error('[Bulk Send] MISSING CREDENTIALS');
+    return null;
+  }
   
   try {
     adminApp = admin.initializeApp({
       credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
       projectId,
     }, APP_NAME);
+    console.log('[Bulk Send] Firebase Admin initialized');
     return adminApp;
-  } catch { return null; }
+  } catch (error: any) { 
+    console.error('[Bulk Send] Firebase Admin init failed:', error?.message);
+    return null; 
+  }
 }
 
 function getAdminFirestore(): admin.firestore.Firestore | null {
@@ -44,14 +62,44 @@ function getAdminFirestore(): admin.firestore.Firestore | null {
 }
 
 async function verifyAdminToken(authHeader: string | undefined): Promise<{ uid: string; email: string } | null> {
-  if (!authHeader?.startsWith('Bearer ')) return null;
+  console.log('[Bulk Send] verifyAdminToken called, hasHeader:', !!authHeader);
+  
+  if (!authHeader?.startsWith('Bearer ')) {
+    console.warn('[Bulk Send] Invalid auth header format');
+    return null;
+  }
+  
   const app = getFirebaseAdmin();
-  if (!app) return null;
+  if (!app) {
+    console.error('[Bulk Send] Firebase Admin app is null');
+    return null;
+  }
+  
+  const token = authHeader.split('Bearer ')[1];
+  console.log('[Bulk Send] Token extracted, length:', token?.length || 0);
+  
   try {
-    const decoded = await app.auth().verifyIdToken(authHeader.split('Bearer ')[1]);
-    if (decoded.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) return null;
+    const decoded = await app.auth().verifyIdToken(token);
+    
+    console.log('[Bulk Send] Token verified:', {
+      email: decoded.email,
+      uid: decoded.uid,
+      aud: decoded.aud,
+    });
+    
+    if (decoded.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+      console.warn('[Bulk Send] ACCESS DENIED - email mismatch:', decoded.email);
+      return null;
+    }
+    
     return { uid: decoded.uid, email: decoded.email || '' };
-  } catch { return null; }
+  } catch (error: any) { 
+    console.error('[Bulk Send] verifyIdToken FAILED:', {
+      message: error?.message,
+      code: error?.code,
+    });
+    return null; 
+  }
 }
 
 function generateUnsubscribeToken(uid: string): string {
