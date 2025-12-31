@@ -10,7 +10,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Resend } from 'resend';
 import { getAdminFirestore, verifyAdminToken, generateUnsubscribeToken } from '../_utils/firebaseAdmin';
-import { buildMarketingEmailHtml } from '../../src/lib/marketingEmailBuilder';
+import { buildMarketingEmailHtml } from '../_utils/marketingEmailBuilder';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY;
 const RESEND_FROM = process.env.RESEND_FROM || process.env.VITE_RESEND_FROM || 'support@gopopera.ca';
