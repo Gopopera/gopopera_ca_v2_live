@@ -384,14 +384,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             style={{
               objectPosition: 'center 25%',
               WebkitMaskImage:
-                "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 85%)",
+                "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 55%, rgba(0,0,0,0) 95%)",
               maskImage:
-                "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 85%)",
+                "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 55%, rgba(0,0,0,0) 95%)",
             }}
           />
-          {/* Fade overlay into dark green background */}
+          {/* Fade overlay into dark green background - starts at 50% to show more image */}
           <div 
-            className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-[#15383c]/50 to-[#15383c]"
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background: "linear-gradient(to right, transparent 0%, transparent 50%, rgba(21,56,60,0.5) 70%, #15383c 100%)"
+            }}
             aria-hidden="true"
           />
         </div>
