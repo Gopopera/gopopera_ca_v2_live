@@ -201,7 +201,15 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     setCampaignName((campaign.campaignName || 'Campaign') + ' (Copy)');
   };
   
-  // Send test email
+  /**
+   * VALIDATION CHECKLIST for "Send Test to Me":
+   * 1. Must be logged in as eatezca@gmail.com
+   * 2. Fill in Subject and Body fields
+   * 3. Click "Send Test to Me" button
+   * 4. Expected: Green toast "Test email sent to eatezca@gmail.com!"
+   * 5. If red toast with error: Check browser console for details
+   * 6. If "Unexpected token" error: API returned HTML instead of JSON - check Vercel logs
+   */
   const handleSendTest = async () => {
     if (!subject || !markdownBody) {
       showNotification('error', 'Subject and body are required');
@@ -210,7 +218,10 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     
     setSendingTest(true);
     try {
+      // Get Firebase ID token for admin auth
       const token = await getIdToken();
+      console.log('[MarketingHub] Sending test email, auth token obtained');
+      
       const response = await fetch('/api/marketing/test-send', {
         method: 'POST',
         headers: {
@@ -220,13 +231,28 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
         body: JSON.stringify(emailParams),
       });
       
-      const result = await response.json();
+      // Read response as text first to handle non-JSON responses
+      const rawText = await response.text();
+      console.log('[MarketingHub] Response status:', response.status);
+      console.log('[MarketingHub] Response body:', rawText.substring(0, 500));
+      
+      // Try to parse as JSON
+      let result: { success?: boolean; error?: string; messageId?: string };
+      try {
+        result = JSON.parse(rawText);
+      } catch (parseError) {
+        // Response is not JSON - likely HTML error page
+        console.error('[MarketingHub] Failed to parse response as JSON:', rawText.substring(0, 1000));
+        throw new Error(`Server returned non-JSON response (${response.status}): ${rawText.substring(0, 100)}...`);
+      }
+      
       if (result.success) {
         showNotification('success', `Test email sent to ${ADMIN_EMAIL}!`);
       } else {
         throw new Error(result.error || 'Failed to send test');
       }
     } catch (error: any) {
+      console.error('[MarketingHub] handleSendTest error:', error);
       showNotification('error', error.message || 'Failed to send test');
     } finally {
       setSendingTest(false);
