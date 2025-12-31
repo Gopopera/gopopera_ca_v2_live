@@ -32,3 +32,4 @@ firebase-service-account.json
 # Lighthouse reports (may contain sensitive data in captured requests)
 lighthouse-report*
 gopopera2026-firebase-adminsdk-fbsvc-fc78df098b.json
+gopopera2026-*.json

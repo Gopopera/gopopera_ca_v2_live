@@ -3,141 +3,15 @@
  * POST /api/marketing/send-bulk
  * 
  * Protected: Admin only (eatezca@gmail.com)
- * NOTE: Firebase Admin + helpers are INLINED to avoid Vercel module resolution issues.
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import * as admin from 'firebase-admin';
+import { verifyAdminToken, getAdminFirestore } from '../lib/firebaseAdmin';
 
 export const config = { runtime: 'nodejs' };
 
-const ADMIN_EMAIL = 'eatezca@gmail.com';
-const APP_NAME = 'send-bulk-admin';
 const BATCH_SIZE = 50;
 const BATCH_DELAY = 1000;
-
-// ============ HELPER: Get env vars with fallback conventions ============
-function getEnvVars() {
-  // Try to parse FIREBASE_SERVICE_ACCOUNT JSON if available
-  let serviceAccount: { project_id?: string; client_email?: string; private_key?: string } | null = null;
-  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    try {
-      serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    } catch (e) {
-      console.warn('[Bulk Send] Failed to parse FIREBASE_SERVICE_ACCOUNT JSON');
-    }
-  }
-  
-  // Resolve with priority: FIREBASE_ADMIN_* > FIREBASE_* > FIREBASE_SERVICE_ACCOUNT > VITE_*
-  const projectId = 
-    process.env.FIREBASE_ADMIN_PROJECT_ID || 
-    process.env.FIREBASE_PROJECT_ID || 
-    serviceAccount?.project_id ||
-    process.env.VITE_FIREBASE_PROJECT_ID || 
-    'gopopera2026';
-  
-  const clientEmail = 
-    process.env.FIREBASE_ADMIN_CLIENT_EMAIL || 
-    process.env.FIREBASE_CLIENT_EMAIL ||
-    serviceAccount?.client_email;
-  
-  // Get private key and normalize \\n to actual newlines
-  let privateKey = 
-    process.env.FIREBASE_ADMIN_PRIVATE_KEY || 
-    process.env.FIREBASE_PRIVATE_KEY ||
-    serviceAccount?.private_key;
-  
-  if (privateKey) {
-    privateKey = privateKey.replace(/\\n/g, '\n');
-  }
-  
-  return { projectId, clientEmail, privateKey };
-}
-
-// ============ INLINED: Firebase Admin ============
-let adminApp: admin.app.App | null = null;
-
-function getFirebaseAdmin(): admin.app.App | null {
-  if (adminApp) return adminApp;
-  try { 
-    adminApp = admin.app(APP_NAME); 
-    console.log('[Bulk Send] Reusing existing Firebase Admin app');
-    return adminApp; 
-  } catch {}
-  
-  const { projectId, clientEmail, privateKey } = getEnvVars();
-  
-  console.log('[Bulk Send] Env check:', {
-    hasProjectId: !!projectId,
-    hasClientEmail: !!clientEmail,
-    hasPrivateKey: !!privateKey,
-    privateKeyLength: privateKey?.length || 0,
-    hasServiceAccount: !!process.env.FIREBASE_SERVICE_ACCOUNT,
-  });
-  
-  if (!clientEmail || !privateKey) {
-    console.error('[Bulk Send] MISSING CREDENTIALS - check FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY (or FIREBASE_SERVICE_ACCOUNT)');
-    return null;
-  }
-  
-  try {
-    adminApp = admin.initializeApp({
-      credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
-      projectId,
-    }, APP_NAME);
-    console.log('[Bulk Send] Firebase Admin initialized with project:', projectId);
-    return adminApp;
-  } catch (error: any) { 
-    console.error('[Bulk Send] Firebase Admin init failed:', error?.message);
-    return null; 
-  }
-}
-
-function getAdminFirestore(): admin.firestore.Firestore | null {
-  const app = getFirebaseAdmin();
-  return app ? app.firestore() : null;
-}
-
-async function verifyAdminToken(authHeader: string | undefined): Promise<{ uid: string; email: string } | null> {
-  console.log('[Bulk Send] verifyAdminToken called, hasHeader:', !!authHeader);
-  
-  if (!authHeader?.startsWith('Bearer ')) {
-    console.warn('[Bulk Send] Invalid auth header format');
-    return null;
-  }
-  
-  const app = getFirebaseAdmin();
-  if (!app) {
-    console.error('[Bulk Send] Firebase Admin app is null');
-    return null;
-  }
-  
-  const token = authHeader.split('Bearer ')[1];
-  console.log('[Bulk Send] Token extracted, length:', token?.length || 0);
-  
-  try {
-    const decoded = await app.auth().verifyIdToken(token);
-    
-    console.log('[Bulk Send] Token verified:', {
-      email: decoded.email,
-      uid: decoded.uid,
-      aud: decoded.aud,
-    });
-    
-    if (decoded.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-      console.warn('[Bulk Send] ACCESS DENIED - email mismatch:', decoded.email);
-      return null;
-    }
-    
-    return { uid: decoded.uid, email: decoded.email || '' };
-  } catch (error: any) { 
-    console.error('[Bulk Send] verifyIdToken FAILED:', {
-      message: error?.message,
-      code: error?.code,
-    });
-    return null; 
-  }
-}
 
 function generateUnsubscribeToken(uid: string): string {
   const secret = process.env.UNSUBSCRIBE_SECRET || 'popera-marketing-2024';
@@ -198,17 +72,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
   
   try {
-    const adminUser = await verifyAdminToken(req.headers.authorization);
-    if (!adminUser) return res.status(403).json({ success: false, error: 'Access denied' });
+    console.log('[Bulk Send] === REQUEST START ===');
+    
+    // Verify admin with shared helper
+    const authResult = await verifyAdminToken(req.headers.authorization);
+    
+    if (!authResult.success) {
+      console.error('[Bulk Send] Admin verification FAILED:', authResult.reason);
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Forbidden',
+        reason: authResult.reason,
+        details: authResult.details,
+      });
+    }
+    
+    console.log('[Bulk Send] Admin verified:', authResult.email);
     
     const RESEND_API_KEY = process.env.RESEND_API_KEY;
     const RESEND_FROM = process.env.RESEND_FROM || 'support@gopopera.ca';
     const BASE_URL = process.env.VITE_APP_URL || 'https://gopopera.ca';
     
-    if (!RESEND_API_KEY) return res.status(500).json({ success: false, error: 'Missing RESEND_API_KEY' });
+    if (!RESEND_API_KEY) {
+      return res.status(500).json({ success: false, error: 'Missing RESEND_API_KEY' });
+    }
     
     const db = getAdminFirestore();
-    if (!db) return res.status(500).json({ success: false, error: 'Firebase not configured' });
+    if (!db) {
+      return res.status(500).json({ success: false, error: 'Firebase not configured' });
+    }
     
     const { audience, campaignId, ...emailParams } = req.body;
     
@@ -233,7 +125,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let sentCount = 0, failedCount = 0;
     
     const logRef = db.collection('marketing_campaigns_log').doc();
-    await logRef.set({ campaignId, subject: emailParams.subject, audience, totalRecipients: recipients.length, sentCount: 0, failedCount: 0, status: 'sending', startedAt: Date.now(), adminEmail: adminUser.email });
+    await logRef.set({ 
+      campaignId, 
+      subject: emailParams.subject, 
+      audience, 
+      totalRecipients: recipients.length, 
+      sentCount: 0, 
+      failedCount: 0, 
+      status: 'sending', 
+      startedAt: Date.now(), 
+      adminEmail: authResult.email 
+    });
     
     for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
       const batch = recipients.slice(i, i + BATCH_SIZE);
@@ -243,10 +145,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const html = baseHtml.replace(/\{\{UNSUBSCRIBE_URL\}\}/g, unsubUrl);
           const result = await resend.emails.send({ from: RESEND_FROM, to: [r.email], subject: emailParams.subject, html });
           if (result.error) throw new Error(result.error.message);
-          await db.collection('email_logs').add({ to: r.email, userId: r.uid, subject: emailParams.subject, type: 'marketing_campaign', status: 'sent', messageId: result.data?.id, timestamp: Date.now() });
+          await db.collection('email_logs').add({ 
+            to: r.email, 
+            userId: r.uid, 
+            subject: emailParams.subject, 
+            type: 'marketing_campaign', 
+            status: 'sent', 
+            messageId: result.data?.id, 
+            timestamp: Date.now() 
+          });
           return true;
         } catch (e: any) {
-          await db.collection('email_logs').add({ to: r.email, userId: r.uid, subject: emailParams.subject, type: 'marketing_campaign', status: 'failed', error: e.message, timestamp: Date.now() });
+          await db.collection('email_logs').add({ 
+            to: r.email, 
+            userId: r.uid, 
+            subject: emailParams.subject, 
+            type: 'marketing_campaign', 
+            status: 'failed', 
+            error: e.message, 
+            timestamp: Date.now() 
+          });
           return false;
         }
       }));
@@ -255,12 +173,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (i + BATCH_SIZE < recipients.length) await sleep(BATCH_DELAY);
     }
     
-    await logRef.update({ sentCount, failedCount, status: failedCount === recipients.length ? 'failed' : 'completed', completedAt: Date.now() });
-    if (campaignId) await db.collection('marketing_campaigns').doc(campaignId).update({ status: 'sent', recipientCount: recipients.length, sentCount, failedCount, sentAt: Date.now() });
+    await logRef.update({ 
+      sentCount, 
+      failedCount, 
+      status: failedCount === recipients.length ? 'failed' : 'completed', 
+      completedAt: Date.now() 
+    });
     
+    if (campaignId) {
+      await db.collection('marketing_campaigns').doc(campaignId).update({ 
+        status: 'sent', 
+        recipientCount: recipients.length, 
+        sentCount, 
+        failedCount, 
+        sentAt: Date.now() 
+      });
+    }
+    
+    console.log('[Bulk Send] === SUCCESS ===', { sentCount, failedCount, totalRecipients: recipients.length });
     return res.status(200).json({ success: true, sentCount, failedCount, totalRecipients: recipients.length });
+    
   } catch (error: any) {
-    console.error('[Bulk Send] Error:', error);
+    console.error('[Bulk Send] UNHANDLED ERROR:', error?.message, error?.stack);
     return res.status(500).json({ success: false, error: error?.message || 'Internal error' });
   }
 }
