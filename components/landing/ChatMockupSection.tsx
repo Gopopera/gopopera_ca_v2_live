@@ -133,8 +133,14 @@ export const ChatMockupSection: React.FC = () => {
 
   return (
     <section className="py-8 sm:py-10 md:py-12 lg:py-6 xl:py-8 bg-[#f8fafb] overflow-hidden relative lg:min-h-[calc(100vh-80px)] flex items-center lazy-section">
-      {/* Background Decor - Enhanced with gradient flow */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+      {/* Background Decor - Simplified on mobile for performance, full blur on desktop */}
+      {/* MOBILE: Simple gradients without blur (saves 100-200ms paint time) */}
+      <div className="lg:hidden absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+         <div className="absolute top-[-5%] right-[-5%] w-[300px] h-[300px] bg-gradient-to-br from-[#e35e25]/10 to-transparent rounded-full opacity-60"></div>
+         <div className="absolute bottom-[-5%] left-[-5%] w-[250px] h-[250px] bg-gradient-to-tr from-[#15383c]/10 to-transparent rounded-full opacity-60"></div>
+      </div>
+      {/* DESKTOP: Full blur effects for premium experience */}
+      <div className="hidden lg:block absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
          <div className="absolute top-[-5%] right-[-5%] w-[600px] h-[600px] bg-gradient-to-br from-[#e35e25]/8 to-[#e35e25]/3 rounded-full blur-[180px]"></div>
          <div className="absolute bottom-[-5%] left-[-5%] w-[500px] h-[500px] bg-gradient-to-tr from-[#15383c]/8 to-[#15383c]/3 rounded-full blur-[150px]"></div>
          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-[#e35e25]/5 via-transparent to-transparent rounded-full blur-[200px]"></div>

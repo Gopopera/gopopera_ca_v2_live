@@ -4,11 +4,10 @@ import { EventFeed } from '../../components/events/EventFeed';
 import { EventCard } from '../../components/events/EventCard';
 import { preloadImages } from '../../hooks/useImageCache';
 
-// PERFORMANCE: Use LazySection wrapper to defer rendering until approaching viewport
-// This reduces initial JS execution time and improves LCP
+// PERFORMANCE: Direct imports for instant scroll - no lazy loading
+// These components are small (~200 lines each) and critical for scroll experience
 import { Pillars } from '../../components/landing/Pillars';
 import { ChatMockupSection } from '../../components/landing/ChatMockupSection';
-import { LazySection, LazySectionSkeletons } from '../../components/ui/LazySection';
 import { CityInput } from '../../components/layout/CityInput';
 import { FilterDrawer } from '../../components/filters/FilterDrawer';
 import { SeoHelmet } from '../../components/seo/SeoHelmet';
@@ -438,23 +437,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* 4. Every Great Circle Starts With Real Connection */}
-      {/* PERFORMANCE: LazySection defers rendering until section approaches viewport */}
-      <LazySection 
-        fallback={LazySectionSkeletons.chatMockup}
-        rootMargin="400px"
-        minHeight="600px"
-      >
-        <ChatMockupSection />
-      </LazySection>
+      <ChatMockupSection />
 
       {/* 5. How To Move Your Crowd */}
-      <LazySection 
-        fallback={LazySectionSkeletons.pillars}
-        rootMargin="300px"
-        minHeight="500px"
-      >
-        <Pillars />
-      </LazySection>
+      <Pillars />
 
       {/* 6. Community Guidelines */}
       <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] border-t border-white/5 lazy-section">

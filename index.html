@@ -219,7 +219,8 @@
     <link rel="preload" href="/hero-circle-gathering-mobile.webp" as="image" type="image/webp" media="(max-width: 768px)" fetchpriority="high">
     <link rel="preload" href="/hero-circle-gathering.webp" as="image" type="image/webp" media="(min-width: 769px)" fetchpriority="high">
     <!-- Preload below-fold section images for instant scroll (low priority, won't block LCP) -->
-    <link rel="preload" href="/hero-private-chef-vertical.png" as="image" fetchpriority="low">
+    <!-- PERFORMANCE: Using WebP for 94% smaller file size (132KB vs 2.1MB) -->
+    <link rel="preload" href="/hero-private-chef-vertical.webp" as="image" type="image/webp" fetchpriority="low">
     <link rel="preload" href="/justin-lim-sale.webp" as="image" type="image/webp" fetchpriority="low">
     <link rel="preload" href="/corey-oconnell-crowd.webp" as="image" type="image/webp" fetchpriority="low">
     <link rel="preload" href="/images/pillars/yoga-class.webp" as="image" type="image/webp" fetchpriority="low">

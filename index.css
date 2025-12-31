@@ -25,6 +25,14 @@
   contain: layout paint; /* Isolate for performance without hiding content */
 }
 
+/* Performance: content-visibility for sections FAR below fold (FAQs, Newsletter) */
+/* These sections are rarely scrolled back to, so we can afford the slight flash */
+/* Reduces initial layout/paint cost significantly on mobile */
+.far-below-fold {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 400px; /* Estimated height to prevent layout shift */
+}
+
 /* GPU acceleration for images - no will-change to avoid memory bloat */
 img {
   contain: layout paint;
