@@ -6,7 +6,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAdminFirestore, verifyUnsubscribeToken } from '../_utils/firebaseAdmin';
+import { getAdminFirestore, verifyUnsubscribeToken } from '../utils/firebaseAdmin';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers

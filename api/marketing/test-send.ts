@@ -55,8 +55,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const resend = new Resend(RESEND_API_KEY);
     
     // Lazy import Firebase Admin utils
-    const { verifyAdminToken } = await import('../_utils/firebaseAdmin');
-    const { buildMarketingEmailHtml } = await import('../_utils/marketingEmailBuilder');
+    const { verifyAdminToken } = await import('../utils/firebaseAdmin');
+    const { buildMarketingEmailHtml } = await import('../utils/marketingEmailBuilder');
     
     // Verify admin access
     console.log('[Marketing Test] Verifying admin token...');
