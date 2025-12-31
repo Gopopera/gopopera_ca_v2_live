@@ -6,7 +6,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyAdminToken, getAdminFirestore } from '../_lib/firebaseAdmin';
+import { verifyAdminToken, getAdminFirestore } from '../_lib/firebaseAdmin.js';
 
 export const config = { runtime: 'nodejs' };
 
