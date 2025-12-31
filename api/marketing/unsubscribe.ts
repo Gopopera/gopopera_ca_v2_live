@@ -42,6 +42,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     
     const db = getAdminFirestore();
+    if (!db) {
+      return res.status(500).json({ success: false, error: 'Firebase Admin not configured' });
+    }
     
     // Update user's notification settings
     const userRef = db.collection('users').doc(uid);

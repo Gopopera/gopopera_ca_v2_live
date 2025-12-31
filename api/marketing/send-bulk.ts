@@ -60,6 +60,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { audience, campaignId, ...emailParams } = req.body;
     
     const db = getAdminFirestore();
+    if (!db) {
+      return res.status(500).json({ success: false, error: 'Firebase Admin not configured' });
+    }
     
     // Fetch recipients
     const usersRef = db.collection('users');

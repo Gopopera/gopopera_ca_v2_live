@@ -5,14 +5,23 @@
 
 import * as admin from 'firebase-admin';
 
+const APP_NAME = 'marketing-hub-admin';
 let adminApp: admin.app.App | null = null;
 
-function getFirebaseAdmin(): admin.app.App {
+function getFirebaseAdmin(): admin.app.App | null {
+  // Return cached app if exists
   if (adminApp) {
     return adminApp;
   }
   
-  // Try to initialize from environment variables first
+  // Check if app already exists (from previous invocation)
+  try {
+    adminApp = admin.app(APP_NAME);
+    return adminApp;
+  } catch {
+    // App doesn't exist, continue to initialize
+  }
+  
   const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || 'gopopera2026';
   
   // Check if service account credentials are available
@@ -24,7 +33,7 @@ function getFirebaseAdmin(): admin.app.App {
       adminApp = admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
         projectId,
-      });
+      }, APP_NAME);
       console.log('[Firebase Admin] Initialized with service account from env');
       return adminApp;
     } catch (error) {
@@ -37,39 +46,39 @@ function getFirebaseAdmin(): admin.app.App {
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
   
   if (clientEmail && privateKey) {
-    adminApp = admin.initializeApp({
-      credential: admin.credential.cert({
+    try {
+      adminApp = admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId,
+          clientEmail,
+          privateKey,
+        }),
         projectId,
-        clientEmail,
-        privateKey,
-      }),
-      projectId,
-    });
-    console.log('[Firebase Admin] Initialized with individual env vars');
-    return adminApp;
+      }, APP_NAME);
+      console.log('[Firebase Admin] Initialized with individual env vars');
+      return adminApp;
+    } catch (error) {
+      console.error('[Firebase Admin] Failed to initialize with individual env vars:', error);
+      return null;
+    }
   }
   
-  // Final fallback: Initialize without credentials (works in some environments)
-  try {
-    adminApp = admin.initializeApp({
-      projectId,
-    });
-    console.log('[Firebase Admin] Initialized with default credentials');
-    return adminApp;
-  } catch (error) {
-    console.error('[Firebase Admin] Failed to initialize:', error);
-    throw new Error('Firebase Admin SDK could not be initialized');
-  }
+  console.error('[Firebase Admin] Missing credentials - FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY required');
+  return null;
 }
 
 // Get Firestore instance
-export function getAdminFirestore(): admin.firestore.Firestore {
-  return getFirebaseAdmin().firestore();
+export function getAdminFirestore(): admin.firestore.Firestore | null {
+  const app = getFirebaseAdmin();
+  if (!app) return null;
+  return app.firestore();
 }
 
 // Get Auth instance
-export function getAdminAuth(): admin.auth.Auth {
-  return getFirebaseAdmin().auth();
+export function getAdminAuth(): admin.auth.Auth | null {
+  const app = getFirebaseAdmin();
+  if (!app) return null;
+  return app.auth();
 }
 
 // Verify admin access (must be eatezca@gmail.com)
@@ -77,13 +86,19 @@ const ADMIN_EMAIL = 'eatezca@gmail.com';
 
 export async function verifyAdminToken(authHeader: string | undefined): Promise<{ uid: string; email: string } | null> {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.warn('[Admin Auth] Missing or invalid Authorization header');
     return null;
   }
   
   const token = authHeader.split('Bearer ')[1];
   
+  const auth = getAdminAuth();
+  if (!auth) {
+    console.error('[Admin Auth] Firebase Admin not initialized - check FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY env vars');
+    return null;
+  }
+  
   try {
-    const auth = getAdminAuth();
     const decoded = await auth.verifyIdToken(token);
     
     if (decoded.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
