@@ -4,15 +4,16 @@ import { EventFeed } from '../../components/events/EventFeed';
 import { EventCard } from '../../components/events/EventCard';
 import { preloadImages } from '../../hooks/useImageCache';
 
-// PERFORMANCE: Direct imports for instant scroll - no lazy loading
-// These components are small (~200 lines each) and critical for scroll experience
+// PERFORMANCE: Use LazySection wrapper to defer rendering until approaching viewport
+// This reduces initial JS execution time and improves LCP
 import { Pillars } from '../../components/landing/Pillars';
 import { ChatMockupSection } from '../../components/landing/ChatMockupSection';
+import { LazySection, LazySectionSkeletons } from '../../components/ui/LazySection';
 import { CityInput } from '../../components/layout/CityInput';
 import { FilterDrawer } from '../../components/filters/FilterDrawer';
 import { SeoHelmet } from '../../components/seo/SeoHelmet';
 import { Event, ViewState } from '../../types';
-import { Sparkles, Check, ChevronDown, Search, CheckCircle2, ChevronRight, ChevronLeft, Filter } from 'lucide-react';
+import { Sparkles, Check, ChevronDown, Search, CheckCircle2, ChevronRight, ChevronLeft, Filter, ArrowRight } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useSelectedCity, useSetCity, initializeGeoLocation, type City } from '../stores/cityStore';
 import { useFilterStore } from '../../stores/filterStore';
@@ -80,16 +81,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   }, []);
 
   // Preload key landing page images for instant scroll-back display
-  // These are also preloaded in index.html but JS preload ensures browser cache is warm
+  // PERFORMANCE: Defer preloading until after initial render to not compete with hero LCP
   useEffect(() => {
-    preloadImages([
-      '/hero-private-chef-vertical.png',
-      '/justin-lim-sale.webp',
-      '/corey-oconnell-crowd.webp',
-      '/images/pillars/yoga-class.webp',
-      '/images/pillars/book-club.webp',
-      '/images/pillars/community.webp',
-    ]);
+    const preloadBelowFoldImages = () => {
+      preloadImages([
+        '/hero-private-chef-vertical.webp', // WebP version for better compression
+        '/justin-lim-sale.webp',
+        '/corey-oconnell-crowd.webp',
+        '/images/pillars/yoga-class.webp',
+        '/images/pillars/book-club.webp',
+        '/images/pillars/community.webp',
+      ]);
+    };
+    
+    // Use requestIdleCallback to defer preloading until browser is idle
+    // This prevents competition with hero image for bandwidth on initial load
+    if ('requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(preloadBelowFoldImages, { timeout: 3000 });
+    } else {
+      // Fallback for Safari - defer by 2 seconds
+      setTimeout(preloadBelowFoldImages, 2000);
+    }
   }, []);
   
   // PERFORMANCE OPTIMIZED: Filter events based on location and vibes (logging removed)
@@ -358,11 +370,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* 3. Pillars / Types of Circles section */}
-      <section className="relative overflow-hidden bg-[#FAFAFA] lazy-section">
+      <section className="relative overflow-hidden bg-[#15383c] lazy-section">
         {/* Left image panel - desktop only */}
         <div className="pointer-events-none absolute inset-y-0 left-0 hidden lg:block lg:w-[38%]">
           <img
-            src="/hero-private-chef-vertical.png"
+            src="/hero-private-chef-vertical.webp"
             alt="Private chef serving a group dinner"
             width={800}
             height={1200}
@@ -378,25 +390,30 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 85%)",
             }}
           />
+          {/* Fade overlay into dark green background */}
+          <div 
+            className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-[#15383c]/50 to-[#15383c]"
+            aria-hidden="true"
+          />
         </div>
 
         {/* Content - centered on mobile, shifted right on desktop */}
         <div className="relative z-10 w-full lg:w-[65%] lg:ml-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 md:py-20 lg:py-24 xl:py-28 text-center">
             <div className="mb-6 sm:mb-8 md:mb-10">
-              <span className="inline-flex items-center gap-2 py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">
+              <span className="inline-flex items-center gap-2 py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-white/5 border border-white/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase backdrop-blur-sm">
                 <Sparkles size={10} className="sm:w-3 sm:h-3 -mt-0.5" />
                 {t('landing.badge')}
               </span>
             </div>
 
-            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-heading font-bold text-[#15383c] mb-5 sm:mb-6 md:mb-8 tracking-tight leading-[1.1] px-2 sm:px-4">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-heading font-bold text-white mb-5 sm:mb-6 md:mb-8 tracking-tight leading-[1.1] px-2 sm:px-4">
               {t('landing.title')} <br />
               <span className="text-[#e35e25]">
                 {t('landing.titleHighlight')}
               </span>
             </h2>
             
-            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-black font-light leading-relaxed mb-8 sm:mb-10 md:mb-12 max-w-4xl mx-auto px-4 sm:px-6">
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-300/90 font-light leading-relaxed mb-8 sm:mb-10 md:mb-12 max-w-4xl mx-auto px-4 sm:px-6">
               {t('landing.description')}
             </p>
 
@@ -412,18 +429,32 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   });
                   setViewState(ViewState.AUTH);
                 }}
-                className="w-auto mx-auto sm:w-auto px-10 sm:px-12 md:px-14 py-4 sm:py-5 md:py-6 min-h-[52px] sm:min-h-0 rounded-full bg-[#e35e25] text-white font-bold text-base sm:text-lg md:text-xl lg:text-2xl hover:bg-[#cf4d1d] transition-all shadow-lg shadow-orange-900/20 hover:-translate-y-1 hover:shadow-xl hover:shadow-orange-900/30 touch-manipulation active:scale-[0.97] active:bg-[#cf4d1d]">
-                {t('landing.signUp')}
+                className="px-8 py-4 bg-transparent border-2 border-white/20 text-white rounded-full font-bold text-base hover:bg-white/5 hover:border-white/30 transition-all duration-300 flex items-center justify-center gap-2 touch-manipulation active:scale-[0.98] whitespace-nowrap"
+              >
+                {t('landing.signUp')} <ArrowRight size={18} className="opacity-70" />
               </button>
             </div>
         </div>
       </section>
 
       {/* 4. Every Great Circle Starts With Real Connection */}
-      <ChatMockupSection />
+      {/* PERFORMANCE: LazySection defers rendering until section approaches viewport */}
+      <LazySection 
+        fallback={LazySectionSkeletons.chatMockup}
+        rootMargin="400px"
+        minHeight="600px"
+      >
+        <ChatMockupSection />
+      </LazySection>
 
       {/* 5. How To Move Your Crowd */}
-      <Pillars />
+      <LazySection 
+        fallback={LazySectionSkeletons.pillars}
+        rootMargin="300px"
+        minHeight="500px"
+      >
+        <Pillars />
+      </LazySection>
 
       {/* 6. Community Guidelines */}
       <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] border-t border-white/5 lazy-section">
@@ -500,8 +531,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* 7. FAQs */}
-      <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] lazy-section">
+      {/* 7. FAQs - Uses content-visibility:auto for far-below-fold performance */}
+      <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] lazy-section far-below-fold">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white rounded-2xl sm:rounded-[2.5rem] md:rounded-[3rem] lg:rounded-[4rem] p-6 sm:p-8 md:p-12 lg:p-16 shadow-2xl">
             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-[#e35e25] text-center mb-8 sm:mb-12 md:mb-16 uppercase tracking-tight">
@@ -535,8 +566,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* Stay Updated */}
-      <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] text-white relative overflow-hidden border-t border-white/5 lazy-section">
+      {/* Stay Updated - Uses content-visibility:auto for far-below-fold performance */}
+      <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] text-white relative overflow-hidden border-t border-white/5 lazy-section far-below-fold">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-[#e35e25] mb-4 sm:mb-6 tracking-tight uppercase leading-none">
             {t('landing.stayUpdated')}
