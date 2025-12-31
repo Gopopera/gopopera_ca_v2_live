@@ -22,6 +22,7 @@ import {
 import { TicketStoryExport } from '../components/ticket/TicketStoryExport';
 import html2canvas from 'html2canvas';
 import { getBaseUrl } from '../utils/baseUrl';
+import { PhoneCollectionModal } from '../../components/auth/PhoneCollectionModal';
 
 interface TicketData {
   reservation: {
@@ -82,8 +83,10 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
   const { t } = useLanguage();
   
   const user = useUserStore((state) => state.user);
+  const userProfile = useUserStore((state) => state.userProfile);
   
   const [ticketData, setTicketData] = useState<TicketData | null>(null);
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [checkingIn, setCheckingIn] = useState(false);
@@ -179,6 +182,20 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
 
     loadTicketData();
   }, [reservationId]);
+
+  // Check if user needs to add phone number after ticket is loaded
+  useEffect(() => {
+    if (!loading && ticketData && user?.uid) {
+      const hasPhoneNumber = userProfile?.phone_number || user?.phone_number;
+      if (!hasPhoneNumber) {
+        // Small delay to let the user see their ticket first
+        const timer = setTimeout(() => {
+          setShowPhoneModal(true);
+        }, 1500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [loading, ticketData, user?.uid, userProfile?.phone_number, user?.phone_number]);
 
   // Check if current user is the host
   const isHost = useMemo(() => {
@@ -734,6 +751,15 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
         />,
         document.body
       )}
+
+      {/* Phone Collection Modal - shows if user doesn't have phone number */}
+      <PhoneCollectionModal
+        isOpen={showPhoneModal}
+        onClose={() => setShowPhoneModal(false)}
+        onSuccess={() => {
+          console.log('[TICKET_PAGE] Phone number added successfully');
+        }}
+      />
     </div>
   );
 };

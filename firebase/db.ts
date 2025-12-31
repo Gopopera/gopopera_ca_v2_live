@@ -2175,6 +2175,16 @@ export async function createOrUpdateUserProfile(uid: string, userData: Partial<F
   try {
     const userRef = doc(db, "users", uid);
     
+    // Check if this is a new user (for setting defaults)
+    let isNewUser = false;
+    try {
+      const existingDoc = await getDoc(userRef);
+      isNewUser = !existingDoc.exists();
+    } catch (e) {
+      // If we can't check, assume it's not new (safer)
+      console.warn('[createOrUpdateUserProfile] Could not check if user exists:', e);
+    }
+    
     // REFACTORED: Standardize to displayName and photoURL only
     // Map deprecated fields to standardized fields
     const standardizedData: any = {
@@ -2182,6 +2192,17 @@ export async function createOrUpdateUserProfile(uid: string, userData: Partial<F
       uid,
       updatedAt: userData?.updatedAt ?? Date.now(),
     };
+    
+    // Set default notification settings for new users (all ON by default)
+    if (isNewUser) {
+      standardizedData.notification_settings = {
+        email_opt_in: true,
+        sms_opt_in: true,
+        notification_opt_in: true,
+        ...(userData?.notification_settings || {}), // Allow override if explicitly provided
+      };
+      standardizedData.createdAt = standardizedData.createdAt || Date.now();
+    }
     
     // Standardize name fields: use displayName, fallback to name
     if (userData?.displayName || userData?.name) {
