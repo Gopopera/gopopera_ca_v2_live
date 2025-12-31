@@ -90,7 +90,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('[Bulk Send] Admin verified:', authResult.email);
     
     const RESEND_API_KEY = process.env.RESEND_API_KEY;
-    const RESEND_FROM = process.env.RESEND_FROM || 'support@gopopera.ca';
+    // Centralized email config - always use display name format "Popera <email>"
+    const RESEND_FROM = process.env.RESEND_FROM ?? 'Popera <support@gopopera.ca>';
+    const RESEND_REPLY_TO = 'support@gopopera.ca';
     const BASE_URL = process.env.VITE_APP_URL || 'https://gopopera.ca';
     
     if (!RESEND_API_KEY) {
@@ -143,7 +145,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         try {
           const unsubUrl = `${BASE_URL}/unsubscribe?uid=${r.uid}&token=${generateUnsubscribeToken(r.uid)}`;
           const html = baseHtml.replace(/\{\{UNSUBSCRIBE_URL\}\}/g, unsubUrl);
-          const result = await resend.emails.send({ from: RESEND_FROM, to: [r.email], subject: emailParams.subject, html });
+          const result = await resend.emails.send({ from: RESEND_FROM, replyTo: RESEND_REPLY_TO, to: [r.email], subject: emailParams.subject, html });
           if (result.error) throw new Error(result.error.message);
           await db.collection('email_logs').add({ 
             to: r.email, 

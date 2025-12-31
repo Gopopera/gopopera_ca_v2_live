@@ -107,9 +107,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     console.log('[Test Send] Admin verified:', authResult.email);
     
-    // Check Resend config
+    // Check Resend config - always use display name format "Popera <email>"
     const RESEND_API_KEY = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY;
-    const RESEND_FROM = process.env.RESEND_FROM || 'support@gopopera.ca';
+    const RESEND_FROM = process.env.RESEND_FROM ?? 'Popera <support@gopopera.ca>';
+    const RESEND_REPLY_TO = 'support@gopopera.ca';
     
     if (!RESEND_API_KEY) {
       console.error('[Test Send] Missing RESEND_API_KEY');
@@ -137,6 +138,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('[Test Send] Sending email to:', ADMIN_EMAIL);
     const result = await resend.emails.send({
       from: RESEND_FROM,
+      replyTo: RESEND_REPLY_TO,
       to: [ADMIN_EMAIL],
       subject: `[TEST] ${emailParams.subject}`,
       html: finalHtml,

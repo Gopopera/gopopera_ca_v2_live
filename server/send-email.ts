@@ -5,8 +5,10 @@
 
 import { Resend } from 'resend';
 
+// Centralized email config - always use display name format "Popera <email>"
 const RESEND_API_KEY = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY;
-const RESEND_FROM = process.env.RESEND_FROM || process.env.VITE_RESEND_FROM || 'support@gopopera.ca';
+const RESEND_FROM = process.env.RESEND_FROM ?? 'Popera <support@gopopera.ca>';
+const RESEND_REPLY_TO = 'support@gopopera.ca';
 
 // Initialize Resend client
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
@@ -57,6 +59,7 @@ export default async function handler(req: any, res: any) {
     // Send email via Resend
     const result = await resend.emails.send({
       from: RESEND_FROM,
+      replyTo: RESEND_REPLY_TO,
       to: Array.isArray(to) ? to : [to],
       subject,
       html,

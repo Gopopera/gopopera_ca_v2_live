@@ -1,10 +1,15 @@
 /**
  * Email Notifications Helper
  * Uses Resend API (or mailto fallback)
+ * 
+ * IMPORTANT: Always use display name format "Popera <email>" for From header.
  */
 
 const RESEND_API_KEY = import.meta.env.VITE_RESEND_API_KEY;
 const RESEND_API_URL = 'https://api.resend.com/emails';
+// Centralized email config - always use display name format "Popera <email>"
+const RESEND_FROM = 'Popera <notifications@gopopera.ca>';
+const RESEND_REPLY_TO = 'support@gopopera.ca';
 
 interface EmailOptions {
   to: string;
@@ -27,7 +32,8 @@ export async function sendEmailNotification(options: EmailOptions): Promise<bool
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'Popera. <notifications@gopopera.ca>',
+          from: RESEND_FROM,
+          reply_to: RESEND_REPLY_TO,
           to: options.to,
           subject: options.subject,
           html: `

@@ -12,10 +12,7 @@
 
 import { Resend } from 'resend';
 import * as admin from 'firebase-admin';
-
-// Use server-side env vars only - never expose VITE_ prefixed keys at runtime
-const RESEND_API_KEY = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY;
-const RESEND_FROM = process.env.RESEND_FROM || process.env.VITE_RESEND_FROM || 'support@gopopera.ca';
+import { RESEND_FROM, RESEND_REPLY_TO, RESEND_API_KEY } from './_lib/emailConfig.js';
 
 // Rate limiting: max emails per IP per minute (simple in-memory, resets on cold start)
 const RATE_LIMIT_PER_MINUTE = 10;
@@ -162,6 +159,7 @@ export default async function handler(req: any, res: any) {
     // Send email via Resend
     const result = await resend.emails.send({
       from: RESEND_FROM,
+      replyTo: RESEND_REPLY_TO,
       to: Array.isArray(to) ? to : [to],
       subject,
       html,
