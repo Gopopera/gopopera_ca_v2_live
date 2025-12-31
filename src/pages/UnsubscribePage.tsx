@@ -151,9 +151,9 @@ export const UnsubscribePage: React.FC<UnsubscribePageProps> = ({ setViewState }
         
         {/* Footer */}
         <div className="mt-8 pt-6 border-t border-gray-200">
-          <div className="flex items-center justify-center gap-1 text-[#15383c]">
+          <div className="flex items-baseline justify-center gap-0.5 text-[#15383c]">
             <span className="text-lg font-bold">Popera</span>
-            <span className="w-1.5 h-1.5 bg-[#e35e25] rounded-full"></span>
+            <span className="w-1.5 h-1.5 bg-[#e35e25] rounded-full mb-0.5"></span>
           </div>
           <p className="text-xs text-gray-500 mt-2">© {new Date().getFullYear()} Popera. All rights reserved.</p>
         </div>
