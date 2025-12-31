@@ -1,14 +1,17 @@
 /**
  * Firebase Admin SDK Singleton Helper
- * Robust credential resolution with detailed error reporting
+ * ESM-safe imports for Vercel serverless functions
  */
 
-import * as admin from 'firebase-admin';
+import { initializeApp, cert, getApps, type App } from 'firebase-admin/app';
+import { getAuth, type Auth } from 'firebase-admin/auth';
+import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 
-const APP_NAME = 'marketing-admin';
 const ADMIN_EMAIL = 'eatezca@gmail.com';
 
-let cachedApp: admin.app.App | null = null;
+let cachedApp: App | null = null;
+let cachedAuth: Auth | null = null;
+let cachedFirestore: Firestore | null = null;
 let initError: string | null = null;
 
 interface Credentials {
@@ -51,9 +54,16 @@ function resolveCredentials(): { credentials: Credentials | null; source: string
   }
 
   // 2. Fall back to individual environment variables
-  const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL || process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKeyRaw = process.env.FIREBASE_ADMIN_PRIVATE_KEY || process.env.FIREBASE_PRIVATE_KEY;
+  const projectId = 
+    process.env.FIREBASE_ADMIN_PROJECT_ID || 
+    process.env.FIREBASE_PROJECT_ID || 
+    process.env.VITE_FIREBASE_PROJECT_ID;
+  const clientEmail = 
+    process.env.FIREBASE_ADMIN_CLIENT_EMAIL || 
+    process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKeyRaw = 
+    process.env.FIREBASE_ADMIN_PRIVATE_KEY || 
+    process.env.FIREBASE_PRIVATE_KEY;
 
   if (!projectId) {
     return { credentials: null, source: 'individual_vars', error: 'Missing projectId (FIREBASE_PROJECT_ID)' };
@@ -76,7 +86,7 @@ function resolveCredentials(): { credentials: Credentials | null; source: string
 }
 
 export interface AdminAppResult {
-  app: admin.app.App | null;
+  app: App | null;
   initError: string | null;
   source: string;
   projectId?: string;
@@ -93,13 +103,12 @@ export function getAdminApp(): AdminAppResult {
     return { app: cachedApp, initError: null, source: 'cached' };
   }
 
-  // Try to get existing app by name (in case of warm lambda)
-  try {
-    cachedApp = admin.app(APP_NAME);
-    console.log('[FirebaseAdmin] Reusing warm lambda app');
-    return { app: cachedApp, initError: null, source: 'warm_lambda' };
-  } catch {
-    // App doesn't exist, continue to initialize
+  // Check if any apps already exist (warm lambda)
+  const existingApps = getApps();
+  if (existingApps.length > 0) {
+    cachedApp = existingApps[0];
+    console.log('[FirebaseAdmin] Reusing existing app');
+    return { app: cachedApp, initError: null, source: 'existing' };
   }
 
   // Resolve credentials
@@ -120,20 +129,20 @@ export function getAdminApp(): AdminAppResult {
   console.log('[FirebaseAdmin] Initializing with:', {
     source,
     projectId: credentials.projectId,
-    clientEmail: credentials.clientEmail?.substring(0, 20) + '...',
+    clientEmailPrefix: credentials.clientEmail?.substring(0, 20) + '...',
     privateKeyLength: credentials.privateKey.length,
   });
 
-  // Initialize Firebase Admin
+  // Initialize Firebase Admin using ESM-safe cert()
   try {
-    cachedApp = admin.initializeApp({
-      credential: admin.credential.cert({
+    cachedApp = initializeApp({
+      credential: cert({
         projectId: credentials.projectId,
         clientEmail: credentials.clientEmail,
         privateKey: credentials.privateKey,
       }),
       projectId: credentials.projectId,
-    }, APP_NAME);
+    });
 
     initError = null;
     console.log('[FirebaseAdmin] Initialized successfully');
@@ -160,11 +169,25 @@ export function getAdminApp(): AdminAppResult {
 }
 
 /**
+ * Get Auth instance
+ */
+export function getAdminAuth(): Auth | null {
+  if (cachedAuth) return cachedAuth;
+  const { app } = getAdminApp();
+  if (!app) return null;
+  cachedAuth = getAuth(app);
+  return cachedAuth;
+}
+
+/**
  * Get Firestore instance
  */
-export function getAdminFirestore(): admin.firestore.Firestore | null {
+export function getAdminFirestore(): Firestore | null {
+  if (cachedFirestore) return cachedFirestore;
   const { app } = getAdminApp();
-  return app ? app.firestore() : null;
+  if (!app) return null;
+  cachedFirestore = getFirestore(app);
+  return cachedFirestore;
 }
 
 /**
@@ -216,9 +239,18 @@ export async function verifyAdminToken(authHeader: string | undefined): Promise<
     };
   }
 
-  // Verify token
+  // Get Auth and verify token
+  const auth = getAdminAuth();
+  if (!auth) {
+    return {
+      success: false,
+      reason: 'admin_not_configured',
+      details: { initError: 'Failed to get Auth instance' },
+    };
+  }
+
   try {
-    const decoded = await app.auth().verifyIdToken(token);
+    const decoded = await auth.verifyIdToken(token);
 
     // Check admin email
     if (decoded.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
@@ -244,4 +276,3 @@ export async function verifyAdminToken(authHeader: string | undefined): Promise<
     };
   }
 }
-
