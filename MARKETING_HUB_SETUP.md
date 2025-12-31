@@ -211,3 +211,75 @@ Go to **Vercel Dashboard → Project → Logs** and search for `[Test Send]`:
 | `verifyIdToken FAILED: code=auth/invalid-credential` | Wrong project or expired key | Regenerate service account key |
 | `ACCESS DENIED - email mismatch` | Logged in with wrong account | Sign out and sign in as admin |
 
+---
+
+## What to Do Next (Env Var Checklist)
+
+### ⚠️ IMPORTANT: Check These in Vercel Production Environment Variables
+
+**Go to**: Vercel Dashboard → Project → Settings → Environment Variables
+
+#### Required for Firebase Admin (Token Verification)
+
+These are checked in order of preference. Set at least ONE of each:
+
+| Variable | Example Value | Status Check |
+|----------|---------------|--------------|
+| `FIREBASE_ADMIN_PROJECT_ID` **OR** `FIREBASE_PROJECT_ID` | `gopopera2026` | Must match your Firebase project |
+| `FIREBASE_ADMIN_CLIENT_EMAIL` **OR** `FIREBASE_CLIENT_EMAIL` | `firebase-adminsdk-xxx@gopopera2026.iam.gserviceaccount.com` | From service account JSON |
+| `FIREBASE_ADMIN_PRIVATE_KEY` **OR** `FIREBASE_PRIVATE_KEY` | `-----BEGIN PRIVATE KEY-----\n...` | Full key with escaped newlines (`\n`) |
+
+#### Required for Email Sending
+
+| Variable | Example Value | Notes |
+|----------|---------------|-------|
+| `RESEND_API_KEY` | `re_AbCdEf123456...` | **MUST start with `re_`** — NOT the string "VITE_RESEND_API_KEY" |
+| `RESEND_FROM` | `support@gopopera.ca` | Must be a verified domain in Resend |
+
+### How to Confirm Success from DevTools
+
+1. **Open DevTools** → Network tab
+2. Click **"Send Test to Me"**
+3. Find `test-send` request → click → **Response** tab
+
+**Expected Success Response:**
+```json
+{ "success": true, "messageId": "abc123-xyz..." }
+```
+
+**Expected 403 Response (with diagnostics):**
+```json
+{
+  "success": false,
+  "error": "Forbidden",
+  "reason": "verify_failed",
+  "details": {
+    "errorCode": "auth/invalid-credential",
+    "projectIdUsed": "gopopera2026",
+    "tokenAud": "gopopera2026",
+    "tokenEmail": "eatezca@gmail.com"
+  }
+}
+```
+
+### Reason Codes Explained
+
+| `reason` value | Meaning | Fix |
+|----------------|---------|-----|
+| `missing_auth_header` | No `Authorization: Bearer ...` sent | Frontend issue - check MarketingHubPage |
+| `admin_not_configured` | Firebase Admin failed to initialize | Check `FIREBASE_*` env vars in Vercel |
+| `verify_failed` | `verifyIdToken()` failed | Check `details.projectIdUsed` vs `details.tokenAud` (must match) |
+| `email_mismatch` | Token valid but email ≠ `eatezca@gmail.com` | Log in with correct admin account |
+
+### Quick Diagnosis from Response
+
+1. **If `reason: "admin_not_configured"`**: 
+   - Check `details.envPresence` — at least one `true` for each of: `*_PROJECT_ID`, `*_CLIENT_EMAIL`, `*_PRIVATE_KEY`
+
+2. **If `reason: "verify_failed"` with `errorCode: "auth/invalid-credential"`**:
+   - Compare `details.projectIdUsed` with `details.tokenAud`
+   - They MUST match. If not, your env vars point to the wrong Firebase project.
+
+3. **If `reason: "email_mismatch"`**:
+   - `details.tokenEmail` shows who is logged in
+   - Must be `eatezca@gmail.com` (case-insensitive)

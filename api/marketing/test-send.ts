@@ -15,35 +15,74 @@ export const config = { runtime: 'nodejs' };
 const ADMIN_EMAIL = 'eatezca@gmail.com';
 const APP_NAME = 'test-send-admin';
 
+// ============ HELPER: Decode JWT payload (unverified, for debugging only) ============
+function decodeJwtPayload(token: string): { email?: string; aud?: string; iss?: string; sub?: string } | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = Buffer.from(parts[1], 'base64url').toString('utf-8');
+    return JSON.parse(payload);
+  } catch {
+    return null;
+  }
+}
+
+// ============ HELPER: Get env vars with fallback conventions ============
+function getEnvVars() {
+  // Support both FIREBASE_ADMIN_* and FIREBASE_* naming conventions
+  const projectId = 
+    process.env.FIREBASE_ADMIN_PROJECT_ID || 
+    process.env.FIREBASE_PROJECT_ID || 
+    process.env.VITE_FIREBASE_PROJECT_ID || 
+    'gopopera2026';
+  
+  const clientEmail = 
+    process.env.FIREBASE_ADMIN_CLIENT_EMAIL || 
+    process.env.FIREBASE_CLIENT_EMAIL;
+  
+  const privateKey = (
+    process.env.FIREBASE_ADMIN_PRIVATE_KEY || 
+    process.env.FIREBASE_PRIVATE_KEY
+  )?.replace(/\\n/g, '\n');
+  
+  const envPresence = {
+    FIREBASE_ADMIN_PROJECT_ID: !!process.env.FIREBASE_ADMIN_PROJECT_ID,
+    FIREBASE_PROJECT_ID: !!process.env.FIREBASE_PROJECT_ID,
+    VITE_FIREBASE_PROJECT_ID: !!process.env.VITE_FIREBASE_PROJECT_ID,
+    FIREBASE_ADMIN_CLIENT_EMAIL: !!process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+    FIREBASE_CLIENT_EMAIL: !!process.env.FIREBASE_CLIENT_EMAIL,
+    FIREBASE_ADMIN_PRIVATE_KEY: !!process.env.FIREBASE_ADMIN_PRIVATE_KEY,
+    FIREBASE_PRIVATE_KEY: !!process.env.FIREBASE_PRIVATE_KEY,
+  };
+  
+  return { projectId, clientEmail, privateKey, envPresence };
+}
+
 // ============ INLINED: Firebase Admin Singleton ============
 let adminApp: admin.app.App | null = null;
+let initProjectId: string | null = null;
 
-function getFirebaseAdmin(): admin.app.App | null {
-  if (adminApp) return adminApp;
+function getFirebaseAdmin(): { app: admin.app.App | null; projectId: string; envPresence: Record<string, boolean> } {
+  const { projectId, clientEmail, privateKey, envPresence } = getEnvVars();
+  
+  if (adminApp) {
+    return { app: adminApp, projectId: initProjectId || projectId, envPresence };
+  }
   
   try {
     adminApp = admin.app(APP_NAME);
     console.log('[Test Send] Reusing existing Firebase Admin app');
-    return adminApp;
+    return { app: adminApp, projectId: initProjectId || projectId, envPresence };
   } catch {
     // App doesn't exist, continue to initialize
   }
   
-  // Log env var presence (NEVER log actual values)
-  const projectId = process.env.FIREBASE_PROJECT_ID || 'gopopera2026';
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  
-  console.log('[Test Send] Env check:', {
-    hasProjectId: !!projectId,
-    hasClientEmail: !!clientEmail,
-    hasPrivateKey: !!privateKey,
-    privateKeyLength: privateKey?.length || 0,
-  });
+  console.log('[Test Send] Env vars presence:', envPresence);
+  console.log('[Test Send] Using projectId:', projectId);
   
   if (!clientEmail || !privateKey) {
-    console.error('[Test Send] MISSING CREDENTIALS - check Vercel env vars');
-    return null;
+    console.error('[Test Send] MISSING CREDENTIALS - clientEmail or privateKey not set');
+    return { app: null, projectId, envPresence };
   }
   
   try {
@@ -51,30 +90,49 @@ function getFirebaseAdmin(): admin.app.App | null {
       credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
       projectId,
     }, APP_NAME);
-    console.log('[Test Send] Firebase Admin initialized successfully');
-    return adminApp;
+    initProjectId = projectId;
+    console.log('[Test Send] Firebase Admin initialized with project:', projectId);
+    return { app: adminApp, projectId, envPresence };
   } catch (error: any) {
     console.error('[Test Send] Firebase Admin init FAILED:', error?.message || error);
-    return null;
+    return { app: null, projectId, envPresence };
   }
 }
 
-async function verifyAdminToken(authHeader: string | undefined): Promise<{ uid: string; email: string } | null> {
+type AuthResult = 
+  | { success: true; uid: string; email: string }
+  | { success: false; reason: 'missing_auth_header' | 'admin_not_configured' | 'verify_failed' | 'email_mismatch'; details?: Record<string, unknown> };
+
+async function verifyAdminToken(authHeader: string | undefined): Promise<AuthResult> {
   console.log('[Test Send] verifyAdminToken called, hasHeader:', !!authHeader);
   
+  // Check auth header
   if (!authHeader?.startsWith('Bearer ')) {
-    console.warn('[Test Send] Invalid auth header format');
-    return null;
-  }
-  
-  const app = getFirebaseAdmin();
-  if (!app) {
-    console.error('[Test Send] Firebase Admin app is null - cannot verify token');
-    return null;
+    console.warn('[Test Send] Missing or invalid Authorization header');
+    return { success: false, reason: 'missing_auth_header' };
   }
   
   const token = authHeader.split('Bearer ')[1];
   console.log('[Test Send] Token extracted, length:', token?.length || 0);
+  
+  // Decode token payload (unverified) for debugging
+  const unverifiedPayload = decodeJwtPayload(token);
+  console.log('[Test Send] Unverified token payload:', {
+    email: unverifiedPayload?.email,
+    aud: unverifiedPayload?.aud,
+    iss: unverifiedPayload?.iss,
+  });
+  
+  // Initialize Firebase Admin
+  const { app, projectId, envPresence } = getFirebaseAdmin();
+  if (!app) {
+    console.error('[Test Send] Firebase Admin not configured');
+    return { 
+      success: false, 
+      reason: 'admin_not_configured',
+      details: { envPresence, projectId }
+    };
+  }
   
   try {
     const decoded = await app.auth().verifyIdToken(token);
@@ -89,25 +147,38 @@ async function verifyAdminToken(authHeader: string | undefined): Promise<{ uid: 
     const tokenEmail = decoded.email?.toLowerCase();
     const adminEmail = ADMIN_EMAIL.toLowerCase();
     
-    console.log('[Test Send] Email check:', {
-      tokenEmail,
-      adminEmail,
-      matches: tokenEmail === adminEmail,
-    });
-    
     if (tokenEmail !== adminEmail) {
-      console.warn('[Test Send] ACCESS DENIED - email mismatch');
-      return null;
+      console.warn('[Test Send] ACCESS DENIED - email mismatch:', { tokenEmail, adminEmail });
+      return { 
+        success: false, 
+        reason: 'email_mismatch',
+        details: { tokenEmail, expectedEmail: adminEmail }
+      };
     }
     
-    return { uid: decoded.uid, email: decoded.email || '' };
+    return { success: true, uid: decoded.uid, email: decoded.email || '' };
+    
   } catch (error: any) {
     console.error('[Test Send] verifyIdToken FAILED:', {
       message: error?.message,
       code: error?.code,
-      errorInfo: error?.errorInfo,
+      projectIdUsed: projectId,
+      tokenAud: unverifiedPayload?.aud,
+      tokenIss: unverifiedPayload?.iss,
+      tokenEmail: unverifiedPayload?.email,
     });
-    return null;
+    return { 
+      success: false, 
+      reason: 'verify_failed',
+      details: {
+        errorCode: error?.code,
+        errorMessage: error?.message,
+        projectIdUsed: projectId,
+        tokenAud: unverifiedPayload?.aud,
+        tokenIss: unverifiedPayload?.iss,
+        tokenEmail: unverifiedPayload?.email,
+      }
+    };
   }
 }
 
@@ -187,16 +258,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log('[Test Send] === REQUEST START ===');
     console.log('[Test Send] Headers received:', {
       hasAuth: !!req.headers.authorization,
-      authPrefix: req.headers.authorization?.substring(0, 15) + '...',
+      authPrefix: req.headers.authorization?.substring(0, 20) + '...',
     });
     
-    // Verify admin FIRST
-    const adminUser = await verifyAdminToken(req.headers.authorization);
-    if (!adminUser) {
-      console.error('[Test Send] Admin verification FAILED - returning 403');
-      return res.status(403).json({ success: false, error: 'Access denied - admin auth required' });
+    // Verify admin FIRST with detailed reason codes
+    const authResult = await verifyAdminToken(req.headers.authorization);
+    
+    if (!authResult.success) {
+      console.error('[Test Send] Admin verification FAILED:', authResult.reason);
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Forbidden',
+        reason: authResult.reason,
+        details: authResult.details,
+      });
     }
-    console.log('[Test Send] Admin verified:', adminUser.email);
+    
+    console.log('[Test Send] Admin verified:', authResult.email);
     
     // Check Resend config
     const RESEND_API_KEY = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY;
@@ -205,6 +283,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!RESEND_API_KEY) {
       console.error('[Test Send] Missing RESEND_API_KEY');
       return res.status(500).json({ success: false, error: 'Missing RESEND_API_KEY' });
+    }
+    
+    // Validate that RESEND_API_KEY looks like a real key (starts with "re_")
+    if (!RESEND_API_KEY.startsWith('re_')) {
+      console.error('[Test Send] RESEND_API_KEY does not start with "re_" - is it set correctly?');
+      return res.status(500).json({ success: false, error: 'Invalid RESEND_API_KEY format' });
     }
     
     const emailParams = req.body;
