@@ -200,6 +200,32 @@ service cloud.firestore {
         allow delete: if false;
       }
     }
+    
+    // Marketing campaigns - admin only (eatezca@gmail.com)
+    // Client-side can create/update drafts, but bulk sending is server-side only
+    match /marketing_campaigns/{campaignId} {
+      // Only allow access if user email is the admin
+      allow read: if isAuthenticated() && 
+        request.auth.token.email == 'eatezca@gmail.com';
+      allow create: if isAuthenticated() && 
+        request.auth.token.email == 'eatezca@gmail.com';
+      allow update: if isAuthenticated() && 
+        request.auth.token.email == 'eatezca@gmail.com';
+      allow delete: if isAuthenticated() && 
+        request.auth.token.email == 'eatezca@gmail.com';
+    }
+    
+    // Marketing campaign logs - server-side only (via Admin SDK)
+    match /marketing_campaigns_log/{logId} {
+      allow read: if false;
+      allow write: if false;
+    }
+    
+    // Email unsubscribes - server-side only (via Admin SDK)
+    match /email_unsubscribes/{docId} {
+      allow read: if false;
+      allow write: if false;
+    }
   }
 }
 

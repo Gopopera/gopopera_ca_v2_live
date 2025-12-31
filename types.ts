@@ -123,4 +123,8 @@ export enum ViewState {
   
   // Guide Pages
   GUIDE_10_SEAT = 'GUIDE_10_SEAT',
+  
+  // Marketing Hub (Admin)
+  MARKETING_HUB = 'MARKETING_HUB',
+  UNSUBSCRIBE = 'UNSUBSCRIBE',
 }

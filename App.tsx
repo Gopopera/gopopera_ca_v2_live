@@ -60,6 +60,8 @@ const HelpPage = React.lazy(() => import('./src/pages/HelpPage').then(m => ({ de
 const SafetyPage = React.lazy(() => import('./src/pages/SafetyPage').then(m => ({ default: m.SafetyPage })));
 const PressPage = React.lazy(() => import('./src/pages/PressPage').then(m => ({ default: m.PressPage })));
 const Guide10SeatPlaybookPage = React.lazy(() => import('./src/pages/Guide10SeatPlaybookPage').then(m => ({ default: m.Guide10SeatPlaybookPage })));
+const MarketingHubPage = React.lazy(() => import('./src/pages/MarketingHubPage').then(m => ({ default: m.MarketingHubPage })));
+const UnsubscribePage = React.lazy(() => import('./src/pages/UnsubscribePage').then(m => ({ default: m.UnsubscribePage })));
 const AuthPage = React.lazy(() => import('./src/pages/AuthPage').then(m => ({ default: m.AuthPage })));
 const ProfilePage = React.lazy(() => import('./src/pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
 const NotificationsPage = React.lazy(() => import('./src/pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
@@ -466,6 +468,10 @@ const AppContent: React.FC = () => {
       return ViewState.DEBUG_SEED_DEMO;
     } else if (pathname === '/debug-reservations') {
       return ViewState.DEBUG_RESERVATIONS;
+    } else if (pathname === '/marketinghub') {
+      return ViewState.MARKETING_HUB;
+    } else if (pathname === '/unsubscribe') {
+      return ViewState.UNSUBSCRIBE;
     }
     
     // Default to landing page for unknown routes
@@ -1313,6 +1319,15 @@ const AppContent: React.FC = () => {
       if (currentUrl !== '/the-10-seat-event-playbook') {
         window.history.replaceState({ viewState: ViewState.GUIDE_10_SEAT }, '', '/the-10-seat-event-playbook');
       }
+    } else if (viewState === ViewState.MARKETING_HUB) {
+      if (currentUrl !== '/marketinghub') {
+        window.history.replaceState({ viewState: ViewState.MARKETING_HUB }, '', '/marketinghub');
+      }
+    } else if (viewState === ViewState.UNSUBSCRIBE) {
+      // Keep query params for unsubscribe
+      if (!currentUrl.startsWith('/unsubscribe')) {
+        window.history.replaceState({ viewState: ViewState.UNSUBSCRIBE }, '', '/unsubscribe');
+      }
     } else if (viewState === ViewState.HOST_PROFILE && selectedHost) {
       // HOST_PROFILE doesn't need URL sync - it's a modal-like overlay
       // Keep current URL to allow back button to work
@@ -1478,7 +1493,7 @@ const AppContent: React.FC = () => {
             ViewState.HOST_PROFILE, ViewState.ABOUT, ViewState.CAREERS, ViewState.CONTACT,
             ViewState.TERMS, ViewState.PRIVACY, ViewState.CANCELLATION, ViewState.GUIDELINES,
             ViewState.REPORT_EVENT, ViewState.HELP, ViewState.SAFETY, ViewState.PRESS,
-            ViewState.GUIDE_10_SEAT, ViewState.AUTH, ViewState.CREATE_EVENT, ViewState.EDIT_EVENT,
+            ViewState.GUIDE_10_SEAT, ViewState.MARKETING_HUB, ViewState.UNSUBSCRIBE, ViewState.AUTH, ViewState.CREATE_EVENT, ViewState.EDIT_EVENT,
             ViewState.PROFILE, ViewState.NOTIFICATIONS, ViewState.MY_POPS,
             ViewState.FAVORITES, ViewState.MY_CALENDAR,
             ViewState.PROFILE_BASIC, ViewState.PROFILE_NOTIFICATIONS,
@@ -2017,6 +2032,8 @@ const AppContent: React.FC = () => {
         {viewState === ViewState.SAFETY && <SafetyPage setViewState={setViewState} />}
         {viewState === ViewState.PRESS && <PressPage setViewState={setViewState} />}
         {viewState === ViewState.GUIDE_10_SEAT && <Guide10SeatPlaybookPage setViewState={setViewState} />}
+        {viewState === ViewState.MARKETING_HUB && <MarketingHubPage setViewState={setViewState} />}
+        {viewState === ViewState.UNSUBSCRIBE && <UnsubscribePage setViewState={setViewState} />}
 
             {viewState === ViewState.HOST_PROFILE && selectedHost && (
               <React.Suspense fallback={<PageSkeleton />}>

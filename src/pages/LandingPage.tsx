@@ -445,112 +445,116 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* 5. How To Move Your Crowd */}
       <Pillars />
 
-      {/* 6. Community Guidelines */}
-      <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] border-t border-white/5 lazy-section">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-           <span className="inline-block py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-white/5 border border-white/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase mb-4 sm:mb-6 backdrop-blur-sm shadow-sm">
-              {t('landing.safetyTrust')}
-           </span>
-
-          <div className="flex justify-center mb-8 sm:mb-12">
-             <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-4xl font-heading font-bold text-white uppercase tracking-tight">
-               {t('landing.communityGuidelines')}
-             </h2>
-          </div>
-
-          <div className="inline-flex flex-col space-y-4 sm:space-y-6 mb-8 sm:mb-12 text-left relative z-10">
-            <div className="flex items-center gap-3 sm:gap-4 text-white text-base sm:text-lg md:text-xl font-light">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white">
-                <Check size={14} strokeWidth={3} />
-              </div>
-              <span>{t('landing.guidelineVerified')}</span>
-            </div>
-            <div className="flex items-center gap-3 sm:gap-4 text-white text-base sm:text-lg md:text-xl font-light">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white">
-                <Check size={14} strokeWidth={3} />
-              </div>
-              <span>{t('landing.guidelineReviews')}</span>
-            </div>
-            <div className="flex items-center gap-3 sm:gap-4 text-white text-base sm:text-lg md:text-xl font-light">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white">
-                <Check size={14} strokeWidth={3} />
-              </div>
-              <span>{t('landing.guidelineModerated')}</span>
-            </div>
-            <div className="flex items-center gap-3 sm:gap-4 text-white text-base sm:text-lg md:text-xl font-light">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white">
-                <Check size={14} strokeWidth={3} />
-              </div>
-              <span>{t('landing.guidelineSafety')}</span>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-4">
-            <button 
-              onClick={() => {
-                trackLandingCTA({
-                  cta_id: 'guidelines_see_guidelines',
-                  cta_text: t('landing.seeGuidelines'),
-                  section: 'guidelines',
-                  destination: '/guidelines',
-                  is_external: false,
-                });
-                setViewState(ViewState.GUIDELINES);
-              }} 
-              className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 bg-white text-[#15383c] rounded-full font-bold hover:bg-gray-100 transition-colors touch-manipulation active:scale-95 text-sm sm:text-base"
-            >
-              {t('landing.seeGuidelines')}
-            </button>
-            <button 
-              onClick={() => {
-                trackLandingCTA({
-                  cta_id: 'guidelines_signup',
-                  cta_text: t('landing.signUp'),
-                  section: 'guidelines',
-                  destination: '/auth',
-                  is_external: false,
-                });
-                setViewState(ViewState.AUTH);
-              }} 
-              className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 border border-[#e35e25] text-white rounded-full font-bold hover:bg-[#e35e25]/10 transition-colors touch-manipulation active:scale-95 text-sm sm:text-base"
-            >
-              {t('landing.signUp')}
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* 7. FAQs - Uses content-visibility:auto for far-below-fold performance */}
-      <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] lazy-section far-below-fold">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white rounded-2xl sm:rounded-[2.5rem] md:rounded-[3rem] lg:rounded-[4rem] p-6 sm:p-8 md:p-12 lg:p-16 shadow-2xl">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-[#e35e25] text-center mb-8 sm:mb-12 md:mb-16 uppercase tracking-tight">
-              FAQS
-            </h2>
+      {/* 6-7. Trust & FAQ - Combined 2-column layout */}
+      <section className="py-8 sm:py-10 md:py-12 lg:py-14 bg-[#15383c] border-t border-white/5 lazy-section far-below-fold">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Desktop: 12-col grid (Trust 5 cols, FAQ 7 cols), Mobile: stack */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
             
-            <div className="space-y-2">
-              {faqs.map((faq, index) => (
-                <div key={index} className="border-b border-gray-100 last:border-0">
-                  <button 
-                    onClick={() => toggleFaq(index)}
-                    className="w-full py-6 flex items-center justify-between text-left group hover:bg-gray-50/50 transition-colors px-2 rounded-lg"
-                  >
-                    <span className={`text-sm sm:text-base font-medium transition-colors ${openFaqIndex === index ? 'text-[#e35e25]' : 'text-[#15383c]'}`}>
-                      {faq.question}
-                    </span>
-                    <span className={`ml-4 text-gray-400 transition-transform duration-300 ${openFaqIndex === index ? 'rotate-180 text-[#e35e25]' : ''}`}>
-                      <ChevronDown size={20} />
-                    </span>
-                  </button>
-                  
-                  <div className={`overflow-hidden transition-all duration-300 ease-in-out ${openFaqIndex === index ? 'max-h-96 opacity-100 pb-6' : 'max-h-0 opacity-0'}`}>
-                     <p className="text-gray-500 leading-relaxed px-2">
-                       {faq.answer}
-                     </p>
+            {/* Trust Card - Compact */}
+            <div className="lg:col-span-5 bg-white/5 backdrop-blur-sm rounded-xl p-5 sm:p-6 border border-white/10">
+              <span className="inline-block py-1 px-3 rounded-full bg-[#e35e25]/10 border border-[#e35e25]/20 text-[#e35e25] text-[10px] font-bold tracking-[0.15em] uppercase mb-3">
+                {t('landing.safetyTrust')}
+              </span>
+              
+              <h3 className="text-lg sm:text-xl font-heading font-bold text-white mb-4 tracking-tight">
+                {t('landing.communityGuidelines')}
+              </h3>
+
+              {/* 4 compact bullet points */}
+              <div className="space-y-2.5 mb-5">
+                <div className="flex items-center gap-2.5 text-white/90 text-sm font-light">
+                  <div className="flex-shrink-0 w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
+                    <Check size={12} strokeWidth={3} />
                   </div>
+                  <span>{t('landing.guidelineVerified')}</span>
                 </div>
-              ))}
+                <div className="flex items-center gap-2.5 text-white/90 text-sm font-light">
+                  <div className="flex-shrink-0 w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
+                    <Check size={12} strokeWidth={3} />
+                  </div>
+                  <span>{t('landing.guidelineReviews')}</span>
+                </div>
+                <div className="flex items-center gap-2.5 text-white/90 text-sm font-light">
+                  <div className="flex-shrink-0 w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
+                    <Check size={12} strokeWidth={3} />
+                  </div>
+                  <span>{t('landing.guidelineModerated')}</span>
+                </div>
+                <div className="flex items-center gap-2.5 text-white/90 text-sm font-light">
+                  <div className="flex-shrink-0 w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
+                    <Check size={12} strokeWidth={3} />
+                  </div>
+                  <span>{t('landing.guidelineSafety')}</span>
+                </div>
+              </div>
+
+              {/* CTAs: Primary Sign Up, Secondary See Guidelines */}
+              <div className="flex flex-col sm:flex-row gap-2.5">
+                <button 
+                  onClick={() => {
+                    trackLandingCTA({
+                      cta_id: 'guidelines_signup',
+                      cta_text: t('landing.signUp'),
+                      section: 'guidelines',
+                      destination: '/auth',
+                      is_external: false,
+                    });
+                    setViewState(ViewState.AUTH);
+                  }} 
+                  className="flex-1 px-5 py-2.5 bg-[#e35e25] text-white rounded-full font-semibold text-sm hover:bg-[#cf4d1d] transition-colors touch-manipulation active:scale-[0.98]"
+                >
+                  {t('landing.signUp')}
+                </button>
+                <button 
+                  onClick={() => {
+                    trackLandingCTA({
+                      cta_id: 'guidelines_see_guidelines',
+                      cta_text: t('landing.seeGuidelines'),
+                      section: 'guidelines',
+                      destination: '/guidelines',
+                      is_external: false,
+                    });
+                    setViewState(ViewState.GUIDELINES);
+                  }} 
+                  className="flex-1 px-5 py-2.5 text-white/70 text-sm font-medium hover:text-white transition-colors touch-manipulation underline underline-offset-2"
+                >
+                  {t('landing.seeGuidelines')}
+                </button>
+              </div>
             </div>
+
+            {/* FAQ Card - Compact */}
+            <div className="lg:col-span-7 bg-white rounded-xl p-4 sm:p-5 shadow-lg">
+              <h3 className="text-lg sm:text-xl font-heading font-bold text-[#e35e25] mb-3 tracking-tight">
+                FAQs
+              </h3>
+              
+              <div className="divide-y divide-gray-100">
+                {faqs.map((faq, index) => (
+                  <div key={index}>
+                    <button 
+                      onClick={() => toggleFaq(index)}
+                      className="w-full py-3 flex items-center justify-between text-left group hover:bg-gray-50/50 transition-colors rounded"
+                    >
+                      <span className={`text-sm font-medium transition-colors pr-3 ${openFaqIndex === index ? 'text-[#e35e25]' : 'text-[#15383c]'}`}>
+                        {faq.question}
+                      </span>
+                      <span className={`flex-shrink-0 text-gray-400 transition-transform duration-300 ${openFaqIndex === index ? 'rotate-180 text-[#e35e25]' : ''}`}>
+                        <ChevronDown size={18} />
+                      </span>
+                    </button>
+                    
+                    <div className={`overflow-hidden transition-all duration-300 ease-in-out ${openFaqIndex === index ? 'max-h-96 opacity-100 pb-3' : 'max-h-0 opacity-0'}`}>
+                      <p className="text-gray-500 text-sm leading-relaxed">
+                        {faq.answer}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
