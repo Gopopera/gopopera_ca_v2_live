@@ -16,7 +16,10 @@
  * If you need to change the sender name, update the env var to:
  *   RESEND_FROM="Popera Support <support@gopopera.ca>"
  */
-export const RESEND_FROM = process.env.RESEND_FROM ?? 'Popera <support@gopopera.ca>';
+export const RESEND_FROM = 
+  process.env.RESEND_FROM || 
+  process.env.VITE_RESEND_FROM || 
+  'Popera <support@gopopera.ca>';
 
 /**
  * Reply-To email address.

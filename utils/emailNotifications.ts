@@ -8,7 +8,10 @@
 const RESEND_API_KEY = import.meta.env.VITE_RESEND_API_KEY;
 const RESEND_API_URL = 'https://api.resend.com/emails';
 // Centralized email config - always use display name format "Popera <email>"
-const RESEND_FROM = 'Popera <notifications@gopopera.ca>';
+// ALL emails must use support@gopopera.ca for consistent sender identity
+const RESEND_FROM = 
+  import.meta.env.VITE_RESEND_FROM || 
+  'Popera <support@gopopera.ca>';
 const RESEND_REPLY_TO = 'support@gopopera.ca';
 
 interface EmailOptions {
