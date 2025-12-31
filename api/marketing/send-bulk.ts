@@ -16,6 +16,44 @@ const APP_NAME = 'send-bulk-admin';
 const BATCH_SIZE = 50;
 const BATCH_DELAY = 1000;
 
+// ============ HELPER: Get env vars with fallback conventions ============
+function getEnvVars() {
+  // Try to parse FIREBASE_SERVICE_ACCOUNT JSON if available
+  let serviceAccount: { project_id?: string; client_email?: string; private_key?: string } | null = null;
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    try {
+      serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    } catch (e) {
+      console.warn('[Bulk Send] Failed to parse FIREBASE_SERVICE_ACCOUNT JSON');
+    }
+  }
+  
+  // Resolve with priority: FIREBASE_ADMIN_* > FIREBASE_* > FIREBASE_SERVICE_ACCOUNT > VITE_*
+  const projectId = 
+    process.env.FIREBASE_ADMIN_PROJECT_ID || 
+    process.env.FIREBASE_PROJECT_ID || 
+    serviceAccount?.project_id ||
+    process.env.VITE_FIREBASE_PROJECT_ID || 
+    'gopopera2026';
+  
+  const clientEmail = 
+    process.env.FIREBASE_ADMIN_CLIENT_EMAIL || 
+    process.env.FIREBASE_CLIENT_EMAIL ||
+    serviceAccount?.client_email;
+  
+  // Get private key and normalize \\n to actual newlines
+  let privateKey = 
+    process.env.FIREBASE_ADMIN_PRIVATE_KEY || 
+    process.env.FIREBASE_PRIVATE_KEY ||
+    serviceAccount?.private_key;
+  
+  if (privateKey) {
+    privateKey = privateKey.replace(/\\n/g, '\n');
+  }
+  
+  return { projectId, clientEmail, privateKey };
+}
+
 // ============ INLINED: Firebase Admin ============
 let adminApp: admin.app.App | null = null;
 
@@ -27,19 +65,18 @@ function getFirebaseAdmin(): admin.app.App | null {
     return adminApp; 
   } catch {}
   
-  const projectId = process.env.FIREBASE_PROJECT_ID || 'gopopera2026';
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  const { projectId, clientEmail, privateKey } = getEnvVars();
   
   console.log('[Bulk Send] Env check:', {
     hasProjectId: !!projectId,
     hasClientEmail: !!clientEmail,
     hasPrivateKey: !!privateKey,
     privateKeyLength: privateKey?.length || 0,
+    hasServiceAccount: !!process.env.FIREBASE_SERVICE_ACCOUNT,
   });
   
   if (!clientEmail || !privateKey) {
-    console.error('[Bulk Send] MISSING CREDENTIALS');
+    console.error('[Bulk Send] MISSING CREDENTIALS - check FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY (or FIREBASE_SERVICE_ACCOUNT)');
     return null;
   }
   
@@ -48,7 +85,7 @@ function getFirebaseAdmin(): admin.app.App | null {
       credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
       projectId,
     }, APP_NAME);
-    console.log('[Bulk Send] Firebase Admin initialized');
+    console.log('[Bulk Send] Firebase Admin initialized with project:', projectId);
     return adminApp;
   } catch (error: any) { 
     console.error('[Bulk Send] Firebase Admin init failed:', error?.message);

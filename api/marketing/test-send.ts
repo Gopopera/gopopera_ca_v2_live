@@ -29,30 +29,54 @@ function decodeJwtPayload(token: string): { email?: string; aud?: string; iss?: 
 
 // ============ HELPER: Get env vars with fallback conventions ============
 function getEnvVars() {
-  // Support both FIREBASE_ADMIN_* and FIREBASE_* naming conventions
+  // Try to parse FIREBASE_SERVICE_ACCOUNT JSON if available
+  let serviceAccount: { project_id?: string; client_email?: string; private_key?: string } | null = null;
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    try {
+      serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    } catch (e) {
+      console.warn('[Test Send] Failed to parse FIREBASE_SERVICE_ACCOUNT JSON');
+    }
+  }
+  
+  // Resolve with priority: FIREBASE_ADMIN_* > FIREBASE_* > FIREBASE_SERVICE_ACCOUNT > VITE_*
   const projectId = 
     process.env.FIREBASE_ADMIN_PROJECT_ID || 
     process.env.FIREBASE_PROJECT_ID || 
+    serviceAccount?.project_id ||
     process.env.VITE_FIREBASE_PROJECT_ID || 
     'gopopera2026';
   
   const clientEmail = 
     process.env.FIREBASE_ADMIN_CLIENT_EMAIL || 
-    process.env.FIREBASE_CLIENT_EMAIL;
+    process.env.FIREBASE_CLIENT_EMAIL ||
+    serviceAccount?.client_email;
   
-  const privateKey = (
+  // Get private key and normalize \\n to actual newlines
+  let privateKey = 
     process.env.FIREBASE_ADMIN_PRIVATE_KEY || 
-    process.env.FIREBASE_PRIVATE_KEY
-  )?.replace(/\\n/g, '\n');
+    process.env.FIREBASE_PRIVATE_KEY ||
+    serviceAccount?.private_key;
   
+  if (privateKey) {
+    privateKey = privateKey.replace(/\\n/g, '\n');
+  }
+  
+  // Log which env vars are present (for debugging)
   const envPresence = {
     FIREBASE_ADMIN_PROJECT_ID: !!process.env.FIREBASE_ADMIN_PROJECT_ID,
     FIREBASE_PROJECT_ID: !!process.env.FIREBASE_PROJECT_ID,
+    FIREBASE_SERVICE_ACCOUNT: !!process.env.FIREBASE_SERVICE_ACCOUNT,
     VITE_FIREBASE_PROJECT_ID: !!process.env.VITE_FIREBASE_PROJECT_ID,
     FIREBASE_ADMIN_CLIENT_EMAIL: !!process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
     FIREBASE_CLIENT_EMAIL: !!process.env.FIREBASE_CLIENT_EMAIL,
     FIREBASE_ADMIN_PRIVATE_KEY: !!process.env.FIREBASE_ADMIN_PRIVATE_KEY,
     FIREBASE_PRIVATE_KEY: !!process.env.FIREBASE_PRIVATE_KEY,
+    // Resolved values (what actually matters)
+    resolvedProjectId: !!projectId,
+    resolvedClientEmail: !!clientEmail,
+    resolvedPrivateKey: !!privateKey,
+    privateKeyLength: privateKey?.length || 0,
   };
   
   return { projectId, clientEmail, privateKey, envPresence };
