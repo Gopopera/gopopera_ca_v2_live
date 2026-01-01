@@ -39,14 +39,14 @@ function buildMarketingEmailHtml(params: EmailParams): { html: string } {
   const d = density === 'compact' ? { padding: '24px', lineHeight: '1.5', gap: '12px' } : { padding: '40px', lineHeight: '1.7', gap: '20px' };
   
   let bodyHtml = (markdownBody || '')
-    .replace(/^### (.+)$/gm, '<h3 style="margin:0 0 12px;font-size:18px;font-weight:600;">$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2 style="margin:0 0 16px;font-size:22px;font-weight:700;">$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1 style="margin:0 0 20px;font-size:28px;font-weight:800;">$1</h1>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^### (.+)$/gm, `<h3 style="margin:0 0 12px;font-size:18px;font-weight:600;color:${t.text};">$1</h3>`)
+    .replace(/^## (.+)$/gm, `<h2 style="margin:0 0 16px;font-size:22px;font-weight:700;color:${t.text};">$1</h2>`)
+    .replace(/^# (.+)$/gm, `<h1 style="margin:0 0 20px;font-size:28px;font-weight:800;color:${t.text};">$1</h1>`)
+    .replace(/\*\*(.+?)\*\*/g, `<strong style="color:${t.text};">$1</strong>`)
+    .replace(/\*(.+?)\*/g, `<em style="color:${t.text};">$1</em>`)
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, `<a href="$2" style="color:${t.accent};text-decoration:underline;">$1</a>`)
-    .replace(/\n\n+/g, '</p><p style="margin:0 0 16px;line-height:1.7;">');
-  bodyHtml = `<p style="margin:0 0 16px;line-height:1.7;">${bodyHtml}</p>`;
+    .replace(/\n\n+/g, `</p><p style="margin:0 0 16px;line-height:1.7;color:${t.text};">`);
+  bodyHtml = `<p style="margin:0 0 16px;line-height:1.7;color:${t.text};">${bodyHtml}</p>`;
   
   const ctaStyle = theme === 'dark'
     ? `display:inline-block;padding:14px 32px;border:2px solid ${t.accent};color:${t.accent};text-decoration:none;border-radius:8px;font-weight:600;`

@@ -34,11 +34,11 @@ function buildMarketingEmailHtml(params: any): { html: string } {
   const d = density === 'compact' ? { padding: '24px', gap: '12px' } : { padding: '40px', gap: '20px' };
   
   let bodyHtml = (markdownBody || '')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/\*\*(.+?)\*\*/g, `<strong style="color:${t.text};">$1</strong>`)
+    .replace(/\*(.+?)\*/g, `<em style="color:${t.text};">$1</em>`)
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, `<a href="$2" style="color:${t.accent};">$1</a>`)
-    .replace(/\n\n+/g, '</p><p style="margin:0 0 16px;line-height:1.7;">');
-  bodyHtml = `<p style="margin:0 0 16px;line-height:1.7;">${bodyHtml}</p>`;
+    .replace(/\n\n+/g, `</p><p style="margin:0 0 16px;line-height:1.7;color:${t.text};">`);
+  bodyHtml = `<p style="margin:0 0 16px;line-height:1.7;color:${t.text};">${bodyHtml}</p>`;
   
   const ctaStyle = theme === 'dark'
     ? `display:inline-block;padding:14px 32px;border:2px solid ${t.accent};color:${t.accent};text-decoration:none;border-radius:8px;font-weight:600;`
@@ -53,7 +53,7 @@ ${preheader ? `<div style="display:none;">${preheader}</div>` : ''}
 <tr><td><table style="width:100%;background:${t.cardBg};border:1px solid ${t.border};border-radius:16px;"><tr><td style="padding:${d.padding};">
 ${campaignName ? `<p style="margin:0 0 8px;font-size:12px;color:${t.textMuted};">${campaignName}</p>` : ''}
 ${heroImageUrl ? `<img src="${heroImageUrl}" alt="${heroAlt || ''}" style="width:100%;border-radius:12px;margin-bottom:${d.gap};">` : ''}
-<div>${bodyHtml}</div>
+<div style="color:${t.text};">${bodyHtml}</div>
 ${ctaText && ctaUrl ? `<div style="margin-top:28px;text-align:center;"><a href="${ctaUrl}" style="${ctaStyle}">${ctaText}</a></div>` : ''}
 </td></tr></table></td></tr>
 <tr><td style="padding:32px;text-align:center;color:${t.textMuted};font-size:12px;">

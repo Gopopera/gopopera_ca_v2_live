@@ -16,20 +16,20 @@ export interface MarketingEmailParams {
   campaignName?: string;
 }
 
-// Simple markdown to HTML conversion
-function markdownToHtml(md: string): string {
+// Simple markdown to HTML conversion (color applied by wrapper, but inline for email safety)
+function markdownToHtml(md: string, textColor: string): string {
   let result = md
     // Headers
-    .replace(/^### (.+)$/gm, '<h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 600;">$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2 style="margin: 0 0 16px 0; font-size: 22px; font-weight: 700;">$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1 style="margin: 0 0 20px 0; font-size: 28px; font-weight: 800;">$1</h1>')
-    // Bold and italic
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^### (.+)$/gm, `<h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 600; color: ${textColor};">$1</h3>`)
+    .replace(/^## (.+)$/gm, `<h2 style="margin: 0 0 16px 0; font-size: 22px; font-weight: 700; color: ${textColor};">$1</h2>`)
+    .replace(/^# (.+)$/gm, `<h1 style="margin: 0 0 20px 0; font-size: 28px; font-weight: 800; color: ${textColor};">$1</h1>`)
+    // Bold and italic - with explicit color for email clients
+    .replace(/\*\*(.+?)\*\*/g, `<strong style="color: ${textColor};">$1</strong>`)
+    .replace(/\*(.+?)\*/g, `<em style="color: ${textColor};">$1</em>`)
     // Links
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color: #e35e25; text-decoration: underline;">$1</a>')
     // Bullet lists
-    .replace(/^\s*[-*]\s+(.+)$/gm, '<li style="margin-bottom: 8px;">$1</li>');
+    .replace(/^\s*[-*]\s+(.+)$/gm, `<li style="margin-bottom: 8px; color: ${textColor};">$1</li>`);
   
   // Wrap consecutive <li> items in <ul>
   result = result.replace(/(<li[^>]*>.*<\/li>\n?)+/g, (match) => {
@@ -41,7 +41,7 @@ function markdownToHtml(md: string): string {
   result = paragraphs
     .map(p => p.trim())
     .filter(p => p && !p.startsWith('<h') && !p.startsWith('<ul'))
-    .map(p => `<p style="margin: 0 0 16px 0; line-height: 1.7;">${p.replace(/\n/g, '<br>')}</p>`)
+    .map(p => `<p style="margin: 0 0 16px 0; line-height: 1.7; color: ${textColor};">${p.replace(/\n/g, '<br>')}</p>`)
     .join('');
   
   // Add back headers and lists
@@ -92,7 +92,7 @@ export function buildMarketingEmailHtml(params: MarketingEmailParams): { html: s
   const t = THEMES[theme] || THEMES.dark;
   const d = DENSITY[density] || DENSITY.normal;
   
-  const bodyHtml = markdownToHtml(markdownBody);
+  const bodyHtml = markdownToHtml(markdownBody, t.text);
   
   // CTA button style varies by theme
   const ctaButtonStyle = theme === 'dark'
