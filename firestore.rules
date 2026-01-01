@@ -278,6 +278,14 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && 
         request.auth.token.email == 'eatezca@gmail.com';
     }
+    
+    // Rate limits collection - server-only (admin SDK bypasses rules)
+    // This is used by server-side functions for rate limiting imports
+    // Client should never access this directly
+    match /rate_limits/{docId} {
+      allow read: if false;
+      allow write: if false;
+    }
   }
 }
 

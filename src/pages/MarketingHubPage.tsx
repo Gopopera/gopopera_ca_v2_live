@@ -187,6 +187,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
   });
   const [importResult, setImportResult] = useState<{
     success: boolean;
+    error?: string;
     created: number;
     scanned: number;
     skippedNoWebsite: number;
@@ -561,10 +562,36 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
         setImportResult(result);
         showNotification('success', `Import complete: ${result.created} leads created`);
       } else {
-        throw new Error(result.error || 'Import failed');
+        // Show error in modal instead of just toast
+        setImportResult({
+          success: false,
+          error: result.error || 'Import failed',
+          created: 0,
+          scanned: 0,
+          skippedNoWebsite: 0,
+          skippedNoEmail: 0,
+          skippedDedupe: 0,
+          skippedCached: 0,
+          stoppedReason: 'error',
+          report: [],
+        });
+        showNotification('error', result.error || 'Import failed');
       }
     } catch (error: any) {
       console.error('[MarketingHub] Import error:', error);
+      // Show error in modal
+      setImportResult({
+        success: false,
+        error: error.message || 'Import failed',
+        created: 0,
+        scanned: 0,
+        skippedNoWebsite: 0,
+        skippedNoEmail: 0,
+        skippedDedupe: 0,
+        skippedCached: 0,
+        stoppedReason: 'error',
+        report: [],
+      });
       showNotification('error', error.message || 'Import failed');
     } finally {
       setImportRunning(false);
@@ -929,7 +956,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       
       {/* Template Editor Modal */}
       {showTemplateModal && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowTemplateModal(false)}>
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setShowTemplateModal(false); }}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-gray-100">
               <h2 className="text-xl font-bold text-[#15383c]">
@@ -1028,7 +1055,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       
       {/* Lead Detail Modal */}
       {showLeadModal && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowLeadModal(false)}>
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setShowLeadModal(false); }}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-gray-100">
               <h2 className="text-xl font-bold text-[#15383c]">
@@ -1165,7 +1192,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       
       {/* Import Leads Modal */}
       {showImportModal && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => !importRunning && setShowImportModal(false)}>
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget && !importRunning) setShowImportModal(false); }}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-gray-100">
               <h2 className="text-xl font-bold text-[#15383c]">Import Leads (with emails)</h2>
@@ -1253,69 +1280,83 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                 </>
               ) : (
                 <>
-                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                    <h3 className="font-semibold text-green-800 mb-2">Import Complete</h3>
-                    <div className="grid grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <span className="text-green-700 font-medium">{importResult.created}</span>
-                        <span className="text-gray-600 ml-1">Created</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600 font-medium">{importResult.scanned}</span>
-                        <span className="text-gray-600 ml-1">Scanned</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500 font-medium">{importResult.skippedNoEmail}</span>
-                        <span className="text-gray-600 ml-1">No Email</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500 font-medium">{importResult.skippedNoWebsite}</span>
-                        <span className="text-gray-600 ml-1">No Website</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500 font-medium">{importResult.skippedDedupe}</span>
-                        <span className="text-gray-600 ml-1">Duplicates</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500 font-medium">{importResult.skippedCached}</span>
-                        <span className="text-gray-600 ml-1">Cached</span>
-                      </div>
+                  {/* Error State */}
+                  {!importResult.success && importResult.error ? (
+                    <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                      <h3 className="font-semibold text-red-800 mb-2 flex items-center gap-2">
+                        <AlertTriangle size={18} />
+                        Import Failed
+                      </h3>
+                      <p className="text-red-700 text-sm">{importResult.error}</p>
                     </div>
-                    <p className="text-sm text-gray-500 mt-2">Stopped: {importResult.stoppedReason.replace(/_/g, ' ')}</p>
-                  </div>
-                  
-                  {importResult.report.length > 0 && (
-                    <div>
-                      <h4 className="font-medium text-gray-700 mb-2">Report ({importResult.report.length} entries)</h4>
-                      <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg">
-                        <table className="w-full text-sm">
-                          <thead className="bg-gray-50 sticky top-0">
-                            <tr>
-                              <th className="text-left px-3 py-2 font-medium text-gray-600">Name</th>
-                              <th className="text-left px-3 py-2 font-medium text-gray-600">Outcome</th>
-                              <th className="text-left px-3 py-2 font-medium text-gray-600">Email</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100">
-                            {importResult.report.slice(0, 100).map((item, i) => (
-                              <tr key={i} className={item.outcome === 'CREATED' ? 'bg-green-50' : ''}>
-                                <td className="px-3 py-2 text-gray-800 max-w-[200px] truncate">{item.name}</td>
-                                <td className="px-3 py-2">
-                                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                    item.outcome === 'CREATED' ? 'bg-green-100 text-green-700' :
-                                    item.outcome === 'NO_EMAIL' ? 'bg-yellow-100 text-yellow-700' :
-                                    item.outcome === 'NO_WEBSITE' ? 'bg-gray-100 text-gray-600' :
-                                    item.outcome === 'DUPLICATE' ? 'bg-blue-100 text-blue-700' :
-                                    'bg-gray-100 text-gray-600'
-                                  }`}>{item.outcome}</span>
-                                </td>
-                                <td className="px-3 py-2 text-gray-600 max-w-[200px] truncate">{item.email || '—'}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                  ) : (
+                    /* Success State */
+                    <>
+                      <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                        <h3 className="font-semibold text-green-800 mb-2">Import Complete</h3>
+                        <div className="grid grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <span className="text-green-700 font-medium">{importResult.created}</span>
+                            <span className="text-gray-600 ml-1">Created</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600 font-medium">{importResult.scanned}</span>
+                            <span className="text-gray-600 ml-1">Scanned</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 font-medium">{importResult.skippedNoEmail}</span>
+                            <span className="text-gray-600 ml-1">No Email</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 font-medium">{importResult.skippedNoWebsite}</span>
+                            <span className="text-gray-600 ml-1">No Website</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 font-medium">{importResult.skippedDedupe}</span>
+                            <span className="text-gray-600 ml-1">Duplicates</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 font-medium">{importResult.skippedCached}</span>
+                            <span className="text-gray-600 ml-1">Cached</span>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-500 mt-2">Stopped: {importResult.stoppedReason.replace(/_/g, ' ')}</p>
                       </div>
-                    </div>
+                    
+                      {importResult.report.length > 0 && (
+                        <div>
+                          <h4 className="font-medium text-gray-700 mb-2">Report ({importResult.report.length} entries)</h4>
+                          <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg">
+                            <table className="w-full text-sm">
+                              <thead className="bg-gray-50 sticky top-0">
+                                <tr>
+                                  <th className="text-left px-3 py-2 font-medium text-gray-600">Name</th>
+                                  <th className="text-left px-3 py-2 font-medium text-gray-600">Outcome</th>
+                                  <th className="text-left px-3 py-2 font-medium text-gray-600">Email</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                {importResult.report.slice(0, 100).map((item, i) => (
+                                  <tr key={i} className={item.outcome === 'CREATED' ? 'bg-green-50' : ''}>
+                                    <td className="px-3 py-2 text-gray-800 max-w-[200px] truncate">{item.name}</td>
+                                    <td className="px-3 py-2">
+                                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                        item.outcome === 'CREATED' ? 'bg-green-100 text-green-700' :
+                                        item.outcome === 'NO_EMAIL' ? 'bg-yellow-100 text-yellow-700' :
+                                        item.outcome === 'NO_WEBSITE' ? 'bg-gray-100 text-gray-600' :
+                                        item.outcome === 'DUPLICATE' ? 'bg-blue-100 text-blue-700' :
+                                        'bg-gray-100 text-gray-600'
+                                      }`}>{item.outcome}</span>
+                                    </td>
+                                    <td className="px-3 py-2 text-gray-600 max-w-[200px] truncate">{item.email || '—'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </>
               )}

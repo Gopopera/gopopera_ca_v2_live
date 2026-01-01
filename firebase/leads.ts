@@ -189,14 +189,17 @@ export interface ListLeadsFilters {
   limit?: number;
 }
 
+// Debug logging flag - set to true to enable verbose logs
+const DEBUG_LEADS = typeof window !== 'undefined' && localStorage.getItem('DEBUG_LEADS') === 'true';
+
 /**
  * List leads with optional filters
  */
 export async function listLeads(filters: ListLeadsFilters = {}): Promise<Lead[]> {
-  console.log('[LEADS] listLeads called with filters:', filters);
+  if (DEBUG_LEADS) console.log('[LEADS] listLeads called with filters:', filters);
   
   const db = getDbSafe();
-  console.log('[LEADS] Firestore DB instance:', db ? 'OK' : 'NULL');
+  if (DEBUG_LEADS) console.log('[LEADS] Firestore DB instance:', db ? 'OK' : 'NULL');
   
   if (!db) {
     console.error('[LEADS] Firestore not initialized');
@@ -205,7 +208,6 @@ export async function listLeads(filters: ListLeadsFilters = {}): Promise<Lead[]>
 
   try {
     const leadsCol = collection(db, 'leads');
-    console.log('[LEADS] Collection reference created');
     
     // Build query constraints
     // Note: Firestore has limitations on compound queries, so we may need to filter client-side
@@ -213,13 +215,13 @@ export async function listLeads(filters: ListLeadsFilters = {}): Promise<Lead[]>
     
     // Add category filter if specified
     if (filters.categoryKey) {
-      console.log('[LEADS] Adding categoryKey filter:', filters.categoryKey);
+      if (DEBUG_LEADS) console.log('[LEADS] Adding categoryKey filter:', filters.categoryKey);
       q = query(leadsCol, where('categoryKey', '==', filters.categoryKey), orderBy('updatedAt', 'desc'));
     }
     
     // Add status filter if specified (can combine with category)
     if (filters.status && !filters.categoryKey) {
-      console.log('[LEADS] Adding status filter:', filters.status);
+      if (DEBUG_LEADS) console.log('[LEADS] Adding status filter:', filters.status);
       q = query(leadsCol, where('status', '==', filters.status), orderBy('updatedAt', 'desc'));
     }
     
@@ -228,16 +230,13 @@ export async function listLeads(filters: ListLeadsFilters = {}): Promise<Lead[]>
       q = query(q, firestoreLimit(filters.limit));
     }
 
-    console.log('[LEADS] Executing query...');
     const snapshot = await getDocs(q);
-    console.log('[LEADS] Query returned', snapshot.size, 'documents');
+    if (DEBUG_LEADS) console.log('[LEADS] Query returned', snapshot.size, 'documents');
     
     let leads = snapshot.docs.map(docSnap => ({
       id: docSnap.id,
       ...docSnap.data()
     } as Lead));
-    
-    console.log('[LEADS] Mapped leads:', leads.length);
 
     // Client-side filtering for fields that can't be combined in Firestore query
     if (filters.status && filters.categoryKey) {
@@ -265,12 +264,10 @@ export async function listLeads(filters: ListLeadsFilters = {}): Promise<Lead[]>
       );
     }
 
-    console.log('[LEADS] Returning', leads.length, 'leads after filtering');
+    if (DEBUG_LEADS) console.log('[LEADS] Returning', leads.length, 'leads after filtering');
     return leads;
   } catch (error: any) {
-    console.error('[LEADS] Error listing leads:', error);
-    console.error('[LEADS] Error code:', error?.code);
-    console.error('[LEADS] Error message:', error?.message);
+    console.error('[LEADS] Error listing leads:', error?.code, error?.message);
     return [];
   }
 }

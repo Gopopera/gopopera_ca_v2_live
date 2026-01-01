@@ -58,25 +58,36 @@ const corsHeaders = {
 };
 
 // Rate limiting: 1 import per minute per admin
-const importRateLimit = new Map<string, number>();
 const RATE_LIMIT_MS = 60000; // 1 minute
 
 // Scan cache TTL (30 days in ms)
 const SCAN_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 /**
- * Check and update rate limit
+ * Check and update rate limit using Firestore (persistent across cold starts)
  */
-function checkRateLimit(adminEmail: string): boolean {
+async function checkRateLimit(db: FirebaseFirestore.Firestore, adminEmail: string): Promise<boolean> {
   const now = Date.now();
-  const lastImport = importRateLimit.get(adminEmail);
+  const rateLimitDocId = `import_${adminEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
   
-  if (lastImport && now - lastImport < RATE_LIMIT_MS) {
-    return false;
+  try {
+    const docRef = db.collection('rate_limits').doc(rateLimitDocId);
+    const doc = await docRef.get();
+    
+    if (doc.exists) {
+      const data = doc.data() as { lastImportAt?: number };
+      if (data.lastImportAt && now - data.lastImportAt < RATE_LIMIT_MS) {
+        return false;
+      }
+    }
+    
+    // Update the rate limit timestamp
+    await docRef.set({ lastImportAt: now, adminEmail }, { merge: true });
+    return true;
+  } catch (error) {
+    console.warn('[import] Rate limit check failed, allowing request:', error);
+    return true; // Allow on error to not block functionality
   }
-  
-  importRateLimit.set(adminEmail, now);
-  return true;
 }
 
 /**
@@ -380,12 +391,6 @@ export default async function handler(
 
   const adminEmail = authResult.email;
 
-  // Rate limit check
-  if (!checkRateLimit(adminEmail)) {
-    res.status(429).json({ success: false, error: 'Rate limited: max 1 import per minute' });
-    return;
-  }
-
   // Check API key
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
   if (!apiKey) {
@@ -399,6 +404,13 @@ export default async function handler(
   if (!db) {
     console.error('[import] Firestore not initialized');
     res.status(500).json({ success: false, error: 'Database not available' });
+    return;
+  }
+
+  // Rate limit check (using Firestore for persistence)
+  const rateLimitOk = await checkRateLimit(db, adminEmail);
+  if (!rateLimitOk) {
+    res.status(429).json({ success: false, error: 'Rate limited: max 1 import per minute' });
     return;
   }
 
@@ -481,7 +493,7 @@ export default async function handler(
               phone: details.phone,
               email: cached.email,
               emailSourceUrl: cached.emailSourceUrl,
-              emailConfidence: 'high',
+              emailConfidence: (cached as any).confidence || 'high', // Use cached confidence
               rating: candidate.rating,
               reviewCount: candidate.userRatingCount,
               placeId: candidate.placeId,
@@ -562,6 +574,7 @@ export default async function handler(
           result: 'email_found',
           email: emailResult.email,
           emailSourceUrl: emailResult.emailSourceUrl,
+          confidence: emailResult.confidence,
         });
       } catch {}
 
