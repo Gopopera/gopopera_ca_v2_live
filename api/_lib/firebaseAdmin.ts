@@ -175,6 +175,61 @@ export function getAdminFirestore(): Firestore | null {
 }
 
 /**
+ * Diagnostic interface for key validation
+ */
+export interface KeyDiagnostics {
+  hasProjectId: boolean;
+  hasClientEmail: boolean;
+  hasPrivateKey: boolean;
+  privateKeyLength: number;
+  newlineCount: number;
+  startsWithBegin: boolean;
+  endsWithEnd: boolean;
+  cryptoParseOk: boolean;
+  cryptoParseError?: string;
+}
+
+/**
+ * Get diagnostics for the Firebase Admin private key
+ * Uses crypto.createPrivateKey to validate the key can be parsed
+ */
+export function getAdminKeyDiagnostics(): KeyDiagnostics {
+  const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL || process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKeyRaw = process.env.FIREBASE_ADMIN_PRIVATE_KEY || process.env.FIREBASE_PRIVATE_KEY;
+
+  const normalizedKey = privateKeyRaw ? normalizePrivateKey(privateKeyRaw) : '';
+
+  const diagnostics: KeyDiagnostics = {
+    hasProjectId: !!projectId,
+    hasClientEmail: !!clientEmail,
+    hasPrivateKey: !!privateKeyRaw,
+    privateKeyLength: normalizedKey.length,
+    newlineCount: (normalizedKey.match(/\n/g) || []).length,
+    startsWithBegin: normalizedKey.includes('-----BEGIN PRIVATE KEY-----'),
+    endsWithEnd: normalizedKey.includes('-----END PRIVATE KEY-----'),
+    cryptoParseOk: false,
+  };
+
+  if (!normalizedKey) {
+    diagnostics.cryptoParseError = 'No private key provided';
+    return diagnostics;
+  }
+
+  // Try to parse the key with Node.js crypto
+  try {
+    const crypto = require('crypto');
+    crypto.createPrivateKey(normalizedKey);
+    diagnostics.cryptoParseOk = true;
+  } catch (e: any) {
+    diagnostics.cryptoParseOk = false;
+    diagnostics.cryptoParseError = e?.message || 'Unknown crypto error';
+  }
+
+  return diagnostics;
+}
+
+/**
  * Decode JWT payload without verification (for debugging)
  */
 function decodeJwtPayload(token: string): { email?: string; aud?: string; iss?: string } | null {
