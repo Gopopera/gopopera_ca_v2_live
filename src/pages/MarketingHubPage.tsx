@@ -794,7 +794,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     const website = row['website'] || row['url'] || row['site'] || row['web'] || '';
     const address = row['address'] || row['street'] || row['adresse'] || '';
     
-    // Skip if no business name or email
+    // Skip if no business name or email (city is now optional)
     if (!businessName || !email || !email.includes('@')) {
       return null;
     }
@@ -802,7 +802,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     return {
       businessName: businessName.trim(),
       email: email.toLowerCase().trim(),
-      city: city.trim(),
+      city: city.trim() || 'Unknown', // Default to 'Unknown' if not provided
       phone: phone.trim() || undefined,
       website: website.trim() || undefined,
       address: address.trim() || undefined,
@@ -1917,7 +1917,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                         {csvFile ? csvFile.name : 'Click to select CSV file'}
                       </p>
                       <p className="text-xs text-gray-400 mt-1">
-                        Required columns: businessName/name, email, city
+                        Required: name + email (city, phone, website optional)
                       </p>
                     </label>
                   </div>
