@@ -732,9 +732,30 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     const lines = text.trim().split('\n');
     if (lines.length < 2) return [];
     
-    // Parse header row
+    // Helper function to parse a CSV line (handles quoted values)
+    const parseLine = (line: string): string[] => {
+      const values: string[] = [];
+      let current = '';
+      let inQuotes = false;
+      
+      for (let j = 0; j < line.length; j++) {
+        const char = line[j];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          values.push(current.trim().replace(/^["']|["']$/g, ''));
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      values.push(current.trim().replace(/^["']|["']$/g, ''));
+      return values;
+    };
+    
+    // Parse header row with quote-aware logic
     const headerLine = lines[0];
-    const headers = headerLine.split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
+    const headers = parseLine(headerLine).map(h => h.toLowerCase());
     // #region agent log
     console.log('[DEBUG-H1] CSV headers parsed:', { headerCount: headers.length, headers: headers.slice(0, 25), lineCount: lines.length });
     // #endregion
@@ -745,23 +766,8 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       const line = lines[i].trim();
       if (!line) continue;
       
-      // Simple CSV parsing (handles quoted values)
-      const values: string[] = [];
-      let current = '';
-      let inQuotes = false;
-      
-      for (let j = 0; j < line.length; j++) {
-        const char = line[j];
-        if (char === '"') {
-          inQuotes = !inQuotes;
-        } else if (char === ',' && !inQuotes) {
-          values.push(current.trim());
-          current = '';
-        } else {
-          current += char;
-        }
-      }
-      values.push(current.trim());
+      // Parse line with quote-aware logic
+      const values = parseLine(line);
       
       // Map values to headers
       const row: Record<string, string> = {};
@@ -842,8 +848,20 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     address?: string;
   } | null => {
     mapCsvRowCallCount++;
+    
     // SMART EMAIL DETECTION - find any column containing "email" or "mail"
-    const email = findColumnValue(row, ['email', 'e-mail', 'mail', 'e-mail 1 - value', 'email address', 'primary email', 'work email', 'personal email']);
+    let email = findColumnValue(row, ['email', 'e-mail', 'mail', 'e-mail 1 - value', 'email address', 'primary email', 'work email', 'personal email']);
+    
+    // FALLBACK: If no email found via patterns, scan ALL values for @ symbol
+    if (!email || !email.includes('@')) {
+      const allValues = Object.values(row);
+      for (const val of allValues) {
+        if (val && typeof val === 'string' && val.includes('@') && val.includes('.')) {
+          email = val.trim();
+          break;
+        }
+      }
+    }
     
     // #region agent log
     if (mapCsvRowCallCount <= 3) {
