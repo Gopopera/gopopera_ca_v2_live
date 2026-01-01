@@ -8,7 +8,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { verifyAdminToken, getAdminFirestore } from '../_lib/firebaseAdmin.js';
 
-export const config = { runtime: 'nodejs' };
+export const config = { 
+  runtime: 'nodejs',
+  maxDuration: 300,  // 5 minutes - handles up to ~500 recipients at 600ms each
+};
 
 // Resend rate limit: 2 emails/second on free plan
 // Send one at a time with 600ms delay to stay safely under limit
