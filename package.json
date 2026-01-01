@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "check-secrets": "! grep -rn 'AIza' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.json' --exclude-dir=node_modules --exclude-dir=dist . || (echo '⚠️  Found potential API key leak!' && exit 1)"
+    "check-secrets": "! grep -rn 'AIza' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.json' --exclude-dir=node_modules --exclude-dir=dist . || (echo '⚠️  Found potential API key leak!' && exit 1)",
+    "encode:firebase:key": "node scripts/encode-firebase-private-key.mjs"
   },
   "dependencies": {
     "@react-google-maps/api": "^2.20.7",
