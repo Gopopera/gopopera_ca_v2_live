@@ -600,6 +600,74 @@ export async function checkDuplicatePlaceId(placeId: string): Promise<Lead | nul
 }
 
 /**
+ * Check if a lead with the same email already exists (for CSV import deduplication)
+ */
+export async function checkDuplicateEmail(email: string): Promise<Lead | null> {
+  const db = getDbSafe();
+  if (!db || !email) return null;
+
+  try {
+    const leadsCol = collection(db, 'leads');
+    const normalizedEmail = email.toLowerCase().trim();
+    const q = query(leadsCol, where('email', '==', normalizedEmail), firestoreLimit(1));
+    const snapshot = await getDocs(q);
+    
+    if (snapshot.empty) return null;
+    
+    return {
+      id: snapshot.docs[0].id,
+      ...snapshot.docs[0].data()
+    } as Lead;
+  } catch (error: any) {
+    console.error('[LEADS] Error checking email duplicate:', error);
+    return null;
+  }
+}
+
+/**
+ * Check multiple emails for duplicates (batch check for CSV import)
+ * Returns a Set of emails that already exist in the database
+ */
+export async function getExistingEmails(emails: string[]): Promise<Set<string>> {
+  const db = getDbSafe();
+  const existingEmails = new Set<string>();
+  
+  if (!db || emails.length === 0) return existingEmails;
+
+  try {
+    // Normalize all emails
+    const normalizedEmails = emails
+      .filter(e => e && e.includes('@'))
+      .map(e => e.toLowerCase().trim());
+    
+    // Firestore 'in' queries are limited to 30 items
+    // We need to batch the queries
+    const batchSize = 30;
+    const leadsCol = collection(db, 'leads');
+    
+    for (let i = 0; i < normalizedEmails.length; i += batchSize) {
+      const batch = normalizedEmails.slice(i, i + batchSize);
+      if (batch.length === 0) continue;
+      
+      const q = query(leadsCol, where('email', 'in', batch));
+      const snapshot = await getDocs(q);
+      
+      snapshot.docs.forEach(doc => {
+        const email = doc.data().email;
+        if (email) {
+          existingEmails.add(email.toLowerCase().trim());
+        }
+      });
+    }
+    
+    return existingEmails;
+  } catch (error: any) {
+    console.error('[LEADS] Error checking email duplicates:', error);
+    return existingEmails;
+  }
+}
+
+/**
  * Get lead counts by status (for dashboard)
  */
 export async function getLeadCountsByStatus(): Promise<Record<LeadStatus, number>> {

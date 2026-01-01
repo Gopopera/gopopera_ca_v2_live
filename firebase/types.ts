@@ -322,7 +322,7 @@ export interface Lead {
   igHandle?: string;               // Instagram handle
   status: LeadStatus;              // Pipeline status
   notes?: string;                  // Internal notes
-  source: 'manual' | 'places_api'; // How the lead was added
+  source: 'manual' | 'places_api' | 'csv_import'; // How the lead was added
   importedAt: number;              // When lead was imported/created
   lastContactedAt?: number;        // Last outreach timestamp
   nextFollowUpAt?: number;         // Scheduled follow-up date

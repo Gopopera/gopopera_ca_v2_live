@@ -13,7 +13,7 @@ import {
   ChevronLeft, Send, Eye, Save, Copy, Mail, AlertTriangle, CheckCircle, 
   Loader2, Smartphone, Plus, Trash2, Edit3, X, Users, FileText, 
   Building2, MapPin, Phone, Globe, Instagram, MessageSquare, Clock,
-  Filter, Search, ChevronDown, ExternalLink, StickyNote
+  Filter, Search, ChevronDown, ExternalLink, StickyNote, Upload
 } from 'lucide-react';
 import { getDbSafe } from '../lib/firebase';
 import { collection, addDoc, getDocs, query, orderBy, limit, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -29,6 +29,7 @@ import {
   bulkUpdateLeadStatus,
   addLeadNote,
   getLeadActivities,
+  getExistingEmails,
   type ListLeadsFilters
 } from '../../firebase/leads';
 import type { OutreachTemplate, Lead, LeadActivity, LeadStatus } from '../../firebase/types';
@@ -220,6 +221,28 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       outcome: 'sent' | 'failed' | 'skipped';
       reason?: string;
     }>;
+  } | null>(null);
+  
+  // CSV Import state
+  const [showCsvImportModal, setShowCsvImportModal] = useState(false);
+  const [csvImporting, setCsvImporting] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvParsedData, setCsvParsedData] = useState<Array<{
+    businessName: string;
+    email: string;
+    city: string;
+    phone?: string;
+    website?: string;
+    address?: string;
+  }>>([]);
+  const [csvCategoryKey, setCsvCategoryKey] = useState('restaurant');
+  const [csvLeadType, setCsvLeadType] = useState('');
+  const [csvDuplicateEmails, setCsvDuplicateEmails] = useState<Set<string>>(new Set());
+  const [csvImportResult, setCsvImportResult] = useState<{
+    success: boolean;
+    created: number;
+    skipped: number;
+    failed: number;
   } | null>(null);
   
   // Build email params
@@ -702,6 +725,189 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     } finally {
       setSendingOutreach(false);
     }
+  };
+  
+  // CSV Import: Parse CSV file
+  const parseCSV = (text: string): Array<Record<string, string>> => {
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) return [];
+    
+    // Parse header row
+    const headerLine = lines[0];
+    const headers = headerLine.split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
+    
+    // Parse data rows
+    const rows: Array<Record<string, string>> = [];
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      
+      // Simple CSV parsing (handles quoted values)
+      const values: string[] = [];
+      let current = '';
+      let inQuotes = false;
+      
+      for (let j = 0; j < line.length; j++) {
+        const char = line[j];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          values.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      values.push(current.trim());
+      
+      // Map values to headers
+      const row: Record<string, string> = {};
+      headers.forEach((header, idx) => {
+        row[header] = values[idx] || '';
+      });
+      rows.push(row);
+    }
+    
+    return rows;
+  };
+  
+  // CSV Import: Map column names to standard fields
+  const mapCsvRow = (row: Record<string, string>): {
+    businessName: string;
+    email: string;
+    city: string;
+    phone?: string;
+    website?: string;
+    address?: string;
+  } | null => {
+    // Try to find business name
+    const businessName = row['businessname'] || row['business_name'] || row['name'] || row['company'] || row['business'] || '';
+    
+    // Try to find email
+    const email = row['email'] || row['contact_email'] || row['e-mail'] || row['mail'] || '';
+    
+    // Try to find city
+    const city = row['city'] || row['location'] || row['ville'] || '';
+    
+    // Optional fields
+    const phone = row['phone'] || row['telephone'] || row['tel'] || row['phone_number'] || '';
+    const website = row['website'] || row['url'] || row['site'] || row['web'] || '';
+    const address = row['address'] || row['street'] || row['adresse'] || '';
+    
+    // Skip if no business name or email
+    if (!businessName || !email || !email.includes('@')) {
+      return null;
+    }
+    
+    return {
+      businessName: businessName.trim(),
+      email: email.toLowerCase().trim(),
+      city: city.trim(),
+      phone: phone.trim() || undefined,
+      website: website.trim() || undefined,
+      address: address.trim() || undefined,
+    };
+  };
+  
+  // CSV Import: Handle file selection
+  const handleCsvFileSelect = async (file: File) => {
+    setCsvFile(file);
+    setCsvImportResult(null);
+    
+    try {
+      const text = await file.text();
+      const rows = parseCSV(text);
+      
+      // Map and filter rows
+      const mapped = rows
+        .map(mapCsvRow)
+        .filter((r): r is NonNullable<typeof r> => r !== null);
+      
+      setCsvParsedData(mapped);
+      
+      // Check for duplicates
+      if (mapped.length > 0) {
+        const emails = mapped.map(r => r.email);
+        const existing = await getExistingEmails(emails);
+        setCsvDuplicateEmails(existing);
+      }
+    } catch (error) {
+      console.error('Error parsing CSV:', error);
+      showNotification('error', 'Failed to parse CSV file');
+    }
+  };
+  
+  // CSV Import: Handle import
+  const handleCsvImport = async () => {
+    if (csvParsedData.length === 0) {
+      showNotification('error', 'No valid data to import');
+      return;
+    }
+    if (!csvCategoryKey) {
+      showNotification('error', 'Please select a category');
+      return;
+    }
+    
+    setCsvImporting(true);
+    setCsvImportResult(null);
+    
+    let created = 0;
+    let skipped = 0;
+    let failed = 0;
+    
+    try {
+      const now = Date.now();
+      
+      for (const row of csvParsedData) {
+        // Skip duplicates
+        if (csvDuplicateEmails.has(row.email.toLowerCase())) {
+          skipped++;
+          continue;
+        }
+        
+        try {
+          await createLead({
+            businessName: row.businessName,
+            email: row.email,
+            city: row.city || 'Unknown',
+            phone: row.phone,
+            website: row.website,
+            address: row.address,
+            categoryKey: csvCategoryKey,
+            leadType: csvLeadType || csvCategoryKey,
+            status: 'new',
+            source: 'csv_import',
+            notes: '',
+          }, user?.email || 'admin');
+          created++;
+        } catch (err) {
+          console.error('Failed to create lead:', err);
+          failed++;
+        }
+      }
+      
+      setCsvImportResult({ success: true, created, skipped, failed });
+      showNotification('success', `Imported ${created} leads (${skipped} duplicates skipped)`);
+      
+      // Reload leads list
+      loadLeads();
+      
+    } catch (error: any) {
+      console.error('CSV import error:', error);
+      showNotification('error', error.message || 'Import failed');
+    } finally {
+      setCsvImporting(false);
+    }
+  };
+  
+  // CSV Import: Reset modal
+  const resetCsvImport = () => {
+    setCsvFile(null);
+    setCsvParsedData([]);
+    setCsvDuplicateEmails(new Set());
+    setCsvImportResult(null);
+    setCsvCategoryKey('restaurant');
+    setCsvLeadType('');
   };
   
   // Show notification
@@ -1678,6 +1884,194 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
           </div>
         </div>
       )}
+      
+      {/* CSV Import Modal */}
+      {showCsvImportModal && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget && !csvImporting) setShowCsvImportModal(false); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <h2 className="text-xl font-bold text-[#15383c]">Import Leads from CSV</h2>
+              <button onClick={() => !csvImporting && setShowCsvImportModal(false)} disabled={csvImporting} className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-auto p-4 space-y-4">
+              {!csvImportResult ? (
+                <>
+                  {/* File upload area */}
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleCsvFileSelect(file);
+                      }}
+                      className="hidden"
+                      id="csv-file-input"
+                    />
+                    <label htmlFor="csv-file-input" className="cursor-pointer">
+                      <Upload size={32} className="mx-auto mb-2 text-gray-400" />
+                      <p className="text-gray-600">
+                        {csvFile ? csvFile.name : 'Click to select CSV file'}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Required columns: businessName/name, email, city
+                      </p>
+                    </label>
+                  </div>
+                  
+                  {/* Category and Lead Type */}
+                  {csvParsedData.length > 0 && (
+                    <>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+                          <select
+                            value={csvCategoryKey}
+                            onChange={e => setCsvCategoryKey(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                          >
+                            <option value="restaurant">Restaurant</option>
+                            <option value="yoga_studio">Yoga Studio</option>
+                            <option value="fitness">Fitness</option>
+                            <option value="wellness">Wellness</option>
+                            <option value="cafe">Café</option>
+                            <option value="bar">Bar</option>
+                            <option value="retail">Retail</option>
+                            <option value="other">Other</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Lead Type (optional)</label>
+                          <input
+                            type="text"
+                            value={csvLeadType}
+                            onChange={e => setCsvLeadType(e.target.value)}
+                            placeholder="e.g., fine_dining, hot_yoga"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Preview summary */}
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <p className="text-blue-700 font-medium">
+                          {csvParsedData.length} leads parsed
+                          {csvDuplicateEmails.size > 0 && (
+                            <span className="text-blue-500 font-normal ml-2">
+                              ({csvDuplicateEmails.size} duplicates will be skipped)
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-blue-600 text-sm mt-1">
+                          {csvParsedData.length - csvDuplicateEmails.size} new leads will be imported
+                        </p>
+                      </div>
+                      
+                      {/* Preview table */}
+                      <div className="max-h-48 overflow-auto border border-gray-200 rounded-lg">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 sticky top-0">
+                            <tr>
+                              <th className="text-left px-3 py-2">Business</th>
+                              <th className="text-left px-3 py-2">Email</th>
+                              <th className="text-left px-3 py-2">City</th>
+                              <th className="text-left px-3 py-2">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {csvParsedData.slice(0, 10).map((row, i) => (
+                              <tr key={i} className="hover:bg-gray-50">
+                                <td className="px-3 py-2">{row.businessName}</td>
+                                <td className="px-3 py-2 text-gray-500">{row.email}</td>
+                                <td className="px-3 py-2 text-gray-500">{row.city || '—'}</td>
+                                <td className="px-3 py-2">
+                                  {csvDuplicateEmails.has(row.email.toLowerCase()) ? (
+                                    <span className="text-xs text-orange-600">Duplicate</span>
+                                  ) : (
+                                    <span className="text-xs text-green-600">New</span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        {csvParsedData.length > 10 && (
+                          <p className="text-center py-2 text-xs text-gray-500">
+                            ...and {csvParsedData.length - 10} more
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </>
+              ) : (
+                // Results
+                <div className="space-y-4">
+                  <div className="p-4 rounded-lg bg-green-50 border border-green-200">
+                    <p className="font-semibold text-lg mb-2">✅ Import Complete</p>
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      <div>
+                        <p className="text-2xl font-bold text-green-600">{csvImportResult.created}</p>
+                        <p className="text-xs text-gray-600">Created</p>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-gray-500">{csvImportResult.skipped}</p>
+                        <p className="text-xs text-gray-600">Skipped (duplicates)</p>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-red-600">{csvImportResult.failed}</p>
+                        <p className="text-xs text-gray-600">Failed</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Footer */}
+            <div className="p-4 border-t border-gray-100 flex justify-end gap-3">
+              {!csvImportResult ? (
+                <>
+                  <button 
+                    onClick={() => setShowCsvImportModal(false)}
+                    disabled={csvImporting}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleCsvImport}
+                    disabled={csvImporting || csvParsedData.length === 0}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {csvImporting ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Importing...
+                      </>
+                    ) : (
+                      <>
+                        <Upload size={16} />
+                        Import {csvParsedData.length - csvDuplicateEmails.size} Leads
+                      </>
+                    )}
+                  </button>
+                </>
+              ) : (
+                <button 
+                  onClick={() => setShowCsvImportModal(false)}
+                  className="px-4 py-2 bg-[#15383c] text-white rounded-lg hover:bg-[#0e2628]"
+                >
+                  Close
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Header */}
@@ -2131,7 +2525,14 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                 className="flex items-center gap-2 px-4 py-2 border border-[#15383c] text-[#15383c] rounded-lg hover:bg-[#15383c] hover:text-white"
               >
                 <Users size={16} />
-                Import (emails)
+                Import (API)
+              </button>
+              <button
+                onClick={() => { resetCsvImport(); setShowCsvImportModal(true); }}
+                className="flex items-center gap-2 px-4 py-2 border border-green-600 text-green-600 rounded-lg hover:bg-green-600 hover:text-white"
+              >
+                <Upload size={16} />
+                Import CSV
               </button>
               <button
                 onClick={() => handleOpenLeadModal()}
