@@ -204,15 +204,15 @@ service cloud.firestore {
     // Marketing campaigns - admin only (eatezca@gmail.com)
     // Client-side can create/update drafts, but bulk sending is server-side only
     match /marketing_campaigns/{campaignId} {
-      // Only allow access if user email is the admin
+      // Only allow access if user email is the admin (case-insensitive)
       allow read: if isAuthenticated() && 
-        request.auth.token.email == 'eatezca@gmail.com';
+        request.auth.token.email.lower() == 'eatezca@gmail.com';
       allow create: if isAuthenticated() && 
-        request.auth.token.email == 'eatezca@gmail.com';
+        request.auth.token.email.lower() == 'eatezca@gmail.com';
       allow update: if isAuthenticated() && 
-        request.auth.token.email == 'eatezca@gmail.com';
+        request.auth.token.email.lower() == 'eatezca@gmail.com';
       allow delete: if isAuthenticated() && 
-        request.auth.token.email == 'eatezca@gmail.com';
+        request.auth.token.email.lower() == 'eatezca@gmail.com';
     }
     
     // Marketing campaign logs - server-side only (via Admin SDK)
@@ -232,36 +232,32 @@ service cloud.firestore {
     // Admin only (eatezca@gmail.com)
     // ============================================
     
+    // Helper function for case-insensitive admin check
+    function isAdmin() {
+      return isAuthenticated() && 
+        request.auth.token.email.lower() == 'eatezca@gmail.com';
+    }
+    
     // Outreach templates - admin only
     match /outreach_templates/{templateId} {
-      allow read: if isAuthenticated() && 
-        request.auth.token.email == 'eatezca@gmail.com';
-      allow create: if isAuthenticated() && 
-        request.auth.token.email == 'eatezca@gmail.com';
-      allow update: if isAuthenticated() && 
-        request.auth.token.email == 'eatezca@gmail.com';
-      allow delete: if isAuthenticated() && 
-        request.auth.token.email == 'eatezca@gmail.com';
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
     
     // Leads CRM - admin only
     match /leads/{leadId} {
-      allow read: if isAuthenticated() && 
-        request.auth.token.email == 'eatezca@gmail.com';
-      allow create: if isAuthenticated() && 
-        request.auth.token.email == 'eatezca@gmail.com';
-      allow update: if isAuthenticated() && 
-        request.auth.token.email == 'eatezca@gmail.com';
-      allow delete: if isAuthenticated() && 
-        request.auth.token.email == 'eatezca@gmail.com';
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
     
     // Lead activities - admin only
     match /lead_activities/{activityId} {
-      allow read: if isAuthenticated() && 
-        request.auth.token.email == 'eatezca@gmail.com';
-      allow create: if isAuthenticated() && 
-        request.auth.token.email == 'eatezca@gmail.com';
+      allow read: if isAdmin();
+      allow create: if isAdmin();
       allow update: if false; // Activities are immutable
       allow delete: if false; // Activities are immutable
     }
@@ -269,14 +265,10 @@ service cloud.firestore {
     // Lead scan cache (Phase 2) - admin only
     // Caches scan results to avoid re-scanning websites
     match /lead_scan_cache/{cacheId} {
-      allow read: if isAuthenticated() && 
-        request.auth.token.email == 'eatezca@gmail.com';
-      allow create: if isAuthenticated() && 
-        request.auth.token.email == 'eatezca@gmail.com';
-      allow update: if isAuthenticated() && 
-        request.auth.token.email == 'eatezca@gmail.com';
-      allow delete: if isAuthenticated() && 
-        request.auth.token.email == 'eatezca@gmail.com';
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
     
     // Rate limits collection - server-only (admin SDK bypasses rules)
