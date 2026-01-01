@@ -226,6 +226,58 @@ service cloud.firestore {
       allow read: if false;
       allow write: if false;
     }
+    
+    // ============================================
+    // Lead Finder & Outreach CRM (Phase 1)
+    // Admin only (eatezca@gmail.com)
+    // ============================================
+    
+    // Outreach templates - admin only
+    match /outreach_templates/{templateId} {
+      allow read: if isAuthenticated() && 
+        request.auth.token.email == 'eatezca@gmail.com';
+      allow create: if isAuthenticated() && 
+        request.auth.token.email == 'eatezca@gmail.com';
+      allow update: if isAuthenticated() && 
+        request.auth.token.email == 'eatezca@gmail.com';
+      allow delete: if isAuthenticated() && 
+        request.auth.token.email == 'eatezca@gmail.com';
+    }
+    
+    // Leads CRM - admin only
+    match /leads/{leadId} {
+      allow read: if isAuthenticated() && 
+        request.auth.token.email == 'eatezca@gmail.com';
+      allow create: if isAuthenticated() && 
+        request.auth.token.email == 'eatezca@gmail.com';
+      allow update: if isAuthenticated() && 
+        request.auth.token.email == 'eatezca@gmail.com';
+      allow delete: if isAuthenticated() && 
+        request.auth.token.email == 'eatezca@gmail.com';
+    }
+    
+    // Lead activities - admin only
+    match /lead_activities/{activityId} {
+      allow read: if isAuthenticated() && 
+        request.auth.token.email == 'eatezca@gmail.com';
+      allow create: if isAuthenticated() && 
+        request.auth.token.email == 'eatezca@gmail.com';
+      allow update: if false; // Activities are immutable
+      allow delete: if false; // Activities are immutable
+    }
+    
+    // Lead scan cache (Phase 2) - admin only
+    // Caches scan results to avoid re-scanning websites
+    match /lead_scan_cache/{cacheId} {
+      allow read: if isAuthenticated() && 
+        request.auth.token.email == 'eatezca@gmail.com';
+      allow create: if isAuthenticated() && 
+        request.auth.token.email == 'eatezca@gmail.com';
+      allow update: if isAuthenticated() && 
+        request.auth.token.email == 'eatezca@gmail.com';
+      allow delete: if isAuthenticated() && 
+        request.auth.token.email == 'eatezca@gmail.com';
+    }
   }
 }
 

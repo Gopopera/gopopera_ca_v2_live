@@ -267,3 +267,110 @@ export interface FirestorePayment {
   eventEndDate?: number; // For one-time events - when to release payout (24h after event)
   payoutReleasedAt?: number; // Timestamp when payout was released
 }
+
+// ============================================
+// Lead Finder & Outreach CRM Types (Phase 1)
+// ============================================
+
+/**
+ * Outreach email template for lead outreach campaigns
+ */
+export interface OutreachTemplate {
+  id: string;
+  name: string;                    // Internal template name
+  categoryKey: string;             // Category this template is for (e.g., 'yoga_studio', 'restaurant')
+  subject: string;                 // Email subject line
+  preheader?: string;              // Email preheader text
+  markdownBody: string;            // Email body in markdown format
+  theme: 'dark' | 'light' | 'minimal';
+  ctaText?: string;                // Call-to-action button text
+  ctaUrl?: string;                 // Call-to-action button URL
+  createdByEmail: string;          // Admin who created the template
+  createdAt: number;               // Timestamp
+  updatedAt: number;               // Timestamp
+}
+
+/**
+ * Lead status for CRM pipeline
+ */
+export type LeadStatus = 
+  | 'new'              // Just imported/added
+  | 'contacted'        // Initial outreach sent
+  | 'replied'          // Lead responded
+  | 'qualified'        // Lead is a good fit
+  | 'booked'           // Demo/call scheduled
+  | 'created'          // Circle created but not published
+  | 'published'        // Circle is live
+  | 'not_interested'   // Lead declined
+  | 'closed';          // Deal closed (won or lost)
+
+/**
+ * Lead record for outreach CRM
+ */
+export interface Lead {
+  id: string;
+  businessName: string;            // Business/organization name
+  categoryKey: string;             // Category (e.g., 'yoga_studio', 'restaurant')
+  leadType: string;                // Sub-type (e.g., 'hot_yoga', 'vegan_restaurant')
+  address?: string;                // Street address
+  city: string;                    // City name
+  neighborhood?: string;           // Neighborhood/district
+  website?: string;                // Business website
+  phone?: string;                  // Phone number
+  email?: string;                  // Contact email
+  contactFormUrl?: string;         // URL to contact form if no email
+  igHandle?: string;               // Instagram handle
+  status: LeadStatus;              // Pipeline status
+  notes?: string;                  // Internal notes
+  source: 'manual' | 'places_api'; // How the lead was added
+  importedAt: number;              // When lead was imported/created
+  lastContactedAt?: number;        // Last outreach timestamp
+  nextFollowUpAt?: number;         // Scheduled follow-up date
+  assignedTo?: string;             // Admin email assigned to this lead
+  createdAt: number;               // Timestamp
+  updatedAt: number;               // Timestamp
+  placeId?: string;                // Google Places ID for deduplication (Phase 2)
+  // Phase 2: Additional fields from Places API + email extraction
+  rating?: number;                 // Google Places rating (1-5)
+  reviewCount?: number;            // Google Places review count
+  emailSourceUrl?: string;         // URL where email was found
+  emailConfidence?: 'high' | 'medium' | 'low'; // Confidence level of extracted email
+}
+
+/**
+ * Activity log entry for a lead
+ */
+export type LeadActivityType = 'imported' | 'status_change' | 'note_added' | 'edited';
+
+export interface LeadActivity {
+  id: string;
+  leadId: string;                  // Reference to lead
+  type: LeadActivityType;          // Type of activity
+  description: string;             // Human-readable description
+  performedBy: string;             // Admin email who performed action
+  timestamp: number;               // When activity occurred
+}
+
+// ============================================
+// Lead Finder Phase 2: Scan Cache
+// ============================================
+
+/**
+ * Scan cache result type
+ */
+export type ScanCacheResult = 'email_found' | 'no_email' | 'no_website' | 'blocked';
+
+/**
+ * Cache entry for scanned websites/places to avoid repeated rescans
+ * Key: placeId or websiteHost
+ */
+export interface LeadScanCache {
+  id: string;                      // placeId or websiteHost as key
+  placeId?: string;                // Google Places ID
+  websiteHost?: string;            // Website hostname (e.g., 'example.com')
+  lastScannedAt: number;           // Timestamp of last scan
+  result: ScanCacheResult;         // Scan outcome
+  email?: string;                  // Email if found
+  emailSourceUrl?: string;         // URL where email was found
+  emailConfidence?: 'high' | 'medium' | 'low';
+}

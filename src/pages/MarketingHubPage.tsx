@@ -1,16 +1,37 @@
 /**
- * Marketing Hub - Admin-only dashboard for sending mass emails
+ * Marketing Hub - Admin-only dashboard for sending mass emails + Lead Finder CRM
  * Accessible only to eatezca@gmail.com
+ * 
+ * Phase 1: Campaigns (existing) + Outreach Templates + Leads CRM
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ViewState } from '../../types';
 import { useUserStore } from '../../stores/userStore';
 import { buildMarketingEmailHtml, type MarketingEmailParams } from '../lib/marketingEmailBuilder';
-import { ChevronLeft, Send, Eye, Save, Copy, Mail, AlertTriangle, CheckCircle, Loader2, Smartphone } from 'lucide-react';
+import { 
+  ChevronLeft, Send, Eye, Save, Copy, Mail, AlertTriangle, CheckCircle, 
+  Loader2, Smartphone, Plus, Trash2, Edit3, X, Users, FileText, 
+  Building2, MapPin, Phone, Globe, Instagram, MessageSquare, Clock,
+  Filter, Search, ChevronDown, ExternalLink, StickyNote
+} from 'lucide-react';
 import { getDbSafe } from '../lib/firebase';
 import { collection, addDoc, getDocs, query, orderBy, limit, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { getAuthInstance } from '../lib/firebaseAuth';
+import { 
+  listOutreachTemplates, 
+  createOutreachTemplate, 
+  updateOutreachTemplate, 
+  deleteOutreachTemplate,
+  listLeads,
+  createLead,
+  updateLead,
+  bulkUpdateLeadStatus,
+  addLeadNote,
+  getLeadActivities,
+  type ListLeadsFilters
+} from '../../firebase/leads';
+import type { OutreachTemplate, Lead, LeadActivity, LeadStatus } from '../../firebase/types';
 
 interface MarketingHubPageProps {
   setViewState: (view: ViewState) => void;
@@ -39,11 +60,46 @@ interface Campaign {
 
 const ADMIN_EMAIL = 'eatezca@gmail.com';
 
+// Tab types for Marketing Hub navigation
+type MarketingHubTab = 'campaigns' | 'templates' | 'leads';
+
+// Lead categories matching Popera's circle taxonomy
+const LEAD_CATEGORIES = [
+  { key: 'all', label: 'All Categories' },
+  { key: 'yoga_studio', label: 'Yoga Studios' },
+  { key: 'fitness_gym', label: 'Fitness & Gyms' },
+  { key: 'restaurant', label: 'Restaurants' },
+  { key: 'cafe', label: 'Cafés & Coffee Shops' },
+  { key: 'art_gallery', label: 'Art Galleries' },
+  { key: 'music_venue', label: 'Music Venues' },
+  { key: 'community_center', label: 'Community Centers' },
+  { key: 'coworking', label: 'Coworking Spaces' },
+  { key: 'wellness', label: 'Wellness & Spa' },
+  { key: 'bookstore', label: 'Bookstores' },
+  { key: 'other', label: 'Other' },
+] as const;
+
+// Lead status options with colors
+const LEAD_STATUSES: { key: LeadStatus; label: string; color: string }[] = [
+  { key: 'new', label: 'New', color: 'bg-blue-100 text-blue-700' },
+  { key: 'contacted', label: 'Contacted', color: 'bg-yellow-100 text-yellow-700' },
+  { key: 'replied', label: 'Replied', color: 'bg-purple-100 text-purple-700' },
+  { key: 'qualified', label: 'Qualified', color: 'bg-indigo-100 text-indigo-700' },
+  { key: 'booked', label: 'Booked', color: 'bg-cyan-100 text-cyan-700' },
+  { key: 'created', label: 'Created', color: 'bg-orange-100 text-orange-700' },
+  { key: 'published', label: 'Published', color: 'bg-green-100 text-green-700' },
+  { key: 'not_interested', label: 'Not Interested', color: 'bg-gray-100 text-gray-600' },
+  { key: 'closed', label: 'Closed', color: 'bg-red-100 text-red-700' },
+];
+
 export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState }) => {
   const user = useUserStore((state) => state.user);
   const authInitialized = useUserStore((state) => state.authInitialized);
   
-  // Form state
+  // Tab state
+  const [activeTab, setActiveTab] = useState<MarketingHubTab>('campaigns');
+  
+  // Form state (Campaigns)
   const [campaignName, setCampaignName] = useState('');
   const [subject, setSubject] = useState('');
   const [preheader, setPreheader] = useState('');
@@ -56,7 +112,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
   const [ctaUrl, setCtaUrl] = useState('');
   const [audience, setAudience] = useState<'all' | 'hosts' | 'attendees'>('all');
   
-  // UI state
+  // UI state (Campaigns)
   const [previewMode, setPreviewMode] = useState<'light' | 'dark'>('dark');
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loadingCampaigns, setLoadingCampaigns] = useState(true);
@@ -69,6 +125,83 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
   const [confirmInput, setConfirmInput] = useState('');
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [currentCampaignId, setCurrentCampaignId] = useState<string | null>(null);
+  
+  // Templates state
+  const [templates, setTemplates] = useState<OutreachTemplate[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [templateCategoryFilter, setTemplateCategoryFilter] = useState('all');
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<OutreachTemplate | null>(null);
+  const [templateForm, setTemplateForm] = useState({
+    name: '',
+    categoryKey: 'yoga_studio',
+    subject: '',
+    preheader: '',
+    markdownBody: '',
+    theme: 'dark' as 'dark' | 'light' | 'minimal',
+    ctaText: '',
+    ctaUrl: '',
+  });
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  
+  // Leads state
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [loadingLeads, setLoadingLeads] = useState(false);
+  const [leadFilters, setLeadFilters] = useState<ListLeadsFilters>({});
+  const [showLeadModal, setShowLeadModal] = useState(false);
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [leadActivities, setLeadActivities] = useState<LeadActivity[]>([]);
+  const [loadingActivities, setLoadingActivities] = useState(false);
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
+  const [bulkStatusValue, setBulkStatusValue] = useState<LeadStatus>('contacted');
+  const [newNote, setNewNote] = useState('');
+  const [savingLead, setSavingLead] = useState(false);
+  const [leadForm, setLeadForm] = useState({
+    businessName: '',
+    categoryKey: 'yoga_studio',
+    leadType: '',
+    city: '',
+    address: '',
+    website: '',
+    phone: '',
+    email: '',
+    contactFormUrl: '',
+    igHandle: '',
+    status: 'new' as LeadStatus,
+    notes: '',
+  });
+  
+  // Import modal state
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importRunning, setImportRunning] = useState(false);
+  const [importForm, setImportForm] = useState({
+    categoryKey: 'restaurant',
+    leadType: 'restaurant',
+    city: 'Montreal, QC',
+    query: 'restaurants',
+    radiusKm: 10,
+    minRating: 4.3,
+    minReviews: 100,
+    targetLeads: 100,
+    maxCandidates: 250,
+  });
+  const [importResult, setImportResult] = useState<{
+    success: boolean;
+    created: number;
+    scanned: number;
+    skippedNoWebsite: number;
+    skippedNoEmail: number;
+    skippedDedupe: number;
+    skippedCached: number;
+    stoppedReason: string;
+    report: Array<{
+      placeId: string;
+      name: string;
+      website?: string;
+      outcome: string;
+      email?: string;
+    }>;
+  } | null>(null);
   
   // Build email params
   const emailParams: MarketingEmailParams = useMemo(() => ({
@@ -130,6 +263,313 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       loadCampaigns();
     }
   }, [isAdmin, loadCampaigns]);
+  
+  // Load templates
+  const loadTemplates = useCallback(async () => {
+    setLoadingTemplates(true);
+    try {
+      const categoryFilter = templateCategoryFilter === 'all' ? undefined : templateCategoryFilter;
+      const loaded = await listOutreachTemplates(categoryFilter);
+      setTemplates(loaded);
+    } catch (error) {
+      console.error('Error loading templates:', error);
+    } finally {
+      setLoadingTemplates(false);
+    }
+  }, [templateCategoryFilter]);
+  
+  useEffect(() => {
+    if (isAdmin && activeTab === 'templates') {
+      loadTemplates();
+    }
+  }, [isAdmin, activeTab, loadTemplates]);
+  
+  // Load leads
+  const loadLeads = useCallback(async () => {
+    setLoadingLeads(true);
+    try {
+      const loaded = await listLeads(leadFilters);
+      setLeads(loaded);
+    } catch (error) {
+      console.error('Error loading leads:', error);
+    } finally {
+      setLoadingLeads(false);
+    }
+  }, [leadFilters]);
+  
+  useEffect(() => {
+    if (isAdmin && activeTab === 'leads') {
+      loadLeads();
+    }
+  }, [isAdmin, activeTab, loadLeads]);
+  
+  // Template handlers
+  const handleOpenTemplateModal = (template?: OutreachTemplate) => {
+    if (template) {
+      setEditingTemplate(template);
+      setTemplateForm({
+        name: template.name,
+        categoryKey: template.categoryKey,
+        subject: template.subject,
+        preheader: template.preheader || '',
+        markdownBody: template.markdownBody,
+        theme: template.theme,
+        ctaText: template.ctaText || '',
+        ctaUrl: template.ctaUrl || '',
+      });
+    } else {
+      setEditingTemplate(null);
+      setTemplateForm({
+        name: '',
+        categoryKey: 'yoga_studio',
+        subject: '',
+        preheader: '',
+        markdownBody: 'Hi {{business_name}},\n\nI noticed your {{category}} in {{city}} and thought you might be interested in hosting a circle on Popera.\n\n**What is Popera?**\nPopera is a platform where local businesses host intimate community gatherings (3-50 people).\n\nWould you be open to a quick chat?\n\nBest,\nThe Popera Team',
+        theme: 'dark',
+        ctaText: 'Learn More',
+        ctaUrl: 'https://gopopera.ca',
+      });
+    }
+    setShowTemplateModal(true);
+  };
+  
+  const handleSaveTemplate = async () => {
+    if (!templateForm.name || !templateForm.subject || !templateForm.markdownBody) {
+      showNotification('error', 'Name, subject and body are required');
+      return;
+    }
+    
+    setSavingTemplate(true);
+    try {
+      if (editingTemplate) {
+        await updateOutreachTemplate(editingTemplate.id, templateForm);
+        showNotification('success', 'Template updated!');
+      } else {
+        await createOutreachTemplate({
+          ...templateForm,
+          createdByEmail: user?.email || '',
+        });
+        showNotification('success', 'Template created!');
+      }
+      setShowTemplateModal(false);
+      loadTemplates();
+    } catch (error: any) {
+      showNotification('error', error.message || 'Failed to save template');
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+  
+  const handleDeleteTemplate = async (templateId: string) => {
+    if (!confirm('Are you sure you want to delete this template?')) return;
+    
+    try {
+      await deleteOutreachTemplate(templateId);
+      showNotification('success', 'Template deleted');
+      loadTemplates();
+    } catch (error: any) {
+      showNotification('error', error.message || 'Failed to delete template');
+    }
+  };
+  
+  const handleDuplicateTemplate = (template: OutreachTemplate) => {
+    setEditingTemplate(null);
+    setTemplateForm({
+      name: template.name + ' (Copy)',
+      categoryKey: template.categoryKey,
+      subject: template.subject,
+      preheader: template.preheader || '',
+      markdownBody: template.markdownBody,
+      theme: template.theme,
+      ctaText: template.ctaText || '',
+      ctaUrl: template.ctaUrl || '',
+    });
+    setShowTemplateModal(true);
+  };
+  
+  // Template preview HTML
+  const templatePreviewHtml = useMemo(() => {
+    if (!templateForm.markdownBody) return '';
+    return buildMarketingEmailHtml({
+      subject: templateForm.subject || 'Preview',
+      markdownBody: templateForm.markdownBody,
+      theme: templateForm.theme,
+      density: 'normal',
+      ctaText: templateForm.ctaText || undefined,
+      ctaUrl: templateForm.ctaUrl || undefined,
+    }).html;
+  }, [templateForm]);
+  
+  // Lead handlers
+  const handleOpenLeadModal = async (lead?: Lead) => {
+    if (lead) {
+      setEditingLead(lead);
+      setLeadForm({
+        businessName: lead.businessName,
+        categoryKey: lead.categoryKey,
+        leadType: lead.leadType,
+        city: lead.city,
+        address: lead.address || '',
+        website: lead.website || '',
+        phone: lead.phone || '',
+        email: lead.email || '',
+        contactFormUrl: lead.contactFormUrl || '',
+        igHandle: lead.igHandle || '',
+        status: lead.status,
+        notes: lead.notes || '',
+      });
+      // Load activities
+      setLoadingActivities(true);
+      try {
+        const activities = await getLeadActivities(lead.id);
+        setLeadActivities(activities);
+      } catch (error) {
+        console.error('Error loading activities:', error);
+      } finally {
+        setLoadingActivities(false);
+      }
+    } else {
+      setEditingLead(null);
+      setLeadForm({
+        businessName: '',
+        categoryKey: 'yoga_studio',
+        leadType: '',
+        city: '',
+        address: '',
+        website: '',
+        phone: '',
+        email: '',
+        contactFormUrl: '',
+        igHandle: '',
+        status: 'new',
+        notes: '',
+      });
+      setLeadActivities([]);
+    }
+    setNewNote('');
+    setShowLeadModal(true);
+  };
+  
+  const handleSaveLead = async () => {
+    if (!leadForm.businessName || !leadForm.city) {
+      showNotification('error', 'Business name and city are required');
+      return;
+    }
+    
+    setSavingLead(true);
+    try {
+      if (editingLead) {
+        await updateLead(editingLead.id, leadForm, user?.email || '');
+        showNotification('success', 'Lead updated!');
+      } else {
+        await createLead(
+          { ...leadForm, source: 'manual' },
+          user?.email || ''
+        );
+        showNotification('success', 'Lead created!');
+      }
+      setShowLeadModal(false);
+      loadLeads();
+    } catch (error: any) {
+      showNotification('error', error.message || 'Failed to save lead');
+    } finally {
+      setSavingLead(false);
+    }
+  };
+  
+  const handleAddNote = async () => {
+    if (!editingLead || !newNote.trim()) return;
+    
+    try {
+      await addLeadNote(editingLead.id, newNote.trim(), user?.email || '');
+      setNewNote('');
+      // Reload activities
+      const activities = await getLeadActivities(editingLead.id);
+      setLeadActivities(activities);
+      showNotification('success', 'Note added');
+    } catch (error: any) {
+      showNotification('error', error.message || 'Failed to add note');
+    }
+  };
+  
+  const handleBulkStatusUpdate = async () => {
+    if (selectedLeadIds.size === 0) {
+      showNotification('error', 'Select at least one lead');
+      return;
+    }
+    
+    try {
+      const result = await bulkUpdateLeadStatus(
+        Array.from(selectedLeadIds),
+        bulkStatusValue,
+        user?.email || ''
+      );
+      showNotification('success', `Updated ${result.success} leads`);
+      setSelectedLeadIds(new Set());
+      loadLeads();
+    } catch (error: any) {
+      showNotification('error', error.message || 'Failed to update leads');
+    }
+  };
+  
+  const toggleLeadSelection = (leadId: string) => {
+    setSelectedLeadIds(prev => {
+      const next = new Set(prev);
+      if (next.has(leadId)) {
+        next.delete(leadId);
+      } else {
+        next.add(leadId);
+      }
+      return next;
+    });
+  };
+  
+  const toggleSelectAll = () => {
+    if (selectedLeadIds.size === leads.length) {
+      setSelectedLeadIds(new Set());
+    } else {
+      setSelectedLeadIds(new Set(leads.map(l => l.id)));
+    }
+  };
+  
+  // Import leads handler
+  const handleRunImport = async () => {
+    setImportRunning(true);
+    setImportResult(null);
+    
+    try {
+      const token = await getIdToken();
+      
+      const response = await fetch('/api/leads/import-with-emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(importForm),
+      });
+      
+      const rawText = await response.text();
+      let result;
+      try {
+        result = JSON.parse(rawText);
+      } catch {
+        throw new Error(`Server returned non-JSON response: ${rawText.substring(0, 100)}...`);
+      }
+      
+      if (result.success) {
+        setImportResult(result);
+        showNotification('success', `Import complete: ${result.created} leads created`);
+      } else {
+        throw new Error(result.error || 'Import failed');
+      }
+    } catch (error: any) {
+      console.error('[MarketingHub] Import error:', error);
+      showNotification('error', error.message || 'Import failed');
+    } finally {
+      setImportRunning(false);
+    }
+  };
   
   // Show notification
   const showNotification = (type: 'success' | 'error', message: string) => {
@@ -487,6 +927,426 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
         </div>
       )}
       
+      {/* Template Editor Modal */}
+      {showTemplateModal && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowTemplateModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <h2 className="text-xl font-bold text-[#15383c]">
+                {editingTemplate ? 'Edit Template' : 'New Template'}
+              </h2>
+              <button onClick={() => setShowTemplateModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden flex">
+              {/* Form */}
+              <div className="w-1/2 p-4 overflow-y-auto border-r border-gray-100 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Template Name *</label>
+                  <input type="text" value={templateForm.name} onChange={e => setTemplateForm(f => ({ ...f, name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25]"
+                    placeholder="e.g., Yoga Studio Cold Email v1" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                  <select value={templateForm.categoryKey} onChange={e => setTemplateForm(f => ({ ...f, categoryKey: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25]">
+                    {LEAD_CATEGORIES.filter(c => c.key !== 'all').map(c => (
+                      <option key={c.key} value={c.key}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Subject *</label>
+                  <input type="text" value={templateForm.subject} onChange={e => setTemplateForm(f => ({ ...f, subject: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25]"
+                    placeholder="e.g., Host a circle at {{business_name}}" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Preheader</label>
+                  <input type="text" value={templateForm.preheader} onChange={e => setTemplateForm(f => ({ ...f, preheader: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25]"
+                    placeholder="Preview text in inbox" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Theme</label>
+                  <div className="flex gap-2">
+                    {(['dark', 'light', 'minimal'] as const).map(t => (
+                      <button key={t} onClick={() => setTemplateForm(f => ({ ...f, theme: t }))}
+                        className={`px-3 py-1.5 rounded-lg text-sm ${templateForm.theme === t ? 'bg-[#15383c] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+                        {t === 'dark' ? 'Dark' : t === 'light' ? 'Light' : 'Minimal'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Body (Markdown) *</label>
+                  <p className="text-xs text-gray-500 mb-1">Use {'{{business_name}}'}, {'{{city}}'}, {'{{category}}'} as placeholders</p>
+                  <textarea value={templateForm.markdownBody} onChange={e => setTemplateForm(f => ({ ...f, markdownBody: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] h-48 font-mono text-sm"
+                    placeholder="Write your email content..." />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">CTA Text</label>
+                    <input type="text" value={templateForm.ctaText} onChange={e => setTemplateForm(f => ({ ...f, ctaText: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm" placeholder="Learn More" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">CTA URL</label>
+                    <input type="url" value={templateForm.ctaUrl} onChange={e => setTemplateForm(f => ({ ...f, ctaUrl: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm" placeholder="https://gopopera.ca" />
+                  </div>
+                </div>
+              </div>
+              {/* Preview */}
+              <div className="w-1/2 p-4 bg-gray-50 overflow-y-auto">
+                <h3 className="font-medium text-gray-700 mb-3">Preview</h3>
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden" style={{ height: '500px' }}>
+                  {templatePreviewHtml ? (
+                    <iframe srcDoc={templatePreviewHtml} style={{ width: '100%', height: '100%', border: 'none' }} title="Template Preview" />
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-gray-400">
+                      <p className="text-sm">Start typing to see preview</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="p-4 border-t border-gray-100 flex justify-end gap-3">
+              <button onClick={() => setShowTemplateModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={handleSaveTemplate} disabled={savingTemplate}
+                className="px-4 py-2 bg-[#e35e25] text-white rounded-lg hover:bg-[#d54d1a] disabled:opacity-50 flex items-center gap-2">
+                {savingTemplate ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                {editingTemplate ? 'Update' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Lead Detail Modal */}
+      {showLeadModal && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowLeadModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <h2 className="text-xl font-bold text-[#15383c]">
+                {editingLead ? 'Edit Lead' : 'Add Lead'}
+              </h2>
+              <button onClick={() => setShowLeadModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Business Name *</label>
+                  <input type="text" value={leadForm.businessName} onChange={e => setLeadForm(f => ({ ...f, businessName: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25]" placeholder="Business name" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
+                  <input type="text" value={leadForm.city} onChange={e => setLeadForm(f => ({ ...f, city: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25]" placeholder="City" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                  <select value={leadForm.categoryKey} onChange={e => setLeadForm(f => ({ ...f, categoryKey: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25]">
+                    {LEAD_CATEGORIES.filter(c => c.key !== 'all').map(c => (
+                      <option key={c.key} value={c.key}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Lead Type</label>
+                  <input type="text" value={leadForm.leadType} onChange={e => setLeadForm(f => ({ ...f, leadType: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25]" placeholder="e.g., hot yoga, vegan cafe" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                <input type="text" value={leadForm.address} onChange={e => setLeadForm(f => ({ ...f, address: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25]" placeholder="Street address" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input type="email" value={leadForm.email} onChange={e => setLeadForm(f => ({ ...f, email: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25]" placeholder="contact@business.com" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <input type="tel" value={leadForm.phone} onChange={e => setLeadForm(f => ({ ...f, phone: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25]" placeholder="+1 (555) 123-4567" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
+                  <input type="url" value={leadForm.website} onChange={e => setLeadForm(f => ({ ...f, website: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25]" placeholder="https://..." />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Instagram</label>
+                  <input type="text" value={leadForm.igHandle} onChange={e => setLeadForm(f => ({ ...f, igHandle: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25]" placeholder="@handle" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contact Form URL</label>
+                <input type="url" value={leadForm.contactFormUrl} onChange={e => setLeadForm(f => ({ ...f, contactFormUrl: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25]" placeholder="https://..." />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select value={leadForm.status} onChange={e => setLeadForm(f => ({ ...f, status: e.target.value as LeadStatus }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25]">
+                  {LEAD_STATUSES.map(s => (
+                    <option key={s.key} value={s.key}>{s.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea value={leadForm.notes} onChange={e => setLeadForm(f => ({ ...f, notes: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] h-20" placeholder="Internal notes..." />
+              </div>
+              
+              {/* Activity Log (only for existing leads) */}
+              {editingLead && (
+                <div className="border-t border-gray-100 pt-4">
+                  <h3 className="font-medium text-gray-700 mb-3 flex items-center gap-2">
+                    <Clock size={16} /> Activity Log
+                  </h3>
+                  <div className="mb-3 flex gap-2">
+                    <input type="text" value={newNote} onChange={e => setNewNote(e.target.value)}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm"
+                      placeholder="Add a note..." onKeyDown={e => e.key === 'Enter' && handleAddNote()} />
+                    <button onClick={handleAddNote} disabled={!newNote.trim()}
+                      className="px-3 py-2 bg-[#15383c] text-white rounded-lg hover:bg-[#0f2a2d] disabled:opacity-50">
+                      <StickyNote size={16} />
+                    </button>
+                  </div>
+                  {loadingActivities ? (
+                    <div className="text-center py-4"><Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" /></div>
+                  ) : leadActivities.length === 0 ? (
+                    <p className="text-gray-500 text-sm">No activity yet</p>
+                  ) : (
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {leadActivities.map(a => (
+                        <div key={a.id} className="text-sm p-2 bg-gray-50 rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-600">{a.description}</span>
+                            <span className="text-xs text-gray-400">{new Date(a.timestamp).toLocaleDateString()}</span>
+                          </div>
+                          <span className="text-xs text-gray-400">{a.type} • {a.performedBy}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-gray-100 flex justify-end gap-3">
+              <button onClick={() => setShowLeadModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={handleSaveLead} disabled={savingLead}
+                className="px-4 py-2 bg-[#e35e25] text-white rounded-lg hover:bg-[#d54d1a] disabled:opacity-50 flex items-center gap-2">
+                {savingLead ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                {editingLead ? 'Update' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Import Leads Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => !importRunning && setShowImportModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <h2 className="text-xl font-bold text-[#15383c]">Import Leads (with emails)</h2>
+              <button onClick={() => !importRunning && setShowImportModal(false)} disabled={importRunning} className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {!importResult ? (
+                <>
+                  <p className="text-sm text-gray-600">
+                    Search Google Places for businesses, crawl their websites to find emails, and import only leads with valid email addresses.
+                  </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                      <select value={importForm.categoryKey} onChange={e => setImportForm(f => ({ ...f, categoryKey: e.target.value }))}
+                        disabled={importRunning} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] disabled:bg-gray-100">
+                        {LEAD_CATEGORIES.filter(c => c.key !== 'all').map(c => (
+                          <option key={c.key} value={c.key}>{c.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Lead Type</label>
+                      <input type="text" value={importForm.leadType} onChange={e => setImportForm(f => ({ ...f, leadType: e.target.value }))}
+                        disabled={importRunning} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] disabled:bg-gray-100"
+                        placeholder="e.g., sushi restaurant" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                      <input type="text" value={importForm.city} onChange={e => setImportForm(f => ({ ...f, city: e.target.value }))}
+                        disabled={importRunning} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] disabled:bg-gray-100"
+                        placeholder="Montreal, QC" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Search Query</label>
+                      <input type="text" value={importForm.query} onChange={e => setImportForm(f => ({ ...f, query: e.target.value }))}
+                        disabled={importRunning} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] disabled:bg-gray-100"
+                        placeholder="restaurants" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Min Rating</label>
+                      <input type="number" step="0.1" min="0" max="5" value={importForm.minRating} 
+                        onChange={e => setImportForm(f => ({ ...f, minRating: parseFloat(e.target.value) || 0 }))}
+                        disabled={importRunning} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] disabled:bg-gray-100" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Min Reviews</label>
+                      <input type="number" min="0" value={importForm.minReviews} 
+                        onChange={e => setImportForm(f => ({ ...f, minReviews: parseInt(e.target.value) || 0 }))}
+                        disabled={importRunning} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] disabled:bg-gray-100" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Radius (km)</label>
+                      <input type="number" min="1" max="50" value={importForm.radiusKm} 
+                        onChange={e => setImportForm(f => ({ ...f, radiusKm: parseInt(e.target.value) || 10 }))}
+                        disabled={importRunning} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] disabled:bg-gray-100" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Target Leads</label>
+                      <input type="number" min="1" max="500" value={importForm.targetLeads} 
+                        onChange={e => setImportForm(f => ({ ...f, targetLeads: parseInt(e.target.value) || 100 }))}
+                        disabled={importRunning} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] disabled:bg-gray-100" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Max Candidates</label>
+                      <input type="number" min="1" max="500" value={importForm.maxCandidates} 
+                        onChange={e => setImportForm(f => ({ ...f, maxCandidates: parseInt(e.target.value) || 250 }))}
+                        disabled={importRunning} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] disabled:bg-gray-100" />
+                    </div>
+                  </div>
+                  {importRunning && (
+                    <div className="flex items-center justify-center gap-3 py-6 bg-gray-50 rounded-lg">
+                      <Loader2 className="w-6 h-6 animate-spin text-[#e35e25]" />
+                      <span className="text-gray-600">Running import... This may take a few minutes.</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                    <h3 className="font-semibold text-green-800 mb-2">Import Complete</h3>
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <span className="text-green-700 font-medium">{importResult.created}</span>
+                        <span className="text-gray-600 ml-1">Created</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600 font-medium">{importResult.scanned}</span>
+                        <span className="text-gray-600 ml-1">Scanned</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 font-medium">{importResult.skippedNoEmail}</span>
+                        <span className="text-gray-600 ml-1">No Email</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 font-medium">{importResult.skippedNoWebsite}</span>
+                        <span className="text-gray-600 ml-1">No Website</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 font-medium">{importResult.skippedDedupe}</span>
+                        <span className="text-gray-600 ml-1">Duplicates</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 font-medium">{importResult.skippedCached}</span>
+                        <span className="text-gray-600 ml-1">Cached</span>
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-2">Stopped: {importResult.stoppedReason.replace(/_/g, ' ')}</p>
+                  </div>
+                  
+                  {importResult.report.length > 0 && (
+                    <div>
+                      <h4 className="font-medium text-gray-700 mb-2">Report ({importResult.report.length} entries)</h4>
+                      <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-lg">
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50 sticky top-0">
+                            <tr>
+                              <th className="text-left px-3 py-2 font-medium text-gray-600">Name</th>
+                              <th className="text-left px-3 py-2 font-medium text-gray-600">Outcome</th>
+                              <th className="text-left px-3 py-2 font-medium text-gray-600">Email</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {importResult.report.slice(0, 100).map((item, i) => (
+                              <tr key={i} className={item.outcome === 'CREATED' ? 'bg-green-50' : ''}>
+                                <td className="px-3 py-2 text-gray-800 max-w-[200px] truncate">{item.name}</td>
+                                <td className="px-3 py-2">
+                                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                    item.outcome === 'CREATED' ? 'bg-green-100 text-green-700' :
+                                    item.outcome === 'NO_EMAIL' ? 'bg-yellow-100 text-yellow-700' :
+                                    item.outcome === 'NO_WEBSITE' ? 'bg-gray-100 text-gray-600' :
+                                    item.outcome === 'DUPLICATE' ? 'bg-blue-100 text-blue-700' :
+                                    'bg-gray-100 text-gray-600'
+                                  }`}>{item.outcome}</span>
+                                </td>
+                                <td className="px-3 py-2 text-gray-600 max-w-[200px] truncate">{item.email || '—'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="p-4 border-t border-gray-100 flex justify-end gap-3">
+              {!importResult ? (
+                <>
+                  <button onClick={() => setShowImportModal(false)} disabled={importRunning}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50">Cancel</button>
+                  <button onClick={handleRunImport} disabled={importRunning || !importForm.city || !importForm.query}
+                    className="px-4 py-2 bg-[#e35e25] text-white rounded-lg hover:bg-[#d54d1a] disabled:opacity-50 flex items-center gap-2">
+                    {importRunning ? <Loader2 size={16} className="animate-spin" /> : <Users size={16} />}
+                    {importRunning ? 'Importing...' : 'Run Import'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button onClick={() => setImportResult(null)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Run Another</button>
+                  <button onClick={() => { setShowImportModal(false); loadLeads(); }}
+                    className="px-4 py-2 bg-[#e35e25] text-white rounded-lg hover:bg-[#d54d1a] flex items-center gap-2">
+                    <CheckCircle size={16} />
+                    Done & Refresh
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
@@ -498,10 +1358,43 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
           </button>
           <div>
             <h1 className="text-2xl font-bold text-[#15383c]">Marketing Hub</h1>
-            <p className="text-gray-500 text-sm">Send newsletters and announcements</p>
+            <p className="text-gray-500 text-sm">Campaigns, Templates & Lead CRM</p>
           </div>
         </div>
         
+        {/* Tab Navigation */}
+        <div className="flex gap-1 mb-6 bg-gray-100 rounded-lg p-1 w-fit">
+          <button
+            onClick={() => setActiveTab('campaigns')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'campaigns' ? 'bg-white text-[#15383c] shadow-sm' : 'text-gray-600 hover:text-[#15383c]'
+            }`}
+          >
+            <Mail size={16} className="inline mr-2" />
+            Campaigns
+          </button>
+          <button
+            onClick={() => setActiveTab('templates')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'templates' ? 'bg-white text-[#15383c] shadow-sm' : 'text-gray-600 hover:text-[#15383c]'
+            }`}
+          >
+            <FileText size={16} className="inline mr-2" />
+            Outreach Templates
+          </button>
+          <button
+            onClick={() => setActiveTab('leads')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'leads' ? 'bg-white text-[#15383c] shadow-sm' : 'text-gray-600 hover:text-[#15383c]'
+            }`}
+          >
+            <Users size={16} className="inline mr-2" />
+            Leads
+          </button>
+        </div>
+        
+        {/* Campaigns Tab (existing) */}
+        {activeTab === 'campaigns' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* LEFT: Composer */}
           <div className="space-y-4">
@@ -772,6 +1665,271 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
             </div>
           </div>
         </div>
+        )}
+        
+        {/* Templates Tab */}
+        {activeTab === 'templates' && (
+          <div className="space-y-4">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <select
+                  value={templateCategoryFilter}
+                  onChange={e => setTemplateCategoryFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25]"
+                >
+                  {LEAD_CATEGORIES.map(c => (
+                    <option key={c.key} value={c.key}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+              <button
+                onClick={() => handleOpenTemplateModal()}
+                className="flex items-center gap-2 px-4 py-2 bg-[#e35e25] text-white rounded-lg hover:bg-[#d54d1a]"
+              >
+                <Plus size={16} />
+                New Template
+              </button>
+            </div>
+            
+            {/* Templates Table */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              {loadingTemplates ? (
+                <div className="text-center py-12"><Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" /></div>
+              ) : templates.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <FileText size={32} className="mx-auto mb-2 opacity-50" />
+                  <p>No templates yet. Create your first one!</p>
+                </div>
+              ) : (
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Name</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Category</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Subject</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Theme</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Updated</th>
+                      <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {templates.map(t => (
+                      <tr key={t.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm font-medium text-[#15383c]">{t.name}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {LEAD_CATEGORIES.find(c => c.key === t.categoryKey)?.label || t.categoryKey}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">{t.subject}</td>
+                        <td className="px-4 py-3 text-sm">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            t.theme === 'dark' ? 'bg-gray-800 text-white' : 
+                            t.theme === 'light' ? 'bg-gray-100 text-gray-800' : 'bg-white border text-gray-600'
+                          }`}>{t.theme}</span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-500">
+                          {new Date(t.updatedAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <button onClick={() => handleOpenTemplateModal(t)} className="p-1.5 text-gray-500 hover:text-[#15383c] hover:bg-gray-100 rounded" title="Edit">
+                              <Edit3 size={14} />
+                            </button>
+                            <button onClick={() => handleDuplicateTemplate(t)} className="p-1.5 text-gray-500 hover:text-[#15383c] hover:bg-gray-100 rounded" title="Duplicate">
+                              <Copy size={14} />
+                            </button>
+                            <button onClick={() => handleDeleteTemplate(t.id)} className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-gray-100 rounded" title="Delete">
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {/* Leads Tab */}
+        {activeTab === 'leads' && (
+          <div className="space-y-4">
+            {/* Filters */}
+            <div className="flex flex-wrap items-center gap-3">
+              <select
+                value={leadFilters.categoryKey || 'all'}
+                onChange={e => setLeadFilters(f => ({ ...f, categoryKey: e.target.value === 'all' ? undefined : e.target.value }))}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm"
+              >
+                {LEAD_CATEGORIES.map(c => (
+                  <option key={c.key} value={c.key}>{c.label}</option>
+                ))}
+              </select>
+              <select
+                value={leadFilters.status || ''}
+                onChange={e => setLeadFilters(f => ({ ...f, status: e.target.value as LeadStatus || undefined }))}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm"
+              >
+                <option value="">All Statuses</option>
+                {LEAD_STATUSES.map(s => (
+                  <option key={s.key} value={s.key}>{s.label}</option>
+                ))}
+              </select>
+              <input
+                type="text"
+                value={leadFilters.city || ''}
+                onChange={e => setLeadFilters(f => ({ ...f, city: e.target.value || undefined }))}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm w-32"
+                placeholder="City..."
+              />
+              <div className="relative flex-1 max-w-xs">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={leadFilters.search || ''}
+                  onChange={e => setLeadFilters(f => ({ ...f, search: e.target.value || undefined }))}
+                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm"
+                  placeholder="Search businesses..."
+                />
+              </div>
+              <div className="flex-1" />
+              <button
+                onClick={() => { setImportResult(null); setShowImportModal(true); }}
+                className="flex items-center gap-2 px-4 py-2 border border-[#15383c] text-[#15383c] rounded-lg hover:bg-[#15383c] hover:text-white"
+              >
+                <Users size={16} />
+                Import (emails)
+              </button>
+              <button
+                onClick={() => handleOpenLeadModal()}
+                className="flex items-center gap-2 px-4 py-2 bg-[#e35e25] text-white rounded-lg hover:bg-[#d54d1a]"
+              >
+                <Plus size={16} />
+                Add Lead
+              </button>
+            </div>
+            
+            {/* Bulk Actions */}
+            {selectedLeadIds.size > 0 && (
+              <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                <span className="text-sm text-blue-700">{selectedLeadIds.size} selected</span>
+                <select
+                  value={bulkStatusValue}
+                  onChange={e => setBulkStatusValue(e.target.value as LeadStatus)}
+                  className="px-2 py-1 border border-blue-300 rounded text-sm"
+                >
+                  {LEAD_STATUSES.map(s => (
+                    <option key={s.key} value={s.key}>{s.label}</option>
+                  ))}
+                </select>
+                <button onClick={handleBulkStatusUpdate} className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
+                  Update Status
+                </button>
+                <button onClick={() => setSelectedLeadIds(new Set())} className="text-sm text-blue-600 hover:underline">
+                  Clear
+                </button>
+              </div>
+            )}
+            
+            {/* Leads Table */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              {loadingLeads ? (
+                <div className="text-center py-12"><Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" /></div>
+              ) : leads.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Building2 size={32} className="mx-auto mb-2 opacity-50" />
+                  <p>No leads yet. Add your first one!</p>
+                </div>
+              ) : (
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="w-10 px-4 py-3">
+                        <input type="checkbox" checked={selectedLeadIds.size === leads.length && leads.length > 0}
+                          onChange={toggleSelectAll} className="rounded border-gray-300" />
+                      </th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Business</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">City</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Status</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Email</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Source</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Updated</th>
+                      <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {leads.map(lead => {
+                      const statusInfo = LEAD_STATUSES.find(s => s.key === lead.status);
+                      return (
+                        <tr key={lead.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3">
+                            <input type="checkbox" checked={selectedLeadIds.has(lead.id)}
+                              onChange={() => toggleLeadSelection(lead.id)} className="rounded border-gray-300" />
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-[#15383c] text-sm">{lead.businessName}</div>
+                            <div className="text-xs text-gray-500">
+                              {LEAD_CATEGORIES.find(c => c.key === lead.categoryKey)?.label}
+                              {lead.leadType && ` • ${lead.leadType}`}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{lead.city}</td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusInfo?.color || 'bg-gray-100 text-gray-600'}`}>
+                              {statusInfo?.label || lead.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            {lead.email ? (
+                              <a href={`mailto:${lead.email}`} className="text-[#e35e25] hover:underline">{lead.email}</a>
+                            ) : (
+                              <span className="text-gray-400">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-500 capitalize">{lead.source}</td>
+                          <td className="px-4 py-3 text-sm text-gray-500">
+                            {new Date(lead.updatedAt).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              {lead.website && (
+                                <a href={lead.website} target="_blank" rel="noopener noreferrer"
+                                  className="p-1.5 text-gray-500 hover:text-[#15383c] hover:bg-gray-100 rounded" title="Website">
+                                  <Globe size={14} />
+                                </a>
+                              )}
+                              {lead.igHandle && (
+                                <a href={`https://instagram.com/${lead.igHandle.replace('@', '')}`} target="_blank" rel="noopener noreferrer"
+                                  className="p-1.5 text-gray-500 hover:text-[#15383c] hover:bg-gray-100 rounded" title="Instagram">
+                                  <Instagram size={14} />
+                                </a>
+                              )}
+                              <button onClick={() => handleOpenLeadModal(lead)}
+                                className="p-1.5 text-gray-500 hover:text-[#15383c] hover:bg-gray-100 rounded" title="Edit">
+                                <Edit3 size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            
+            {/* Stats Summary */}
+            {leads.length > 0 && (
+              <div className="flex gap-4 text-sm text-gray-500">
+                <span>Total: {leads.length}</span>
+                <span>New: {leads.filter(l => l.status === 'new').length}</span>
+                <span>Contacted: {leads.filter(l => l.status === 'contacted').length}</span>
+                <span>Qualified: {leads.filter(l => l.status === 'qualified').length}</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
