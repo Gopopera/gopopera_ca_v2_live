@@ -3,54 +3,12 @@
  * POST /api/marketing/recipients-count
  * 
  * Protected: Admin only (eatezca@gmail.com)
- * NOTE: Firebase Admin is INLINED to avoid Vercel module resolution issues.
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import * as admin from 'firebase-admin';
+import { verifyAdminToken, getAdminFirestore } from '../_lib/firebaseAdmin.js';
 
 export const config = { runtime: 'nodejs' };
-
-const ADMIN_EMAIL = 'eatezca@gmail.com';
-const APP_NAME = 'recipients-count-admin';
-
-// ============ INLINED: Firebase Admin ============
-let adminApp: admin.app.App | null = null;
-
-function getFirebaseAdmin(): admin.app.App | null {
-  if (adminApp) return adminApp;
-  try { adminApp = admin.app(APP_NAME); return adminApp; } catch {}
-  
-  const projectId = process.env.FIREBASE_PROJECT_ID || 'gopopera2026';
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  
-  if (!clientEmail || !privateKey) return null;
-  
-  try {
-    adminApp = admin.initializeApp({
-      credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
-      projectId,
-    }, APP_NAME);
-    return adminApp;
-  } catch { return null; }
-}
-
-function getAdminFirestore(): admin.firestore.Firestore | null {
-  const app = getFirebaseAdmin();
-  return app ? app.firestore() : null;
-}
-
-async function verifyAdminToken(authHeader: string | undefined): Promise<{ uid: string; email: string } | null> {
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  const app = getFirebaseAdmin();
-  if (!app) return null;
-  try {
-    const decoded = await app.auth().verifyIdToken(authHeader.split('Bearer ')[1]);
-    if (decoded.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) return null;
-    return { uid: decoded.uid, email: decoded.email || '' };
-  } catch { return null; }
-}
 
 // ============ HANDLER ============
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -63,8 +21,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
   
   try {
-    const adminUser = await verifyAdminToken(req.headers.authorization);
-    if (!adminUser) return res.status(403).json({ success: false, error: 'Access denied' });
+    console.log('[Recipients Count] === REQUEST START ===');
+    
+    // Verify admin with shared helper
+    const authResult = await verifyAdminToken(req.headers.authorization);
+    
+    if (!authResult.success) {
+      console.error('[Recipients Count] Admin verification FAILED:', authResult.reason);
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Access denied',
+        reason: authResult.reason,
+        details: authResult.details,
+      });
+    }
+    
+    console.log('[Recipients Count] Admin verified:', authResult.email);
     
     const db = getAdminFirestore();
     if (!db) return res.status(500).json({ success: false, error: 'Firebase not configured' });

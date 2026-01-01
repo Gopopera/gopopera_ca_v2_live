@@ -274,6 +274,11 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     
     try {
       const token = await getIdToken();
+      
+      if (import.meta.env.DEV) {
+        console.debug('[MarketingHub] Fetching recipient count, auth token attached');
+      }
+      
       const response = await fetch('/api/marketing/recipients-count', {
         method: 'POST',
         headers: {
@@ -283,15 +288,32 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
         body: JSON.stringify({ audience }),
       });
       
-      const result = await response.json();
+      // Read response as text first to handle non-JSON responses
+      const rawText = await response.text();
+      
+      if (import.meta.env.DEV) {
+        console.debug('[MarketingHub] Recipients count response status:', response.status);
+        console.debug('[MarketingHub] Recipients count response body:', rawText.substring(0, 500));
+      }
+      
+      // Try to parse as JSON
+      let result: { success?: boolean; error?: string; reason?: string; count?: number; sampleMaskedEmails?: string[] };
+      try {
+        result = JSON.parse(rawText);
+      } catch (parseError) {
+        console.error('[MarketingHub] Failed to parse response as JSON:', rawText.substring(0, 1000));
+        throw new Error(`Server returned non-JSON response (${response.status}): ${rawText.substring(0, 100)}...`);
+      }
+      
       if (result.success) {
-        setRecipientCount(result.count);
+        setRecipientCount(result.count ?? 0);
         setSampleEmails(result.sampleMaskedEmails || []);
         setShowConfirmModal(true);
       } else {
-        throw new Error(result.error || 'Failed to fetch count');
+        throw new Error(result.error || result.reason || 'Failed to fetch count');
       }
     } catch (error: any) {
+      console.error('[MarketingHub] handleFetchRecipientCount error:', error);
       showNotification('error', error.message || 'Failed to fetch recipients');
     }
   };
@@ -308,6 +330,11 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     
     try {
       const token = await getIdToken();
+      
+      if (import.meta.env.DEV) {
+        console.debug('[MarketingHub] Sending bulk campaign, auth token attached');
+      }
+      
       const response = await fetch('/api/marketing/send-bulk', {
         method: 'POST',
         headers: {
@@ -321,14 +348,31 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
         }),
       });
       
-      const result = await response.json();
+      // Read response as text first to handle non-JSON responses
+      const rawText = await response.text();
+      
+      if (import.meta.env.DEV) {
+        console.debug('[MarketingHub] Bulk send response status:', response.status);
+        console.debug('[MarketingHub] Bulk send response body:', rawText.substring(0, 500));
+      }
+      
+      // Try to parse as JSON
+      let result: { success?: boolean; error?: string; reason?: string; sentCount?: number; failedCount?: number };
+      try {
+        result = JSON.parse(rawText);
+      } catch (parseError) {
+        console.error('[MarketingHub] Failed to parse response as JSON:', rawText.substring(0, 1000));
+        throw new Error(`Server returned non-JSON response (${response.status}): ${rawText.substring(0, 100)}...`);
+      }
+      
       if (result.success) {
         showNotification('success', `Campaign sent! ${result.sentCount || 0} delivered, ${result.failedCount || 0} failed.`);
         loadCampaigns();
       } else {
-        throw new Error(result.error || 'Failed to send campaign');
+        throw new Error(result.error || result.reason || 'Failed to send campaign');
       }
     } catch (error: any) {
+      console.error('[MarketingHub] handleSendBulk error:', error);
       showNotification('error', error.message || 'Failed to send campaign');
     } finally {
       setSendingBulk(false);
