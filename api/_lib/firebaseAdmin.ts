@@ -1,8 +1,6 @@
 /**
  * Firebase Admin SDK Singleton Helper
  * ESM-safe imports for Vercel serverless functions
- * 
- * Robust credential resolution with proper PEM key normalization
  */
 
 import { initializeApp, cert, getApps, type App } from 'firebase-admin/app';
@@ -15,141 +13,80 @@ let cachedApp: App | null = null;
 let cachedAuth: Auth | null = null;
 let cachedFirestore: Firestore | null = null;
 
-interface Credentials {
-  projectId: string;
-  clientEmail: string;
-  privateKey: string;
-}
-
-interface DebugInfo {
-  projectId: string | undefined;
+interface SafeDiagnostics {
+  hasProjectId: boolean;
   hasClientEmail: boolean;
+  hasPrivateKey: boolean;
   privateKeyLength: number;
-  privateKeyStartsWithBegin: boolean;
-  source: string;
+  newlineCount: number;
 }
 
 /**
  * Normalize private key to proper PEM format
- * Handles all common edge cases from Vercel env vars
+ * 
+ * Handles:
+ * - Surrounding quotes (single or double)
+ * - Windows line endings (\r\n)
+ * - Escaped newlines (\\n as two chars: backslash + n)
+ * - Double-escaped newlines (\\\\n as four chars)
  */
-function normalizePrivateKey(raw: string | undefined): string | undefined {
-  if (!raw) return undefined;
-  
+function normalizePrivateKey(raw: string): string {
   let key = raw;
   
   // 1. Trim whitespace
   key = key.trim();
   
-  // 2. Remove wrapping double quotes
-  if (key.startsWith('"') && key.endsWith('"')) {
-    key = key.slice(1, -1);
-  }
-  // 3. Remove wrapping single quotes
-  if (key.startsWith("'") && key.endsWith("'")) {
-    key = key.slice(1, -1);
+  // 2. Remove surrounding double quotes
+  if (key.length >= 2 && key[0] === '"' && key[key.length - 1] === '"') {
+    key = key.substring(1, key.length - 1);
   }
   
-  // 4. Replace ALL forms of escaped newlines with actual newlines
-  // Handle \\\\n (quadruple backslash from double JSON encoding)
-  key = key.split('\\\\n').join('\n');
-  // Handle \\n (double backslash - literal \n in the string)  
-  key = key.split('\\n').join('\n');
-  // Handle Windows line endings
-  key = key.split('\r\n').join('\n');
-  key = key.split('\r').join('\n');
-  
-  // 5. Clean up any double newlines that might have been created
-  while (key.includes('\n\n\n')) {
-    key = key.split('\n\n\n').join('\n\n');
+  // 3. Remove surrounding single quotes
+  if (key.length >= 2 && key[0] === "'" && key[key.length - 1] === "'") {
+    key = key.substring(1, key.length - 1);
   }
   
-  // 6. Final trim
+  // 4. Replace Windows line endings with Unix
+  key = key.replace(/\r\n/g, '\n');
+  key = key.replace(/\r/g, '\n');
+  
+  // 5. Replace double-escaped newlines (literal \\n -> \n)
+  // This handles the case where the key was JSON-stringified twice
+  // The regex /\\\\n/g matches: backslash backslash n
+  key = key.replace(/\\\\n/g, '\n');
+  
+  // 6. Replace single-escaped newlines (literal \n -> actual newline)
+  // The regex /\\n/g matches: backslash n
+  key = key.replace(/\\n/g, '\n');
+  
+  // 7. Final trim
   key = key.trim();
   
   return key;
 }
 
 /**
- * Resolve admin credentials from environment variables
- * Priority: FIREBASE_ADMIN_* > FIREBASE_*
+ * Build safe diagnostics (never includes secrets)
  */
-function resolveAdminCreds(): { credentials: Credentials; debugInfo: DebugInfo } {
-  // Determine which env vars to use
-  const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL || process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKeyRaw = process.env.FIREBASE_ADMIN_PRIVATE_KEY || process.env.FIREBASE_PRIVATE_KEY;
-  
-  const source = process.env.FIREBASE_ADMIN_PRIVATE_KEY 
-    ? 'FIREBASE_ADMIN_*' 
-    : process.env.FIREBASE_PRIVATE_KEY 
-      ? 'FIREBASE_*' 
-      : 'none';
-
-  // Normalize private key
-  const privateKey = normalizePrivateKey(privateKeyRaw);
-  
-  // Build debug info (safe to return in errors)
-  const debugInfo: DebugInfo = {
-    projectId,
-    hasClientEmail: !!clientEmail,
-    privateKeyLength: privateKey?.length || 0,
-    privateKeyStartsWithBegin: privateKey?.includes('BEGIN PRIVATE KEY') || false,
-    source,
-  };
-
-  // Validate required vars
-  if (!projectId) {
-    const error = new Error('Missing FIREBASE_ADMIN_PROJECT_ID or FIREBASE_PROJECT_ID');
-    (error as any).debugInfo = debugInfo;
-    throw error;
-  }
-  if (!clientEmail) {
-    const error = new Error('Missing FIREBASE_ADMIN_CLIENT_EMAIL or FIREBASE_CLIENT_EMAIL');
-    (error as any).debugInfo = debugInfo;
-    throw error;
-  }
-  if (!privateKey) {
-    const error = new Error('Missing FIREBASE_ADMIN_PRIVATE_KEY or FIREBASE_PRIVATE_KEY');
-    (error as any).debugInfo = debugInfo;
-    throw error;
-  }
-
-  // Validate PEM format
-  if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
-    const error = new Error('Invalid private key: missing BEGIN PRIVATE KEY header');
-    (error as any).debugInfo = debugInfo;
-    throw error;
-  }
-  if (!privateKey.includes('-----END PRIVATE KEY-----')) {
-    const error = new Error('Invalid private key: missing END PRIVATE KEY footer');
-    (error as any).debugInfo = debugInfo;
-    throw error;
-  }
-
-  // Check if key still has escaped newlines (bad sign)
-  if (privateKey.includes('\\n')) {
-    const error = new Error('Invalid private key: still contains escaped \\n after normalization');
-    (error as any).debugInfo = debugInfo;
-    throw error;
-  }
-
+function buildDiagnostics(
+  projectId: string | undefined,
+  clientEmail: string | undefined,
+  privateKey: string | undefined
+): SafeDiagnostics {
+  const normalizedKey = privateKey ? normalizePrivateKey(privateKey) : '';
   return {
-    credentials: { projectId, clientEmail, privateKey },
-    debugInfo,
+    hasProjectId: !!projectId,
+    hasClientEmail: !!clientEmail,
+    hasPrivateKey: !!privateKey,
+    privateKeyLength: normalizedKey.length,
+    newlineCount: (normalizedKey.match(/\n/g) || []).length,
   };
-}
-
-export interface AdminAppResult {
-  app: App | null;
-  initError: string | null;
-  debugInfo?: DebugInfo;
 }
 
 /**
  * Get or initialize Firebase Admin app (singleton)
  */
-export function getAdminApp(): AdminAppResult {
+export function getAdminApp(): { app: App | null; initError: string | null; diagnostics?: SafeDiagnostics } {
   // Return cached app if available
   if (cachedApp) {
     return { app: cachedApp, initError: null };
@@ -162,21 +99,34 @@ export function getAdminApp(): AdminAppResult {
     return { app: cachedApp, initError: null };
   }
 
-  // Resolve credentials
-  let credentials: Credentials;
-  let debugInfo: DebugInfo;
-  
-  try {
-    const resolved = resolveAdminCreds();
-    credentials = resolved.credentials;
-    debugInfo = resolved.debugInfo;
-  } catch (e: any) {
-    const errorMsg = e?.message || 'Failed to resolve credentials';
-    console.error('[FirebaseAdmin] Credential resolution failed:', errorMsg);
-    return {
-      app: null,
-      initError: errorMsg,
-      debugInfo: e?.debugInfo,
+  // Read environment variables
+  const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL || process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKeyRaw = process.env.FIREBASE_ADMIN_PRIVATE_KEY || process.env.FIREBASE_PRIVATE_KEY;
+
+  // Build diagnostics
+  const diagnostics = buildDiagnostics(projectId, clientEmail, privateKeyRaw);
+
+  // Validate required vars
+  if (!projectId) {
+    return { app: null, initError: 'Missing FIREBASE_*_PROJECT_ID', diagnostics };
+  }
+  if (!clientEmail) {
+    return { app: null, initError: 'Missing FIREBASE_*_CLIENT_EMAIL', diagnostics };
+  }
+  if (!privateKeyRaw) {
+    return { app: null, initError: 'Missing FIREBASE_*_PRIVATE_KEY', diagnostics };
+  }
+
+  // Normalize private key
+  const privateKey = normalizePrivateKey(privateKeyRaw);
+
+  // Validate PEM format
+  if (!privateKey.includes('BEGIN PRIVATE KEY') || !privateKey.includes('END PRIVATE KEY')) {
+    return { 
+      app: null, 
+      initError: 'Invalid private key: missing BEGIN/END PRIVATE KEY markers', 
+      diagnostics 
     };
   }
 
@@ -184,41 +134,21 @@ export function getAdminApp(): AdminAppResult {
   try {
     cachedApp = initializeApp({
       credential: cert({
-        projectId: credentials.projectId,
-        clientEmail: credentials.clientEmail,
-        privateKey: credentials.privateKey,
+        projectId,
+        clientEmail,
+        privateKey,
       }),
-      projectId: credentials.projectId,
+      projectId,
     });
 
-    console.log('[FirebaseAdmin] Initialized successfully for project:', credentials.projectId);
+    console.log('[FirebaseAdmin] Initialized for project:', projectId);
+    return { app: cachedApp, initError: null, diagnostics };
     
-    return {
-      app: cachedApp,
-      initError: null,
-      debugInfo,
-    };
   } catch (e: any) {
     const errorMsg = e?.message || 'Unknown initialization error';
     console.error('[FirebaseAdmin] Init failed:', errorMsg);
-    
-    // Add extra debug for DECODER errors
-    if (errorMsg.includes('DECODER') || errorMsg.includes('unsupported')) {
-      console.error('[FirebaseAdmin] DECODER error - key details:', {
-        keyLength: credentials.privateKey.length,
-        hasBeginMarker: credentials.privateKey.includes('-----BEGIN'),
-        hasEndMarker: credentials.privateKey.includes('-----END'),
-        newlineCount: (credentials.privateKey.match(/\n/g) || []).length,
-        firstChars: credentials.privateKey.substring(0, 30),
-        lastChars: credentials.privateKey.substring(credentials.privateKey.length - 30),
-      });
-    }
-    
-    return {
-      app: null,
-      initError: errorMsg,
-      debugInfo,
-    };
+    console.error('[FirebaseAdmin] Diagnostics:', diagnostics);
+    return { app: null, initError: errorMsg, diagnostics };
   }
 }
 
@@ -266,7 +196,6 @@ export type AuthResult =
  * Verify admin token and check email allowlist
  */
 export async function verifyAdminToken(authHeader: string | undefined): Promise<AuthResult> {
-  // Check auth header
   if (!authHeader?.startsWith('Bearer ')) {
     return { success: false, reason: 'missing_auth_header' };
   }
@@ -274,8 +203,7 @@ export async function verifyAdminToken(authHeader: string | undefined): Promise<
   const token = authHeader.split('Bearer ')[1];
   const unverifiedPayload = decodeJwtPayload(token);
 
-  // Get Firebase Admin app
-  const { app, initError, debugInfo } = getAdminApp();
+  const { app, initError, diagnostics } = getAdminApp();
 
   if (!app) {
     return {
@@ -283,22 +211,17 @@ export async function verifyAdminToken(authHeader: string | undefined): Promise<
       reason: 'admin_not_configured',
       details: {
         initError,
-        projectId: debugInfo?.projectId,
-        hasClientEmail: debugInfo?.hasClientEmail,
-        privateKeyLength: debugInfo?.privateKeyLength,
-        privateKeyStartsWithBegin: debugInfo?.privateKeyStartsWithBegin,
-        source: debugInfo?.source,
+        ...diagnostics,
         tokenEmail: unverifiedPayload?.email,
       },
     };
   }
 
-  // Get Auth and verify token
   const auth = getAdminAuth();
   if (!auth) {
     return {
       success: false,
-      reason: 'admin_not_configured',
+      reason: 'auth_init_failed',
       details: { initError: 'Failed to get Auth instance' },
     };
   }
@@ -306,7 +229,6 @@ export async function verifyAdminToken(authHeader: string | undefined): Promise<
   try {
     const decoded = await auth.verifyIdToken(token);
 
-    // Check admin email
     if (decoded.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
       return {
         success: false,
@@ -323,7 +245,6 @@ export async function verifyAdminToken(authHeader: string | undefined): Promise<
       details: {
         errorCode: e?.code,
         errorMessage: e?.message,
-        projectId: debugInfo?.projectId,
         tokenEmail: unverifiedPayload?.email,
       },
     };
