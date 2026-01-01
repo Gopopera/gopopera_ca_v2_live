@@ -166,12 +166,14 @@ export function getAdminAuth(): Auth | null {
 
 /**
  * Get Firestore instance
+ * Note: Using named database 'gopopera2028' (not the default)
  */
 export function getAdminFirestore(): Firestore | null {
   if (cachedFirestore) return cachedFirestore;
   const { app } = getAdminApp();
   if (!app) return null;
-  cachedFirestore = getFirestore(app);
+  // Connect to the named database 'gopopera2028'
+  cachedFirestore = getFirestore(app, 'gopopera2028');
   return cachedFirestore;
 }
 
