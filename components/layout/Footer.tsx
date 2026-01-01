@@ -90,6 +90,7 @@ export const Footer: React.FC<FooterProps> = ({ setViewState, isLoggedIn = false
           <div className="col-span-1">
             <h3 className="font-heading font-bold text-white text-base sm:text-lg mb-4 sm:mb-6">{t('footer.other')}</h3>
             <ul className="space-y-2 sm:space-y-3 text-xs sm:text-sm text-gray-300">
+              <li><button onClick={() => handleNav(ViewState.TICKETS_AND_PAYMENTS)} className="hover:text-[#e35e25] transition-colors text-left">{t('footer.ticketsPayments')}</button></li>
               <li><button onClick={() => handleNav(ViewState.REPORT_EVENT)} className="hover:text-[#e35e25] transition-colors text-left">{t('footer.reportEvent')}</button></li>
               <li><button onClick={() => handleNav(ViewState.HELP)} className="hover:text-[#e35e25] transition-colors text-left">{t('footer.helpSupport')}</button></li>
             </ul>

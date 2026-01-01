@@ -183,6 +183,12 @@ const STATIC_METADATA: Partial<Record<ViewState, Partial<SeoMetadata>>> = {
     canonicalUrl: `${BASE_URL}/the-10-seat-event-playbook`,
     ogType: 'website',
   },
+  [ViewState.TICKETS_AND_PAYMENTS]: {
+    title: `Tickets & Payments — ${BRAND_NAME}`,
+    description: 'Learn how reservations, payments, tickets, and refunds work on Popera. Secure Stripe payments, host payouts, and attendance tracking for small in-person circles.',
+    canonicalUrl: `${BASE_URL}/tickets-and-payments`,
+    ogType: 'website',
+  },
 };
 
 /**

@@ -124,6 +124,9 @@ export enum ViewState {
   // Guide Pages
   GUIDE_10_SEAT = 'GUIDE_10_SEAT',
   
+  // Static Info Pages
+  TICKETS_AND_PAYMENTS = 'TICKETS_AND_PAYMENTS',
+  
   // Marketing Hub (Admin)
   MARKETING_HUB = 'MARKETING_HUB',
   UNSUBSCRIBE = 'UNSUBSCRIBE',

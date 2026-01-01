@@ -59,6 +59,7 @@ const ReportPage = React.lazy(() => import('./src/pages/ReportPage').then(m => (
 const HelpPage = React.lazy(() => import('./src/pages/HelpPage').then(m => ({ default: m.HelpPage })));
 const SafetyPage = React.lazy(() => import('./src/pages/SafetyPage').then(m => ({ default: m.SafetyPage })));
 const PressPage = React.lazy(() => import('./src/pages/PressPage').then(m => ({ default: m.PressPage })));
+const TicketsAndPaymentsPage = React.lazy(() => import('./src/pages/TicketsAndPaymentsPage').then(m => ({ default: m.TicketsAndPaymentsPage })));
 const Guide10SeatPlaybookPage = React.lazy(() => import('./src/pages/Guide10SeatPlaybookPage').then(m => ({ default: m.Guide10SeatPlaybookPage })));
 const MarketingHubPage = React.lazy(() => import('./src/pages/MarketingHubPage').then(m => ({ default: m.MarketingHubPage })));
 const UnsubscribePage = React.lazy(() => import('./src/pages/UnsubscribePage').then(m => ({ default: m.UnsubscribePage })));
@@ -456,6 +457,8 @@ const AppContent: React.FC = () => {
       return ViewState.SAFETY;
     } else if (pathname === '/press') {
       return ViewState.PRESS;
+    } else if (pathname === '/tickets-and-payments') {
+      return ViewState.TICKETS_AND_PAYMENTS;
     } else if (pathname === '/the-10-seat-event-playbook') {
       return ViewState.GUIDE_10_SEAT;
     } else if (pathname === '/host/payouts/setup') {
@@ -1315,6 +1318,10 @@ const AppContent: React.FC = () => {
       if (currentUrl !== '/press') {
         window.history.replaceState({ viewState: ViewState.PRESS }, '', '/press');
       }
+    } else if (viewState === ViewState.TICKETS_AND_PAYMENTS) {
+      if (currentUrl !== '/tickets-and-payments') {
+        window.history.replaceState({ viewState: ViewState.TICKETS_AND_PAYMENTS }, '', '/tickets-and-payments');
+      }
     } else if (viewState === ViewState.GUIDE_10_SEAT) {
       if (currentUrl !== '/the-10-seat-event-playbook') {
         window.history.replaceState({ viewState: ViewState.GUIDE_10_SEAT }, '', '/the-10-seat-event-playbook');
@@ -1493,7 +1500,7 @@ const AppContent: React.FC = () => {
             ViewState.HOST_PROFILE, ViewState.ABOUT, ViewState.CAREERS, ViewState.CONTACT,
             ViewState.TERMS, ViewState.PRIVACY, ViewState.CANCELLATION, ViewState.GUIDELINES,
             ViewState.REPORT_EVENT, ViewState.HELP, ViewState.SAFETY, ViewState.PRESS,
-            ViewState.GUIDE_10_SEAT, ViewState.MARKETING_HUB, ViewState.UNSUBSCRIBE, ViewState.AUTH, ViewState.CREATE_EVENT, ViewState.EDIT_EVENT,
+            ViewState.TICKETS_AND_PAYMENTS, ViewState.GUIDE_10_SEAT, ViewState.MARKETING_HUB, ViewState.UNSUBSCRIBE, ViewState.AUTH, ViewState.CREATE_EVENT, ViewState.EDIT_EVENT,
             ViewState.PROFILE, ViewState.NOTIFICATIONS, ViewState.MY_POPS,
             ViewState.FAVORITES, ViewState.MY_CALENDAR,
             ViewState.PROFILE_BASIC, ViewState.PROFILE_NOTIFICATIONS,
@@ -2031,6 +2038,7 @@ const AppContent: React.FC = () => {
         {viewState === ViewState.HELP && <HelpPage setViewState={setViewState} />}
         {viewState === ViewState.SAFETY && <SafetyPage setViewState={setViewState} />}
         {viewState === ViewState.PRESS && <PressPage setViewState={setViewState} />}
+        {viewState === ViewState.TICKETS_AND_PAYMENTS && <TicketsAndPaymentsPage setViewState={setViewState} />}
         {viewState === ViewState.GUIDE_10_SEAT && <Guide10SeatPlaybookPage setViewState={setViewState} />}
         {viewState === ViewState.MARKETING_HUB && <MarketingHubPage setViewState={setViewState} />}
         {viewState === ViewState.UNSUBSCRIBE && <UnsubscribePage setViewState={setViewState} />}
