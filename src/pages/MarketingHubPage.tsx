@@ -771,7 +771,55 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     return rows;
   };
   
-  // CSV Import: Map column names to standard fields
+  // CSV Import: Smart column finder - finds a value from any matching column
+  const findColumnValue = (row: Record<string, string>, patterns: string[]): string => {
+    const keys = Object.keys(row);
+    for (const pattern of patterns) {
+      // First try exact match (lowercase)
+      if (row[pattern]) return row[pattern];
+      // Then try case-insensitive partial match
+      const matchingKey = keys.find(k => k.toLowerCase().includes(pattern.toLowerCase()));
+      if (matchingKey && row[matchingKey]) return row[matchingKey];
+    }
+    return '';
+  };
+  
+  // CSV Import: Smart name extractor from email
+  const extractNameFromEmail = (email: string): string => {
+    if (!email || !email.includes('@')) return '';
+    
+    const [localPart, domain] = email.split('@');
+    const domainName = domain.split('.')[0];
+    
+    // If local part is generic (info, admin, contact, hello, etc.), use domain name
+    const genericPrefixes = ['info', 'admin', 'contact', 'hello', 'support', 'sales', 'team', 'office', 'booking', 'bookings', 'reservations', 'events', 'marketing', 'news', 'media', 'press', 'hr', 'careers', 'jobs', 'help', 'customer', 'service'];
+    
+    if (genericPrefixes.includes(localPart.toLowerCase())) {
+      // Capitalize domain name nicely
+      return domainName.charAt(0).toUpperCase() + domainName.slice(1).toLowerCase();
+    }
+    
+    // Otherwise, try to make a name from local part
+    // Handle formats like: john.doe, john_doe, johndoe
+    const cleanedLocal = localPart
+      .replace(/[._-]/g, ' ')
+      .replace(/\d+/g, '')
+      .trim();
+    
+    if (cleanedLocal.length > 1) {
+      // Capitalize each word
+      return cleanedLocal
+        .split(' ')
+        .filter(w => w.length > 0)
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        .join(' ');
+    }
+    
+    // Fallback to domain
+    return domainName.charAt(0).toUpperCase() + domainName.slice(1).toLowerCase();
+  };
+  
+  // CSV Import: Map column names to standard fields (SMART VERSION)
   const mapCsvRow = (row: Record<string, string>): {
     businessName: string;
     email: string;
@@ -780,29 +828,63 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     website?: string;
     address?: string;
   } | null => {
-    // Try to find business name
-    const businessName = row['businessname'] || row['business_name'] || row['name'] || row['company'] || row['business'] || '';
+    // SMART EMAIL DETECTION - find any column containing "email" or "mail"
+    const email = findColumnValue(row, ['email', 'e-mail', 'mail', 'e-mail 1 - value', 'email address', 'primary email', 'work email', 'personal email']);
     
-    // Try to find email
-    const email = row['email'] || row['contact_email'] || row['e-mail'] || row['mail'] || '';
-    
-    // Try to find city
-    const city = row['city'] || row['location'] || row['ville'] || '';
-    
-    // Optional fields
-    const phone = row['phone'] || row['telephone'] || row['tel'] || row['phone_number'] || '';
-    const website = row['website'] || row['url'] || row['site'] || row['web'] || '';
-    const address = row['address'] || row['street'] || row['adresse'] || '';
-    
-    // Skip if no business name or email (city is now optional)
-    if (!businessName || !email || !email.includes('@')) {
+    // Skip if no valid email
+    if (!email || !email.includes('@')) {
       return null;
     }
+    
+    // SMART NAME DETECTION - combine multiple name columns if present
+    const firstName = findColumnValue(row, ['first name', 'firstname', 'first', 'given name', 'prénom']);
+    const middleName = findColumnValue(row, ['middle name', 'middlename', 'middle']);
+    const lastName = findColumnValue(row, ['last name', 'lastname', 'last', 'surname', 'family name', 'nom']);
+    const fullName = findColumnValue(row, ['name', 'full name', 'fullname', 'display name', 'displayname']);
+    const company = findColumnValue(row, ['company', 'organization', 'organisation', 'business', 'businessname', 'business name', 'organization name']);
+    
+    // Build the name from available parts
+    let businessName = '';
+    
+    // Priority 1: Combined first/middle/last name
+    const combinedName = [firstName, middleName, lastName].filter(n => n.trim()).join(' ').trim();
+    if (combinedName) {
+      businessName = combinedName;
+    }
+    // Priority 2: Full name field
+    else if (fullName) {
+      businessName = fullName;
+    }
+    // Priority 3: Company/organization name
+    else if (company) {
+      businessName = company;
+    }
+    // Priority 4: Extract from email address
+    else {
+      businessName = extractNameFromEmail(email);
+    }
+    
+    // Skip if still no name (shouldn't happen with email fallback, but safety check)
+    if (!businessName) {
+      return null;
+    }
+    
+    // SMART CITY DETECTION
+    const city = findColumnValue(row, ['city', 'location', 'ville', 'town', 'municipality', 'address city']);
+    
+    // SMART PHONE DETECTION
+    const phone = findColumnValue(row, ['phone', 'telephone', 'tel', 'phone number', 'mobile', 'cell', 'phone 1 - value', 'work phone', 'home phone']);
+    
+    // SMART WEBSITE DETECTION
+    const website = findColumnValue(row, ['website', 'url', 'site', 'web', 'homepage', 'website url']);
+    
+    // SMART ADDRESS DETECTION
+    const address = findColumnValue(row, ['address', 'street', 'adresse', 'street address', 'address 1', 'full address']);
     
     return {
       businessName: businessName.trim(),
       email: email.toLowerCase().trim(),
-      city: city.trim() || 'Unknown', // Default to 'Unknown' if not provided
+      city: city.trim() || 'Unknown',
       phone: phone.trim() || undefined,
       website: website.trim() || undefined,
       address: address.trim() || undefined,
