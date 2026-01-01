@@ -227,6 +227,14 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
   // Auth check
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
   
+  // DEBUG: Log auth state (always runs)
+  console.log('[MarketingHub] Auth state:', { 
+    userEmail: user?.email, 
+    adminEmail: ADMIN_EMAIL, 
+    isAdmin, 
+    authInitialized 
+  });
+  
   // Get Firebase ID token (force refresh to ensure validity)
   const getIdToken = async (): Promise<string> => {
     const auth = getAuthInstance();
@@ -287,20 +295,26 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
   
   // Load leads
   const loadLeads = useCallback(async () => {
+    console.log('[MarketingHub] loadLeads() called with filters:', leadFilters);
     setLoadingLeads(true);
     try {
       const loaded = await listLeads(leadFilters);
+      console.log('[MarketingHub] listLeads returned:', loaded.length, 'leads');
       setLeads(loaded);
     } catch (error) {
-      console.error('Error loading leads:', error);
+      console.error('[MarketingHub] Error loading leads:', error);
     } finally {
       setLoadingLeads(false);
     }
   }, [leadFilters]);
   
   useEffect(() => {
+    console.log('[MarketingHub] Leads useEffect triggered:', { isAdmin, activeTab });
     if (isAdmin && activeTab === 'leads') {
+      console.log('[MarketingHub] Conditions met, calling loadLeads()');
       loadLeads();
+    } else {
+      console.log('[MarketingHub] Conditions NOT met, skipping loadLeads()');
     }
   }, [isAdmin, activeTab, loadLeads]);
   
