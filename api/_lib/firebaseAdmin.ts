@@ -1,6 +1,8 @@
 /**
  * Firebase Admin SDK Singleton Helper
  * ESM-safe imports for Vercel serverless functions
+ * 
+ * Robust credential resolution with proper PEM key normalization
  */
 
 import { initializeApp, cert, getApps, type App } from 'firebase-admin/app';
@@ -8,11 +10,11 @@ import { getAuth, type Auth } from 'firebase-admin/auth';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 
 const ADMIN_EMAIL = 'eatezca@gmail.com';
+const IS_DEV = process.env.NODE_ENV !== 'production';
 
 let cachedApp: App | null = null;
 let cachedAuth: Auth | null = null;
 let cachedFirestore: Firestore | null = null;
-let initError: string | null = null;
 
 interface Credentials {
   projectId: string;
@@ -20,75 +22,176 @@ interface Credentials {
   privateKey: string;
 }
 
-/**
- * Normalize private key: replace \\n with \n and trim whitespace
- */
-function normalizePrivateKey(key: string): string {
-  return key.replace(/\\n/g, '\n').trim();
+interface CredentialSource {
+  projectIdKey: string;
+  clientEmailKey: string;
+  privateKeyKey: string;
 }
 
 /**
- * Try to resolve credentials from environment
- * Priority: FIREBASE_SERVICE_ACCOUNT (JSON) > individual vars
+ * Normalize private key to proper PEM format
+ * Handles: wrapped quotes, escaped newlines, double-escaped newlines
  */
-function resolveCredentials(): { credentials: Credentials | null; source: string; error?: string } {
-  // 1. Try FIREBASE_SERVICE_ACCOUNT JSON
+function normalizePrivateKey(raw: string): string {
+  let key = raw;
+  
+  // 1. Trim whitespace
+  key = key.trim();
+  
+  // 2. Remove wrapping quotes (single or double)
+  if ((key.startsWith('"') && key.endsWith('"')) || 
+      (key.startsWith("'") && key.endsWith("'"))) {
+    key = key.slice(1, -1);
+  }
+  
+  // 3. Handle double-escaped newlines first (\\\\n -> \n)
+  key = key.replace(/\\\\n/g, '\n');
+  
+  // 4. Handle single-escaped newlines (\\n -> \n)
+  key = key.replace(/\\n/g, '\n');
+  
+  // 5. Handle literal backslash-n that might remain
+  key = key.replace(/\r\n/g, '\n');
+  key = key.replace(/\r/g, '\n');
+  
+  // 6. Trim again after processing
+  key = key.trim();
+  
+  return key;
+}
+
+/**
+ * Validate that the key is proper PEM format
+ */
+function validatePrivateKey(key: string): { valid: boolean; error?: string } {
+  if (!key) {
+    return { valid: false, error: 'Private key is empty' };
+  }
+  
+  if (!key.includes('-----BEGIN')) {
+    return { valid: false, error: 'Missing BEGIN marker - key may be base64 encoded or corrupted' };
+  }
+  
+  if (!key.includes('PRIVATE KEY-----')) {
+    return { valid: false, error: 'Missing PRIVATE KEY header' };
+  }
+  
+  if (!key.includes('-----END')) {
+    return { valid: false, error: 'Missing END marker' };
+  }
+  
+  // Check for common corruption patterns
+  if (key.includes('\\n')) {
+    return { valid: false, error: 'Key still contains escaped newlines (\\n) after normalization' };
+  }
+  
+  return { valid: true };
+}
+
+/**
+ * Resolve admin credentials from environment variables
+ * Priority: FIREBASE_SERVICE_ACCOUNT JSON > FIREBASE_ADMIN_* > FIREBASE_*
+ */
+function resolveAdminCreds(): { credentials: Credentials; source: CredentialSource } {
+  // 1. Try FIREBASE_SERVICE_ACCOUNT JSON first
   const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (serviceAccountJson) {
     try {
       const parsed = JSON.parse(serviceAccountJson);
       if (parsed.project_id && parsed.client_email && parsed.private_key) {
+        const privateKey = normalizePrivateKey(parsed.private_key);
+        const validation = validatePrivateKey(privateKey);
+        
+        if (!validation.valid) {
+          throw new Error(`Invalid private key from FIREBASE_SERVICE_ACCOUNT: ${validation.error}`);
+        }
+        
+        if (IS_DEV) {
+          console.log('[FirebaseAdmin] Using FIREBASE_SERVICE_ACCOUNT JSON');
+          console.log('[FirebaseAdmin] projectId:', parsed.project_id);
+          console.log('[FirebaseAdmin] clientEmail present:', !!parsed.client_email);
+          console.log('[FirebaseAdmin] privateKey length:', privateKey.length);
+        }
+        
         return {
           credentials: {
             projectId: parsed.project_id,
             clientEmail: parsed.client_email,
-            privateKey: normalizePrivateKey(parsed.private_key),
+            privateKey,
           },
-          source: 'FIREBASE_SERVICE_ACCOUNT',
+          source: {
+            projectIdKey: 'FIREBASE_SERVICE_ACCOUNT.project_id',
+            clientEmailKey: 'FIREBASE_SERVICE_ACCOUNT.client_email',
+            privateKeyKey: 'FIREBASE_SERVICE_ACCOUNT.private_key',
+          },
         };
       }
-      console.warn('[FirebaseAdmin] FIREBASE_SERVICE_ACCOUNT parsed but missing required fields');
-    } catch (e) {
-      console.warn('[FirebaseAdmin] FIREBASE_SERVICE_ACCOUNT JSON parse failed, falling back to individual vars');
+    } catch (e: any) {
+      if (IS_DEV) {
+        console.warn('[FirebaseAdmin] FIREBASE_SERVICE_ACCOUNT parse failed:', e.message);
+      }
     }
   }
 
-  // 2. Fall back to individual environment variables
-  const projectId = 
-    process.env.FIREBASE_ADMIN_PROJECT_ID || 
-    process.env.FIREBASE_PROJECT_ID || 
-    process.env.VITE_FIREBASE_PROJECT_ID;
-  const clientEmail = 
-    process.env.FIREBASE_ADMIN_CLIENT_EMAIL || 
-    process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKeyRaw = 
-    process.env.FIREBASE_ADMIN_PRIVATE_KEY || 
-    process.env.FIREBASE_PRIVATE_KEY;
+  // 2. Resolve individual environment variables
+  const projectIdKey = process.env.FIREBASE_ADMIN_PROJECT_ID ? 'FIREBASE_ADMIN_PROJECT_ID' 
+    : process.env.FIREBASE_PROJECT_ID ? 'FIREBASE_PROJECT_ID' 
+    : null;
+  const clientEmailKey = process.env.FIREBASE_ADMIN_CLIENT_EMAIL ? 'FIREBASE_ADMIN_CLIENT_EMAIL'
+    : process.env.FIREBASE_CLIENT_EMAIL ? 'FIREBASE_CLIENT_EMAIL'
+    : null;
+  const privateKeyKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY ? 'FIREBASE_ADMIN_PRIVATE_KEY'
+    : process.env.FIREBASE_PRIVATE_KEY ? 'FIREBASE_PRIVATE_KEY'
+    : null;
 
+  const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL || process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKeyRaw = process.env.FIREBASE_ADMIN_PRIVATE_KEY || process.env.FIREBASE_PRIVATE_KEY;
+
+  // Validate presence of required vars
   if (!projectId) {
-    return { credentials: null, source: 'individual_vars', error: 'Missing projectId (FIREBASE_PROJECT_ID)' };
+    throw new Error('Missing FIREBASE_ADMIN_PROJECT_ID or FIREBASE_PROJECT_ID');
   }
   if (!clientEmail) {
-    return { credentials: null, source: 'individual_vars', error: 'Missing clientEmail (FIREBASE_CLIENT_EMAIL)' };
+    throw new Error('Missing FIREBASE_ADMIN_CLIENT_EMAIL or FIREBASE_CLIENT_EMAIL');
   }
   if (!privateKeyRaw) {
-    return { credentials: null, source: 'individual_vars', error: 'Missing privateKey (FIREBASE_PRIVATE_KEY)' };
+    throw new Error('Missing FIREBASE_ADMIN_PRIVATE_KEY or FIREBASE_PRIVATE_KEY');
+  }
+
+  // Normalize private key
+  const privateKey = normalizePrivateKey(privateKeyRaw);
+  
+  // Validate PEM format
+  const validation = validatePrivateKey(privateKey);
+  if (!validation.valid) {
+    throw new Error(`Invalid Firebase private key format (expected PEM): ${validation.error}`);
+  }
+
+  if (IS_DEV) {
+    console.log('[FirebaseAdmin] Using individual env vars');
+    console.log('[FirebaseAdmin] projectId from:', projectIdKey);
+    console.log('[FirebaseAdmin] clientEmail from:', clientEmailKey);
+    console.log('[FirebaseAdmin] privateKey from:', privateKeyKey);
+    console.log('[FirebaseAdmin] projectId:', projectId);
+    console.log('[FirebaseAdmin] clientEmail present:', !!clientEmail);
+    console.log('[FirebaseAdmin] privateKey length:', privateKey.length);
   }
 
   return {
-    credentials: {
-      projectId,
-      clientEmail,
-      privateKey: normalizePrivateKey(privateKeyRaw),
+    credentials: { projectId, clientEmail, privateKey },
+    source: {
+      projectIdKey: projectIdKey || 'unknown',
+      clientEmailKey: clientEmailKey || 'unknown',
+      privateKeyKey: privateKeyKey || 'unknown',
     },
-    source: 'individual_vars',
   };
 }
 
 export interface AdminAppResult {
   app: App | null;
   initError: string | null;
-  source: string;
+  source: CredentialSource | null;
   projectId?: string;
   hasClientEmail?: boolean;
   privateKeyLength?: number;
@@ -100,40 +203,40 @@ export interface AdminAppResult {
 export function getAdminApp(): AdminAppResult {
   // Return cached app if available
   if (cachedApp) {
-    return { app: cachedApp, initError: null, source: 'cached' };
+    return { app: cachedApp, initError: null, source: null };
   }
 
   // Check if any apps already exist (warm lambda)
   const existingApps = getApps();
   if (existingApps.length > 0) {
     cachedApp = existingApps[0];
-    console.log('[FirebaseAdmin] Reusing existing app');
-    return { app: cachedApp, initError: null, source: 'existing' };
+    if (IS_DEV) {
+      console.log('[FirebaseAdmin] Reusing existing app');
+    }
+    return { app: cachedApp, initError: null, source: null };
   }
 
   // Resolve credentials
-  const { credentials, source, error: resolveError } = resolveCredentials();
-
-  if (!credentials) {
-    initError = resolveError || 'Failed to resolve credentials';
-    console.error('[FirebaseAdmin] Credential resolution failed:', initError);
+  let credentials: Credentials;
+  let source: CredentialSource;
+  
+  try {
+    const resolved = resolveAdminCreds();
+    credentials = resolved.credentials;
+    source = resolved.source;
+  } catch (e: any) {
+    const errorMsg = e?.message || 'Failed to resolve credentials';
+    console.error('[FirebaseAdmin] Credential resolution failed:', errorMsg);
     return {
       app: null,
-      initError,
-      source,
+      initError: errorMsg,
+      source: null,
       hasClientEmail: false,
       privateKeyLength: 0,
     };
   }
 
-  console.log('[FirebaseAdmin] Initializing with:', {
-    source,
-    projectId: credentials.projectId,
-    clientEmailPrefix: credentials.clientEmail?.substring(0, 20) + '...',
-    privateKeyLength: credentials.privateKey.length,
-  });
-
-  // Initialize Firebase Admin using ESM-safe cert()
+  // Initialize Firebase Admin
   try {
     cachedApp = initializeApp({
       credential: cert({
@@ -144,8 +247,8 @@ export function getAdminApp(): AdminAppResult {
       projectId: credentials.projectId,
     });
 
-    initError = null;
-    console.log('[FirebaseAdmin] Initialized successfully');
+    console.log('[FirebaseAdmin] Initialized successfully for project:', credentials.projectId);
+    
     return {
       app: cachedApp,
       initError: null,
@@ -155,11 +258,22 @@ export function getAdminApp(): AdminAppResult {
       privateKeyLength: credentials.privateKey.length,
     };
   } catch (e: any) {
-    initError = e?.message || 'Unknown initialization error';
-    console.error('[FirebaseAdmin] Init failed:', initError);
+    const errorMsg = e?.message || 'Unknown initialization error';
+    console.error('[FirebaseAdmin] Init failed:', errorMsg);
+    
+    // Log additional debug info for key-related errors
+    if (errorMsg.includes('DECODER') || errorMsg.includes('PEM') || errorMsg.includes('key')) {
+      console.error('[FirebaseAdmin] Key error details:', {
+        keyLength: credentials.privateKey.length,
+        startsWithBegin: credentials.privateKey.startsWith('-----BEGIN'),
+        containsNewlines: credentials.privateKey.includes('\n'),
+        newlineCount: (credentials.privateKey.match(/\n/g) || []).length,
+      });
+    }
+    
     return {
       app: null,
-      initError,
+      initError: errorMsg,
       source,
       projectId: credentials.projectId,
       hasClientEmail: true,
@@ -229,7 +343,7 @@ export async function verifyAdminToken(authHeader: string | undefined): Promise<
       reason: 'admin_not_configured',
       details: {
         initError: adminInitError,
-        source,
+        source: source ? `${source.projectIdKey}, ${source.clientEmailKey}, ${source.privateKeyKey}` : 'unknown',
         projectId,
         hasClientEmail,
         privateKeyLength,
