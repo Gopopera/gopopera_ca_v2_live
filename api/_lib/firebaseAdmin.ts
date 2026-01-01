@@ -6,6 +6,7 @@
 import { initializeApp, cert, getApps, type App } from 'firebase-admin/app';
 import { getAuth, type Auth } from 'firebase-admin/auth';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
+import { createPrivateKey } from 'node:crypto';
 
 const ADMIN_EMAIL = 'eatezca@gmail.com';
 
@@ -218,8 +219,7 @@ export function getAdminKeyDiagnostics(): KeyDiagnostics {
 
   // Try to parse the key with Node.js crypto
   try {
-    const crypto = require('crypto');
-    crypto.createPrivateKey(normalizedKey);
+    createPrivateKey({ key: normalizedKey, format: 'pem' });
     diagnostics.cryptoParseOk = true;
   } catch (e: any) {
     diagnostics.cryptoParseOk = false;
