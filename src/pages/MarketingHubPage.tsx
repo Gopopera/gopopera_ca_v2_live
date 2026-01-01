@@ -204,6 +204,24 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     }>;
   } | null>(null);
   
+  // Send outreach modal state
+  const [showSendOutreachModal, setShowSendOutreachModal] = useState(false);
+  const [sendingOutreach, setSendingOutreach] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [outreachResult, setOutreachResult] = useState<{
+    success: boolean;
+    sent: number;
+    failed: number;
+    skipped: number;
+    results: Array<{
+      leadId: string;
+      businessName: string;
+      email?: string;
+      outcome: 'sent' | 'failed' | 'skipped';
+      reason?: string;
+    }>;
+  } | null>(null);
+  
   // Build email params
   const emailParams: MarketingEmailParams = useMemo(() => ({
     subject,
@@ -609,6 +627,80 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       showNotification('error', error.message || 'Import failed');
     } finally {
       setImportRunning(false);
+    }
+  };
+  
+  // Open send outreach modal
+  const handleOpenSendOutreach = async () => {
+    setOutreachResult(null);
+    setSelectedTemplateId('');
+    // Load templates if not already loaded
+    if (templates.length === 0) {
+      setLoadingTemplates(true);
+      try {
+        const loaded = await listOutreachTemplates();
+        setTemplates(loaded);
+      } catch (error) {
+        console.error('Error loading templates:', error);
+      } finally {
+        setLoadingTemplates(false);
+      }
+    }
+    setShowSendOutreachModal(true);
+  };
+  
+  // Send outreach emails to selected leads
+  const handleSendOutreach = async () => {
+    if (selectedLeadIds.size === 0) {
+      showNotification('error', 'Select at least one lead');
+      return;
+    }
+    if (!selectedTemplateId) {
+      showNotification('error', 'Please select a template');
+      return;
+    }
+    
+    setSendingOutreach(true);
+    setOutreachResult(null);
+    
+    try {
+      const token = await getIdToken();
+      
+      const response = await fetch('/api/leads/send-outreach', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          leadIds: Array.from(selectedLeadIds),
+          templateId: selectedTemplateId,
+        }),
+      });
+      
+      const rawText = await response.text();
+      let result;
+      try {
+        result = JSON.parse(rawText);
+      } catch {
+        throw new Error(`Server returned non-JSON response: ${rawText.substring(0, 100)}...`);
+      }
+      
+      if (result.success) {
+        setOutreachResult(result);
+        showNotification('success', `Sent ${result.sent} emails, ${result.skipped} skipped, ${result.failed} failed`);
+        // Clear selection after successful send
+        setSelectedLeadIds(new Set());
+        // Reload leads to show updated lastContactedAt
+        loadLeads();
+      } else {
+        showNotification('error', result.error || 'Failed to send outreach');
+      }
+    } catch (error: any) {
+      console.error('[MarketingHub] Send outreach error:', error);
+      showNotification('error', error.message || 'Failed to send outreach');
+    } finally {
+      setSendingOutreach(false);
     }
   };
   
@@ -1401,6 +1493,191 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
           </div>
         </div>
       )}
+      
+      {/* Send Outreach Modal */}
+      {showSendOutreachModal && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget && !sendingOutreach) setShowSendOutreachModal(false); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <h2 className="text-xl font-bold text-[#15383c]">Send Outreach Email</h2>
+              <button onClick={() => !sendingOutreach && setShowSendOutreachModal(false)} disabled={sendingOutreach} className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-auto p-4 space-y-4">
+              {!outreachResult ? (
+                <>
+                  {/* Recipients info */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-blue-700 font-medium">
+                      Sending to {selectedLeadIds.size} lead{selectedLeadIds.size !== 1 ? 's' : ''}
+                    </p>
+                    <p className="text-blue-600 text-sm mt-1">
+                      Leads without valid email addresses will be skipped.
+                    </p>
+                  </div>
+                  
+                  {/* Template selector */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Outreach Template *</label>
+                    {loadingTemplates ? (
+                      <div className="flex items-center gap-2 text-gray-500">
+                        <Loader2 size={16} className="animate-spin" />
+                        Loading templates...
+                      </div>
+                    ) : templates.length === 0 ? (
+                      <p className="text-gray-500 text-sm">No templates found. Create one in the Templates tab first.</p>
+                    ) : (
+                      <select
+                        value={selectedTemplateId}
+                        onChange={e => setSelectedTemplateId(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#e35e25] focus:border-transparent"
+                      >
+                        <option value="">Select a template...</option>
+                        {templates.map(t => (
+                          <option key={t.id} value={t.id}>{t.name} ({t.categoryKey})</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                  
+                  {/* Template preview (lightweight) */}
+                  {selectedTemplateId && (
+                    <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                      <p className="text-xs text-gray-500 mb-2 font-medium">TEMPLATE PREVIEW</p>
+                      {(() => {
+                        const tpl = templates.find(t => t.id === selectedTemplateId);
+                        if (!tpl) return null;
+                        // Get first selected lead for preview
+                        const firstLead = leads.find(l => selectedLeadIds.has(l.id));
+                        const previewBizName = firstLead?.businessName || '{{business_name}}';
+                        const previewCity = firstLead?.city || '{{city}}';
+                        const previewSubject = tpl.subject
+                          .replace(/\{\{business_name\}\}/gi, previewBizName)
+                          .replace(/\{\{city\}\}/gi, previewCity)
+                          .replace(/\{\{category\}\}/gi, tpl.categoryKey);
+                        const previewBody = tpl.markdownBody
+                          .replace(/\{\{business_name\}\}/gi, previewBizName)
+                          .replace(/\{\{city\}\}/gi, previewCity)
+                          .replace(/\{\{category\}\}/gi, tpl.categoryKey);
+                        return (
+                          <div className="space-y-2">
+                            <div>
+                              <span className="text-xs text-gray-500">Subject: </span>
+                              <span className="text-sm text-gray-700">{previewSubject}</span>
+                            </div>
+                            <div>
+                              <span className="text-xs text-gray-500">Theme: </span>
+                              <span className="text-sm text-gray-700 capitalize">{tpl.theme}</span>
+                            </div>
+                            <div className="text-sm text-gray-600 max-h-32 overflow-auto whitespace-pre-wrap border-t border-gray-200 pt-2 mt-2">
+                              {previewBody.substring(0, 300)}{previewBody.length > 300 ? '...' : ''}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </>
+              ) : (
+                // Results
+                <div className="space-y-4">
+                  <div className={`p-4 rounded-lg ${outreachResult.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                    <p className="font-semibold text-lg mb-2">
+                      {outreachResult.success ? '✅ Outreach Complete' : '❌ Error'}
+                    </p>
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      <div>
+                        <p className="text-2xl font-bold text-green-600">{outreachResult.sent}</p>
+                        <p className="text-xs text-gray-600">Sent</p>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-gray-500">{outreachResult.skipped}</p>
+                        <p className="text-xs text-gray-600">Skipped</p>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-red-600">{outreachResult.failed}</p>
+                        <p className="text-xs text-gray-600">Failed</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Results table */}
+                  <div className="max-h-60 overflow-auto border border-gray-200 rounded-lg">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 sticky top-0">
+                        <tr>
+                          <th className="text-left px-3 py-2">Business</th>
+                          <th className="text-left px-3 py-2">Email</th>
+                          <th className="text-left px-3 py-2">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {outreachResult.results.map((r, i) => (
+                          <tr key={i} className="hover:bg-gray-50">
+                            <td className="px-3 py-2">{r.businessName}</td>
+                            <td className="px-3 py-2 text-gray-500">{r.email || '—'}</td>
+                            <td className="px-3 py-2">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                r.outcome === 'sent' ? 'bg-green-100 text-green-800' :
+                                r.outcome === 'skipped' ? 'bg-gray-100 text-gray-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                {r.outcome}
+                              </span>
+                              {r.reason && <span className="text-xs text-gray-500 ml-1">({r.reason})</span>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Footer */}
+            <div className="p-4 border-t border-gray-100 flex justify-end gap-3">
+              {!outreachResult ? (
+                <>
+                  <button 
+                    onClick={() => setShowSendOutreachModal(false)}
+                    disabled={sendingOutreach}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleSendOutreach}
+                    disabled={sendingOutreach || !selectedTemplateId || templates.length === 0}
+                    className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {sendingOutreach ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Send size={16} />
+                        Send to {selectedLeadIds.size} Lead{selectedLeadIds.size !== 1 ? 's' : ''}
+                      </>
+                    )}
+                  </button>
+                </>
+              ) : (
+                <button 
+                  onClick={() => setShowSendOutreachModal(false)}
+                  className="px-4 py-2 bg-[#15383c] text-white rounded-lg hover:bg-[#0e2628]"
+                >
+                  Close
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Header */}
@@ -1880,6 +2157,10 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                 </select>
                 <button onClick={handleBulkStatusUpdate} className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
                   Update Status
+                </button>
+                <button onClick={handleOpenSendOutreach} className="px-3 py-1 bg-orange-500 text-white rounded text-sm hover:bg-orange-600 flex items-center gap-1">
+                  <Mail size={14} />
+                  Send Outreach
                 </button>
                 <button onClick={() => setSelectedLeadIds(new Set())} className="text-sm text-blue-600 hover:underline">
                   Clear

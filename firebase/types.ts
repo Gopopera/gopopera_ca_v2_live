@@ -340,7 +340,7 @@ export interface Lead {
 /**
  * Activity log entry for a lead
  */
-export type LeadActivityType = 'imported' | 'status_change' | 'note_added' | 'edited';
+export type LeadActivityType = 'imported' | 'status_change' | 'note_added' | 'edited' | 'email_sent';
 
 export interface LeadActivity {
   id: string;
