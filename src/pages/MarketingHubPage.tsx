@@ -688,37 +688,67 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     
     try {
       const token = await getIdToken();
+      const allLeadIds = Array.from(selectedLeadIds);
+      const BATCH_SIZE = 200;
       
-      const response = await fetch('/api/leads/send-outreach', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          leadIds: Array.from(selectedLeadIds),
-          templateId: selectedTemplateId,
-        }),
+      // Split into batches of 200 (API limit)
+      const batches: string[][] = [];
+      for (let i = 0; i < allLeadIds.length; i += BATCH_SIZE) {
+        batches.push(allLeadIds.slice(i, i + BATCH_SIZE));
+      }
+      
+      let totalSent = 0;
+      let totalFailed = 0;
+      let totalSkipped = 0;
+      const allResults: any[] = [];
+      
+      for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+        const batch = batches[batchIndex];
+        showNotification('info', `Sending batch ${batchIndex + 1}/${batches.length} (${batch.length} leads)...`);
+        
+        const response = await fetch('/api/leads/send-outreach', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            leadIds: batch,
+            templateId: selectedTemplateId,
+          }),
+        });
+        
+        const rawText = await response.text();
+        let result;
+        try {
+          result = JSON.parse(rawText);
+        } catch {
+          throw new Error(`Server returned non-JSON response: ${rawText.substring(0, 100)}...`);
+        }
+        
+        if (result.success) {
+          totalSent += result.sent || 0;
+          totalFailed += result.failed || 0;
+          totalSkipped += result.skipped || 0;
+          if (result.results) allResults.push(...result.results);
+        } else {
+          throw new Error(result.error || `Batch ${batchIndex + 1} failed`);
+        }
+      }
+      
+      // Combine results
+      setOutreachResult({
+        success: true,
+        sent: totalSent,
+        failed: totalFailed,
+        skipped: totalSkipped,
+        results: allResults,
       });
-      
-      const rawText = await response.text();
-      let result;
-      try {
-        result = JSON.parse(rawText);
-      } catch {
-        throw new Error(`Server returned non-JSON response: ${rawText.substring(0, 100)}...`);
-      }
-      
-      if (result.success) {
-        setOutreachResult(result);
-        showNotification('success', `Sent ${result.sent} emails, ${result.skipped} skipped, ${result.failed} failed`);
-        // Clear selection after successful send
-        setSelectedLeadIds(new Set());
-        // Reload leads to show updated lastContactedAt
-        loadLeads();
-      } else {
-        showNotification('error', result.error || 'Failed to send outreach');
-      }
+      showNotification('success', `Sent ${totalSent} emails, ${totalSkipped} skipped, ${totalFailed} failed`);
+      // Clear selection after successful send
+      setSelectedLeadIds(new Set());
+      // Reload leads to show updated lastContactedAt
+      loadLeads();
     } catch (error: any) {
       console.error('[MarketingHub] Send outreach error:', error);
       showNotification('error', error.message || 'Failed to send outreach');
