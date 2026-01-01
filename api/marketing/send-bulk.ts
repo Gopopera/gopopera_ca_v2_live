@@ -10,8 +10,9 @@ import { verifyAdminToken, getAdminFirestore } from '../_lib/firebaseAdmin.js';
 
 export const config = { runtime: 'nodejs' };
 
-const BATCH_SIZE = 50;
-const BATCH_DELAY = 1000;
+// Resend rate limit: 2 emails/second on free plan
+// Send one at a time with 600ms delay to stay safely under limit
+const EMAIL_DELAY_MS = 600;
 
 function generateUnsubscribeToken(uid: string): string {
   const secret = process.env.UNSUBSCRIBE_SECRET || 'popera-marketing-2024';
@@ -139,40 +140,52 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       adminEmail: authResult.email 
     });
     
-    for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
-      const batch = recipients.slice(i, i + BATCH_SIZE);
-      const results = await Promise.all(batch.map(async (r) => {
-        try {
-          const unsubUrl = `${BASE_URL}/unsubscribe?uid=${r.uid}&token=${generateUnsubscribeToken(r.uid)}`;
-          const html = baseHtml.replace(/\{\{UNSUBSCRIBE_URL\}\}/g, unsubUrl);
-          const result = await resend.emails.send({ from: RESEND_FROM, replyTo: RESEND_REPLY_TO, to: [r.email], subject: emailParams.subject, html });
-          if (result.error) throw new Error(result.error.message);
-          await db.collection('email_logs').add({ 
-            to: r.email, 
-            userId: r.uid, 
-            subject: emailParams.subject, 
-            type: 'marketing_campaign', 
-            status: 'sent', 
-            messageId: result.data?.id, 
-            timestamp: Date.now() 
-          });
-          return true;
-        } catch (e: any) {
-          await db.collection('email_logs').add({ 
-            to: r.email, 
-            userId: r.uid, 
-            subject: emailParams.subject, 
-            type: 'marketing_campaign', 
-            status: 'failed', 
-            error: e.message, 
-            timestamp: Date.now() 
-          });
-          return false;
-        }
-      }));
-      results.forEach(ok => ok ? sentCount++ : failedCount++);
-      await logRef.update({ sentCount, failedCount, lastUpdatedAt: Date.now() });
-      if (i + BATCH_SIZE < recipients.length) await sleep(BATCH_DELAY);
+    // Send emails one at a time to respect Resend rate limit (2/second)
+    for (let i = 0; i < recipients.length; i++) {
+      const r = recipients[i];
+      try {
+        const unsubUrl = `${BASE_URL}/unsubscribe?uid=${r.uid}&token=${generateUnsubscribeToken(r.uid)}`;
+        const html = baseHtml.replace(/\{\{UNSUBSCRIBE_URL\}\}/g, unsubUrl);
+        const result = await resend.emails.send({ 
+          from: RESEND_FROM, 
+          replyTo: RESEND_REPLY_TO, 
+          to: [r.email], 
+          subject: emailParams.subject, 
+          html 
+        });
+        if (result.error) throw new Error(result.error.message);
+        await db.collection('email_logs').add({ 
+          to: r.email, 
+          userId: r.uid, 
+          subject: emailParams.subject, 
+          type: 'marketing_campaign', 
+          status: 'sent', 
+          messageId: result.data?.id, 
+          timestamp: Date.now() 
+        });
+        sentCount++;
+      } catch (e: any) {
+        await db.collection('email_logs').add({ 
+          to: r.email, 
+          userId: r.uid, 
+          subject: emailParams.subject, 
+          type: 'marketing_campaign', 
+          status: 'failed', 
+          error: e.message, 
+          timestamp: Date.now() 
+        });
+        failedCount++;
+      }
+      
+      // Update progress every 10 emails
+      if ((i + 1) % 10 === 0 || i === recipients.length - 1) {
+        await logRef.update({ sentCount, failedCount, lastUpdatedAt: Date.now() });
+      }
+      
+      // Wait between emails to respect rate limit (except for last one)
+      if (i < recipients.length - 1) {
+        await sleep(EMAIL_DELAY_MS);
+      }
     }
     
     await logRef.update({ 
