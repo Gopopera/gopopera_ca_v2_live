@@ -735,6 +735,9 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     // Parse header row
     const headerLine = lines[0];
     const headers = headerLine.split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
+    // #region agent log
+    console.log('[DEBUG-H1] CSV headers parsed:', { headerCount: headers.length, headers: headers.slice(0, 25), lineCount: lines.length });
+    // #endregion
     
     // Parse data rows
     const rows: Array<Record<string, string>> = [];
@@ -767,6 +770,9 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       });
       rows.push(row);
     }
+    // #region agent log
+    console.log('[DEBUG-H3] CSV rows parsed:', { rowCount: rows.length, firstRowKeys: rows[0] ? Object.keys(rows[0]).slice(15, 22) : [], firstRowSample: rows[0] ? Object.fromEntries(Object.entries(rows[0]).slice(17, 22)) : null });
+    // #endregion
     
     return rows;
   };
@@ -776,7 +782,12 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     const keys = Object.keys(row);
     for (const pattern of patterns) {
       // First try exact match (lowercase)
-      if (row[pattern]) return row[pattern];
+      if (row[pattern]) {
+        // #region agent log
+        console.log('[DEBUG-H2] findColumnValue exact match:', { pattern, value: row[pattern]?.substring(0, 50) });
+        // #endregion
+        return row[pattern];
+      }
       // Then try case-insensitive partial match
       const matchingKey = keys.find(k => k.toLowerCase().includes(pattern.toLowerCase()));
       if (matchingKey && row[matchingKey]) return row[matchingKey];
@@ -820,6 +831,8 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
   };
   
   // CSV Import: Map column names to standard fields (SMART VERSION)
+  // Track first call for logging
+  let mapCsvRowCallCount = 0;
   const mapCsvRow = (row: Record<string, string>): {
     businessName: string;
     email: string;
@@ -828,8 +841,15 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     website?: string;
     address?: string;
   } | null => {
+    mapCsvRowCallCount++;
     // SMART EMAIL DETECTION - find any column containing "email" or "mail"
     const email = findColumnValue(row, ['email', 'e-mail', 'mail', 'e-mail 1 - value', 'email address', 'primary email', 'work email', 'personal email']);
+    
+    // #region agent log
+    if (mapCsvRowCallCount <= 3) {
+      console.log('[DEBUG-H4] mapCsvRow email detection:', { callNum: mapCsvRowCallCount, emailFound: email, rowKeys: Object.keys(row).slice(15, 22), rowValues: Object.values(row).slice(15, 22) });
+    }
+    // #endregion
     
     // Skip if no valid email
     if (!email || !email.includes('@')) {
@@ -904,6 +924,10 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       const mapped = rows
         .map(mapCsvRow)
         .filter((r): r is NonNullable<typeof r> => r !== null);
+      
+      // #region agent log
+      console.log('[DEBUG-H5] CSV processing complete:', { parsedRowCount: rows.length, mappedCount: mapped.length, firstMapped: mapped[0] });
+      // #endregion
       
       setCsvParsedData(mapped);
       
