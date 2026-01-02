@@ -369,7 +369,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
           setWasAdminWhenModalOpened(false);
         }
         if (showLeadModal) setShowLeadModal(false);
-        if (showOutreachModal) setShowOutreachModal(false);
+        if (showSendOutreachModal) setShowSendOutreachModal(false);
         if (showPreview) setShowPreview(false);
         if (showConfirmModal) setShowConfirmModal(false);
       }
@@ -377,7 +377,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [showTemplateModal, showLeadModal, showOutreachModal, showPreview, showConfirmModal]);
+  }, [showTemplateModal, showLeadModal, showSendOutreachModal, showPreview, showConfirmModal]);
   
   // Template handlers
   const handleOpenTemplateModal = (template?: OutreachTemplate) => {
@@ -1332,7 +1332,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
   
   // Auth guard - but allow page to stay open if a modal was opened when user was admin
   // This prevents auth state flicker from closing modals mid-edit
-  const hasActiveModal = showTemplateModal || showLeadModal || showOutreachModal || showPreview || showConfirmModal;
+  const hasActiveModal = showTemplateModal || showLeadModal || showSendOutreachModal || showPreview || showConfirmModal;
   const allowAccess = isAdmin || (hasActiveModal && wasAdminWhenModalOpened);
   
   if (!authInitialized) {
