@@ -6,12 +6,7 @@ import { formatRating } from '@/utils/formatRating';
 import { useUserStore } from '@/stores/userStore';
 import { subscribeToReservationCount } from '../../firebase/db';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { 
-  getCircleContinuityText, 
-  getSessionFrequencyText, 
-  getSessionModeText,
-  getAvailableSpots 
-} from '../../utils/eventHelpers';
+// Note: eventHelpers functions removed - sessionFrequency now checked directly on event object
 import { getMainCategoryLabelFromEvent } from '../../utils/categoryMapper';
 import { getInitials, getAvatarColor } from '../../utils/avatarUtils';
 import { EventImage } from './EventImage';
@@ -430,13 +425,20 @@ export const EventCard: React.FC<EventCardProps> = ({
                 )}
               </div>
               
-              {/* Starting Soon Badge */}
+              {/* Session Frequency Badge (Weekly/Monthly) */}
               {(() => {
-                const continuity = getCircleContinuityText(event);
-                if (continuity?.type === 'startingSoon') {
+                // Only show for weekly/monthly, not one-time events
+                if (event.sessionFrequency === 'weekly') {
                   return (
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-[#e35e25] text-white text-[8px] sm:text-[10px] font-bold uppercase tracking-wider shadow-lg shrink-0">
-                      {continuity.text}
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-[#e35e25] text-[8px] sm:text-[10px] font-bold uppercase tracking-wider border border-white/30 shrink-0">
+                      Weekly
+                    </span>
+                  );
+                }
+                if (event.sessionFrequency === 'monthly') {
+                  return (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-[#e35e25] text-[8px] sm:text-[10px] font-bold uppercase tracking-wider border border-white/30 shrink-0">
+                      Monthly
                     </span>
                   );
                 }
@@ -519,13 +521,20 @@ export const EventCard: React.FC<EventCardProps> = ({
                 )}
               </div>
               
-              {/* Starting Soon Badge - Right side of host */}
+              {/* Session Frequency Badge (Weekly/Monthly) */}
               {(() => {
-                const continuity = getCircleContinuityText(event);
-                if (continuity?.type === 'startingSoon') {
+                // Only show for weekly/monthly, not one-time events
+                if (event.sessionFrequency === 'weekly') {
                   return (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#e35e25] text-white text-[10px] sm:text-xs font-bold uppercase tracking-wider shadow-lg shrink-0">
-                      {continuity.text}
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-[#e35e25] text-[10px] sm:text-xs font-bold uppercase tracking-wider border border-white/30 shrink-0">
+                      Weekly
+                    </span>
+                  );
+                }
+                if (event.sessionFrequency === 'monthly') {
+                  return (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-[#e35e25] text-[10px] sm:text-xs font-bold uppercase tracking-wider border border-white/30 shrink-0">
+                      Monthly
                     </span>
                   );
                 }
