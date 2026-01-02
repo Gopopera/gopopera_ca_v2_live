@@ -132,6 +132,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [templateCategoryFilter, setTemplateCategoryFilter] = useState('all');
   const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [wasAdminWhenModalOpened, setWasAdminWhenModalOpened] = useState(false); // Prevent modal closing on auth flicker
   const [editingTemplate, setEditingTemplate] = useState<OutreachTemplate | null>(null);
   const [templateForm, setTemplateForm] = useState({
     name: '',
@@ -359,8 +360,30 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     }
   }, [isAdmin, activeTab, loadLeads]);
   
+  // Escape key handler for modals
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showTemplateModal) {
+          setShowTemplateModal(false);
+          setWasAdminWhenModalOpened(false);
+        }
+        if (showLeadModal) setShowLeadModal(false);
+        if (showOutreachModal) setShowOutreachModal(false);
+        if (showPreview) setShowPreview(false);
+        if (showConfirmModal) setShowConfirmModal(false);
+      }
+    };
+    
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [showTemplateModal, showLeadModal, showOutreachModal, showPreview, showConfirmModal]);
+  
   // Template handlers
   const handleOpenTemplateModal = (template?: OutreachTemplate) => {
+    // Lock admin status when modal opens to prevent auth flicker from closing it
+    setWasAdminWhenModalOpened(isAdmin);
+    
     if (template) {
       setEditingTemplate(template);
       setTemplateForm({
@@ -408,6 +431,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
         showNotification('success', 'Template created!');
       }
       setShowTemplateModal(false);
+      setWasAdminWhenModalOpened(false);
       loadTemplates();
     } catch (error: any) {
       showNotification('error', error.message || 'Failed to save template');
@@ -1306,7 +1330,11 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     setCurrentCampaignId(null);
   };
   
-  // Auth guard
+  // Auth guard - but allow page to stay open if a modal was opened when user was admin
+  // This prevents auth state flicker from closing modals mid-edit
+  const hasActiveModal = showTemplateModal || showLeadModal || showOutreachModal || showPreview || showConfirmModal;
+  const allowAccess = isAdmin || (hasActiveModal && wasAdminWhenModalOpened);
+  
   if (!authInitialized) {
     return (
       <div className="min-h-screen bg-[#f8fafb] pt-24 flex items-center justify-center">
@@ -1315,7 +1343,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     );
   }
   
-  if (!user) {
+  if (!user && !hasActiveModal) {
     return (
       <div className="min-h-screen bg-[#f8fafb] pt-24 px-6">
         <div className="max-w-md mx-auto text-center py-20">
@@ -1327,7 +1355,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     );
   }
   
-  if (!isAdmin) {
+  if (!allowAccess) {
     return (
       <div className="min-h-screen bg-[#f8fafb] pt-24 px-6">
         <div className="max-w-md mx-auto text-center py-20">
@@ -1399,13 +1427,20 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       
       {/* Template Editor Modal */}
       {showTemplateModal && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setShowTemplateModal(false); }}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+          {/* Backdrop - separate element for reliable click detection */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm" 
+            onClick={() => { setShowTemplateModal(false); setWasAdminWhenModalOpened(false); }}
+            aria-hidden="true"
+          />
+          {/* Modal content - positioned above backdrop */}
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-gray-100">
               <h2 className="text-xl font-bold text-[#15383c]">
                 {editingTemplate ? 'Edit Template' : 'New Template'}
               </h2>
-              <button onClick={() => setShowTemplateModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+              <button onClick={() => { setShowTemplateModal(false); setWasAdminWhenModalOpened(false); }} className="p-2 hover:bg-gray-100 rounded-lg">
                 <X size={20} />
               </button>
             </div>
@@ -1485,7 +1520,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
               </div>
             </div>
             <div className="p-4 border-t border-gray-100 flex justify-end gap-3">
-              <button onClick={() => setShowTemplateModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={() => { setShowTemplateModal(false); setWasAdminWhenModalOpened(false); }} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
               <button onClick={handleSaveTemplate} disabled={savingTemplate}
                 className="px-4 py-2 bg-[#e35e25] text-white rounded-lg hover:bg-[#d54d1a] disabled:opacity-50 flex items-center gap-2">
                 {savingTemplate ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
