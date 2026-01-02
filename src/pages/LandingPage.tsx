@@ -467,11 +467,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           {/* Desktop: 12-col grid (4 cols left, 8 cols right), Mobile: stack */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 lg:items-stretch">
             
             {/* Trust Panel - Compact info card */}
             <div 
-              className="lg:col-span-4 bg-[#faf9f7] rounded-[20px] lg:rounded-[24px] p-5 sm:p-6 lg:p-7 border border-slate-200/60"
+              className="lg:col-span-4 bg-[#faf9f7] rounded-[20px] lg:rounded-[24px] p-5 sm:p-6 lg:p-7 border border-slate-200/60 flex flex-col"
               style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)' }}
             >
               <h3 className="text-[17px] sm:text-lg font-heading font-semibold text-[#15383c] mb-4 tracking-tight">
@@ -506,8 +506,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
               </div>
 
-              {/* CTAs: inline row */}
-              <div className="flex items-center gap-4">
+              {/* CTAs: inline row - pinned to bottom on desktop */}
+              <div className="flex items-center gap-4 lg:mt-auto">
                 <button 
                   onClick={() => {
                     trackLandingCTA({
@@ -543,7 +543,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
             {/* FAQ Panel - Refined accordion */}
             <div 
-              className="lg:col-span-8 bg-[#faf9f7] rounded-[20px] lg:rounded-[24px] p-5 sm:p-6 lg:p-7 border border-slate-200/60"
+              className="lg:col-span-8 bg-[#faf9f7] rounded-[20px] lg:rounded-[24px] p-5 sm:p-6 lg:p-7 border border-slate-200/60 flex flex-col"
               style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)' }}
             >
               <h3 className="text-[17px] sm:text-lg font-heading font-semibold text-[#15383c] mb-4 tracking-tight">
