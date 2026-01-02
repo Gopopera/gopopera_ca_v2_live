@@ -368,11 +368,11 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
           setShowTemplateModal(false);
           setWasAdminWhenModalOpened(false);
         }
-        if (showLeadModal) setShowLeadModal(false);
-        if (showSendOutreachModal) setShowSendOutreachModal(false);
-        if (showConfirmModal) setShowConfirmModal(false);
-        if (showImportModal) setShowImportModal(false);
-        if (showCsvImportModal) setShowCsvImportModal(false);
+        if (showLeadModal) { setShowLeadModal(false); setWasAdminWhenModalOpened(false); }
+        if (showSendOutreachModal) { setShowSendOutreachModal(false); setWasAdminWhenModalOpened(false); }
+        if (showConfirmModal) { setShowConfirmModal(false); setWasAdminWhenModalOpened(false); }
+        if (showImportModal) { setShowImportModal(false); setWasAdminWhenModalOpened(false); }
+        if (showCsvImportModal) { setShowCsvImportModal(false); setWasAdminWhenModalOpened(false); }
       }
     };
     
@@ -528,6 +528,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       setLeadActivities([]);
     }
     setNewNote('');
+    setWasAdminWhenModalOpened(isAdmin);
     setShowLeadModal(true);
   };
   
@@ -550,6 +551,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
         showNotification('success', 'Lead created!');
       }
       setShowLeadModal(false);
+      setWasAdminWhenModalOpened(false);
       loadLeads();
     } catch (error: any) {
       showNotification('error', error.message || 'Failed to save lead');
@@ -694,6 +696,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
         setLoadingTemplates(false);
       }
     }
+    setWasAdminWhenModalOpened(isAdmin);
     setShowSendOutreachModal(true);
   };
   
@@ -1243,6 +1246,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       if (result.success) {
         setRecipientCount(result.count ?? 0);
         setSampleEmails(result.sampleMaskedEmails || []);
+        setWasAdminWhenModalOpened(isAdmin);
         setShowConfirmModal(true);
       } else {
         throw new Error(result.error || result.reason || 'Failed to fetch count');
@@ -1262,6 +1266,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     
     setSendingBulk(true);
     setShowConfirmModal(false);
+    setWasAdminWhenModalOpened(false);
     
     try {
       const token = await getIdToken();
@@ -1408,7 +1413,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
             />
             <div className="flex gap-3">
               <button
-                onClick={() => { setShowConfirmModal(false); setConfirmInput(''); }}
+                onClick={() => { setShowConfirmModal(false); setWasAdminWhenModalOpened(false); setConfirmInput(''); }}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
               >
                 Cancel
@@ -1534,13 +1539,13 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       
       {/* Lead Detail Modal */}
       {showLeadModal && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) setShowLeadModal(false); }}>
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) { setShowLeadModal(false); setWasAdminWhenModalOpened(false); } }}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-gray-100">
               <h2 className="text-xl font-bold text-[#15383c]">
                 {editingLead ? 'Edit Lead' : 'Add Lead'}
               </h2>
-              <button onClick={() => setShowLeadModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+              <button onClick={() => { setShowLeadModal(false); setWasAdminWhenModalOpened(false); }} className="p-2 hover:bg-gray-100 rounded-lg">
                 <X size={20} />
               </button>
             </div>
@@ -1658,7 +1663,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
               )}
             </div>
             <div className="p-4 border-t border-gray-100 flex justify-end gap-3">
-              <button onClick={() => setShowLeadModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+              <button onClick={() => { setShowLeadModal(false); setWasAdminWhenModalOpened(false); }} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
               <button onClick={handleSaveLead} disabled={savingLead}
                 className="px-4 py-2 bg-[#e35e25] text-white rounded-lg hover:bg-[#d54d1a] disabled:opacity-50 flex items-center gap-2">
                 {savingLead ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
@@ -1671,11 +1676,11 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       
       {/* Import Leads Modal */}
       {showImportModal && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget && !importRunning) setShowImportModal(false); }}>
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget && !importRunning) { setShowImportModal(false); setWasAdminWhenModalOpened(false); } }}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-gray-100">
               <h2 className="text-xl font-bold text-[#15383c]">Import Leads (with emails)</h2>
-              <button onClick={() => !importRunning && setShowImportModal(false)} disabled={importRunning} className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50">
+              <button onClick={() => { if (!importRunning) { setShowImportModal(false); setWasAdminWhenModalOpened(false); } }} disabled={importRunning} className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50">
                 <X size={20} />
               </button>
             </div>
@@ -1869,11 +1874,11 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       
       {/* Send Outreach Modal */}
       {showSendOutreachModal && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget && !sendingOutreach) setShowSendOutreachModal(false); }}>
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget && !sendingOutreach) { setShowSendOutreachModal(false); setWasAdminWhenModalOpened(false); } }}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-gray-100">
               <h2 className="text-xl font-bold text-[#15383c]">Send Outreach Email</h2>
-              <button onClick={() => !sendingOutreach && setShowSendOutreachModal(false)} disabled={sendingOutreach} className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50">
+              <button onClick={() => { if (!sendingOutreach) { setShowSendOutreachModal(false); setWasAdminWhenModalOpened(false); } }} disabled={sendingOutreach} className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50">
                 <X size={20} />
               </button>
             </div>
@@ -2015,7 +2020,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
               {!outreachResult ? (
                 <>
                   <button 
-                    onClick={() => setShowSendOutreachModal(false)}
+                    onClick={() => { setShowSendOutreachModal(false); setWasAdminWhenModalOpened(false); }}
                     disabled={sendingOutreach}
                     className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
                   >
@@ -2041,7 +2046,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                 </>
               ) : (
                 <button 
-                  onClick={() => setShowSendOutreachModal(false)}
+                  onClick={() => { setShowSendOutreachModal(false); setWasAdminWhenModalOpened(false); }}
                   className="px-4 py-2 bg-[#15383c] text-white rounded-lg hover:bg-[#0e2628]"
                 >
                   Close
@@ -2054,11 +2059,11 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       
       {/* CSV Import Modal */}
       {showCsvImportModal && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget && !csvImporting) setShowCsvImportModal(false); }}>
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget && !csvImporting) { setShowCsvImportModal(false); setWasAdminWhenModalOpened(false); } }}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-gray-100">
               <h2 className="text-xl font-bold text-[#15383c]">Import Leads from CSV</h2>
-              <button onClick={() => !csvImporting && setShowCsvImportModal(false)} disabled={csvImporting} className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50">
+              <button onClick={() => { if (!csvImporting) { setShowCsvImportModal(false); setWasAdminWhenModalOpened(false); } }} disabled={csvImporting} className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50">
                 <X size={20} />
               </button>
             </div>
@@ -2688,14 +2693,14 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
               </div>
               <div className="flex-1" />
               <button
-                onClick={() => { setImportResult(null); setShowImportModal(true); }}
+                onClick={() => { setWasAdminWhenModalOpened(isAdmin); setImportResult(null); setShowImportModal(true); }}
                 className="flex items-center gap-2 px-4 py-2 border border-[#15383c] text-[#15383c] rounded-lg hover:bg-[#15383c] hover:text-white"
               >
                 <Users size={16} />
                 Import (API)
               </button>
               <button
-                onClick={() => { resetCsvImport(); setShowCsvImportModal(true); }}
+                onClick={() => { setWasAdminWhenModalOpened(isAdmin); resetCsvImport(); setShowCsvImportModal(true); }}
                 className="flex items-center gap-2 px-4 py-2 border border-green-600 text-green-600 rounded-lg hover:bg-green-600 hover:text-white"
               >
                 <Upload size={16} />
