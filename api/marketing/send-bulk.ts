@@ -45,20 +45,21 @@ function buildMarketingEmailHtml(params: any): { html: string } {
     : `display:inline-block;padding:14px 32px;background:${t.accent};color:#fff;text-decoration:none;border-radius:8px;font-weight:600;`;
   
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${subject}</title></head>
-<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif;background:${t.bg};color:${t.text};">
-${preheader ? `<div style="display:none;">${preheader}</div>` : ''}
-<table style="width:100%;"><tr><td align="center" style="padding:24px;">
-<table style="max-width:600px;width:100%;">
-<tr><td style="padding:${d.padding};text-align:center;"><span style="font-size:28px;font-weight:700;">Popera</span></td></tr>
-<tr><td><table style="width:100%;background:${t.cardBg};border:1px solid ${t.border};border-radius:16px;"><tr><td style="padding:${d.padding};">
-${campaignName ? `<p style="margin:0 0 8px;font-size:12px;color:${t.textMuted};">${campaignName}</p>` : ''}
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:${t.bg};color:${t.text};line-height:${d.lineHeight};">
+${preheader ? `<div style="display:none;max-height:0;overflow:hidden;">${preheader}</div>` : ''}
+<table role="presentation" style="width:100%;border-collapse:collapse;"><tr><td align="center" style="padding:24px 16px;">
+<table role="presentation" style="max-width:600px;width:100%;">
+<tr><td style="padding:${d.padding};text-align:center;"><span style="color:${t.text};font-size:28px;font-weight:700;">Popera</span><span style="display:inline-block;width:5px;height:5px;background:${t.accent};border-radius:50%;margin-left:2px;"></span></td></tr>
+<tr><td><table role="presentation" style="width:100%;background:${t.cardBg};border:1px solid ${t.border};border-radius:16px;"><tr><td style="padding:${d.padding};">
+${campaignName ? `<p style="margin:0 0 8px;font-size:12px;color:${t.textMuted};text-transform:uppercase;letter-spacing:1px;">${campaignName}</p>` : ''}
 ${heroImageUrl ? `<img src="${heroImageUrl}" alt="${heroAlt || ''}" style="width:100%;border-radius:12px;margin-bottom:${d.gap};">` : ''}
-<div style="color:${t.text};">${bodyHtml}</div>
+<div style="color:${t.text};font-size:16px;">${bodyHtml}</div>
 ${ctaText && ctaUrl ? `<div style="margin-top:28px;text-align:center;"><a href="${ctaUrl}" style="${ctaStyle}">${ctaText}</a></div>` : ''}
 </td></tr></table></td></tr>
-<tr><td style="padding:32px;text-align:center;color:${t.textMuted};font-size:12px;">
-<p>Popera, Canada | <a href="mailto:support@gopopera.ca" style="color:${t.accent};">support@gopopera.ca</a></p>
-<p><a href="{{UNSUBSCRIBE_URL}}" style="color:${t.textMuted};">Unsubscribe</a></p>
+<tr><td style="padding:32px ${d.padding};text-align:center;">
+<p style="margin:0 0 8px;color:${t.textMuted};font-size:14px;">Popera, Canada</p>
+<p style="margin:0 0 8px;font-size:13px;"><a href="mailto:support@gopopera.ca" style="color:${t.accent};text-decoration:none;">support@gopopera.ca</a></p>
+<p style="margin:0;color:${t.textMuted};font-size:12px;"><a href="{{UNSUBSCRIBE_URL}}" style="color:${t.textMuted};text-decoration:underline;">Unsubscribe</a></p>
 </td></tr></table></td></tr></table></body></html>`;
   return { html };
 }
