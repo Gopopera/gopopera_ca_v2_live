@@ -9,19 +9,19 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ViewState } from '../../types';
 import { useUserStore } from '../../stores/userStore';
 import { buildMarketingEmailHtml, type MarketingEmailParams } from '../lib/marketingEmailBuilder';
-import { 
-  ChevronLeft, Send, Eye, Save, Copy, Mail, AlertTriangle, CheckCircle, 
-  Loader2, Smartphone, Plus, Trash2, Edit3, X, Users, FileText, 
+import {
+  ChevronLeft, Send, Eye, Save, Copy, Mail, AlertTriangle, CheckCircle,
+  Loader2, Smartphone, Plus, Trash2, Edit3, X, Users, FileText,
   Building2, MapPin, Phone, Globe, Instagram, MessageSquare, Clock,
-  Filter, Search, ChevronDown, ExternalLink, StickyNote, Upload
+  Filter, Search, ChevronDown, ExternalLink, StickyNote, Upload, BookOpen, Link
 } from 'lucide-react';
 import { getDbSafe } from '../lib/firebase';
 import { collection, addDoc, getDocs, query, orderBy, limit, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { getAuthInstance } from '../lib/firebaseAuth';
-import { 
-  listOutreachTemplates, 
-  createOutreachTemplate, 
-  updateOutreachTemplate, 
+import {
+  listOutreachTemplates,
+  createOutreachTemplate,
+  updateOutreachTemplate,
   deleteOutreachTemplate,
   listLeads,
   createLead,
@@ -62,7 +62,7 @@ interface Campaign {
 const ADMIN_EMAIL = 'eatezca@gmail.com';
 
 // Tab types for Marketing Hub navigation
-type MarketingHubTab = 'campaigns' | 'templates' | 'leads';
+type MarketingHubTab = 'campaigns' | 'templates' | 'leads' | 'blog';
 
 // Lead categories matching Popera's circle taxonomy
 const LEAD_CATEGORIES = [
@@ -96,10 +96,10 @@ const LEAD_STATUSES: { key: LeadStatus; label: string; color: string }[] = [
 export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState }) => {
   const user = useUserStore((state) => state.user);
   const authInitialized = useUserStore((state) => state.authInitialized);
-  
+
   // Tab state
   const [activeTab, setActiveTab] = useState<MarketingHubTab>('campaigns');
-  
+
   // Form state (Campaigns)
   const [campaignName, setCampaignName] = useState('');
   const [subject, setSubject] = useState('');
@@ -112,7 +112,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
   const [ctaText, setCtaText] = useState('');
   const [ctaUrl, setCtaUrl] = useState('');
   const [audience, setAudience] = useState<'all' | 'hosts' | 'attendees'>('all');
-  
+
   // UI state (Campaigns)
   const [previewMode, setPreviewMode] = useState<'light' | 'dark'>('dark');
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -126,7 +126,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
   const [confirmInput, setConfirmInput] = useState('');
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [currentCampaignId, setCurrentCampaignId] = useState<string | null>(null);
-  
+
   // Templates state
   const [templates, setTemplates] = useState<OutreachTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
@@ -145,7 +145,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     ctaUrl: '',
   });
   const [savingTemplate, setSavingTemplate] = useState(false);
-  
+
   // Leads state
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loadingLeads, setLoadingLeads] = useState(false);
@@ -172,7 +172,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     status: 'new' as LeadStatus,
     notes: '',
   });
-  
+
   // Import modal state
   const [showImportModal, setShowImportModal] = useState(false);
   const [importRunning, setImportRunning] = useState(false);
@@ -205,7 +205,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       email?: string;
     }>;
   } | null>(null);
-  
+
   // Send outreach modal state
   const [showSendOutreachModal, setShowSendOutreachModal] = useState(false);
   const [sendingOutreach, setSendingOutreach] = useState(false);
@@ -223,7 +223,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       reason?: string;
     }>;
   } | null>(null);
-  
+
   // CSV Import state
   const [showCsvImportModal, setShowCsvImportModal] = useState(false);
   const [csvImporting, setCsvImporting] = useState(false);
@@ -245,7 +245,46 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     skipped: number;
     failed: number;
   } | null>(null);
-  
+
+  // Blog state
+  const [blogTopicsInput, setBlogTopicsInput] = useState('');
+  const [blogContextInput, setBlogContextInput] = useState('');
+  const [blogVariants, setBlogVariants] = useState(2);
+  const [blogGenerating, setBlogGenerating] = useState(false);
+  const [blogGeneratedDrafts, setBlogGeneratedDrafts] = useState<Array<{
+    title: string;
+    slug: string;
+    excerpt: string;
+    metaTitle: string;
+    metaDescription: string;
+    contentHtml: string;
+    tags: string[];
+    status: string;
+    createdAt: number;
+    updatedAt: number;
+    topicId?: string;
+    variantLabel?: string;
+  }>>([]);
+  const [blogImportUrl, setBlogImportUrl] = useState('');
+  const [blogImporting, setBlogImporting] = useState(false);
+  const [blogImportedDraft, setBlogImportedDraft] = useState<{
+    title: string;
+    slug: string;
+    excerpt: string;
+    metaTitle: string;
+    metaDescription: string;
+    contentHtml: string;
+    tags: string[];
+    status: string;
+    createdAt: number;
+    updatedAt: number;
+    sourceUrl?: string;
+    attribution?: string;
+    canonicalUrl?: string;
+  } | null>(null);
+  const [blogError, setBlogError] = useState<string | null>(null);
+  const [blogPreviewDraft, setBlogPreviewDraft] = useState<any | null>(null);
+
   // Build email params
   const emailParams: MarketingEmailParams = useMemo(() => ({
     subject,
@@ -259,24 +298,24 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     ctaUrl: ctaUrl || undefined,
     campaignName: campaignName || undefined,
   }), [subject, preheader, theme, density, heroImageUrl, heroAlt, markdownBody, ctaText, ctaUrl, campaignName]);
-  
+
   // Generate preview HTML
   const previewHtml = useMemo(() => {
     if (!markdownBody) return '';
     return buildMarketingEmailHtml(emailParams).html;
   }, [emailParams, markdownBody]);
-  
+
   // Auth check
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-  
+
   // DEBUG: Log auth state (always runs)
-  console.log('[MarketingHub] Auth state:', { 
-    userEmail: user?.email, 
-    adminEmail: ADMIN_EMAIL, 
-    isAdmin, 
-    authInitialized 
+  console.log('[MarketingHub] Auth state:', {
+    userEmail: user?.email,
+    adminEmail: ADMIN_EMAIL,
+    isAdmin,
+    authInitialized
   });
-  
+
   // Get Firebase ID token (force refresh to ensure validity)
   const getIdToken = async (): Promise<string> => {
     const auth = getAuthInstance();
@@ -290,12 +329,12 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     console.log('[MarketingHub] Token obtained, length:', token.length);
     return token;
   };
-  
+
   // Load campaigns
   const loadCampaigns = useCallback(async () => {
     const db = getDbSafe();
     if (!db) return;
-    
+
     try {
       const campaignsRef = collection(db, 'marketing_campaigns');
       const q = query(campaignsRef, orderBy('updatedAt', 'desc'), limit(10));
@@ -308,13 +347,13 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       setLoadingCampaigns(false);
     }
   }, []);
-  
+
   useEffect(() => {
     if (isAdmin) {
       loadCampaigns();
     }
   }, [isAdmin, loadCampaigns]);
-  
+
   // Load templates
   const loadTemplates = useCallback(async () => {
     setLoadingTemplates(true);
@@ -328,13 +367,13 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       setLoadingTemplates(false);
     }
   }, [templateCategoryFilter]);
-  
+
   useEffect(() => {
     if (isAdmin && activeTab === 'templates') {
       loadTemplates();
     }
   }, [isAdmin, activeTab, loadTemplates]);
-  
+
   // Load leads
   const loadLeads = useCallback(async () => {
     console.log('[MarketingHub] loadLeads() called with filters:', leadFilters);
@@ -349,7 +388,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       setLoadingLeads(false);
     }
   }, [leadFilters]);
-  
+
   useEffect(() => {
     console.log('[MarketingHub] Leads useEffect triggered:', { isAdmin, activeTab });
     if (isAdmin && activeTab === 'leads') {
@@ -359,7 +398,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       console.log('[MarketingHub] Conditions NOT met, skipping loadLeads()');
     }
   }, [isAdmin, activeTab, loadLeads]);
-  
+
   // Escape key handler for modals
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -375,16 +414,16 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
         if (showCsvImportModal) { setShowCsvImportModal(false); setWasAdminWhenModalOpened(false); }
       }
     };
-    
+
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
   }, [showTemplateModal, showLeadModal, showSendOutreachModal, showConfirmModal, showImportModal, showCsvImportModal]);
-  
+
   // Template handlers
   const handleOpenTemplateModal = (template?: OutreachTemplate) => {
     // Lock admin status when modal opens to prevent auth flicker from closing it
     setWasAdminWhenModalOpened(isAdmin);
-    
+
     if (template) {
       setEditingTemplate(template);
       setTemplateForm({
@@ -412,13 +451,13 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     }
     setShowTemplateModal(true);
   };
-  
+
   const handleSaveTemplate = async () => {
     if (!templateForm.name || !templateForm.subject || !templateForm.markdownBody) {
       showNotification('error', 'Name, subject and body are required');
       return;
     }
-    
+
     setSavingTemplate(true);
     try {
       if (editingTemplate) {
@@ -440,10 +479,10 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       setSavingTemplate(false);
     }
   };
-  
+
   const handleDeleteTemplate = async (templateId: string) => {
     if (!confirm('Are you sure you want to delete this template?')) return;
-    
+
     try {
       await deleteOutreachTemplate(templateId);
       showNotification('success', 'Template deleted');
@@ -452,7 +491,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       showNotification('error', error.message || 'Failed to delete template');
     }
   };
-  
+
   const handleDuplicateTemplate = (template: OutreachTemplate) => {
     setEditingTemplate(null);
     setTemplateForm({
@@ -467,7 +506,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     });
     setShowTemplateModal(true);
   };
-  
+
   // Template preview HTML
   const templatePreviewHtml = useMemo(() => {
     if (!templateForm.markdownBody) return '';
@@ -480,7 +519,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       ctaUrl: templateForm.ctaUrl || undefined,
     }).html;
   }, [templateForm]);
-  
+
   // Lead handlers
   const handleOpenLeadModal = async (lead?: Lead) => {
     if (lead) {
@@ -531,13 +570,13 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     setWasAdminWhenModalOpened(isAdmin);
     setShowLeadModal(true);
   };
-  
+
   const handleSaveLead = async () => {
     if (!leadForm.businessName || !leadForm.city) {
       showNotification('error', 'Business name and city are required');
       return;
     }
-    
+
     setSavingLead(true);
     try {
       if (editingLead) {
@@ -559,10 +598,10 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       setSavingLead(false);
     }
   };
-  
+
   const handleAddNote = async () => {
     if (!editingLead || !newNote.trim()) return;
-    
+
     try {
       await addLeadNote(editingLead.id, newNote.trim(), user?.email || '');
       setNewNote('');
@@ -574,13 +613,13 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       showNotification('error', error.message || 'Failed to add note');
     }
   };
-  
+
   const handleBulkStatusUpdate = async () => {
     if (selectedLeadIds.size === 0) {
       showNotification('error', 'Select at least one lead');
       return;
     }
-    
+
     try {
       const result = await bulkUpdateLeadStatus(
         Array.from(selectedLeadIds),
@@ -594,7 +633,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       showNotification('error', error.message || 'Failed to update leads');
     }
   };
-  
+
   const toggleLeadSelection = (leadId: string) => {
     setSelectedLeadIds(prev => {
       const next = new Set(prev);
@@ -606,7 +645,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       return next;
     });
   };
-  
+
   const toggleSelectAll = () => {
     if (selectedLeadIds.size === leads.length) {
       setSelectedLeadIds(new Set());
@@ -614,15 +653,15 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       setSelectedLeadIds(new Set(leads.map(l => l.id)));
     }
   };
-  
+
   // Import leads handler
   const handleRunImport = async () => {
     setImportRunning(true);
     setImportResult(null);
-    
+
     try {
       const token = await getIdToken();
-      
+
       const response = await fetch('/api/leads/import-with-emails', {
         method: 'POST',
         headers: {
@@ -631,7 +670,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
         },
         body: JSON.stringify(importForm),
       });
-      
+
       const rawText = await response.text();
       let result;
       try {
@@ -639,7 +678,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       } catch {
         throw new Error(`Server returned non-JSON response: ${rawText.substring(0, 100)}...`);
       }
-      
+
       if (result.success) {
         setImportResult(result);
         showNotification('success', `Import complete: ${result.created} leads created`);
@@ -679,7 +718,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       setImportRunning(false);
     }
   };
-  
+
   // Open send outreach modal
   const handleOpenSendOutreach = async () => {
     setOutreachResult(null);
@@ -699,7 +738,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     setWasAdminWhenModalOpened(isAdmin);
     setShowSendOutreachModal(true);
   };
-  
+
   // Send outreach emails to selected leads
   const handleSendOutreach = async () => {
     if (selectedLeadIds.size === 0) {
@@ -710,30 +749,30 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       showNotification('error', 'Please select a template');
       return;
     }
-    
+
     setSendingOutreach(true);
     setOutreachResult(null);
-    
+
     try {
       const token = await getIdToken();
       const allLeadIds = Array.from(selectedLeadIds);
       const BATCH_SIZE = 200;
-      
+
       // Split into batches of 200 (API limit)
       const batches: string[][] = [];
       for (let i = 0; i < allLeadIds.length; i += BATCH_SIZE) {
         batches.push(allLeadIds.slice(i, i + BATCH_SIZE));
       }
-      
+
       let totalSent = 0;
       let totalFailed = 0;
       let totalSkipped = 0;
       const allResults: any[] = [];
-      
+
       for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
         const batch = batches[batchIndex];
         showNotification('info', `Sending batch ${batchIndex + 1}/${batches.length} (${batch.length} leads)...`);
-        
+
         const response = await fetch('/api/leads/send-outreach', {
           method: 'POST',
           headers: {
@@ -745,7 +784,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
             templateId: selectedTemplateId,
           }),
         });
-        
+
         const rawText = await response.text();
         let result;
         try {
@@ -753,7 +792,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
         } catch {
           throw new Error(`Server returned non-JSON response: ${rawText.substring(0, 100)}...`);
         }
-        
+
         if (result.success) {
           totalSent += result.sent || 0;
           totalFailed += result.failed || 0;
@@ -763,7 +802,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
           throw new Error(result.error || `Batch ${batchIndex + 1} failed`);
         }
       }
-      
+
       // Combine results
       setOutreachResult({
         success: true,
@@ -784,18 +823,18 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       setSendingOutreach(false);
     }
   };
-  
+
   // CSV Import: Parse CSV file
   const parseCSV = (text: string): Array<Record<string, string>> => {
     const lines = text.trim().split('\n');
     if (lines.length < 2) return [];
-    
+
     // Helper function to parse a CSV line (handles quoted values)
     const parseLine = (line: string): string[] => {
       const values: string[] = [];
       let current = '';
       let inQuotes = false;
-      
+
       for (let j = 0; j < line.length; j++) {
         const char = line[j];
         if (char === '"') {
@@ -810,20 +849,20 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       values.push(current.trim().replace(/^["']|["']$/g, ''));
       return values;
     };
-    
+
     // Parse header row with quote-aware logic
     const headerLine = lines[0];
     const headers = parseLine(headerLine).map(h => h.toLowerCase());
-    
+
     // Parse data rows
     const rows: Array<Record<string, string>> = [];
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
-      
+
       // Parse line with quote-aware logic
       const values = parseLine(line);
-      
+
       // Map values to headers
       const row: Record<string, string> = {};
       headers.forEach((header, idx) => {
@@ -831,10 +870,10 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       });
       rows.push(row);
     }
-    
+
     return rows;
   };
-  
+
   // CSV Import: Smart column finder - finds a value from any matching column
   const findColumnValue = (row: Record<string, string>, patterns: string[]): string => {
     const keys = Object.keys(row);
@@ -849,29 +888,29 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     }
     return '';
   };
-  
+
   // CSV Import: Smart name extractor from email
   const extractNameFromEmail = (email: string): string => {
     if (!email || !email.includes('@')) return '';
-    
+
     const [localPart, domain] = email.split('@');
     const domainName = domain.split('.')[0];
-    
+
     // If local part is generic (info, admin, contact, hello, etc.), use domain name
     const genericPrefixes = ['info', 'admin', 'contact', 'hello', 'support', 'sales', 'team', 'office', 'booking', 'bookings', 'reservations', 'events', 'marketing', 'news', 'media', 'press', 'hr', 'careers', 'jobs', 'help', 'customer', 'service'];
-    
+
     if (genericPrefixes.includes(localPart.toLowerCase())) {
       // Capitalize domain name nicely
       return domainName.charAt(0).toUpperCase() + domainName.slice(1).toLowerCase();
     }
-    
+
     // Otherwise, try to make a name from local part
     // Handle formats like: john.doe, john_doe, johndoe
     const cleanedLocal = localPart
       .replace(/[._-]/g, ' ')
       .replace(/\d+/g, '')
       .trim();
-    
+
     if (cleanedLocal.length > 1) {
       // Capitalize each word
       return cleanedLocal
@@ -880,11 +919,11 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
         .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
         .join(' ');
     }
-    
+
     // Fallback to domain
     return domainName.charAt(0).toUpperCase() + domainName.slice(1).toLowerCase();
   };
-  
+
   // CSV Import: Map column names to standard fields (SMART VERSION)
   const mapCsvRow = (row: Record<string, string>): {
     businessName: string;
@@ -896,7 +935,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
   } | null => {
     // SMART EMAIL DETECTION - find any column containing "email" or "mail"
     let email = findColumnValue(row, ['email', 'e-mail', 'mail', 'e-mail 1 - value', 'email address', 'primary email', 'work email', 'personal email']);
-    
+
     // FALLBACK: If no email found via patterns, scan ALL values for @ symbol
     if (!email || !email.includes('@')) {
       const allValues = Object.values(row);
@@ -907,22 +946,22 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
         }
       }
     }
-    
+
     // Skip if no valid email
     if (!email || !email.includes('@')) {
       return null;
     }
-    
+
     // SMART NAME DETECTION - combine multiple name columns if present
     const firstName = findColumnValue(row, ['first name', 'firstname', 'first', 'given name', 'prénom']);
     const middleName = findColumnValue(row, ['middle name', 'middlename', 'middle']);
     const lastName = findColumnValue(row, ['last name', 'lastname', 'last', 'surname', 'family name', 'nom']);
     const fullName = findColumnValue(row, ['name', 'full name', 'fullname', 'display name', 'displayname']);
     const company = findColumnValue(row, ['company', 'organization', 'organisation', 'business', 'businessname', 'business name', 'organization name']);
-    
+
     // Build the name from available parts
     let businessName = '';
-    
+
     // Priority 1: Combined first/middle/last name
     const combinedName = [firstName, middleName, lastName].filter(n => n.trim()).join(' ').trim();
     if (combinedName) {
@@ -940,24 +979,24 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     else {
       businessName = extractNameFromEmail(email);
     }
-    
+
     // Skip if still no name (shouldn't happen with email fallback, but safety check)
     if (!businessName) {
       return null;
     }
-    
+
     // SMART CITY DETECTION
     const city = findColumnValue(row, ['city', 'location', 'ville', 'town', 'municipality', 'address city']);
-    
+
     // SMART PHONE DETECTION
     const phone = findColumnValue(row, ['phone', 'telephone', 'tel', 'phone number', 'mobile', 'cell', 'phone 1 - value', 'work phone', 'home phone']);
-    
+
     // SMART WEBSITE DETECTION
     const website = findColumnValue(row, ['website', 'url', 'site', 'web', 'homepage', 'website url']);
-    
+
     // SMART ADDRESS DETECTION
     const address = findColumnValue(row, ['address', 'street', 'adresse', 'street address', 'address 1', 'full address']);
-    
+
     return {
       businessName: businessName.trim(),
       email: email.toLowerCase().trim(),
@@ -967,23 +1006,23 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       address: address.trim() || undefined,
     };
   };
-  
+
   // CSV Import: Handle file selection
   const handleCsvFileSelect = async (file: File) => {
     setCsvFile(file);
     setCsvImportResult(null);
-    
+
     try {
       const text = await file.text();
       const rows = parseCSV(text);
-      
+
       // Map and filter rows
       const mapped = rows
         .map(mapCsvRow)
         .filter((r): r is NonNullable<typeof r> => r !== null);
-      
+
       setCsvParsedData(mapped);
-      
+
       // Check for duplicates
       if (mapped.length > 0) {
         const emails = mapped.map(r => r.email);
@@ -995,7 +1034,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       showNotification('error', 'Failed to parse CSV file');
     }
   };
-  
+
   // CSV Import: Handle import
   const handleCsvImport = async () => {
     if (csvParsedData.length === 0) {
@@ -1006,24 +1045,24 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       showNotification('error', 'Please select a category');
       return;
     }
-    
+
     setCsvImporting(true);
     setCsvImportResult(null);
-    
+
     let created = 0;
     let skipped = 0;
     let failed = 0;
-    
+
     try {
       const now = Date.now();
-      
+
       for (const row of csvParsedData) {
         // Skip duplicates
         if (csvDuplicateEmails.has(row.email.toLowerCase())) {
           skipped++;
           continue;
         }
-        
+
         try {
           await createLead({
             businessName: row.businessName,
@@ -1044,13 +1083,13 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
           failed++;
         }
       }
-      
+
       setCsvImportResult({ success: true, created, skipped, failed });
       showNotification('success', `Imported ${created} leads (${skipped} duplicates skipped)`);
-      
+
       // Reload leads list
       loadLeads();
-      
+
     } catch (error: any) {
       console.error('CSV import error:', error);
       showNotification('error', error.message || 'Import failed');
@@ -1058,7 +1097,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       setCsvImporting(false);
     }
   };
-  
+
   // CSV Import: Reset modal
   const resetCsvImport = () => {
     setCsvFile(null);
@@ -1068,13 +1107,13 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     setCsvCategoryKey('restaurant');
     setCsvLeadType('');
   };
-  
+
   // Show notification
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 5000);
   };
-  
+
   // Save draft
   const handleSaveDraft = async () => {
     const db = getDbSafe();
@@ -1082,7 +1121,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       showNotification('error', 'Subject is required');
       return;
     }
-    
+
     setSaving(true);
     try {
       const campaignData = {
@@ -1101,7 +1140,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
         createdByEmail: user?.email,
         updatedAt: serverTimestamp(),
       };
-      
+
       if (currentCampaignId) {
         await updateDoc(doc(db, 'marketing_campaigns', currentCampaignId), campaignData);
         showNotification('success', 'Campaign updated!');
@@ -1113,7 +1152,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
         setCurrentCampaignId(docRef.id);
         showNotification('success', 'Campaign saved as draft!');
       }
-      
+
       loadCampaigns();
     } catch (error: any) {
       showNotification('error', error.message || 'Failed to save');
@@ -1121,7 +1160,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       setSaving(false);
     }
   };
-  
+
   // Load campaign into editor
   const handleLoadCampaign = (campaign: Campaign) => {
     setCampaignName(campaign.campaignName || '');
@@ -1137,14 +1176,114 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     setAudience(campaign.audience || 'all');
     setCurrentCampaignId(campaign.id);
   };
-  
+
   // Duplicate campaign
   const handleDuplicate = (campaign: Campaign) => {
     handleLoadCampaign(campaign);
     setCurrentCampaignId(null); // Create as new
     setCampaignName((campaign.campaignName || 'Campaign') + ' (Copy)');
   };
-  
+
+  // Blog: Generate drafts from topics
+  const handleBlogGenerate = async () => {
+    setBlogError(null);
+    setBlogGeneratedDrafts([]);
+
+    const lines = blogTopicsInput.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length === 0) {
+      setBlogError('Enter at least one topic');
+      return;
+    }
+
+    setBlogGenerating(true);
+
+    try {
+      const token = await getIdToken();
+      const topics = lines.map(title => ({ title, context: blogContextInput || undefined }));
+
+      const response = await fetch('/api/blog/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ topics, variants: blogVariants }),
+      });
+
+      const rawText = await response.text();
+      let result: any;
+      try {
+        result = JSON.parse(rawText);
+      } catch {
+        throw new Error(`Server returned non-JSON: ${rawText.substring(0, 100)}...`);
+      }
+
+      if (result.success && Array.isArray(result.drafts)) {
+        setBlogGeneratedDrafts(result.drafts);
+        showNotification('success', `Generated ${result.drafts.length} draft(s)`);
+      } else {
+        throw new Error(result.error || 'Failed to generate drafts');
+      }
+    } catch (error: any) {
+      console.error('[MarketingHub] Blog generate error:', error);
+      setBlogError(error.message || 'Failed to generate');
+    } finally {
+      setBlogGenerating(false);
+    }
+  };
+
+  // Blog: Import from URL
+  const handleBlogImport = async () => {
+    setBlogError(null);
+    setBlogImportedDraft(null);
+
+    if (!blogImportUrl.trim()) {
+      setBlogError('Enter a URL to import');
+      return;
+    }
+
+    setBlogImporting(true);
+
+    try {
+      const token = await getIdToken();
+
+      const response = await fetch('/api/blog/import-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ url: blogImportUrl.trim() }),
+      });
+
+      const rawText = await response.text();
+      let result: any;
+      try {
+        result = JSON.parse(rawText);
+      } catch {
+        throw new Error(`Server returned non-JSON: ${rawText.substring(0, 100)}...`);
+      }
+
+      if (result.success && result.draft) {
+        setBlogImportedDraft(result.draft);
+        showNotification('success', 'Draft imported successfully');
+      } else {
+        throw new Error(result.error || 'Failed to import');
+      }
+    } catch (error: any) {
+      console.error('[MarketingHub] Blog import error:', error);
+      setBlogError(error.message || 'Failed to import');
+    } finally {
+      setBlogImporting(false);
+    }
+  };
+
+  // Blog: Copy draft JSON to clipboard
+  const handleCopyDraftJson = (draft: any) => {
+    navigator.clipboard.writeText(JSON.stringify(draft, null, 2));
+    showNotification('success', 'Copied to clipboard');
+  };
+
   /**
    * VALIDATION CHECKLIST for "Send Test to Me":
    * 1. Must be logged in as eatezca@gmail.com
@@ -1159,13 +1298,13 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       showNotification('error', 'Subject and body are required');
       return;
     }
-    
+
     setSendingTest(true);
     try {
       // Get Firebase ID token for admin auth
       const token = await getIdToken();
       console.log('[MarketingHub] Sending test email, auth token obtained');
-      
+
       const response = await fetch('/api/marketing/test-send', {
         method: 'POST',
         headers: {
@@ -1174,12 +1313,12 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
         },
         body: JSON.stringify(emailParams),
       });
-      
+
       // Read response as text first to handle non-JSON responses
       const rawText = await response.text();
       console.log('[MarketingHub] Response status:', response.status);
       console.log('[MarketingHub] Response body:', rawText.substring(0, 500));
-      
+
       // Try to parse as JSON
       let result: { success?: boolean; error?: string; messageId?: string };
       try {
@@ -1189,7 +1328,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
         console.error('[MarketingHub] Failed to parse response as JSON:', rawText.substring(0, 1000));
         throw new Error(`Server returned non-JSON response (${response.status}): ${rawText.substring(0, 100)}...`);
       }
-      
+
       if (result.success) {
         showNotification('success', `Test email sent to ${ADMIN_EMAIL}!`);
       } else {
@@ -1202,21 +1341,21 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       setSendingTest(false);
     }
   };
-  
+
   // Fetch recipient count
   const handleFetchRecipientCount = async () => {
     if (!subject || !markdownBody) {
       showNotification('error', 'Subject and body are required');
       return;
     }
-    
+
     try {
       const token = await getIdToken();
-      
+
       if (import.meta.env.DEV) {
         console.debug('[MarketingHub] Fetching recipient count, auth token attached');
       }
-      
+
       const response = await fetch('/api/marketing/recipients-count', {
         method: 'POST',
         headers: {
@@ -1225,15 +1364,15 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
         },
         body: JSON.stringify({ audience }),
       });
-      
+
       // Read response as text first to handle non-JSON responses
       const rawText = await response.text();
-      
+
       if (import.meta.env.DEV) {
         console.debug('[MarketingHub] Recipients count response status:', response.status);
         console.debug('[MarketingHub] Recipients count response body:', rawText.substring(0, 500));
       }
-      
+
       // Try to parse as JSON
       let result: { success?: boolean; error?: string; reason?: string; count?: number; sampleMaskedEmails?: string[] };
       try {
@@ -1242,7 +1381,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
         console.error('[MarketingHub] Failed to parse response as JSON:', rawText.substring(0, 1000));
         throw new Error(`Server returned non-JSON response (${response.status}): ${rawText.substring(0, 100)}...`);
       }
-      
+
       if (result.success) {
         setRecipientCount(result.count ?? 0);
         setSampleEmails(result.sampleMaskedEmails || []);
@@ -1256,25 +1395,25 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       showNotification('error', error.message || 'Failed to fetch recipients');
     }
   };
-  
+
   // Send bulk campaign
   const handleSendBulk = async () => {
     if (confirmInput.toUpperCase() !== 'SEND') {
       showNotification('error', 'Type SEND to confirm');
       return;
     }
-    
+
     setSendingBulk(true);
     setShowConfirmModal(false);
     setWasAdminWhenModalOpened(false);
-    
+
     try {
       const token = await getIdToken();
-      
+
       if (import.meta.env.DEV) {
         console.debug('[MarketingHub] Sending bulk campaign, auth token attached');
       }
-      
+
       const response = await fetch('/api/marketing/send-bulk', {
         method: 'POST',
         headers: {
@@ -1287,15 +1426,15 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
           campaignId: currentCampaignId,
         }),
       });
-      
+
       // Read response as text first to handle non-JSON responses
       const rawText = await response.text();
-      
+
       if (import.meta.env.DEV) {
         console.debug('[MarketingHub] Bulk send response status:', response.status);
         console.debug('[MarketingHub] Bulk send response body:', rawText.substring(0, 500));
       }
-      
+
       // Try to parse as JSON
       let result: { success?: boolean; error?: string; reason?: string; sentCount?: number; failedCount?: number };
       try {
@@ -1304,7 +1443,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
         console.error('[MarketingHub] Failed to parse response as JSON:', rawText.substring(0, 1000));
         throw new Error(`Server returned non-JSON response (${response.status}): ${rawText.substring(0, 100)}...`);
       }
-      
+
       if (result.success) {
         showNotification('success', `Campaign sent! ${result.sentCount || 0} delivered, ${result.failedCount || 0} failed.`);
         loadCampaigns();
@@ -1319,7 +1458,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       setConfirmInput('');
     }
   };
-  
+
   // Clear form
   const handleNewCampaign = () => {
     setCampaignName('');
@@ -1335,12 +1474,12 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     setAudience('all');
     setCurrentCampaignId(null);
   };
-  
+
   // Auth guard - but allow page to stay open if a modal was opened when user was admin
   // This prevents auth state flicker from closing modals mid-edit
   const hasActiveModal = showTemplateModal || showLeadModal || showSendOutreachModal || showConfirmModal || showImportModal || showCsvImportModal;
   const allowAccess = isAdmin || (hasActiveModal && wasAdminWhenModalOpened);
-  
+
   if (!authInitialized) {
     return (
       <div className="min-h-screen bg-[#f8fafb] pt-24 flex items-center justify-center">
@@ -1348,7 +1487,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       </div>
     );
   }
-  
+
   if (!user && !hasActiveModal) {
     return (
       <div className="min-h-screen bg-[#f8fafb] pt-24 px-6">
@@ -1360,7 +1499,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       </div>
     );
   }
-  
+
   if (!allowAccess) {
     return (
       <div className="min-h-screen bg-[#f8fafb] pt-24 px-6">
@@ -1372,19 +1511,18 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       </div>
     );
   }
-  
+
   return (
     <div className="min-h-screen bg-[#f8fafb] pt-20">
       {/* Notification */}
       {notification && (
-        <div className={`fixed top-24 right-6 z-50 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 ${
-          notification.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-        }`}>
+        <div className={`fixed top-24 right-6 z-50 px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 ${notification.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+          }`}>
           {notification.type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
           {notification.message}
         </div>
       )}
-      
+
       {/* Confirm Modal */}
       {showConfirmModal && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
@@ -1430,13 +1568,13 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
           </div>
         </div>
       )}
-      
+
       {/* Template Editor Modal */}
       {showTemplateModal && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
           {/* Backdrop - separate element for reliable click detection */}
-          <div 
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm" 
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => { setShowTemplateModal(false); setWasAdminWhenModalOpened(false); }}
             aria-hidden="true"
           />
@@ -1536,7 +1674,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
           </div>
         </div>
       )}
-      
+
       {/* Lead Detail Modal */}
       {showLeadModal && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) { setShowLeadModal(false); setWasAdminWhenModalOpened(false); } }}>
@@ -1626,7 +1764,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                 <textarea value={leadForm.notes} onChange={e => setLeadForm(f => ({ ...f, notes: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] h-20" placeholder="Internal notes..." />
               </div>
-              
+
               {/* Activity Log (only for existing leads) */}
               {editingLead && (
                 <div className="border-t border-gray-100 pt-4">
@@ -1673,7 +1811,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
           </div>
         </div>
       )}
-      
+
       {/* Import Leads Modal */}
       {showImportModal && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget && !importRunning) { setShowImportModal(false); setWasAdminWhenModalOpened(false); } }}>
@@ -1724,19 +1862,19 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                   <div className="grid grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Min Rating</label>
-                      <input type="number" step="0.1" min="0" max="5" value={importForm.minRating} 
+                      <input type="number" step="0.1" min="0" max="5" value={importForm.minRating}
                         onChange={e => setImportForm(f => ({ ...f, minRating: parseFloat(e.target.value) || 0 }))}
                         disabled={importRunning} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] disabled:bg-gray-100" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Min Reviews</label>
-                      <input type="number" min="0" value={importForm.minReviews} 
+                      <input type="number" min="0" value={importForm.minReviews}
                         onChange={e => setImportForm(f => ({ ...f, minReviews: parseInt(e.target.value) || 0 }))}
                         disabled={importRunning} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] disabled:bg-gray-100" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Radius (km)</label>
-                      <input type="number" min="1" max="50" value={importForm.radiusKm} 
+                      <input type="number" min="1" max="50" value={importForm.radiusKm}
                         onChange={e => setImportForm(f => ({ ...f, radiusKm: parseInt(e.target.value) || 10 }))}
                         disabled={importRunning} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] disabled:bg-gray-100" />
                     </div>
@@ -1744,13 +1882,13 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Target Leads</label>
-                      <input type="number" min="1" max="500" value={importForm.targetLeads} 
+                      <input type="number" min="1" max="500" value={importForm.targetLeads}
                         onChange={e => setImportForm(f => ({ ...f, targetLeads: parseInt(e.target.value) || 100 }))}
                         disabled={importRunning} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] disabled:bg-gray-100" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Max Candidates</label>
-                      <input type="number" min="1" max="500" value={importForm.maxCandidates} 
+                      <input type="number" min="1" max="500" value={importForm.maxCandidates}
                         onChange={e => setImportForm(f => ({ ...f, maxCandidates: parseInt(e.target.value) || 250 }))}
                         disabled={importRunning} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] disabled:bg-gray-100" />
                     </div>
@@ -1806,7 +1944,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                         </div>
                         <p className="text-sm text-gray-500 mt-2">Stopped: {importResult.stoppedReason.replace(/_/g, ' ')}</p>
                       </div>
-                    
+
                       {importResult.report.length > 0 && (
                         <div>
                           <h4 className="font-medium text-gray-700 mb-2">Report ({importResult.report.length} entries)</h4>
@@ -1824,13 +1962,12 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                                   <tr key={i} className={item.outcome === 'CREATED' ? 'bg-green-50' : ''}>
                                     <td className="px-3 py-2 text-gray-800 max-w-[200px] truncate">{item.name}</td>
                                     <td className="px-3 py-2">
-                                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                        item.outcome === 'CREATED' ? 'bg-green-100 text-green-700' :
+                                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${item.outcome === 'CREATED' ? 'bg-green-100 text-green-700' :
                                         item.outcome === 'NO_EMAIL' ? 'bg-yellow-100 text-yellow-700' :
-                                        item.outcome === 'NO_WEBSITE' ? 'bg-gray-100 text-gray-600' :
-                                        item.outcome === 'DUPLICATE' ? 'bg-blue-100 text-blue-700' :
-                                        'bg-gray-100 text-gray-600'
-                                      }`}>{item.outcome}</span>
+                                          item.outcome === 'NO_WEBSITE' ? 'bg-gray-100 text-gray-600' :
+                                            item.outcome === 'DUPLICATE' ? 'bg-blue-100 text-blue-700' :
+                                              'bg-gray-100 text-gray-600'
+                                        }`}>{item.outcome}</span>
                                     </td>
                                     <td className="px-3 py-2 text-gray-600 max-w-[200px] truncate">{item.email || '—'}</td>
                                   </tr>
@@ -1871,7 +2008,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
           </div>
         </div>
       )}
-      
+
       {/* Send Outreach Modal */}
       {showSendOutreachModal && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget && !sendingOutreach) { setShowSendOutreachModal(false); setWasAdminWhenModalOpened(false); } }}>
@@ -1882,7 +2019,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="flex-1 overflow-auto p-4 space-y-4">
               {!outreachResult ? (
                 <>
@@ -1895,7 +2032,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                       Leads without valid email addresses will be skipped.
                     </p>
                   </div>
-                  
+
                   {/* Template selector */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Outreach Template *</label>
@@ -1919,7 +2056,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                       </select>
                     )}
                   </div>
-                  
+
                   {/* Template preview (lightweight) */}
                   {selectedTemplateId && (
                     <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
@@ -1980,7 +2117,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Results table */}
                   <div className="max-h-60 overflow-auto border border-gray-200 rounded-lg">
                     <table className="w-full text-sm">
@@ -1997,11 +2134,10 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                             <td className="px-3 py-2">{r.businessName}</td>
                             <td className="px-3 py-2 text-gray-500">{r.email || '—'}</td>
                             <td className="px-3 py-2">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                r.outcome === 'sent' ? 'bg-green-100 text-green-800' :
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${r.outcome === 'sent' ? 'bg-green-100 text-green-800' :
                                 r.outcome === 'skipped' ? 'bg-gray-100 text-gray-800' :
-                                'bg-red-100 text-red-800'
-                              }`}>
+                                  'bg-red-100 text-red-800'
+                                }`}>
                                 {r.outcome}
                               </span>
                               {r.reason && <span className="text-xs text-gray-500 ml-1">({r.reason})</span>}
@@ -2014,19 +2150,19 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                 </div>
               )}
             </div>
-            
+
             {/* Footer */}
             <div className="p-4 border-t border-gray-100 flex justify-end gap-3">
               {!outreachResult ? (
                 <>
-                  <button 
+                  <button
                     onClick={() => { setShowSendOutreachModal(false); setWasAdminWhenModalOpened(false); }}
                     disabled={sendingOutreach}
                     className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
                   >
                     Cancel
                   </button>
-                  <button 
+                  <button
                     onClick={handleSendOutreach}
                     disabled={sendingOutreach || !selectedTemplateId || templates.length === 0}
                     className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 flex items-center gap-2"
@@ -2045,7 +2181,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                   </button>
                 </>
               ) : (
-                <button 
+                <button
                   onClick={() => { setShowSendOutreachModal(false); setWasAdminWhenModalOpened(false); }}
                   className="px-4 py-2 bg-[#15383c] text-white rounded-lg hover:bg-[#0e2628]"
                 >
@@ -2056,7 +2192,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
           </div>
         </div>
       )}
-      
+
       {/* CSV Import Modal */}
       {showCsvImportModal && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget && !csvImporting) { setShowCsvImportModal(false); setWasAdminWhenModalOpened(false); } }}>
@@ -2067,7 +2203,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="flex-1 overflow-auto p-4 space-y-4">
               {!csvImportResult ? (
                 <>
@@ -2093,7 +2229,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                       </p>
                     </label>
                   </div>
-                  
+
                   {/* Category and Lead Type */}
                   {csvParsedData.length > 0 && (
                     <>
@@ -2126,7 +2262,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                           />
                         </div>
                       </div>
-                      
+
                       {/* Preview summary */}
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                         <p className="text-blue-700 font-medium">
@@ -2141,7 +2277,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                           {csvParsedData.length - csvDuplicateEmails.size} new leads will be imported
                         </p>
                       </div>
-                      
+
                       {/* Preview table */}
                       <div className="max-h-48 overflow-auto border border-gray-200 rounded-lg">
                         <table className="w-full text-sm">
@@ -2202,19 +2338,19 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                 </div>
               )}
             </div>
-            
+
             {/* Footer */}
             <div className="p-4 border-t border-gray-100 flex justify-end gap-3">
               {!csvImportResult ? (
                 <>
-                  <button 
+                  <button
                     onClick={() => setShowCsvImportModal(false)}
                     disabled={csvImporting}
                     className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
                   >
                     Cancel
                   </button>
-                  <button 
+                  <button
                     onClick={handleCsvImport}
                     disabled={csvImporting || csvParsedData.length === 0}
                     className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
@@ -2233,7 +2369,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                   </button>
                 </>
               ) : (
-                <button 
+                <button
                   onClick={() => setShowCsvImportModal(false)}
                   className="px-4 py-2 bg-[#15383c] text-white rounded-lg hover:bg-[#0e2628]"
                 >
@@ -2259,312 +2395,317 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
             <p className="text-gray-500 text-sm">Campaigns, Templates & Lead CRM</p>
           </div>
         </div>
-        
+
         {/* Tab Navigation */}
         <div className="flex gap-1 mb-6 bg-gray-100 rounded-lg p-1 w-fit">
           <button
             onClick={() => setActiveTab('campaigns')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'campaigns' ? 'bg-white text-[#15383c] shadow-sm' : 'text-gray-600 hover:text-[#15383c]'
-            }`}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'campaigns' ? 'bg-white text-[#15383c] shadow-sm' : 'text-gray-600 hover:text-[#15383c]'
+              }`}
           >
             <Mail size={16} className="inline mr-2" />
             Campaigns
           </button>
           <button
             onClick={() => setActiveTab('templates')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'templates' ? 'bg-white text-[#15383c] shadow-sm' : 'text-gray-600 hover:text-[#15383c]'
-            }`}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'templates' ? 'bg-white text-[#15383c] shadow-sm' : 'text-gray-600 hover:text-[#15383c]'
+              }`}
           >
             <FileText size={16} className="inline mr-2" />
             Outreach Templates
           </button>
           <button
             onClick={() => setActiveTab('leads')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'leads' ? 'bg-white text-[#15383c] shadow-sm' : 'text-gray-600 hover:text-[#15383c]'
-            }`}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'leads' ? 'bg-white text-[#15383c] shadow-sm' : 'text-gray-600 hover:text-[#15383c]'
+              }`}
           >
             <Users size={16} className="inline mr-2" />
             Leads
           </button>
+          {isAdmin && (
+            <button
+              onClick={() => setActiveTab('blog')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'blog' ? 'bg-white text-[#15383c] shadow-sm' : 'text-gray-600 hover:text-[#15383c]'
+                }`}
+            >
+              <BookOpen size={16} className="inline mr-2" />
+              Blog
+            </button>
+          )}
         </div>
-        
+
         {/* Campaigns Tab (existing) */}
         {activeTab === 'campaigns' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* LEFT: Composer */}
-          <div className="space-y-4">
-            {/* Campaign History */}
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-[#15383c]">Recent Campaigns</h3>
-                <button onClick={handleNewCampaign} className="text-sm text-[#e35e25] hover:underline">
-                  + New
-                </button>
-              </div>
-              {loadingCampaigns ? (
-                <div className="text-center py-4"><Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" /></div>
-              ) : campaigns.length === 0 ? (
-                <p className="text-gray-500 text-sm">No campaigns yet</p>
-              ) : (
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {campaigns.map((c) => (
-                    <div key={c.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-[#15383c] truncate">{c.subject || 'Untitled'}</p>
-                        <p className="text-xs text-gray-500">{c.status}</p>
-                      </div>
-                      <div className="flex gap-1">
-                        <button onClick={() => handleLoadCampaign(c)} className="p-1 text-gray-500 hover:text-[#15383c]" title="Edit">
-                          <Eye size={14} />
-                        </button>
-                        <button onClick={() => handleDuplicate(c)} className="p-1 text-gray-500 hover:text-[#15383c]" title="Duplicate">
-                          <Copy size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            
-            {/* Composer Form */}
-            <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
-              <h3 className="font-semibold text-[#15383c]">Compose Email</h3>
-              
-              {/* Campaign Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Campaign Name (internal)</label>
-                <input
-                  type="text"
-                  value={campaignName}
-                  onChange={(e) => setCampaignName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25]"
-                  placeholder="e.g., January Newsletter"
-                />
-              </div>
-              
-              {/* Subject */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Subject *</label>
-                <input
-                  type="text"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25]"
-                  placeholder="Your email subject"
-                />
-              </div>
-              
-              {/* Preheader */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Preheader</label>
-                <input
-                  type="text"
-                  value={preheader}
-                  onChange={(e) => setPreheader(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25]"
-                  placeholder="Preview text shown in inbox"
-                />
-              </div>
-              
-              {/* Theme */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Theme</label>
-                <div className="flex gap-2">
-                  {(['dark', 'light', 'minimal'] as const).map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => setTheme(t)}
-                      className={`px-3 py-1.5 rounded-lg text-sm ${
-                        theme === t ? 'bg-[#15383c] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {t === 'dark' ? 'Popera Dark' : t === 'light' ? 'Popera Light' : 'Minimal'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              
-              {/* Density */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Density</label>
-                <div className="flex gap-2">
-                  {(['normal', 'compact'] as const).map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => setDensity(d)}
-                      className={`px-3 py-1.5 rounded-lg text-sm capitalize ${
-                        density === d ? 'bg-[#15383c] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {d}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              
-              {/* Hero Image */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Hero Image URL</label>
-                  <input
-                    type="url"
-                    value={heroImageUrl}
-                    onChange={(e) => setHeroImageUrl(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm"
-                    placeholder="https://..."
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Alt Text</label>
-                  <input
-                    type="text"
-                    value={heroAlt}
-                    onChange={(e) => setHeroAlt(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm"
-                    placeholder="Image description"
-                  />
-                </div>
-              </div>
-              
-              {/* Body */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Body (Markdown) *</label>
-                <textarea
-                  value={markdownBody}
-                  onChange={(e) => setMarkdownBody(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] h-40 font-mono text-sm"
-                  placeholder={"Write your email content here...\n\n**Bold text** and *italic*\n[Link text](https://...)\n- Bullet point"}
-                />
-              </div>
-              
-              {/* CTA */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">CTA Text</label>
-                  <input
-                    type="text"
-                    value={ctaText}
-                    onChange={(e) => setCtaText(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm"
-                    placeholder="e.g., Explore Events"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">CTA URL</label>
-                  <input
-                    type="url"
-                    value={ctaUrl}
-                    onChange={(e) => setCtaUrl(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm"
-                    placeholder="https://gopopera.ca/..."
-                  />
-                </div>
-              </div>
-              
-              {/* Audience */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Audience</label>
-                <select
-                  value={audience}
-                  onChange={(e) => setAudience(e.target.value as 'all' | 'hosts' | 'attendees')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25]"
-                >
-                  <option value="all">All opted-in users</option>
-                  <option value="hosts">Hosts only</option>
-                  <option value="attendees">Attendees only</option>
-                </select>
-              </div>
-              
-              {/* Actions */}
-              <div className="flex flex-wrap gap-2 pt-2">
-                <button
-                  onClick={handleSaveDraft}
-                  disabled={saving}
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-                >
-                  {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                  Save Draft
-                </button>
-                <button
-                  onClick={handleSendTest}
-                  disabled={sendingTest || !subject || !markdownBody}
-                  className="flex items-center gap-2 px-4 py-2 border border-[#15383c] text-[#15383c] rounded-lg hover:bg-[#15383c] hover:text-white disabled:opacity-50"
-                >
-                  {sendingTest ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
-                  Send Test to Me
-                </button>
-                <button
-                  onClick={handleFetchRecipientCount}
-                  disabled={sendingBulk || !subject || !markdownBody}
-                  className="flex items-center gap-2 px-4 py-2 bg-[#e35e25] text-white rounded-lg hover:bg-[#d54d1a] disabled:opacity-50"
-                >
-                  {sendingBulk ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                  Send Campaign
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          {/* RIGHT: Mobile Preview */}
-          <div className="lg:sticky lg:top-24 lg:self-start">
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Smartphone size={18} className="text-gray-500" />
-                  <h3 className="font-semibold text-[#15383c]">Mobile Preview</h3>
-                </div>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => setPreviewMode('light')}
-                    className={`px-2 py-1 text-xs rounded ${previewMode === 'light' ? 'bg-gray-200' : 'bg-gray-100'}`}
-                  >
-                    Light
-                  </button>
-                  <button
-                    onClick={() => setPreviewMode('dark')}
-                    className={`px-2 py-1 text-xs rounded ${previewMode === 'dark' ? 'bg-gray-700 text-white' : 'bg-gray-100'}`}
-                  >
-                    Dark
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* LEFT: Composer */}
+            <div className="space-y-4">
+              {/* Campaign History */}
+              <div className="bg-white rounded-xl border border-gray-200 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-[#15383c]">Recent Campaigns</h3>
+                  <button onClick={handleNewCampaign} className="text-sm text-[#e35e25] hover:underline">
+                    + New
                   </button>
                 </div>
-              </div>
-              
-              {/* Phone Frame */}
-              <div className={`mx-auto rounded-[32px] p-2 max-w-[390px] ${previewMode === 'dark' ? 'bg-gray-900' : 'bg-gray-200'}`}>
-                <div className="rounded-[24px] overflow-hidden bg-white" style={{ height: '600px' }}>
-                  {/* Status Bar */}
-                  <div className={`h-6 flex items-center justify-center text-[10px] ${previewMode === 'dark' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600'}`}>
-                    Preview
-                  </div>
-                  
-                  {/* Email Content */}
-                  <div className="overflow-y-auto" style={{ height: 'calc(100% - 24px)' }}>
-                    {previewHtml ? (
-                      <iframe
-                        srcDoc={previewHtml.replace(/\{\{UNSUBSCRIBE_URL\}\}/g, '#unsubscribe')}
-                        style={{ width: '100%', height: '100%', border: 'none' }}
-                        title="Email Preview"
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center h-full text-gray-400">
-                        <div className="text-center">
-                          <Mail size={32} className="mx-auto mb-2" />
-                          <p className="text-sm">Start typing to see preview</p>
+                {loadingCampaigns ? (
+                  <div className="text-center py-4"><Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" /></div>
+                ) : campaigns.length === 0 ? (
+                  <p className="text-gray-500 text-sm">No campaigns yet</p>
+                ) : (
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {campaigns.map((c) => (
+                      <div key={c.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-[#15383c] truncate">{c.subject || 'Untitled'}</p>
+                          <p className="text-xs text-gray-500">{c.status}</p>
+                        </div>
+                        <div className="flex gap-1">
+                          <button onClick={() => handleLoadCampaign(c)} className="p-1 text-gray-500 hover:text-[#15383c]" title="Edit">
+                            <Eye size={14} />
+                          </button>
+                          <button onClick={() => handleDuplicate(c)} className="p-1 text-gray-500 hover:text-[#15383c]" title="Duplicate">
+                            <Copy size={14} />
+                          </button>
                         </div>
                       </div>
-                    )}
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Composer Form */}
+              <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
+                <h3 className="font-semibold text-[#15383c]">Compose Email</h3>
+
+                {/* Campaign Name */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Campaign Name (internal)</label>
+                  <input
+                    type="text"
+                    value={campaignName}
+                    onChange={(e) => setCampaignName(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25]"
+                    placeholder="e.g., January Newsletter"
+                  />
+                </div>
+
+                {/* Subject */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Subject *</label>
+                  <input
+                    type="text"
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25]"
+                    placeholder="Your email subject"
+                  />
+                </div>
+
+                {/* Preheader */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Preheader</label>
+                  <input
+                    type="text"
+                    value={preheader}
+                    onChange={(e) => setPreheader(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25]"
+                    placeholder="Preview text shown in inbox"
+                  />
+                </div>
+
+                {/* Theme */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Theme</label>
+                  <div className="flex gap-2">
+                    {(['dark', 'light', 'minimal'] as const).map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => setTheme(t)}
+                        className={`px-3 py-1.5 rounded-lg text-sm ${theme === t ? 'bg-[#15383c] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                      >
+                        {t === 'dark' ? 'Popera Dark' : t === 'light' ? 'Popera Light' : 'Minimal'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Density */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Density</label>
+                  <div className="flex gap-2">
+                    {(['normal', 'compact'] as const).map((d) => (
+                      <button
+                        key={d}
+                        onClick={() => setDensity(d)}
+                        className={`px-3 py-1.5 rounded-lg text-sm capitalize ${density === d ? 'bg-[#15383c] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                      >
+                        {d}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Hero Image */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Hero Image URL</label>
+                    <input
+                      type="url"
+                      value={heroImageUrl}
+                      onChange={(e) => setHeroImageUrl(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm"
+                      placeholder="https://..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Alt Text</label>
+                    <input
+                      type="text"
+                      value={heroAlt}
+                      onChange={(e) => setHeroAlt(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm"
+                      placeholder="Image description"
+                    />
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Body (Markdown) *</label>
+                  <textarea
+                    value={markdownBody}
+                    onChange={(e) => setMarkdownBody(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] h-40 font-mono text-sm"
+                    placeholder={"Write your email content here...\n\n**Bold text** and *italic*\n[Link text](https://...)\n- Bullet point"}
+                  />
+                </div>
+
+                {/* CTA */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">CTA Text</label>
+                    <input
+                      type="text"
+                      value={ctaText}
+                      onChange={(e) => setCtaText(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm"
+                      placeholder="e.g., Explore Events"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">CTA URL</label>
+                    <input
+                      type="url"
+                      value={ctaUrl}
+                      onChange={(e) => setCtaUrl(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm"
+                      placeholder="https://gopopera.ca/..."
+                    />
+                  </div>
+                </div>
+
+                {/* Audience */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Audience</label>
+                  <select
+                    value={audience}
+                    onChange={(e) => setAudience(e.target.value as 'all' | 'hosts' | 'attendees')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25]"
+                  >
+                    <option value="all">All opted-in users</option>
+                    <option value="hosts">Hosts only</option>
+                    <option value="attendees">Attendees only</option>
+                  </select>
+                </div>
+
+                {/* Actions */}
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <button
+                    onClick={handleSaveDraft}
+                    disabled={saving}
+                    className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                    Save Draft
+                  </button>
+                  <button
+                    onClick={handleSendTest}
+                    disabled={sendingTest || !subject || !markdownBody}
+                    className="flex items-center gap-2 px-4 py-2 border border-[#15383c] text-[#15383c] rounded-lg hover:bg-[#15383c] hover:text-white disabled:opacity-50"
+                  >
+                    {sendingTest ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
+                    Send Test to Me
+                  </button>
+                  <button
+                    onClick={handleFetchRecipientCount}
+                    disabled={sendingBulk || !subject || !markdownBody}
+                    className="flex items-center gap-2 px-4 py-2 bg-[#e35e25] text-white rounded-lg hover:bg-[#d54d1a] disabled:opacity-50"
+                  >
+                    {sendingBulk ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                    Send Campaign
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* RIGHT: Mobile Preview */}
+            <div className="lg:sticky lg:top-24 lg:self-start">
+              <div className="bg-white rounded-xl border border-gray-200 p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Smartphone size={18} className="text-gray-500" />
+                    <h3 className="font-semibold text-[#15383c]">Mobile Preview</h3>
+                  </div>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => setPreviewMode('light')}
+                      className={`px-2 py-1 text-xs rounded ${previewMode === 'light' ? 'bg-gray-200' : 'bg-gray-100'}`}
+                    >
+                      Light
+                    </button>
+                    <button
+                      onClick={() => setPreviewMode('dark')}
+                      className={`px-2 py-1 text-xs rounded ${previewMode === 'dark' ? 'bg-gray-700 text-white' : 'bg-gray-100'}`}
+                    >
+                      Dark
+                    </button>
+                  </div>
+                </div>
+
+                {/* Phone Frame */}
+                <div className={`mx-auto rounded-[32px] p-2 max-w-[390px] ${previewMode === 'dark' ? 'bg-gray-900' : 'bg-gray-200'}`}>
+                  <div className="rounded-[24px] overflow-hidden bg-white" style={{ height: '600px' }}>
+                    {/* Status Bar */}
+                    <div className={`h-6 flex items-center justify-center text-[10px] ${previewMode === 'dark' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                      Preview
+                    </div>
+
+                    {/* Email Content */}
+                    <div className="overflow-y-auto" style={{ height: 'calc(100% - 24px)' }}>
+                      {previewHtml ? (
+                        <iframe
+                          srcDoc={previewHtml.replace(/\{\{UNSUBSCRIBE_URL\}\}/g, '#unsubscribe')}
+                          style={{ width: '100%', height: '100%', border: 'none' }}
+                          title="Email Preview"
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center h-full text-gray-400">
+                          <div className="text-center">
+                            <Mail size={32} className="mx-auto mb-2" />
+                            <p className="text-sm">Start typing to see preview</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
         )}
-        
+
         {/* Templates Tab */}
         {activeTab === 'templates' && (
           <div className="space-y-4">
@@ -2589,7 +2730,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                 New Template
               </button>
             </div>
-            
+
             {/* Templates Table */}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               {loadingTemplates ? (
@@ -2620,10 +2761,9 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">{t.subject}</td>
                         <td className="px-4 py-3 text-sm">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            t.theme === 'dark' ? 'bg-gray-800 text-white' : 
+                          <span className={`px-2 py-1 rounded text-xs ${t.theme === 'dark' ? 'bg-gray-800 text-white' :
                             t.theme === 'light' ? 'bg-gray-100 text-gray-800' : 'bg-white border text-gray-600'
-                          }`}>{t.theme}</span>
+                            }`}>{t.theme}</span>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-500">
                           {new Date(t.updatedAt).toLocaleDateString()}
@@ -2649,7 +2789,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
             </div>
           </div>
         )}
-        
+
         {/* Leads Tab */}
         {activeTab === 'leads' && (
           <div className="space-y-4">
@@ -2714,7 +2854,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                 Add Lead
               </button>
             </div>
-            
+
             {/* Bulk Actions */}
             {selectedLeadIds.size > 0 && (
               <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
@@ -2740,7 +2880,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                 </button>
               </div>
             )}
-            
+
             {/* Leads Table */}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               {loadingLeads ? (
@@ -2827,7 +2967,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                 </table>
               )}
             </div>
-            
+
             {/* Stats Summary */}
             {leads.length > 0 && (
               <div className="flex gap-4 text-sm text-gray-500">
@@ -2835,6 +2975,238 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                 <span>New: {leads.filter(l => l.status === 'new').length}</span>
                 <span>Contacted: {leads.filter(l => l.status === 'contacted').length}</span>
                 <span>Qualified: {leads.filter(l => l.status === 'qualified').length}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Blog Tab */}
+        {activeTab === 'blog' && isAdmin && (
+          <div className="space-y-6">
+            {/* Error display */}
+            {blogError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
+                <AlertTriangle size={18} />
+                {blogError}
+                <button onClick={() => setBlogError(null)} className="ml-auto p-1 hover:bg-red-100 rounded">
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Generate Drafts Card */}
+              <div className="bg-white rounded-xl border border-gray-200 p-5">
+                <h3 className="font-semibold text-[#15383c] mb-4 flex items-center gap-2">
+                  <BookOpen size={18} />
+                  Generate Blog Drafts
+                </h3>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Topics (one per line)</label>
+                    <textarea
+                      value={blogTopicsInput}
+                      onChange={(e) => setBlogTopicsInput(e.target.value)}
+                      placeholder="How to host a great dinner circle&#10;Tips for first-time attendees&#10;Best venues for small gatherings in Montreal"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] h-28 text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Shared Context (optional)</label>
+                    <textarea
+                      value={blogContextInput}
+                      onChange={(e) => setBlogContextInput(e.target.value)}
+                      placeholder="e.g., Focus on Montreal venues, mention Popera's community guidelines..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] h-20 text-sm"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Variants per topic</label>
+                      <select
+                        value={blogVariants}
+                        onChange={(e) => setBlogVariants(Number(e.target.value))}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm"
+                      >
+                        <option value={1}>1</option>
+                        <option value={2}>2</option>
+                        <option value={3}>3</option>
+                      </select>
+                    </div>
+
+                    <button
+                      onClick={handleBlogGenerate}
+                      disabled={blogGenerating || !blogTopicsInput.trim()}
+                      className="ml-auto px-4 py-2 bg-[#e35e25] text-white rounded-lg hover:bg-[#d54d1a] disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {blogGenerating ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                      Generate
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Import from URL Card */}
+              <div className="bg-white rounded-xl border border-gray-200 p-5">
+                <h3 className="font-semibold text-[#15383c] mb-4 flex items-center gap-2">
+                  <Link size={18} />
+                  Import from URL
+                </h3>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Article URL</label>
+                    <input
+                      type="url"
+                      value={blogImportUrl}
+                      onChange={(e) => setBlogImportUrl(e.target.value)}
+                      placeholder="https://example.com/article"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">We'll fetch and rewrite the content as an original Popera article</p>
+                  </div>
+
+                  <button
+                    onClick={handleBlogImport}
+                    disabled={blogImporting || !blogImportUrl.trim()}
+                    className="px-4 py-2 bg-[#15383c] text-white rounded-lg hover:bg-[#0e2628] disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {blogImporting ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                    Import
+                  </button>
+                </div>
+
+                {/* Imported Draft Preview */}
+                {blogImportedDraft && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-[#15383c]">Imported Draft</h4>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handleCopyDraftJson(blogImportedDraft)}
+                          className="p-1.5 text-gray-500 hover:text-[#15383c] hover:bg-gray-100 rounded"
+                          title="Copy JSON"
+                        >
+                          <Copy size={14} />
+                        </button>
+                        <button
+                          onClick={() => setBlogPreviewDraft(blogPreviewDraft === blogImportedDraft ? null : blogImportedDraft)}
+                          className="p-1.5 text-gray-500 hover:text-[#15383c] hover:bg-gray-100 rounded"
+                          title="Preview"
+                        >
+                          <Eye size={14} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <p className="font-medium text-sm">{blogImportedDraft.title}</p>
+                      <p className="text-xs text-gray-500 mt-1">{blogImportedDraft.slug}</p>
+                      <p className="text-sm text-gray-600 mt-2">{blogImportedDraft.excerpt}</p>
+                      {blogImportedDraft.attribution && (
+                        <p className="text-xs text-gray-400 mt-2 italic">{blogImportedDraft.attribution}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Generated Drafts Table */}
+            {blogGeneratedDrafts.length > 0 && (
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div className="p-4 border-b border-gray-100">
+                  <h3 className="font-semibold text-[#15383c]">Generated Drafts ({blogGeneratedDrafts.length})</h3>
+                </div>
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Title</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Slug</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Variant</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Tags</th>
+                      <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {blogGeneratedDrafts.map((draft, idx) => (
+                      <tr key={idx} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-[#15383c] text-sm">{draft.title}</p>
+                          <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{draft.excerpt}</p>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600 font-mono">{draft.slug}</td>
+                        <td className="px-4 py-3">
+                          {draft.variantLabel && (
+                            <span className="px-2 py-0.5 bg-[#e35e25]/10 text-[#e35e25] rounded text-xs font-medium">
+                              {draft.variantLabel}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1">
+                            {draft.tags?.slice(0, 3).map((tag, i) => (
+                              <span key={i} className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">{tag}</span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => handleCopyDraftJson(draft)}
+                              className="p-1.5 text-gray-500 hover:text-[#15383c] hover:bg-gray-100 rounded"
+                              title="Copy JSON"
+                            >
+                              <Copy size={14} />
+                            </button>
+                            <button
+                              onClick={() => setBlogPreviewDraft(blogPreviewDraft === draft ? null : draft)}
+                              className="p-1.5 text-gray-500 hover:text-[#15383c] hover:bg-gray-100 rounded"
+                              title="Preview"
+                            >
+                              <Eye size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Draft Preview Panel */}
+            {blogPreviewDraft && (
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                  <h3 className="font-semibold text-[#15383c]">Preview: {blogPreviewDraft.title}</h3>
+                  <button
+                    onClick={() => setBlogPreviewDraft(null)}
+                    className="p-1.5 hover:bg-gray-100 rounded"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                <div className="p-6">
+                  <div className="mb-4 pb-4 border-b border-gray-100 space-y-2">
+                    <p className="text-sm"><span className="text-gray-500">SEO Title:</span> <span className="text-[#15383c] font-medium">{blogPreviewDraft.metaTitle}</span></p>
+                    <p className="text-sm"><span className="text-gray-500">SEO Description:</span> <span className="text-[#15383c]">{blogPreviewDraft.metaDescription}</span></p>
+                    <p className="text-sm"><span className="text-gray-500">Excerpt:</span> <span className="text-gray-700">{blogPreviewDraft.excerpt}</span></p>
+                    {blogPreviewDraft.tags?.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {blogPreviewDraft.tags.map((tag: string, i: number) => (
+                          <span key={i} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">{tag}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <article
+                    className="prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ __html: blogPreviewDraft.contentHtml }}
+                  />
+                </div>
               </div>
             )}
           </div>
