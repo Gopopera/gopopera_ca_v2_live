@@ -202,14 +202,10 @@ export default async function handler(req: any, res: any) {
         return res.status(405).json({ success: false, error: 'Method not allowed' });
     }
 
-    // Verify admin auth (wrapped in try-catch for safety)
-    try {
-        const authResult = await verifyAdminToken(req.headers.authorization);
-        if (!authResult || typeof authResult !== 'object' || !('success' in authResult) || (authResult as any).success !== true) {
-            return res.status(403).json({ success: false, error: 'Forbidden' });
-        }
-    } catch (authError: any) {
-        console.error('[blog/import-url] Auth error:', authError?.message);
+    // Verify admin auth
+    const authResult = await verifyAdminToken(req.headers.authorization);
+    if (!authResult.success) {
+        console.error('[blog/import-url] Admin verification FAILED');
         return res.status(403).json({ success: false, error: 'Forbidden' });
     }
 
