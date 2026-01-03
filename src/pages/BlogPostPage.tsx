@@ -216,7 +216,7 @@ export const BlogPostPage: React.FC<BlogPostPageProps> = ({ slug, setViewState, 
 
     if (notFound) {
         return (
-            <div className="min-h-screen bg-gray-50">
+            <div className="min-h-screen bg-gray-50 pt-16">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 py-20 text-center">
                     <AlertCircle size={48} className="mx-auto text-gray-300 mb-4" />
                     <h1 className="text-2xl font-bold text-gray-700 mb-2">
@@ -242,7 +242,7 @@ export const BlogPostPage: React.FC<BlogPostPageProps> = ({ slug, setViewState, 
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
-            <div className="bg-[#15383c] text-white py-8 sm:py-12">
+            <div className="bg-[#15383c] text-white pt-20 pb-8 sm:pt-24 sm:pb-12">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6">
                     <button
                         onClick={handleBack}

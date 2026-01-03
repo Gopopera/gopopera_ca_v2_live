@@ -46,7 +46,7 @@ export const BlogListPage: React.FC<BlogListPageProps> = ({ setViewState, setSel
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
-            <div className="bg-[#15383c] text-white py-12 sm:py-16">
+            <div className="bg-[#15383c] text-white pt-20 pb-12 sm:pt-24 sm:pb-16">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6">
                     <button
                         onClick={() => setViewState(ViewState.LANDING)}
