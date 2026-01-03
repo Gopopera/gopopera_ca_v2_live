@@ -65,7 +65,7 @@ export interface Event {
   hasFee?: boolean; // Whether event charges a fee
   feeAmount?: number; // Fee amount in cents
   currency?: string; // 'cad' or 'usd'
-  
+
   // AI Features
   aiWarmupEnabled?: boolean; // If true, AI posts one icebreaker at event start (default: false)
   aiWarmupPostedAt?: number; // Timestamp when warmup was posted (for idempotency)
@@ -101,7 +101,7 @@ export enum ViewState {
   MY_POPS = 'MY_POPS',
   FAVORITES = 'FAVORITES',
   MY_CALENDAR = 'MY_CALENDAR',
-  
+
   // Profile Sub-pages
   PROFILE_BASIC = 'PROFILE_BASIC',
   PROFILE_NOTIFICATIONS = 'PROFILE_NOTIFICATIONS',
@@ -113,21 +113,25 @@ export enum ViewState {
   DELETE_ACCOUNT = 'DELETE_ACCOUNT',
   RESERVATION_CONFIRMED = 'RESERVATION_CONFIRMED',
   CONFIRM_RESERVATION = 'CONFIRM_RESERVATION',
-  
+
   // Host Payouts
   PAYOUT_SETUP = 'PAYOUT_SETUP',
   PAYOUTS = 'PAYOUTS',
-  
+
   // Ticket
   TICKET = 'TICKET',
-  
+
   // Guide Pages
   GUIDE_10_SEAT = 'GUIDE_10_SEAT',
-  
+
   // Static Info Pages
   TICKETS_AND_PAYMENTS = 'TICKETS_AND_PAYMENTS',
-  
+
   // Marketing Hub (Admin)
   MARKETING_HUB = 'MARKETING_HUB',
   UNSUBSCRIBE = 'UNSUBSCRIBE',
+
+  // Blog (public)
+  BLOG = 'BLOG',
+  BLOG_POST = 'BLOG_POST',
 }

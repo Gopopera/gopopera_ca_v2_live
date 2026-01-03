@@ -4,23 +4,23 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 if (typeof window !== 'undefined') {
   window.addEventListener('unhandledrejection', (event) => {
     const reason = event.reason;
-    
+
     // Handle Firebase permission errors gracefully - prevent all error displays
-    if (reason?.code === 'permission-denied' || 
-        reason?.message?.includes('permission') || 
-        reason?.message?.includes('Missing or insufficient permissions') ||
-        (reason?.name === 'FirebaseError' && reason?.code === 'permission-denied')) {
+    if (reason?.code === 'permission-denied' ||
+      reason?.message?.includes('permission') ||
+      reason?.message?.includes('Missing or insufficient permissions') ||
+      (reason?.name === 'FirebaseError' && reason?.code === 'permission-denied')) {
       // Silently handle - these are expected and already logged elsewhere
       event.preventDefault();
       event.stopPropagation();
       return;
     }
-    
+
     // Log other unhandled rejections for debugging (but still prevent default display)
     console.error('[UNHANDLED_REJECTION]', reason);
     event.preventDefault();
     event.stopPropagation();
-    
+
     // Log to console for debugging
     if (reason) {
       console.error('[UNHANDLED_REJECTION] Reason:', reason);
@@ -63,6 +63,8 @@ const TicketsAndPaymentsPage = React.lazy(() => import('./src/pages/TicketsAndPa
 const Guide10SeatPlaybookPage = React.lazy(() => import('./src/pages/Guide10SeatPlaybookPage').then(m => ({ default: m.Guide10SeatPlaybookPage })));
 const MarketingHubPage = React.lazy(() => import('./src/pages/MarketingHubPage').then(m => ({ default: m.MarketingHubPage })));
 const UnsubscribePage = React.lazy(() => import('./src/pages/UnsubscribePage').then(m => ({ default: m.UnsubscribePage })));
+const BlogListPage = React.lazy(() => import('./src/pages/BlogListPage').then(m => ({ default: m.BlogListPage })));
+const BlogPostPage = React.lazy(() => import('./src/pages/BlogPostPage').then(m => ({ default: m.BlogPostPage })));
 const AuthPage = React.lazy(() => import('./src/pages/AuthPage').then(m => ({ default: m.AuthPage })));
 const ProfilePage = React.lazy(() => import('./src/pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
 const NotificationsPage = React.lazy(() => import('./src/pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
@@ -393,20 +395,20 @@ const PageSkeleton: React.FC<{ message?: string }> = ({ message }) => (
 
 const AppContent: React.FC = () => {
   const { t } = useLanguage();
-  
+
   // Check for iOS/Safari private mode
   const [privateModeWarning, setPrivateModeWarning] = useState<string | null>(null);
-  
+
   useEffect(() => {
     if (isPrivateMode()) {
       setPrivateModeWarning(getPrivateModeMessage());
     }
-    
+
     // Initialize location from IP geolocation (if not manually set)
     initializeGeoLocation();
   }, []);
   const city = useSelectedCity();
-  
+
   // Dev guard for city state (no side effects, just for sanity)
   if (typeof window !== "undefined") {
     (window as any).__POPERA_CITY__ = city;
@@ -415,7 +417,7 @@ const AppContent: React.FC = () => {
   const getInitialViewState = (): ViewState => {
     if (typeof window === 'undefined') return ViewState.LANDING;
     const pathname = window.location.pathname;
-    
+
     // Match routes from URL (without needing events loaded yet)
     if (pathname === '/' || pathname === '') {
       return ViewState.LANDING;
@@ -475,18 +477,28 @@ const AppContent: React.FC = () => {
       return ViewState.MARKETING_HUB;
     } else if (pathname === '/unsubscribe') {
       return ViewState.UNSUBSCRIBE;
+    } else if (pathname === '/blog') {
+      return ViewState.BLOG;
+    } else if (pathname.startsWith('/blog/')) {
+      return ViewState.BLOG_POST;
     }
-    
+
     // Default to landing page for unknown routes
     return ViewState.LANDING;
   };
-  
+
   const [viewState, setViewState] = useState<ViewState>(getInitialViewState());
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  const [reviewEvent, setReviewEvent] = useState<Event | null>(null); 
+  const [reviewEvent, setReviewEvent] = useState<Event | null>(null);
   const [selectedHost, setSelectedHost] = useState<string | null>(null);
-  const [selectedHostId, setSelectedHostId] = useState<string | null>(null); 
+  const [selectedHostId, setSelectedHostId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedBlogSlug, setSelectedBlogSlug] = useState<string | null>(() => {
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/blog/')) {
+      return window.location.pathname.replace('/blog/', '');
+    }
+    return null;
+  });
   const setCity = useSetCity();
   const location = city;
   const { filters, isFilterDrawerOpen, setFilterDrawerOpen, getActiveFilterCount, setFilter } = useFilterStore();
@@ -512,7 +524,7 @@ const AppContent: React.FC = () => {
   const isLoggedIn = !!user;
   const favorites = (user?.favorites ?? []);
   const rsvps = (user?.rsvps ?? []);
-  
+
   // Use shared events store with real-time Firestore subscription
   const events = useEventStore((state) => state.events);
   const isLoadingEvents = useEventStore((state) => state.isLoading);
@@ -521,10 +533,10 @@ const AppContent: React.FC = () => {
   const filterByCity = useEventStore((state) => state.filterByCity);
   const filterByTags = useEventStore((state) => state.filterByTags);
   const getEventsByCity = useEventStore((state) => state.getEventsByCity);
-  
+
   // allEvents is now just events from the shared store (real-time updates)
   const allEvents = events;
-  
+
   // Debug: Log events state
   useEffect(() => {
     console.log('[APP_DEBUG] Events state:', {
@@ -535,14 +547,14 @@ const AppContent: React.FC = () => {
       eventTitles: allEvents.map(e => e.title),
     });
   }, [allEvents.length, isLoadingEvents, eventsError]);
-  
+
   // Validate city has events after events are loaded (smart geo fallback)
   useEffect(() => {
     if (!isLoadingEvents && allEvents.length > 0) {
       validateCityHasEvents(allEvents);
     }
   }, [allEvents, isLoadingEvents]);
-  
+
   // Initialize auth listener and events store on mount
   // City store auto-initializes via Zustand persist middleware
   useEffect(() => {
@@ -552,28 +564,28 @@ const AppContent: React.FC = () => {
     }).catch((err) => {
       console.warn('[APP] Failed to load auth monitoring:', err);
     });
-    
+
     // Initialize visual debugger (shows logs on screen - enable with ?debug=true)
     import('./src/lib/visualDebugger').then(({ initVisualDebugger }) => {
       initVisualDebugger();
     }).catch((err) => {
       console.warn('[APP] Failed to load visual debugger:', err);
     });
-    
+
     // Initialize stores with error handling
     try {
       useUserStore.getState().init();
     } catch (error) {
       console.error('[APP] Error initializing user store:', error);
     }
-    
+
     try {
       // Initialize events store with real-time Firestore subscription
       useEventStore.getState().init();
     } catch (error) {
       console.error('[APP] Error initializing event store:', error);
     }
-    
+
     // Geocode all existing events that don't have coordinates (background process)
     // This runs once when the app loads, geocoding events in the background
     setTimeout(async () => {
@@ -645,7 +657,7 @@ const AppContent: React.FC = () => {
         console.error('[APP] Failed to load event diagnostic utility:', error);
       }
     }, 10000); // 10 second delay to check after everything loads
-    
+
 
     // Verify and seed community events for eatezca@gmail.com (runs immediately when Firestore is ready)
     // Creates 2 events per city in different categories - all public, free, unlimited capacity
@@ -664,7 +676,7 @@ const AppContent: React.FC = () => {
         console.error('[APP] Failed to load community events verification utility:', error);
       }
     })();
-    
+
     setAuthBootChecked(true);
   }, []);
 
@@ -683,15 +695,15 @@ const AppContent: React.FC = () => {
   const setRedirectAfterLogin = useUserStore((state) => state.setRedirectAfterLogin);
   const justLoggedInFromRedirect = useUserStore((state) => state._justLoggedInFromRedirect);
   const clearJustLoggedInFlag = useUserStore((state) => state.clearJustLoggedInFlag);
-  
+
   // SIMPLE APPROACH: If user exists and we're on landing page, go to feed
   // BUT: Respect the root path - if URL is '/', keep showing landing page
   // No complex logic, no flags, no polling - just check and navigate
   useEffect(() => {
     if (!authInitialized) return;
-    
+
     const currentPath = window.location.pathname;
-    
+
     // Simple rule: User logged in + on landing page = go to feed
     // BUT: Don't redirect if we're on the root path - respect the URL
     if (user && viewState === ViewState.LANDING && currentPath !== '/') {
@@ -701,7 +713,7 @@ const AppContent: React.FC = () => {
       setRedirectAfterLogin(null);
       return;
     }
-    
+
     // Handle login from AUTH page
     if (user && viewState === ViewState.AUTH) {
       const redirect = redirectAfterLogin || ViewState.FEED;
@@ -715,7 +727,7 @@ const AppContent: React.FC = () => {
   // Verify and seed community events immediately when user is eatezca@gmail.com
   useEffect(() => {
     if (!authInitialized) return;
-    
+
     // Only run for eatezca@gmail.com account
     if (user?.email?.toLowerCase() === 'eatezca@gmail.com') {
       (async () => {
@@ -735,28 +747,28 @@ const AppContent: React.FC = () => {
 
   // Events are now loaded via real-time subscription in eventStore.init()
   // No need for manual loading or mock data initialization - events come from Firestore in real-time
-  
+
   // Update attendee counts when RSVPs change
   // Sync event attendee counts from Firestore reservations for all events
   // CRITICAL: Only sync if user is authenticated to avoid permission errors
   useEffect(() => {
     // Don't sync if user is not authenticated - will cause permission errors
     if (!user || allEvents.length === 0) return;
-    
+
     let isMounted = true;
     let hasPermissionError = false;
-    
+
     const syncEventCounts = async () => {
       // Stop syncing if we've encountered permission errors
       if (hasPermissionError || !isMounted) return;
-      
+
       try {
         const { getReservationCountForEvent } = await import('./firebase/db');
         const countPromises = allEvents
           .filter(event => event.id && !event.isDemo)
           .map(async (event) => {
             if (!isMounted || hasPermissionError) return;
-            
+
             try {
               const count = await getReservationCountForEvent(event.id);
               // Only update if count is different and we still have permission
@@ -773,7 +785,7 @@ const AppContent: React.FC = () => {
               // Silently ignore other errors for individual events
             }
           });
-        
+
         await Promise.all(countPromises);
       } catch (error: any) {
         // If permission error, stop all future syncs
@@ -783,7 +795,7 @@ const AppContent: React.FC = () => {
         }
       }
     };
-    
+
     // Sync immediately, then every 30 seconds (reduced frequency)
     syncEventCounts();
     const interval = setInterval(() => {
@@ -791,7 +803,7 @@ const AppContent: React.FC = () => {
         syncEventCounts();
       }
     }, 30000); // Increased to 30 seconds to reduce load
-    
+
     return () => {
       isMounted = false;
       clearInterval(interval);
@@ -801,30 +813,30 @@ const AppContent: React.FC = () => {
   // Real-time subscription for user RSVPs - keeps RSVPs in sync across devices
   useEffect(() => {
     if (!user?.uid) return;
-    
+
     const userId = user.uid; // Capture userId to avoid closure issues
     let unsubscribe: (() => void) | null = null;
-    
+
     const setupRSVPSubscription = async () => {
       try {
         const { subscribeToUserRSVPs } = await import('./firebase/db');
-        
+
         unsubscribe = subscribeToUserRSVPs(userId, (rsvpEventIds) => {
           console.log('[RSVP_SYNC] RSVPs updated:', {
             userId,
             rsvpCount: rsvpEventIds.length,
             rsvpEventIds,
           });
-          
+
           // Update userStore with latest RSVPs
           const currentUser = useUserStore.getState().user;
           if (currentUser && currentUser.uid === userId) {
             // Only update if RSVPs have changed
             const currentRSVPs = currentUser.rsvps || [];
-            const rsvpsChanged = 
+            const rsvpsChanged =
               currentRSVPs.length !== rsvpEventIds.length ||
               !currentRSVPs.every(id => rsvpEventIds.includes(id));
-            
+
             if (rsvpsChanged) {
               console.log('[RSVP_SYNC] Updating user RSVPs in store:', {
                 old: currentRSVPs,
@@ -841,9 +853,9 @@ const AppContent: React.FC = () => {
         console.error('[RSVP_SYNC] Error setting up RSVP subscription:', error);
       }
     };
-    
+
     setupRSVPSubscription();
-    
+
     return () => {
       if (unsubscribe) {
         unsubscribe();
@@ -855,19 +867,19 @@ const AppContent: React.FC = () => {
   // IMPORTANT: Favorites persist until event ends or user unfavorites
   useEffect(() => {
     if (!user?.uid || allEvents.length === 0) return;
-    
+
     let isMounted = true;
-    
+
     const cleanupFavorites = async () => {
       if (!isMounted || !user?.uid) return;
-      
+
       try {
         await cleanupEndedFavorites(user.uid, allEvents);
       } catch (error) {
         console.error('[FAVORITES_CLEANUP] Error cleaning up favorites:', error);
       }
     };
-    
+
     // Run cleanup immediately, then every 5 minutes
     cleanupFavorites();
     const interval = setInterval(() => {
@@ -875,7 +887,7 @@ const AppContent: React.FC = () => {
         cleanupFavorites();
       }
     }, 5 * 60 * 1000); // Every 5 minutes
-    
+
     return () => {
       isMounted = false;
       clearInterval(interval);
@@ -886,27 +898,27 @@ const AppContent: React.FC = () => {
   // Suggests following hosts 24-48 hours after event ends
   useEffect(() => {
     if (!user?.uid || allEvents.length === 0 || !user.rsvps || user.rsvps.length === 0) return;
-    
+
     let isMounted = true;
-    
+
     const checkFollowSuggestions = async () => {
       if (!isMounted || !user?.uid) return;
-      
+
       try {
         const { isEventEnded } = await import('./utils/eventDateHelpers');
         const { suggestFollowingHost } = await import('./utils/notificationHelpers');
         const { isFollowing } = await import('./firebase/follow');
         const { getDbSafe } = await import('./src/lib/firebase');
         const { doc, getDoc } = await import('firebase/firestore');
-        
+
         const db = getDbSafe();
         if (!db) return;
-        
+
         // Check each event the user RSVP'd to
         for (const eventId of user.rsvps) {
           const event = allEvents.find(e => e.id === eventId);
           if (!event || !event.hostId) continue;
-          
+
           // Check if event ended 24-48 hours ago
           if (isEventEnded(event)) {
             try {
@@ -918,27 +930,27 @@ const AppContent: React.FC = () => {
                   let hours = parseInt(timeParts[1], 10);
                   const minutes = parseInt(timeParts[2], 10);
                   const period = timeParts[3]?.toUpperCase();
-                  
+
                   if (period === 'PM' && hours !== 12) hours += 12;
                   else if (period === 'AM' && hours === 12) hours = 0;
-                  
+
                   eventDate.setHours(hours, minutes, 0, 0);
                 }
               }
-              
+
               const hoursSinceEnd = (Date.now() - eventDate.getTime()) / (1000 * 60 * 60);
-              
+
               // Suggest following if event ended 24-48 hours ago
               if (hoursSinceEnd >= 24 && hoursSinceEnd <= 48) {
                 // Check if already following
                 const alreadyFollowing = await isFollowing(user.uid, event.hostId);
                 if (alreadyFollowing) continue;
-                
+
                 // Check if we already sent this suggestion (using event doc metadata)
                 const eventRef = doc(db, 'events', eventId);
                 const eventDoc = await getDoc(eventRef);
                 const followSuggestionsSent = eventDoc.data()?.followSuggestionsSent || [];
-                
+
                 if (!followSuggestionsSent.includes(user.uid)) {
                   // Send suggestion (non-blocking)
                   suggestFollowingHost(user.uid, event.hostId, eventId, event.title)
@@ -972,7 +984,7 @@ const AppContent: React.FC = () => {
         }
       }
     };
-    
+
     // Run check immediately, then every hour
     checkFollowSuggestions();
     const interval = setInterval(() => {
@@ -980,7 +992,7 @@ const AppContent: React.FC = () => {
         checkFollowSuggestions();
       }
     }, 60 * 60 * 1000); // Every hour
-    
+
     return () => {
       isMounted = false;
       clearInterval(interval);
@@ -991,16 +1003,16 @@ const AppContent: React.FC = () => {
   // Apply all filters in sequence for proper combined filtering
   // Filters work together: Vibes + City + Search all apply simultaneously
   let filteredEvents = allEvents;
-  
+
   // Apply city filter using centralized helper (utils/location.ts)
   // Handles "All Locations", "Canada", "United States", and specific cities
   filteredEvents = filteredEvents.filter(event => matchesLocationFilter(event, location));
-  
+
   // Apply search filter last (text search in titles, descriptions, tags, hostName, aboutEvent, whatToExpect)
   // This ensures search works with vibes and city filters
   if (searchQuery.trim()) {
     const query = searchQuery.toLowerCase().trim();
-    filteredEvents = filteredEvents.filter(event => 
+    filteredEvents = filteredEvents.filter(event =>
       event.title.toLowerCase().includes(query) ||
       event.description.toLowerCase().includes(query) ||
       event.hostName.toLowerCase().includes(query) ||
@@ -1009,8 +1021,8 @@ const AppContent: React.FC = () => {
       (event.whatToExpect && event.whatToExpect.toLowerCase().includes(query))
     );
   }
-  
-  
+
+
   // Group events by time periods for display
   const now = new Date();
   const thisWeekEvents = allEvents
@@ -1021,7 +1033,7 @@ const AppContent: React.FC = () => {
     .slice(0, 4);
   const thisMonthEvents = allEvents.slice(4, 8);
   const laterEvents = allEvents.slice(8, 12);
-  
+
   // Get events grouped by city
   const eventsByCity = getEventsByCity();
 
@@ -1049,7 +1061,7 @@ const AppContent: React.FC = () => {
 
   const handleChatClick = (e: React.MouseEvent, event: Event) => {
     e.stopPropagation();
-    
+
     if (!user) {
       useUserStore.getState().setRedirectAfterLogin(ViewState.CHAT);
       setViewState(ViewState.AUTH);
@@ -1072,7 +1084,7 @@ const AppContent: React.FC = () => {
       setShowConversationModal(true);
     }
   };
-  
+
   const handleReviewsClick = (e: React.MouseEvent, event: Event) => {
     e.stopPropagation();
     setReviewEvent(event);
@@ -1105,7 +1117,7 @@ const AppContent: React.FC = () => {
       window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
     }
   };
-  
+
   const handleViewDetailsFromChat = () => {
     // Navigate to event detail page, updating URL and state
     if (selectedEvent) {
@@ -1140,7 +1152,7 @@ const AppContent: React.FC = () => {
       console.error("Login failed:", error);
     }
   };
-  
+
   const handleLogout = async () => {
     try {
       await useUserStore.getState().logout();
@@ -1149,7 +1161,7 @@ const AppContent: React.FC = () => {
       console.error("Logout failed:", error);
     }
   };
-  
+
   const [confirmedReservation, setConfirmedReservation] = useState<{ event: Event; reservationId: string } | null>(null);
 
   const handleRSVP = async (eventId: string, reservationId?: string) => {
@@ -1160,7 +1172,7 @@ const AppContent: React.FC = () => {
       setViewState(ViewState.AUTH);
       return;
     }
-    
+
     // Block RSVP for demo events
     const event = allEvents.find(e => e.id === eventId);
     if (event?.isDemo === true) {
@@ -1169,7 +1181,7 @@ const AppContent: React.FC = () => {
       console.warn('[RSVP] Attempted to RSVP to demo event:', eventId);
       return;
     }
-    
+
     try {
       if (rsvps.includes(eventId)) {
         await removeRSVP(user.uid || user.id || '', eventId);
@@ -1183,7 +1195,7 @@ const AppContent: React.FC = () => {
         const { getReservationCountForEvent } = await import('./firebase/db');
         const newCount = await getReservationCountForEvent(eventId);
         updateEvent(eventId, { attendeesCount: newCount });
-        
+
         // If we have a reservation ID and event, navigate to ticket page
         if (resId && event) {
           const ticketUrl = `/ticket/${resId}`;
@@ -1196,10 +1208,10 @@ const AppContent: React.FC = () => {
       // Don't show alert here - let EventDetailPage handle it
     }
   };
-  
+
   // Use debounced favorite hook
   const { toggleFavorite: debouncedToggleFavorite } = useDebouncedFavorite();
-  
+
   const handleToggleFavorite = (e: React.MouseEvent, eventId: string) => {
     e.stopPropagation();
     if (!authInitialized) return null;
@@ -1238,7 +1250,7 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     // Update history safely for all view states - use replaceState to prevent 404s
     const currentUrl = window.location.pathname;
-    
+
     if (viewState === ViewState.FEED) {
       if (currentUrl !== '/explore') {
         window.history.replaceState({ viewState: ViewState.FEED }, '', '/explore');
@@ -1335,6 +1347,15 @@ const AppContent: React.FC = () => {
       if (!currentUrl.startsWith('/unsubscribe')) {
         window.history.replaceState({ viewState: ViewState.UNSUBSCRIBE }, '', '/unsubscribe');
       }
+    } else if (viewState === ViewState.BLOG) {
+      if (currentUrl !== '/blog') {
+        window.history.replaceState({ viewState: ViewState.BLOG }, '', '/blog');
+      }
+    } else if (viewState === ViewState.BLOG_POST && selectedBlogSlug) {
+      const expectedUrl = `/blog/${selectedBlogSlug}`;
+      if (currentUrl !== expectedUrl) {
+        window.history.replaceState({ viewState: ViewState.BLOG_POST }, '', expectedUrl);
+      }
     } else if (viewState === ViewState.HOST_PROFILE && selectedHost) {
       // HOST_PROFILE doesn't need URL sync - it's a modal-like overlay
       // Keep current URL to allow back button to work
@@ -1369,12 +1390,12 @@ const AppContent: React.FC = () => {
   // We use a ref to track the last-tracked pathname so we fire exactly ONCE per
   // real navigation (even if multiple state deps change simultaneously or on popstate).
   const previousPathnameRef = useRef<string | null>(null);
-  
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    
+
     const pathname = window.location.pathname;
-    
+
     // Only fire page_view if pathname actually changed
     if (pathname !== previousPathnameRef.current) {
       previousPathnameRef.current = pathname;
@@ -1386,23 +1407,23 @@ const AppContent: React.FC = () => {
   // Also tracks Lead when navigating to /auth and ViewContent for event details
   const previousRedditPathnameRef = useRef<string | null>(null);
   const lastViewedEventIdRef = useRef<string | null>(null);
-  
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    
+
     const pathname = window.location.pathname;
-    
+
     // Only fire PageVisit if pathname actually changed
     if (pathname !== previousRedditPathnameRef.current) {
       previousRedditPathnameRef.current = pathname;
       redditPageVisit(pathname);
-      
+
       // Fire SignUp when user lands on /auth (signup intent)
       if (pathname === '/auth') {
         redditTrackSignUp('direct_navigation');
       }
     }
-    
+
     // Fire ViewContent when entering DETAIL view (dedupe by event ID)
     if (viewState === ViewState.DETAIL && selectedEvent?.id) {
       if (selectedEvent.id !== lastViewedEventIdRef.current) {
@@ -1469,7 +1490,7 @@ const AppContent: React.FC = () => {
     const handlePopState = (event: PopStateEvent) => {
       if (event.state && event.state.viewState) {
         const targetView = event.state.viewState;
-        
+
         // If navigating to DETAIL, ensure we have the event
         if (targetView === ViewState.DETAIL && event.state.eventId) {
           const event = allEvents.find(e => e.id === event.state.eventId);
@@ -1510,7 +1531,7 @@ const AppContent: React.FC = () => {
             ViewState.CONFIRM_RESERVATION, ViewState.RESERVATION_CONFIRMED,
             ViewState.PAYOUT_SETUP, ViewState.PAYOUTS, ViewState.TICKET
           ];
-          
+
           if (validViewStates.includes(targetView)) {
             setViewState(targetView);
           } else {
@@ -1525,7 +1546,7 @@ const AppContent: React.FC = () => {
         // No state in history - use URL to determine viewState (handles refresh and direct links)
         const urlBasedState = getInitialViewState();
         const pathname = window.location.pathname;
-        
+
         // If navigating to an event detail page, try to load the event
         if (urlBasedState === ViewState.DETAIL && pathname.startsWith('/event/') && !pathname.includes('/chat')) {
           const eventIdMatch = pathname.match(/^\/event\/([^/]+)/);
@@ -1547,7 +1568,7 @@ const AppContent: React.FC = () => {
             }
           }
         }
-        
+
         // CRITICAL FIX: Handle CHAT view on page reload (mobile issue)
         if (urlBasedState === ViewState.CHAT && pathname.startsWith('/event/') && pathname.includes('/chat')) {
           const eventIdMatch = pathname.match(/^\/event\/([^/]+)\/chat/);
@@ -1570,7 +1591,7 @@ const AppContent: React.FC = () => {
             }
           }
         }
-        
+
         // For other viewStates, set normally
         setViewState(urlBasedState);
         // Ensure URL matches the viewState
@@ -1585,25 +1606,25 @@ const AppContent: React.FC = () => {
   // Handle direct navigation to event URLs (e.g., shared links, page reload)
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    
+
     const pathname = window.location.pathname;
-    
+
     // Check if URL is an event detail page (without /chat)
     if (pathname.startsWith('/event/') && !pathname.includes('/chat')) {
       const eventIdMatch = pathname.match(/^\/event\/([^/]+)/);
       if (eventIdMatch) {
         const eventId = eventIdMatch[1];
-        
+
         // If we already have this event selected and we're on DETAIL view, no need to do anything
         if (selectedEvent?.id === eventId && viewState === ViewState.DETAIL) {
           return;
         }
-        
+
         // Don't reset viewState if we're on HOST_PROFILE, AUTH, or EDIT_EVENT (user clicked Profile, Sign In, or Edit Event)
         if (viewState === ViewState.HOST_PROFILE || viewState === ViewState.AUTH || viewState === ViewState.EDIT_EVENT) {
           return;
         }
-        
+
         // Wait for events to load, then find the event
         if (allEvents.length > 0) {
           const event = allEvents.find(e => e.id === eventId);
@@ -1638,19 +1659,19 @@ const AppContent: React.FC = () => {
         // If events are still loading, this effect will run again when they finish
       }
     }
-    
+
     // CRITICAL FIX: Handle CHAT view on page reload (mobile issue)
     // When page reloads with /event/{eventId}/chat, we need to load the event
     if (pathname.startsWith('/event/') && pathname.includes('/chat')) {
       const eventIdMatch = pathname.match(/^\/event\/([^/]+)\/chat/);
       if (eventIdMatch) {
         const eventId = eventIdMatch[1];
-        
+
         // If we already have this event selected and we're on CHAT view, no need to do anything
         if (selectedEvent?.id === eventId && viewState === ViewState.CHAT) {
           return;
         }
-        
+
         // Wait for events to load, then find the event
         if (allEvents.length > 0) {
           const event = allEvents.find(e => e.id === eventId);
@@ -1786,9 +1807,9 @@ const AppContent: React.FC = () => {
 
     return (
       <React.Suspense fallback={<PageSkeleton />}>
-        <GroupChat 
-          event={selectedEvent} 
-          onClose={handleCloseChat} 
+        <GroupChat
+          event={selectedEvent}
+          onClose={handleCloseChat}
           onViewDetails={handleViewDetailsFromChat}
           onHostClick={handleHostClick}
           onReserve={() => {
@@ -1815,19 +1836,19 @@ const AppContent: React.FC = () => {
       </div>
       {/* Mobile: Horizontal scroll, Desktop: Grid layout */}
       <div className="flex md:grid overflow-x-auto md:overflow-x-visible gap-4 md:gap-5 lg:gap-6 pb-2 md:pb-6 snap-x snap-mandatory md:snap-none scroll-smooth md:place-items-center">
-         {events.map(event => (
-           <div key={event.id} className="snap-start shrink-0 md:col-span-1">
-              <EventCard 
-                event={event} 
-                onClick={handleEventClick} 
-                onChatClick={handleChatClick} 
-                onReviewsClick={handleReviewsClick}
-                isLoggedIn={isLoggedIn}
-                isFavorite={favorites.includes(event.id)}
-                onToggleFavorite={handleToggleFavorite}
-              />
-           </div>
-         ))}
+        {events.map(event => (
+          <div key={event.id} className="snap-start shrink-0 md:col-span-1">
+            <EventCard
+              event={event}
+              onClick={handleEventClick}
+              onChatClick={handleChatClick}
+              onReviewsClick={handleReviewsClick}
+              isLoggedIn={isLoggedIn}
+              isFavorite={favorites.includes(event.id)}
+              onToggleFavorite={handleToggleFavorite}
+            />
+          </div>
+        ))}
       </div>
     </section>
   );
@@ -1837,254 +1858,256 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="font-sans text-popera-teal bg-gray-50 min-h-screen flex flex-col w-full max-w-full overflow-x-hidden">
-        <div id="recaptcha-container" style={{ display: 'none' }} />
-        {privateModeWarning && (
-          <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3 text-sm text-yellow-800 text-center">
-            {privateModeWarning}
-          </div>
-        )}
-        {viewState !== ViewState.AUTH && (
-          <Header 
-           setViewState={setViewState} 
-           viewState={viewState}
-           isLoggedIn={isLoggedIn}
-           onProfileClick={handleProfileClick}
-           onNotificationsClick={handleNotificationsClick}
-           onLogout={handleLogout}
+      <div id="recaptcha-container" style={{ display: 'none' }} />
+      {privateModeWarning && (
+        <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3 text-sm text-yellow-800 text-center">
+          {privateModeWarning}
+        </div>
+      )}
+      {viewState !== ViewState.AUTH && (
+        <Header
+          setViewState={setViewState}
+          viewState={viewState}
+          isLoggedIn={isLoggedIn}
+          onProfileClick={handleProfileClick}
+          onNotificationsClick={handleNotificationsClick}
+          onLogout={handleLogout}
         />
       )}
 
       <div className="flex-grow">
         <>
-            {viewState === ViewState.LANDING && (
-              <React.Suspense fallback={<PageSkeleton />}>
-                <LandingPage 
-                  setViewState={setViewState} 
-                  events={allEvents} 
-                  onEventClick={handleEventClick}
-                  onChatClick={handleChatClick}
-                  onReviewsClick={handleReviewsClick}
-                  onHostClick={handleHostClick}
-                  isLoggedIn={isLoggedIn}
-                  favorites={favorites}
-                  onToggleFavorite={handleToggleFavorite}
-                />
-              </React.Suspense>
-            )}
+          {viewState === ViewState.LANDING && (
+            <React.Suspense fallback={<PageSkeleton />}>
+              <LandingPage
+                setViewState={setViewState}
+                events={allEvents}
+                onEventClick={handleEventClick}
+                onChatClick={handleChatClick}
+                onReviewsClick={handleReviewsClick}
+                onHostClick={handleHostClick}
+                isLoggedIn={isLoggedIn}
+                favorites={favorites}
+                onToggleFavorite={handleToggleFavorite}
+              />
+            </React.Suspense>
+          )}
 
-        {viewState === ViewState.AUTH && <AuthPage setViewState={setViewState} onLogin={handleLogin} />}
-        
-        {viewState === ViewState.PROFILE && <ProfilePage setViewState={setViewState} userName={user?.displayName || user?.name || ''} onLogout={handleLogout} />}
-        
-        {/* PROFILE SUB-PAGES */}
-        {viewState === ViewState.PROFILE_BASIC && <BasicDetailsPage setViewState={setViewState} />}
-        {viewState === ViewState.PROFILE_NOTIFICATIONS && <NotificationSettingsPage setViewState={setViewState} />}
-        {viewState === ViewState.PROFILE_PRIVACY && <PrivacySettingsPage setViewState={setViewState} />}
-        {viewState === ViewState.PROFILE_STRIPE && <StripeSettingsPage setViewState={setViewState} />}
-        {viewState === ViewState.PAYOUT_SETUP && <PayoutSetupPage setViewState={setViewState} />}
-        {viewState === ViewState.PAYOUTS && <PayoutsPage setViewState={setViewState} />}
-        {viewState === ViewState.PROFILE_REVIEWS && (
-          <React.Suspense fallback={<PageSkeleton />}>
-            <MyReviewsPage setViewState={setViewState} onHostClick={handleHostClick} />
-          </React.Suspense>
-        )}
-        {viewState === ViewState.PROFILE_FOLLOWING && (
-          <React.Suspense fallback={<PageSkeleton />}>
-            <FollowingPage setViewState={setViewState} onHostClick={handleHostClick} />
-          </React.Suspense>
-        )}
-        {viewState === ViewState.PROFILE_FOLLOWERS && (
-          <React.Suspense fallback={<PageSkeleton />}>
-            <FollowersPage setViewState={setViewState} onHostClick={handleHostClick} />
-          </React.Suspense>
-        )}
-        {viewState === ViewState.DELETE_ACCOUNT && <DeleteAccountPage setViewState={setViewState} onConfirmDelete={handleLogout} />}
-        
-        {/* CONFIRM RESERVATION (Confirm & Pay) */}
-        {viewState === ViewState.CONFIRM_RESERVATION && selectedEvent && (
-          <React.Suspense fallback={<PageSkeleton />}>
-            <ConfirmReservationPage
-              event={selectedEvent}
+          {viewState === ViewState.AUTH && <AuthPage setViewState={setViewState} onLogin={handleLogin} />}
+
+          {viewState === ViewState.PROFILE && <ProfilePage setViewState={setViewState} userName={user?.displayName || user?.name || ''} onLogout={handleLogout} />}
+
+          {/* PROFILE SUB-PAGES */}
+          {viewState === ViewState.PROFILE_BASIC && <BasicDetailsPage setViewState={setViewState} />}
+          {viewState === ViewState.PROFILE_NOTIFICATIONS && <NotificationSettingsPage setViewState={setViewState} />}
+          {viewState === ViewState.PROFILE_PRIVACY && <PrivacySettingsPage setViewState={setViewState} />}
+          {viewState === ViewState.PROFILE_STRIPE && <StripeSettingsPage setViewState={setViewState} />}
+          {viewState === ViewState.PAYOUT_SETUP && <PayoutSetupPage setViewState={setViewState} />}
+          {viewState === ViewState.PAYOUTS && <PayoutsPage setViewState={setViewState} />}
+          {viewState === ViewState.PROFILE_REVIEWS && (
+            <React.Suspense fallback={<PageSkeleton />}>
+              <MyReviewsPage setViewState={setViewState} onHostClick={handleHostClick} />
+            </React.Suspense>
+          )}
+          {viewState === ViewState.PROFILE_FOLLOWING && (
+            <React.Suspense fallback={<PageSkeleton />}>
+              <FollowingPage setViewState={setViewState} onHostClick={handleHostClick} />
+            </React.Suspense>
+          )}
+          {viewState === ViewState.PROFILE_FOLLOWERS && (
+            <React.Suspense fallback={<PageSkeleton />}>
+              <FollowersPage setViewState={setViewState} onHostClick={handleHostClick} />
+            </React.Suspense>
+          )}
+          {viewState === ViewState.DELETE_ACCOUNT && <DeleteAccountPage setViewState={setViewState} onConfirmDelete={handleLogout} />}
+
+          {/* CONFIRM RESERVATION (Confirm & Pay) */}
+          {viewState === ViewState.CONFIRM_RESERVATION && selectedEvent && (
+            <React.Suspense fallback={<PageSkeleton />}>
+              <ConfirmReservationPage
+                event={selectedEvent}
+                setViewState={setViewState}
+                onHostClick={handleHostClick}
+                onConfirm={async (attendeeCount, supportContribution, paymentMethod) => {
+                  if (!user?.uid) {
+                    setViewState(ViewState.AUTH);
+                    throw new Error('User not logged in');
+                  }
+
+                  // Create a single reservation with attendee count
+                  // In the future, this will integrate with Stripe/Google Pay for payment processing
+                  const { createReservation } = await import('./firebase/db');
+
+                  // Calculate total amount
+                  const priceStr = selectedEvent.price?.replace(/[^0-9.]/g, '') || '0';
+                  const pricePerAttendee = parseFloat(priceStr) || 0;
+                  const subtotal = pricePerAttendee * attendeeCount;
+                  const totalAmount = subtotal + supportContribution;
+
+                  // Create reservation with options (this will also send notifications)
+                  const reservationId = await addRSVP(user.uid, selectedEvent.id, {
+                    attendeeCount,
+                    supportContribution: supportContribution > 0 ? supportContribution : undefined,
+                    paymentMethod: !selectedEvent.price || selectedEvent.price.toLowerCase() === 'free' ? undefined : paymentMethod,
+                    totalAmount: totalAmount > 0 ? totalAmount : undefined,
+                  });
+
+                  // Update attendee count
+                  const { getReservationCountForEvent } = await import('./firebase/db');
+                  const newCount = await getReservationCountForEvent(selectedEvent.id);
+                  const { updateEvent: updateEventInStore } = useEventStore.getState();
+                  updateEventInStore(selectedEvent.id, { attendeesCount: newCount });
+
+                  // Refresh user profile
+                  await useUserStore.getState().refreshUserProfile();
+
+                  // Navigate to ticket page
+                  const ticketUrl = `/ticket/${reservationId}`;
+                  window.history.pushState({ viewState: ViewState.TICKET, reservationId }, '', ticketUrl);
+                  setViewState(ViewState.TICKET);
+
+                  return reservationId;
+                }}
+              />
+            </React.Suspense>
+          )}
+
+          {/* RESERVATION CONFIRMATION (legacy modal) */}
+          {viewState === ViewState.RESERVATION_CONFIRMED && confirmedReservation && (
+            <React.Suspense fallback={<PageSkeleton />}>
+              <ReservationConfirmationPage
+                event={confirmedReservation.event}
+                reservationId={confirmedReservation.reservationId}
+                setViewState={setViewState}
+              />
+            </React.Suspense>
+          )}
+
+          {/* TICKET PAGE */}
+          {viewState === ViewState.TICKET && (
+            <React.Suspense fallback={<PageSkeleton />}>
+              <TicketPage setViewState={setViewState} />
+            </React.Suspense>
+          )}
+
+          {viewState === ViewState.CREATE_EVENT && <CreateEventPage setViewState={setViewState} />}
+          {viewState === ViewState.EDIT_EVENT && selectedEvent && (
+            <React.Suspense fallback={<PageSkeleton />}>
+              <EditEventPage setViewState={setViewState} event={selectedEvent} eventId={selectedEvent.id} />
+            </React.Suspense>
+          )}
+
+          {viewState === ViewState.NOTIFICATIONS && <NotificationsPage setViewState={setViewState} />}
+          {viewState === ViewState.MY_POPS && (
+            <MyPopsPage
               setViewState={setViewState}
-              onHostClick={handleHostClick}
-              onConfirm={async (attendeeCount, supportContribution, paymentMethod) => {
-                if (!user?.uid) {
-                  setViewState(ViewState.AUTH);
-                  throw new Error('User not logged in');
-                }
-
-                // Create a single reservation with attendee count
-                // In the future, this will integrate with Stripe/Google Pay for payment processing
-                const { createReservation } = await import('./firebase/db');
-                
-                // Calculate total amount
-                const priceStr = selectedEvent.price?.replace(/[^0-9.]/g, '') || '0';
-                const pricePerAttendee = parseFloat(priceStr) || 0;
-                const subtotal = pricePerAttendee * attendeeCount;
-                const totalAmount = subtotal + supportContribution;
-                
-                // Create reservation with options (this will also send notifications)
-                const reservationId = await addRSVP(user.uid, selectedEvent.id, {
-                  attendeeCount,
-                  supportContribution: supportContribution > 0 ? supportContribution : undefined,
-                  paymentMethod: !selectedEvent.price || selectedEvent.price.toLowerCase() === 'free' ? undefined : paymentMethod,
-                  totalAmount: totalAmount > 0 ? totalAmount : undefined,
-                });
-
-                // Update attendee count
-                const { getReservationCountForEvent } = await import('./firebase/db');
-                const newCount = await getReservationCountForEvent(selectedEvent.id);
-                const { updateEvent: updateEventInStore } = useEventStore.getState();
-                updateEventInStore(selectedEvent.id, { attendeesCount: newCount });
-
-                // Refresh user profile
-                await useUserStore.getState().refreshUserProfile();
-
-                // Navigate to ticket page
-                const ticketUrl = `/ticket/${reservationId}`;
-                window.history.pushState({ viewState: ViewState.TICKET, reservationId }, '', ticketUrl);
-                setViewState(ViewState.TICKET);
-
-                return reservationId;
+              events={allEvents}
+              onEventClick={handleEventClick}
+              onChatClick={handleChatClick}
+              onReviewsClick={handleReviewsClick}
+              isLoggedIn={isLoggedIn}
+              favorites={favorites}
+              onToggleFavorite={handleToggleFavorite}
+              onEditEvent={(event) => {
+                setSelectedEvent(event);
+                setViewState(ViewState.EDIT_EVENT);
               }}
             />
-          </React.Suspense>
-        )}
-
-        {/* RESERVATION CONFIRMATION (legacy modal) */}
-        {viewState === ViewState.RESERVATION_CONFIRMED && confirmedReservation && (
-          <React.Suspense fallback={<PageSkeleton />}>
-            <ReservationConfirmationPage 
-              event={confirmedReservation.event} 
-              reservationId={confirmedReservation.reservationId}
+          )}
+          {viewState === ViewState.FAVORITES && (
+            <FavoritesPage
               setViewState={setViewState}
+              events={allEvents}
+              onEventClick={handleEventClick}
+              onChatClick={handleChatClick}
+              onReviewsClick={handleReviewsClick}
+              favorites={favorites}
+              onToggleFavorite={handleToggleFavorite}
             />
-          </React.Suspense>
-        )}
+          )}
+          {viewState === ViewState.MY_CALENDAR && <MyCalendarPage setViewState={setViewState} events={allEvents} onEventClick={handleEventClick} />}
 
-        {/* TICKET PAGE */}
-        {viewState === ViewState.TICKET && (
-          <React.Suspense fallback={<PageSkeleton />}>
-            <TicketPage setViewState={setViewState} />
-          </React.Suspense>
-        )}
+          {viewState === ViewState.ABOUT && <AboutPage setViewState={setViewState} />}
+          {viewState === ViewState.CAREERS && <CareersPage setViewState={setViewState} />}
+          {viewState === ViewState.CONTACT && <ContactPage setViewState={setViewState} />}
+          {viewState === ViewState.DEBUG_ENV && <DebugEnvPage setViewState={setViewState} />}
+          {viewState === ViewState.VERIFY_FIREBASE && (
+            <React.Suspense fallback={<PageSkeleton />}>
+              <VerifyFirebasePage />
+            </React.Suspense>
+          )}
+          {viewState === ViewState.DEBUG_SEED_DEMO && (
+            <React.Suspense fallback={<PageSkeleton />}>
+              <DebugSeedDemoEventsPage setViewState={setViewState} />
+            </React.Suspense>
+          )}
+          {viewState === ViewState.DEBUG_CLEANUP_REVIEWS && (
+            <React.Suspense fallback={<PageSkeleton />}>
+              <CleanupReviewsPage setViewState={setViewState} />
+            </React.Suspense>
+          )}
+          {viewState === ViewState.DEBUG_RESERVATIONS && (
+            <React.Suspense fallback={<PageSkeleton />}>
+              <DebugReservationsPage onBack={() => setViewState(ViewState.PROFILE)} />
+            </React.Suspense>
+          )}
+          {viewState === ViewState.TERMS && <TermsPage setViewState={setViewState} />}
+          {viewState === ViewState.PRIVACY && <PrivacyPage setViewState={setViewState} />}
+          {viewState === ViewState.CANCELLATION && <CancellationPage setViewState={setViewState} />}
+          {viewState === ViewState.GUIDELINES && <GuidelinesPage setViewState={setViewState} />}
+          {viewState === ViewState.REPORT_EVENT && <ReportPage setViewState={setViewState} />}
+          {viewState === ViewState.HELP && <HelpPage setViewState={setViewState} />}
+          {viewState === ViewState.SAFETY && <SafetyPage setViewState={setViewState} />}
+          {viewState === ViewState.PRESS && <PressPage setViewState={setViewState} />}
+          {viewState === ViewState.TICKETS_AND_PAYMENTS && <TicketsAndPaymentsPage setViewState={setViewState} />}
+          {viewState === ViewState.GUIDE_10_SEAT && <Guide10SeatPlaybookPage setViewState={setViewState} />}
+          {viewState === ViewState.MARKETING_HUB && <MarketingHubPage setViewState={setViewState} />}
+          {viewState === ViewState.UNSUBSCRIBE && <UnsubscribePage setViewState={setViewState} />}
+          {viewState === ViewState.BLOG && <BlogListPage setViewState={setViewState} setSelectedBlogSlug={setSelectedBlogSlug} />}
+          {viewState === ViewState.BLOG_POST && selectedBlogSlug && <BlogPostPage slug={selectedBlogSlug} setViewState={setViewState} setSelectedBlogSlug={setSelectedBlogSlug} />}
 
-        {viewState === ViewState.CREATE_EVENT && <CreateEventPage setViewState={setViewState} />}
-        {viewState === ViewState.EDIT_EVENT && selectedEvent && (
-          <React.Suspense fallback={<PageSkeleton />}>
-            <EditEventPage setViewState={setViewState} event={selectedEvent} eventId={selectedEvent.id} />
-          </React.Suspense>
-        )}
+          {viewState === ViewState.HOST_PROFILE && selectedHost && (
+            <React.Suspense fallback={<PageSkeleton />}>
+              <HostProfile
+                hostName={selectedHost}
+                hostId={selectedHostId || undefined}
+                onBack={() => setViewState(ViewState.FEED)}
+                onEventClick={handleEventClick}
+                allEvents={allEvents}
+                isLoggedIn={isLoggedIn}
+                favorites={favorites}
+                onToggleFavorite={handleToggleFavorite}
+              />
+            </React.Suspense>
+          )}
 
-        {viewState === ViewState.NOTIFICATIONS && <NotificationsPage setViewState={setViewState} />}
-        {viewState === ViewState.MY_POPS && (
-          <MyPopsPage 
-            setViewState={setViewState} 
-            events={allEvents}
-            onEventClick={handleEventClick}
-            onChatClick={handleChatClick}
-            onReviewsClick={handleReviewsClick}
-            isLoggedIn={isLoggedIn}
-            favorites={favorites}
-            onToggleFavorite={handleToggleFavorite}
-            onEditEvent={(event) => {
-              setSelectedEvent(event);
-              setViewState(ViewState.EDIT_EVENT);
-            }}
-          />
-        )}
-        {viewState === ViewState.FAVORITES && (
-          <FavoritesPage 
-            setViewState={setViewState} 
-            events={allEvents}
-            onEventClick={handleEventClick}
-            onChatClick={handleChatClick}
-            onReviewsClick={handleReviewsClick}
-            favorites={favorites}
-            onToggleFavorite={handleToggleFavorite}
-          />
-        )}
-        {viewState === ViewState.MY_CALENDAR && <MyCalendarPage setViewState={setViewState} events={allEvents} onEventClick={handleEventClick} />}
+          {viewState === ViewState.FEED && (
+            <main className="min-h-screen pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-12 sm:pb-16 md:pb-20 lg:pb-24 bg-[#FAFAFA]">
+              {/* SEO: Explore/Feed page meta tags */}
+              <SeoHelmet viewState={ViewState.FEED} />
 
-        {viewState === ViewState.ABOUT && <AboutPage setViewState={setViewState} />}
-        {viewState === ViewState.CAREERS && <CareersPage setViewState={setViewState} />}
-        {viewState === ViewState.CONTACT && <ContactPage setViewState={setViewState} />}
-        {viewState === ViewState.DEBUG_ENV && <DebugEnvPage setViewState={setViewState} />}
-        {viewState === ViewState.VERIFY_FIREBASE && (
-          <React.Suspense fallback={<PageSkeleton />}>
-            <VerifyFirebasePage />
-          </React.Suspense>
-        )}
-        {viewState === ViewState.DEBUG_SEED_DEMO && (
-          <React.Suspense fallback={<PageSkeleton />}>
-            <DebugSeedDemoEventsPage setViewState={setViewState} />
-          </React.Suspense>
-        )}
-        {viewState === ViewState.DEBUG_CLEANUP_REVIEWS && (
-          <React.Suspense fallback={<PageSkeleton />}>
-            <CleanupReviewsPage setViewState={setViewState} />
-          </React.Suspense>
-        )}
-        {viewState === ViewState.DEBUG_RESERVATIONS && (
-          <React.Suspense fallback={<PageSkeleton />}>
-            <DebugReservationsPage onBack={() => setViewState(ViewState.PROFILE)} />
-          </React.Suspense>
-        )}
-        {viewState === ViewState.TERMS && <TermsPage setViewState={setViewState} />}
-        {viewState === ViewState.PRIVACY && <PrivacyPage setViewState={setViewState} />}
-        {viewState === ViewState.CANCELLATION && <CancellationPage setViewState={setViewState} />}
-        {viewState === ViewState.GUIDELINES && <GuidelinesPage setViewState={setViewState} />}
-        {viewState === ViewState.REPORT_EVENT && <ReportPage setViewState={setViewState} />}
-        {viewState === ViewState.HELP && <HelpPage setViewState={setViewState} />}
-        {viewState === ViewState.SAFETY && <SafetyPage setViewState={setViewState} />}
-        {viewState === ViewState.PRESS && <PressPage setViewState={setViewState} />}
-        {viewState === ViewState.TICKETS_AND_PAYMENTS && <TicketsAndPaymentsPage setViewState={setViewState} />}
-        {viewState === ViewState.GUIDE_10_SEAT && <Guide10SeatPlaybookPage setViewState={setViewState} />}
-        {viewState === ViewState.MARKETING_HUB && <MarketingHubPage setViewState={setViewState} />}
-        {viewState === ViewState.UNSUBSCRIBE && <UnsubscribePage setViewState={setViewState} />}
+              {/* Container wrapper for consistent alignment */}
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-            {viewState === ViewState.HOST_PROFILE && selectedHost && (
-              <React.Suspense fallback={<PageSkeleton />}>
-                <HostProfile 
-                  hostName={selectedHost}
-                  hostId={selectedHostId || undefined}
-                  onBack={() => setViewState(ViewState.FEED)}
-                  onEventClick={handleEventClick}
-                  allEvents={allEvents}
-                  isLoggedIn={isLoggedIn}
-                  favorites={favorites}
-                  onToggleFavorite={handleToggleFavorite}
-                />
-              </React.Suspense>
-            )}
-
-            {viewState === ViewState.FEED && (
-          <main className="min-h-screen pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-12 sm:pb-16 md:pb-20 lg:pb-24 bg-[#FAFAFA]">
-            {/* SEO: Explore/Feed page meta tags */}
-            <SeoHelmet viewState={ViewState.FEED} />
-            
-            {/* Container wrapper for consistent alignment */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            
-            {/* Header Section - Matching Landing Page Structure */}
-            <div className="mb-6 sm:mb-8 md:mb-10 lg:mb-12">
-               {/* Page Tag, Title, Subtitle */}
-               <div className="flex flex-col gap-4 sm:gap-5 md:gap-6 mb-6 sm:mb-8 md:mb-10">
-                  <div className="max-w-3xl">
-                     <div className="mb-3 sm:mb-4 px-4 sm:px-0">
+                {/* Header Section - Matching Landing Page Structure */}
+                <div className="mb-6 sm:mb-8 md:mb-10 lg:mb-12">
+                  {/* Page Tag, Title, Subtitle */}
+                  <div className="flex flex-col gap-4 sm:gap-5 md:gap-6 mb-6 sm:mb-8 md:mb-10">
+                    <div className="max-w-3xl">
+                      <div className="mb-3 sm:mb-4 px-4 sm:px-0">
                         <span className="inline-flex items-center gap-2 py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">
                           <Sparkles size={10} className="sm:w-3 sm:h-3 -mt-0.5" />
                           {t('feed.discover')}
                         </span>
-                     </div>
-                     <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-[#15383c] mb-2 sm:mb-3 md:mb-4 px-4 sm:px-0">{t('feed.explorePopups')}</h1>
-                     <p className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-500 font-light leading-relaxed px-4 sm:px-0">{t('feed.description')}</p>
-                  </div>
+                      </div>
+                      <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-[#15383c] mb-2 sm:mb-3 md:mb-4 px-4 sm:px-0">{t('feed.explorePopups')}</h1>
+                      <p className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-500 font-light leading-relaxed px-4 sm:px-0">{t('feed.description')}</p>
+                    </div>
 
-                  {/* Search Inputs Row - Below Title (matching landing page) */}
-                  <div className="mt-4 space-y-6 px-4 sm:px-0">
-                     <div className="flex flex-col md:flex-row gap-3 w-full md:max-w-3xl relative z-30">
-                        
+                    {/* Search Inputs Row - Below Title (matching landing page) */}
+                    <div className="mt-4 space-y-6 px-4 sm:px-0">
+                      <div className="flex flex-col md:flex-row gap-3 w-full md:max-w-3xl relative z-30">
+
                         {/* City Input with Autocomplete */}
                         <div className="w-full md:w-1/3">
                           <CityInput />
@@ -2092,293 +2115,291 @@ const AppContent: React.FC = () => {
 
                         {/* Keyword Search Bar */}
                         <div className="relative w-full md:w-2/3 group z-10">
-                             <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                                <Search size={20} className="text-gray-400 group-focus-within:text-[#e35e25] transition-colors" />
-                             </div>
-                             <input
-                               type="text"
-                               placeholder={t('feed.searchPlaceholder')}
-                               className="w-full pl-12 pr-4 py-3.5 md:py-4 min-h-[48px] sm:min-h-0 bg-white border border-gray-200 rounded-full text-base sm:text-sm focus:outline-none focus:border-[#15383c] focus:ring-2 focus:ring-[#15383c]/10 shadow-sm hover:shadow-md transition-all"
-                               value={searchQuery}
-                               onChange={(e) => setSearchQuery(e.target.value)}
-                             />
+                          <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                            <Search size={20} className="text-gray-400 group-focus-within:text-[#e35e25] transition-colors" />
+                          </div>
+                          <input
+                            type="text"
+                            placeholder={t('feed.searchPlaceholder')}
+                            className="w-full pl-12 pr-4 py-3.5 md:py-4 min-h-[48px] sm:min-h-0 bg-white border border-gray-200 rounded-full text-base sm:text-sm focus:outline-none focus:border-[#15383c] focus:ring-2 focus:ring-[#15383c]/10 shadow-sm hover:shadow-md transition-all"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                          />
                         </div>
-                     </div>
+                      </div>
 
-                     {/* Category Tabs + Filter Button */}
-                     <div className="mt-4">
-                       <div className="flex items-center justify-between mb-3">
-                         <h3 className="text-sm font-semibold text-gray-600">Filter by Category</h3>
-                         <button
-                           onClick={() => setFilterDrawerOpen(true)}
-                           className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border-2 border-[#15383c] text-[#15383c] font-medium hover:bg-[#15383c] hover:text-white transition-colors flex-shrink-0 touch-manipulation active:scale-[0.95] text-xs sm:text-sm"
-                         >
-                           <Filter size={16} className="sm:w-[18px] sm:h-[18px]" />
-                           <span className="hidden sm:inline">Filters</span>
-                           {getActiveFilterCount() > 0 && (
-                             <span className="px-1.5 py-0.5 rounded-full bg-[#e35e25] text-white text-[10px] sm:text-xs font-bold">
-                               {getActiveFilterCount()}
-                             </span>
-                           )}
-                         </button>
-                       </div>
-                       <div className="relative z-10">
-                         <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4 scroll-pr-32 md:scroll-pr-4">
-                           {/* All tab */}
-                           <button
-                             onClick={() => setFilter('mainCategory', null)}
-                             className={`shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-bold tracking-wider uppercase transition-all touch-manipulation active:scale-[0.95] ${
-                               filters.mainCategory === null
-                                 ? 'bg-[#e35e25] text-white shadow-md'
-                                 : 'bg-white/20 backdrop-blur-md text-[#15383c] border border-[#15383c]/20 hover:border-[#e35e25] hover:text-[#e35e25]'
-                             }`}
-                           >
-                             All
-                           </button>
-                           {/* Category tabs */}
-                           {MAIN_CATEGORIES.map(category => (
-                             <button
-                               key={category}
-                               onClick={() => setFilter('mainCategory', filters.mainCategory === category ? null : category)}
-                               className={`shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-bold tracking-wider uppercase transition-all touch-manipulation active:scale-[0.95] whitespace-nowrap ${
-                                 filters.mainCategory === category
-                                   ? 'bg-[#e35e25] text-white shadow-md'
-                                   : 'bg-white/20 backdrop-blur-md text-[#15383c] border border-[#15383c]/20 hover:border-[#e35e25] hover:text-[#e35e25]'
-                               }`}
-                             >
-                               {MAIN_CATEGORY_LABELS[category]}
-                             </button>
-                           ))}
-                         </div>
-                         <div className="absolute right-0 top-0 bottom-2 w-6 sm:w-8 bg-gradient-to-l from-[#FAFAFA] to-transparent pointer-events-none md:hidden"></div>
-                       </div>
-                     </div>
+                      {/* Category Tabs + Filter Button */}
+                      <div className="mt-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-sm font-semibold text-gray-600">Filter by Category</h3>
+                          <button
+                            onClick={() => setFilterDrawerOpen(true)}
+                            className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border-2 border-[#15383c] text-[#15383c] font-medium hover:bg-[#15383c] hover:text-white transition-colors flex-shrink-0 touch-manipulation active:scale-[0.95] text-xs sm:text-sm"
+                          >
+                            <Filter size={16} className="sm:w-[18px] sm:h-[18px]" />
+                            <span className="hidden sm:inline">Filters</span>
+                            {getActiveFilterCount() > 0 && (
+                              <span className="px-1.5 py-0.5 rounded-full bg-[#e35e25] text-white text-[10px] sm:text-xs font-bold">
+                                {getActiveFilterCount()}
+                              </span>
+                            )}
+                          </button>
+                        </div>
+                        <div className="relative z-10">
+                          <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4 scroll-pr-32 md:scroll-pr-4">
+                            {/* All tab */}
+                            <button
+                              onClick={() => setFilter('mainCategory', null)}
+                              className={`shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-bold tracking-wider uppercase transition-all touch-manipulation active:scale-[0.95] ${filters.mainCategory === null
+                                  ? 'bg-[#e35e25] text-white shadow-md'
+                                  : 'bg-white/20 backdrop-blur-md text-[#15383c] border border-[#15383c]/20 hover:border-[#e35e25] hover:text-[#e35e25]'
+                                }`}
+                            >
+                              All
+                            </button>
+                            {/* Category tabs */}
+                            {MAIN_CATEGORIES.map(category => (
+                              <button
+                                key={category}
+                                onClick={() => setFilter('mainCategory', filters.mainCategory === category ? null : category)}
+                                className={`shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-bold tracking-wider uppercase transition-all touch-manipulation active:scale-[0.95] whitespace-nowrap ${filters.mainCategory === category
+                                    ? 'bg-[#e35e25] text-white shadow-md'
+                                    : 'bg-white/20 backdrop-blur-md text-[#15383c] border border-[#15383c]/20 hover:border-[#e35e25] hover:text-[#e35e25]'
+                                  }`}
+                              >
+                                {MAIN_CATEGORY_LABELS[category]}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="absolute right-0 top-0 bottom-2 w-6 sm:w-8 bg-gradient-to-l from-[#FAFAFA] to-transparent pointer-events-none md:hidden"></div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-               </div>
-            </div>
+                </div>
 
-            {/* Use EventFeed component with filters */}
-            <React.Suspense fallback={<div className="text-center py-20">Loading events...</div>}>
-              <EventFeed
-                events={filteredEvents}
-                onEventClick={handleEventClick}
-                onChatClick={handleChatClick}
+                {/* Use EventFeed component with filters */}
+                <React.Suspense fallback={<div className="text-center py-20">Loading events...</div>}>
+                  <EventFeed
+                    events={filteredEvents}
+                    onEventClick={handleEventClick}
+                    onChatClick={handleChatClick}
+                    onReviewsClick={handleReviewsClick}
+                    isLoggedIn={isLoggedIn}
+                    favorites={favorites}
+                    onToggleFavorite={handleToggleFavorite}
+                  />
+                </React.Suspense>
+
+                {/* Filter Drawer for Explore Page */}
+                <FilterDrawer
+                  isOpen={isFilterDrawerOpen}
+                  onClose={() => setFilterDrawerOpen(false)}
+                  events={allEvents}
+                />
+
+                {/* Legacy grouped view - disabled, using EventFeed instead */}
+                {false && (
+                  <div className="space-y-4">
+                    {(() => {
+                      const filteredEventsByCity: Record<string, Event[]> = {};
+                      filteredEvents.forEach((event) => {
+                        if (event?.city) {
+                          if (!filteredEventsByCity[event.city]) {
+                            filteredEventsByCity[event.city] = [];
+                          }
+                          filteredEventsByCity[event.city].push(event);
+                        }
+                      });
+
+                      // Sort cities: selected city first, then alphabetically
+                      const cityEntries = Object.entries(filteredEventsByCity);
+                      const selectedCityName = location && location !== 'montreal'
+                        ? cityEntries.find(([city]) =>
+                          city.toLowerCase().includes(location.toLowerCase()) ||
+                          location.toLowerCase().includes(city.split(',')[0].toLowerCase())
+                        )?.[0]
+                        : null;
+
+                      // Sort: selected city first, then alphabetically
+                      cityEntries.sort(([cityA], [cityB]) => {
+                        if (selectedCityName) {
+                          if (cityA === selectedCityName) return -1;
+                          if (cityB === selectedCityName) return 1;
+                        }
+                        return cityA.localeCompare(cityB);
+                      });
+
+                      if (cityEntries.length === 0) {
+                        return (
+                          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
+                            <p className="text-gray-500">No events found matching your criteria.</p>
+                            <button
+                              onClick={() => {
+                                setSearchQuery('');
+                                setCity('montreal');
+                                setFilter('mainCategory', null);
+                              }}
+                              className="mt-4 text-[#e35e25] font-bold hover:underline"
+                            >
+                              Clear Filters
+                            </button>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-8 sm:space-y-10 md:space-y-12">
+                          {cityEntries.map(([cityName, cityEvents]) => {
+                            const scrollContainerId = `city-scroll-${cityName.replace(/\s+/g, '-')}`;
+
+                            const scrollLeft = () => {
+                              const container = document.getElementById(scrollContainerId);
+                              if (container) {
+                                container.scrollBy({ left: -400, behavior: 'smooth' });
+                              }
+                            };
+
+                            const scrollRight = () => {
+                              const container = document.getElementById(scrollContainerId);
+                              if (container) {
+                                container.scrollBy({ left: 400, behavior: 'smooth' });
+                              }
+                            };
+
+                            return (
+                              <div key={cityName} className="mb-8 sm:mb-10 md:mb-12">
+                                <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">
+                                  {cityName}
+                                </h2>
+                                {/* Mobile: Horizontal scroll, Desktop: Horizontal scroll with 4 per row */}
+                                <div className="relative group">
+                                  {/* Left Arrow - Desktop only */}
+                                  <button
+                                    onClick={scrollLeft}
+                                    className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100"
+                                    aria-label="Scroll left"
+                                  >
+                                    <ChevronLeft size={20} />
+                                  </button>
+
+                                  {/* Scrollable Container - Scrollable anywhere on screen */}
+                                  <div
+                                    id={scrollContainerId}
+                                    className="flex overflow-x-auto gap-4 md:gap-5 lg:gap-6 pb-2 md:pb-6 snap-x snap-mandatory scroll-smooth hide-scrollbar w-full touch-pan-x overscroll-x-contain scroll-pl-4 md:scroll-pl-0 cursor-grab active:cursor-grabbing"
+                                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-x pan-y', WebkitOverflowScrolling: 'touch' }}
+                                    onWheel={(e) => {
+                                      // Allow horizontal scrolling with mouse wheel when hovering over the container
+                                      const container = e.currentTarget;
+                                      if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
+                                        // Use requestAnimationFrame to avoid passive listener warning
+                                        requestAnimationFrame(() => {
+                                          container.scrollLeft += e.deltaY;
+                                        });
+                                      }
+                                    }}
+                                    onMouseDown={(e) => {
+                                      // Enable drag scrolling - only on non-touch devices
+                                      if ('ontouchstart' in window) return;
+
+                                      const container = e.currentTarget;
+                                      const startX = e.pageX - container.offsetLeft;
+                                      const scrollLeft = container.scrollLeft;
+                                      let isDown = true;
+
+                                      const handleMouseMove = (e: MouseEvent) => {
+                                        if (!isDown) return;
+                                        const x = e.pageX - container.offsetLeft;
+                                        const walk = (x - startX) * 2;
+                                        container.scrollLeft = scrollLeft - walk;
+                                      };
+
+                                      const handleMouseUp = () => {
+                                        isDown = false;
+                                        document.removeEventListener('mousemove', handleMouseMove);
+                                        document.removeEventListener('mouseup', handleMouseUp);
+                                      };
+
+                                      document.addEventListener('mousemove', handleMouseMove, { passive: true });
+                                      document.addEventListener('mouseup', handleMouseUp, { passive: true });
+                                    }}
+                                  >
+                                    {cityEvents.map(event => (
+                                      <div key={event.id} className="snap-start shrink-0 w-[85vw] sm:w-[70vw] md:w-[calc(25%-1.5rem)] lg:w-[calc(25%-2rem)] flex-shrink-0" style={{ touchAction: 'pan-x pan-y' }}>
+                                        <EventCard
+                                          event={event}
+                                          onClick={handleEventClick}
+                                          onChatClick={handleChatClick}
+                                          onReviewsClick={handleReviewsClick}
+                                          isLoggedIn={isLoggedIn}
+                                          isFavorite={favorites.includes(event.id)}
+                                          onToggleFavorite={handleToggleFavorite}
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+
+                                  {/* Right Arrow - Desktop only */}
+                                  <button
+                                    onClick={scrollRight}
+                                    className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100"
+                                    aria-label="Scroll right"
+                                  >
+                                    <ChevronRight size={20} />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {/* Mobile CTA FAB - Only show when logged in */}
+                {isLoggedIn && (
+                  <button
+                    onClick={() => handleNav(ViewState.CREATE_EVENT)}
+                    className="md:hidden fixed bottom-6 right-4 sm:right-6 w-14 h-14 bg-[#e35e25] rounded-full flex items-center justify-center text-white shadow-2xl shadow-orange-900/40 z-40 hover:scale-105 active:scale-95 transition-transform border-4 border-white touch-manipulation safe-area-inset-bottom"
+                    aria-label="Create Circle"
+                  >
+                    <PlusCircle size={28} />
+                  </button>
+                )}
+              </div>
+            </main>
+          )}
+
+          {viewState === ViewState.DETAIL && selectedEvent && (
+            <React.Suspense fallback={<PageSkeleton />}>
+              <EventDetailPage
+                key={selectedEvent.id}
+                event={selectedEvent}
+                setViewState={setViewState}
                 onReviewsClick={handleReviewsClick}
+                onHostClick={handleHostClick}
+                allEvents={allEvents}
+                onEventClick={handleEventClick}
                 isLoggedIn={isLoggedIn}
                 favorites={favorites}
                 onToggleFavorite={handleToggleFavorite}
+                onRSVP={handleRSVP}
+                rsvps={rsvps}
+                onEditEvent={(event) => {
+                  setSelectedEvent(event);
+                  setViewState(ViewState.EDIT_EVENT);
+                }}
               />
             </React.Suspense>
-
-            {/* Filter Drawer for Explore Page */}
-            <FilterDrawer
-              isOpen={isFilterDrawerOpen}
-              onClose={() => setFilterDrawerOpen(false)}
-              events={allEvents}
-            />
-            
-            {/* Legacy grouped view - disabled, using EventFeed instead */}
-            {false && (
-              <div className="space-y-4">
-                {(() => {
-                  const filteredEventsByCity: Record<string, Event[]> = {};
-              filteredEvents.forEach((event) => {
-                if (event?.city) {
-                  if (!filteredEventsByCity[event.city]) {
-                    filteredEventsByCity[event.city] = [];
-                  }
-                  filteredEventsByCity[event.city].push(event);
-                }
-              });
-
-              // Sort cities: selected city first, then alphabetically
-              const cityEntries = Object.entries(filteredEventsByCity);
-              const selectedCityName = location && location !== 'montreal' 
-                ? cityEntries.find(([city]) => 
-                    city.toLowerCase().includes(location.toLowerCase()) || 
-                    location.toLowerCase().includes(city.split(',')[0].toLowerCase())
-                  )?.[0]
-                : null;
-
-              // Sort: selected city first, then alphabetically
-              cityEntries.sort(([cityA], [cityB]) => {
-                if (selectedCityName) {
-                  if (cityA === selectedCityName) return -1;
-                  if (cityB === selectedCityName) return 1;
-                }
-                return cityA.localeCompare(cityB);
-              });
-
-                if (cityEntries.length === 0) {
-                  return (
-                    <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
-                      <p className="text-gray-500">No events found matching your criteria.</p>
-                      <button 
-                        onClick={() => { 
-                          setSearchQuery(''); 
-                          setCity('montreal'); 
-                          setFilter('mainCategory', null);
-                        }}
-                        className="mt-4 text-[#e35e25] font-bold hover:underline"
-                      >
-                        Clear Filters
-                      </button>
-                    </div>
-                  );
-                }
-
-                return (
-                  <div className="space-y-8 sm:space-y-10 md:space-y-12">
-                    {cityEntries.map(([cityName, cityEvents]) => {
-                      const scrollContainerId = `city-scroll-${cityName.replace(/\s+/g, '-')}`;
-                      
-                      const scrollLeft = () => {
-                        const container = document.getElementById(scrollContainerId);
-                        if (container) {
-                          container.scrollBy({ left: -400, behavior: 'smooth' });
-                        }
-                      };
-                      
-                      const scrollRight = () => {
-                        const container = document.getElementById(scrollContainerId);
-                        if (container) {
-                          container.scrollBy({ left: 400, behavior: 'smooth' });
-                        }
-                      };
-                      
-                      return (
-                        <div key={cityName} className="mb-8 sm:mb-10 md:mb-12">
-                          <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">
-                            {cityName}
-                          </h2>
-                          {/* Mobile: Horizontal scroll, Desktop: Horizontal scroll with 4 per row */}
-                          <div className="relative group">
-                            {/* Left Arrow - Desktop only */}
-                            <button
-                              onClick={scrollLeft}
-                              className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100"
-                              aria-label="Scroll left"
-                            >
-                              <ChevronLeft size={20} />
-                            </button>
-                            
-                            {/* Scrollable Container - Scrollable anywhere on screen */}
-                            <div 
-                              id={scrollContainerId}
-                              className="flex overflow-x-auto gap-4 md:gap-5 lg:gap-6 pb-2 md:pb-6 snap-x snap-mandatory scroll-smooth hide-scrollbar w-full touch-pan-x overscroll-x-contain scroll-pl-4 md:scroll-pl-0 cursor-grab active:cursor-grabbing"
-                              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-x pan-y', WebkitOverflowScrolling: 'touch' }}
-                              onWheel={(e) => {
-                                // Allow horizontal scrolling with mouse wheel when hovering over the container
-                                const container = e.currentTarget;
-                                if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
-                                  // Use requestAnimationFrame to avoid passive listener warning
-                                  requestAnimationFrame(() => {
-                                    container.scrollLeft += e.deltaY;
-                                  });
-                                }
-                              }}
-                              onMouseDown={(e) => {
-                                // Enable drag scrolling - only on non-touch devices
-                                if ('ontouchstart' in window) return;
-                                
-                                const container = e.currentTarget;
-                                const startX = e.pageX - container.offsetLeft;
-                                const scrollLeft = container.scrollLeft;
-                                let isDown = true;
-
-                                const handleMouseMove = (e: MouseEvent) => {
-                                  if (!isDown) return;
-                                  const x = e.pageX - container.offsetLeft;
-                                  const walk = (x - startX) * 2;
-                                  container.scrollLeft = scrollLeft - walk;
-                                };
-
-                                const handleMouseUp = () => {
-                                  isDown = false;
-                                  document.removeEventListener('mousemove', handleMouseMove);
-                                  document.removeEventListener('mouseup', handleMouseUp);
-                                };
-
-                                document.addEventListener('mousemove', handleMouseMove, { passive: true });
-                                document.addEventListener('mouseup', handleMouseUp, { passive: true });
-                              }}
-                            >
-                              {cityEvents.map(event => (
-                                <div key={event.id} className="snap-start shrink-0 w-[85vw] sm:w-[70vw] md:w-[calc(25%-1.5rem)] lg:w-[calc(25%-2rem)] flex-shrink-0" style={{ touchAction: 'pan-x pan-y' }}>
-                                  <EventCard
-                                    event={event}
-                                    onClick={handleEventClick}
-                                    onChatClick={handleChatClick}
-                                    onReviewsClick={handleReviewsClick}
-                                    isLoggedIn={isLoggedIn}
-                                    isFavorite={favorites.includes(event.id)}
-                                    onToggleFavorite={handleToggleFavorite}
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                            
-                            {/* Right Arrow - Desktop only */}
-                            <button
-                              onClick={scrollRight}
-                              className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100"
-                              aria-label="Scroll right"
-                            >
-                              <ChevronRight size={20} />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-                })()}
-              </div>
-            )}
-            
-            {/* Mobile CTA FAB - Only show when logged in */}
-            {isLoggedIn && (
-              <button 
-                onClick={() => handleNav(ViewState.CREATE_EVENT)}
-                className="md:hidden fixed bottom-6 right-4 sm:right-6 w-14 h-14 bg-[#e35e25] rounded-full flex items-center justify-center text-white shadow-2xl shadow-orange-900/40 z-40 hover:scale-105 active:scale-95 transition-transform border-4 border-white touch-manipulation safe-area-inset-bottom"
-                aria-label="Create Circle"
-              >
-                 <PlusCircle size={28} />
-              </button>
-            )}
-            </div>
-          </main>
-        )}
-
-            {viewState === ViewState.DETAIL && selectedEvent && (
-              <React.Suspense fallback={<PageSkeleton />}>
-                <EventDetailPage 
-                  key={selectedEvent.id}
-                  event={selectedEvent} 
-                  setViewState={setViewState} 
-                  onReviewsClick={handleReviewsClick}
-                  onHostClick={handleHostClick}
-                  allEvents={allEvents}
-                  onEventClick={handleEventClick}
-                  isLoggedIn={isLoggedIn}
-                  favorites={favorites}
-                  onToggleFavorite={handleToggleFavorite}
-                  onRSVP={handleRSVP}
-                  rsvps={rsvps}
-                  onEditEvent={(event) => {
-                    setSelectedEvent(event);
-                    setViewState(ViewState.EDIT_EVENT);
-                  }}
-                />
-              </React.Suspense>
-            )}
+          )}
         </>
       </div>
 
       {reviewEvent && (
         <React.Suspense fallback={null}>
-          <ReviewsModal 
-            event={reviewEvent} 
+          <ReviewsModal
+            event={reviewEvent}
             onClose={() => setReviewEvent(null)}
             onReviewerClick={handleReviewerClick}
           />
@@ -2416,7 +2437,7 @@ const AppContent: React.FC = () => {
       )}
 
       {viewState !== ViewState.AUTH && <Footer setViewState={setViewState} isLoggedIn={isLoggedIn} onProtectedNav={handleProtectedNav} />}
-      
+
       {viewState === ViewState.DETAIL && <div className="h-24 lg:hidden bg-[#15383c]" />}
     </div>
   );
@@ -2425,11 +2446,11 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   // TODO: remove after boot fixed
   const DEBUG_BOOT = false;
-  
+
   if (DEBUG_BOOT) {
     return <div data-boot="ok">Popera UI (boot check)</div>;
   }
-  
+
   return (
     <LanguageProvider>
       <AppContent />
