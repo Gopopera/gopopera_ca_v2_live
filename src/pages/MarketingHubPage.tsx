@@ -13,7 +13,7 @@ import {
   ChevronLeft, Send, Eye, Save, Copy, Mail, AlertTriangle, CheckCircle,
   Loader2, Smartphone, Plus, Trash2, Edit3, X, Users, FileText,
   Building2, MapPin, Phone, Globe, Instagram, MessageSquare, Clock,
-  Filter, Search, ChevronDown, ExternalLink, StickyNote, Upload, BookOpen, Link
+  Filter, Search, ChevronDown, ExternalLink, StickyNote, Upload, BookOpen, Link, Globe2
 } from 'lucide-react';
 import { getDbSafe } from '../lib/firebase';
 import { collection, addDoc, getDocs, query, orderBy, limit, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -284,6 +284,24 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
   } | null>(null);
   const [blogError, setBlogError] = useState<string | null>(null);
   const [blogPreviewDraft, setBlogPreviewDraft] = useState<any | null>(null);
+
+  // Blog Edit Draft modal state
+  const [blogEditDraft, setBlogEditDraft] = useState<any | null>(null);
+  const [blogEditSaving, setBlogEditSaving] = useState(false);
+  const [blogEditForm, setBlogEditForm] = useState({
+    title: '',
+    slug: '',
+    excerpt: '',
+    metaTitle: '',
+    metaDescription: '',
+    tags: '',
+    heroImageUrl: '',
+    contentHtml: '',
+  });
+
+  // Blog Publish state
+  const [blogPublishing, setBlogPublishing] = useState<number | null>(null); // index of draft being published
+  const [blogPublishedSlugs, setBlogPublishedSlugs] = useState<Map<number, string>>(new Map()); // index -> published slug
 
   // Build email params
   const emailParams: MarketingEmailParams = useMemo(() => ({
@@ -1282,6 +1300,131 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
   const handleCopyDraftJson = (draft: any) => {
     navigator.clipboard.writeText(JSON.stringify(draft, null, 2));
     showNotification('success', 'Copied to clipboard');
+  };
+
+  // Blog: Open edit modal for a draft
+  const handleOpenEditDraft = (draft: any, index: number) => {
+    setBlogEditDraft({ ...draft, _index: index });
+    setBlogEditForm({
+      title: draft.title || '',
+      slug: draft.slug || '',
+      excerpt: draft.excerpt || '',
+      metaTitle: draft.metaTitle || '',
+      metaDescription: draft.metaDescription || '',
+      tags: (draft.tags || []).join(', '),
+      heroImageUrl: draft.heroImageUrl || '',
+      contentHtml: draft.contentHtml || '',
+    });
+  };
+
+  // Blog: Save edited draft (persists to Firestore via API)
+  const handleSaveEditDraft = async () => {
+    if (!blogEditDraft) return;
+    setBlogEditSaving(true);
+    setBlogError(null);
+
+    try {
+      const updatedDraft = {
+        ...blogEditDraft,
+        title: blogEditForm.title,
+        slug: blogEditForm.slug,
+        excerpt: blogEditForm.excerpt,
+        metaTitle: blogEditForm.metaTitle,
+        metaDescription: blogEditForm.metaDescription,
+        tags: blogEditForm.tags.split(',').map(t => t.trim()).filter(t => t),
+        heroImageUrl: blogEditForm.heroImageUrl,
+        contentHtml: blogEditForm.contentHtml,
+        updatedAt: Date.now(),
+      };
+
+      // Persist to Firestore via API
+      const token = await getIdToken();
+      const response = await fetch('/api/blog/save-draft', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          draft: updatedDraft,
+          draftId: blogEditDraft.id || blogEditDraft.draftId || undefined,
+        }),
+      });
+
+      const rawText = await response.text();
+      let result: any;
+      try {
+        result = JSON.parse(rawText);
+      } catch {
+        throw new Error(`Server returned non-JSON: ${rawText.substring(0, 100)}...`);
+      }
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save draft');
+      }
+
+      // Update local drafts array with returned draftId
+      const index = blogEditDraft._index;
+      if (typeof index === 'number' && index >= 0) {
+        setBlogGeneratedDrafts(prev => {
+          const newDrafts = [...prev];
+          newDrafts[index] = { ...updatedDraft, draftId: result.draftId };
+          return newDrafts;
+        });
+      }
+
+      showNotification('success', 'Draft saved to Firestore');
+      setBlogEditDraft(null);
+    } catch (error: any) {
+      console.error('[MarketingHub] Edit draft error:', error);
+      setBlogError(error.message || 'Failed to save draft');
+    } finally {
+      setBlogEditSaving(false);
+    }
+  };
+
+  // Blog: Publish a draft to blog_posts
+  const handlePublishDraft = async (draft: any, index: number) => {
+    setBlogPublishing(index);
+    setBlogError(null);
+
+    try {
+      const token = await getIdToken();
+
+      // Prefer draftId if available (persisted draft), otherwise send full draft payload
+      const publishPayload = draft.draftId
+        ? { draftId: draft.draftId }
+        : { draft };
+
+      const response = await fetch('/api/blog/publish', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(publishPayload),
+      });
+
+      const rawText = await response.text();
+      let result: any;
+      try {
+        result = JSON.parse(rawText);
+      } catch {
+        throw new Error(`Server returned non-JSON: ${rawText.substring(0, 100)}...`);
+      }
+
+      if (result.success && result.slug) {
+        setBlogPublishedSlugs(prev => new Map(prev).set(index, result.slug));
+        showNotification('success', `Published! View at /blog/${result.slug}`);
+      } else {
+        throw new Error(result.error || 'Failed to publish');
+      }
+    } catch (error: any) {
+      console.error('[MarketingHub] Publish error:', error);
+      setBlogError(error.message || 'Failed to publish');
+    } finally {
+      setBlogPublishing(null);
+    }
   };
 
   /**
@@ -3127,6 +3270,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                       <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Slug</th>
                       <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Variant</th>
                       <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Tags</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Status</th>
                       <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Actions</th>
                     </tr>
                   </thead>
@@ -3152,8 +3296,44 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                             ))}
                           </div>
                         </td>
+                        <td className="px-4 py-3">
+                          {blogPublishedSlugs.has(idx) ? (
+                            <div className="flex items-center gap-2">
+                              <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">Published</span>
+                              <a
+                                href={`/blog/${blogPublishedSlugs.get(idx)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[#e35e25] hover:underline text-xs flex items-center gap-1"
+                              >
+                                <ExternalLink size={12} />
+                                View
+                              </a>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handlePublishDraft(draft, idx)}
+                              disabled={blogPublishing === idx}
+                              className="px-2 py-1 bg-[#15383c] text-white text-xs rounded hover:bg-[#0e2628] disabled:opacity-50 flex items-center gap-1"
+                            >
+                              {blogPublishing === idx ? (
+                                <Loader2 size={12} className="animate-spin" />
+                              ) : (
+                                <Globe2 size={12} />
+                              )}
+                              Publish
+                            </button>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => handleOpenEditDraft(draft, idx)}
+                              className="p-1.5 text-gray-500 hover:text-[#15383c] hover:bg-gray-100 rounded"
+                              title="Edit"
+                            >
+                              <Edit3 size={14} />
+                            </button>
                             <button
                               onClick={() => handleCopyDraftJson(draft)}
                               className="p-1.5 text-gray-500 hover:text-[#15383c] hover:bg-gray-100 rounded"
@@ -3209,6 +3389,120 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Blog Edit Draft Modal */}
+        {blogEditDraft && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="p-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
+                <h3 className="font-semibold text-[#15383c]">Edit Draft</h3>
+                <button
+                  onClick={() => setBlogEditDraft(null)}
+                  className="p-1.5 hover:bg-gray-100 rounded"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="p-5 space-y-4">
+                {/* Title */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                  <input
+                    type="text"
+                    value={blogEditForm.title}
+                    onChange={(e) => setBlogEditForm(prev => ({ ...prev, title: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm"
+                  />
+                </div>
+                {/* Slug */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Slug</label>
+                  <input
+                    type="text"
+                    value={blogEditForm.slug}
+                    onChange={(e) => setBlogEditForm(prev => ({ ...prev, slug: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm font-mono"
+                  />
+                </div>
+                {/* Excerpt */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Excerpt</label>
+                  <textarea
+                    value={blogEditForm.excerpt}
+                    onChange={(e) => setBlogEditForm(prev => ({ ...prev, excerpt: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm h-20"
+                  />
+                </div>
+                {/* SEO Title */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">SEO Title</label>
+                  <input
+                    type="text"
+                    value={blogEditForm.metaTitle}
+                    onChange={(e) => setBlogEditForm(prev => ({ ...prev, metaTitle: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm"
+                  />
+                </div>
+                {/* SEO Description */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">SEO Description</label>
+                  <textarea
+                    value={blogEditForm.metaDescription}
+                    onChange={(e) => setBlogEditForm(prev => ({ ...prev, metaDescription: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm h-16"
+                  />
+                </div>
+                {/* Tags */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tags (comma-separated)</label>
+                  <input
+                    type="text"
+                    value={blogEditForm.tags}
+                    onChange={(e) => setBlogEditForm(prev => ({ ...prev, tags: e.target.value }))}
+                    placeholder="e.g., hosting, tips, circles"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm"
+                  />
+                </div>
+                {/* Hero Image URL */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Hero Image URL</label>
+                  <input
+                    type="text"
+                    value={blogEditForm.heroImageUrl}
+                    onChange={(e) => setBlogEditForm(prev => ({ ...prev, heroImageUrl: e.target.value }))}
+                    placeholder="https://..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm"
+                  />
+                </div>
+                {/* Content HTML */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Content (HTML)</label>
+                  <textarea
+                    value={blogEditForm.contentHtml}
+                    onChange={(e) => setBlogEditForm(prev => ({ ...prev, contentHtml: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm font-mono h-48"
+                  />
+                </div>
+              </div>
+              <div className="p-4 border-t border-gray-200 flex justify-end gap-2 sticky bottom-0 bg-white">
+                <button
+                  onClick={() => setBlogEditDraft(null)}
+                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveEditDraft}
+                  disabled={blogEditSaving}
+                  className="px-4 py-2 bg-[#e35e25] text-white rounded-lg hover:bg-[#d54d1a] disabled:opacity-50 flex items-center gap-2"
+                >
+                  {blogEditSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                  Save Draft
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

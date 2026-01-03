@@ -1,11 +1,12 @@
 /**
  * BlogPostPage - Single blog post page
  * Loads a published post by slug and renders content
+ * Includes: SEO meta tags, OG/Twitter cards, JSON-LD schema, Share buttons
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { ViewState } from '../../types';
-import { ChevronLeft, Loader2, AlertCircle } from 'lucide-react';
+import { ChevronLeft, Loader2, AlertCircle, Link2, Check, Share2 } from 'lucide-react';
 import { getPublishedPostBySlug } from '../../firebase/blog';
 import type { BlogPost } from '../../firebase/types';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -16,11 +17,117 @@ interface BlogPostPageProps {
     setSelectedBlogSlug: (slug: string | null) => void;
 }
 
+// Social share icons (inline SVG to avoid extra dependencies)
+const XIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+);
+
+const LinkedInIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+    </svg>
+);
+
+const FacebookIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+    </svg>
+);
+
 export const BlogPostPage: React.FC<BlogPostPageProps> = ({ slug, setViewState, setSelectedBlogSlug }) => {
     const { language } = useLanguage();
     const [post, setPost] = useState<BlogPost | null>(null);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
+    const [copied, setCopied] = useState(false);
+
+    // Get current URL for sharing
+    const getPostUrl = useCallback(() => {
+        return `${window.location.origin}/blog/${slug}`;
+    }, [slug]);
+
+    // Set SEO meta tags and JSON-LD
+    useEffect(() => {
+        if (!post) return;
+
+        const postUrl = getPostUrl();
+        const title = post.metaTitle || post.title;
+        const description = post.metaDescription || post.excerpt || '';
+        const image = post.heroImageUrl || '';
+
+        // Update document title
+        document.title = title;
+
+        // Helper to set or create meta tag
+        const setMeta = (property: string, content: string, isName = false) => {
+            const attr = isName ? 'name' : 'property';
+            let tag = document.querySelector(`meta[${attr}="${property}"]`) as HTMLMetaElement;
+            if (!tag) {
+                tag = document.createElement('meta');
+                tag.setAttribute(attr, property);
+                document.head.appendChild(tag);
+            }
+            tag.content = content;
+        };
+
+        // Basic meta
+        setMeta('description', description, true);
+
+        // Open Graph
+        setMeta('og:title', title);
+        setMeta('og:description', description);
+        setMeta('og:url', postUrl);
+        setMeta('og:type', 'article');
+        if (image) setMeta('og:image', image);
+        setMeta('og:site_name', 'Popera');
+
+        // Twitter Card
+        setMeta('twitter:card', image ? 'summary_large_image' : 'summary', true);
+        setMeta('twitter:title', title, true);
+        setMeta('twitter:description', description, true);
+        if (image) setMeta('twitter:image', image, true);
+
+        // JSON-LD Schema
+        const jsonLd = {
+            '@context': 'https://schema.org',
+            '@type': 'BlogPosting',
+            headline: title,
+            description: description,
+            url: postUrl,
+            datePublished: new Date(post.publishedAt).toISOString(),
+            dateModified: new Date(post.updatedAt).toISOString(),
+            image: image || undefined,
+            author: {
+                '@type': 'Organization',
+                name: 'Popera',
+                url: 'https://gopopera.ca',
+            },
+            publisher: {
+                '@type': 'Organization',
+                name: 'Popera',
+                url: 'https://gopopera.ca',
+            },
+        };
+
+        let scriptTag = document.querySelector('script[data-blog-jsonld]') as HTMLScriptElement;
+        if (!scriptTag) {
+            scriptTag = document.createElement('script');
+            scriptTag.type = 'application/ld+json';
+            scriptTag.setAttribute('data-blog-jsonld', 'true');
+            document.head.appendChild(scriptTag);
+        }
+        scriptTag.textContent = JSON.stringify(jsonLd);
+
+        // Cleanup on unmount
+        return () => {
+            document.title = 'Popera';
+            // Remove JSON-LD script
+            const script = document.querySelector('script[data-blog-jsonld]');
+            if (script) script.remove();
+        };
+    }, [post, getPostUrl]);
 
     useEffect(() => {
         const fetchPost = async () => {
@@ -29,17 +136,12 @@ export const BlogPostPage: React.FC<BlogPostPageProps> = ({ slug, setViewState, 
             const fetchedPost = await getPublishedPostBySlug(slug);
             if (fetchedPost) {
                 setPost(fetchedPost);
-                document.title = fetchedPost.metaTitle || fetchedPost.title;
             } else {
                 setNotFound(true);
             }
             setLoading(false);
         };
         fetchPost();
-
-        return () => {
-            document.title = 'Popera';
-        };
     }, [slug]);
 
     const handleBack = () => {
@@ -53,6 +155,55 @@ export const BlogPostPage: React.FC<BlogPostPageProps> = ({ slug, setViewState, 
             month: 'long',
             day: 'numeric',
         });
+    };
+
+    // Share handlers
+    const handleCopyLink = async () => {
+        try {
+            await navigator.clipboard.writeText(getPostUrl());
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch {
+            // Fallback for older browsers
+            const input = document.createElement('input');
+            input.value = getPostUrl();
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand('copy');
+            document.body.removeChild(input);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
+
+    const handleShareX = () => {
+        const text = encodeURIComponent(post?.title || '');
+        const url = encodeURIComponent(getPostUrl());
+        window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank', 'width=550,height=420');
+    };
+
+    const handleShareLinkedIn = () => {
+        const url = encodeURIComponent(getPostUrl());
+        window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${url}`, '_blank', 'width=550,height=420');
+    };
+
+    const handleShareFacebook = () => {
+        const url = encodeURIComponent(getPostUrl());
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank', 'width=550,height=420');
+    };
+
+    const handleNativeShare = async () => {
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: post?.title,
+                    text: post?.excerpt || '',
+                    url: getPostUrl(),
+                });
+            } catch {
+                // User cancelled or error
+            }
+        }
     };
 
     if (loading) {
@@ -151,6 +302,61 @@ export const BlogPostPage: React.FC<BlogPostPageProps> = ({ slug, setViewState, 
                             {post.attribution}
                         </div>
                     )}
+
+                    {/* Share Section */}
+                    <div className="mt-10 pt-6 border-t border-gray-100">
+                        <h3 className="text-sm font-semibold text-[#15383c] mb-3">
+                            {language === 'fr' ? 'Partager cet article' : 'Share this article'}
+                        </h3>
+                        <div className="flex flex-wrap items-center gap-2">
+                            {/* Copy Link */}
+                            <button
+                                onClick={handleCopyLink}
+                                className="inline-flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                            >
+                                {copied ? <Check size={16} className="text-green-600" /> : <Link2 size={16} />}
+                                {copied ? (language === 'fr' ? 'Copié!' : 'Copied!') : (language === 'fr' ? 'Copier le lien' : 'Copy link')}
+                            </button>
+
+                            {/* X/Twitter */}
+                            <button
+                                onClick={handleShareX}
+                                className="inline-flex items-center justify-center w-10 h-10 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                                title="Share on X"
+                            >
+                                <XIcon />
+                            </button>
+
+                            {/* LinkedIn */}
+                            <button
+                                onClick={handleShareLinkedIn}
+                                className="inline-flex items-center justify-center w-10 h-10 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-[#0077b5]"
+                                title="Share on LinkedIn"
+                            >
+                                <LinkedInIcon />
+                            </button>
+
+                            {/* Facebook */}
+                            <button
+                                onClick={handleShareFacebook}
+                                className="inline-flex items-center justify-center w-10 h-10 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-[#1877f2]"
+                                title="Share on Facebook"
+                            >
+                                <FacebookIcon />
+                            </button>
+
+                            {/* Native Share (mobile) */}
+                            {typeof navigator !== 'undefined' && navigator.share && (
+                                <button
+                                    onClick={handleNativeShare}
+                                    className="inline-flex items-center gap-2 px-3 py-2 text-sm bg-[#e35e25] text-white rounded-lg hover:bg-[#d54d1a] transition-colors"
+                                >
+                                    <Share2 size={16} />
+                                    {language === 'fr' ? 'Partager' : 'Share'}
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Back button */}
