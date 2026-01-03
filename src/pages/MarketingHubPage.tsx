@@ -249,7 +249,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
   // Blog state
   const [blogTopicsInput, setBlogTopicsInput] = useState('');
   const [blogContextInput, setBlogContextInput] = useState('');
-  const [blogVariants, setBlogVariants] = useState(2);
+  const [blogVariants, setBlogVariants] = useState(1); // Locked to 1 draft per topic
   const [blogGenerating, setBlogGenerating] = useState(false);
   const [blogGeneratedDrafts, setBlogGeneratedDrafts] = useState<Array<{
     title: string;
@@ -1225,7 +1225,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ topics, variants: blogVariants }),
+        body: JSON.stringify({ topics, variants: 1 }), // Always 1 draft per topic
       });
 
       const rawText = await response.text();
@@ -3168,16 +3168,10 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
 
                   <div className="flex items-center gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Variants per topic</label>
-                      <select
-                        value={blogVariants}
-                        onChange={(e) => setBlogVariants(Number(e.target.value))}
-                        className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#e35e25] text-sm"
-                      >
-                        <option value={1}>1</option>
-                        <option value={2}>2</option>
-                        <option value={3}>3</option>
-                      </select>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Drafts per topic</label>
+                      <div className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-500">
+                        1 (fixed)
+                      </div>
                     </div>
 
                     <button

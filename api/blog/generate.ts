@@ -154,7 +154,8 @@ export default async function handler(req: any, res: any) {
     }
 
     try {
-        const { topics, variants = 2 }: GenerateRequest = req.body || {};
+        const { topics }: GenerateRequest = req.body || {};
+        const variants = 1; // Enforce 1 draft per topic
 
         if (!Array.isArray(topics) || topics.length === 0) {
             return res.status(400).json({ success: false, error: 'topics array is required' });
