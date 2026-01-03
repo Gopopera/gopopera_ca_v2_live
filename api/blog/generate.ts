@@ -11,8 +11,7 @@
  * - Returns draft payloads (client saves to Firestore)
  */
 
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyAdminToken } from '../_lib/firebaseAdmin';
+import { verifyAdminToken } from '../_lib/firebaseAdmin.js';
 
 // ============================================
 // Types
@@ -127,7 +126,7 @@ async function callOpenAI(
 // Main Handler
 // ============================================
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
     // CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -141,11 +140,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(405).json({ success: false, error: 'Method not allowed' });
     }
 
-    // Verify admin auth
-    const authHeader = req.headers.authorization;
-    const authResult = await verifyAdminToken(authHeader);
-
-    if (!authResult || typeof authResult !== 'object' || !('success' in authResult) || authResult.success !== true) {
+    // Verify admin auth (wrapped in try-catch for safety)
+    try {
+        const authResult = await verifyAdminToken(req.headers.authorization);
+        if (!authResult || typeof authResult !== 'object' || !('success' in authResult) || (authResult as any).success !== true) {
+            return res.status(403).json({ success: false, error: 'Forbidden' });
+        }
+    } catch (authError: any) {
+        console.error('[blog/generate] Auth error:', authError?.message);
         return res.status(403).json({ success: false, error: 'Forbidden' });
     }
 
