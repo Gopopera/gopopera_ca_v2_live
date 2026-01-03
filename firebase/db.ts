@@ -955,6 +955,7 @@ export async function getReservationById(reservationId: string): Promise<Firesto
 
 /**
  * Update reservation with check-in info (host only)
+ * Sets status to "checked_in" along with timestamp and host uid
  */
 export async function updateReservationCheckIn(reservationId: string, checkedInByUid: string): Promise<void> {
   const db = getDbSafe();
@@ -966,11 +967,12 @@ export async function updateReservationCheckIn(reservationId: string, checkedInB
     const reservationRef = doc(db, "reservations", reservationId);
     
     await updateDoc(reservationRef, {
+      status: "checked_in",
       checkedInAt: serverTimestamp(),
       checkedInBy: checkedInByUid,
     });
     
-    console.log('[CHECK_IN] ✅ Reservation checked in:', { reservationId, checkedInBy: checkedInByUid });
+    console.log('[CHECK_IN] ✅ Reservation checked in:', { reservationId, checkedInBy: checkedInByUid, status: 'checked_in' });
   } catch (error: any) {
     console.error('Error checking in reservation:', error);
     throw error;
@@ -988,18 +990,15 @@ export async function getCheckedInCountForEvent(eventId: string): Promise<number
   
   try {
     const reservationsCol = collection(db, "reservations");
+    // Query for status === "checked_in" (the new canonical way)
     const q = query(
       reservationsCol, 
       where("eventId", "==", eventId), 
-      where("status", "==", "reserved")
+      where("status", "==", "checked_in")
     );
     const snap = await getDocs(q);
     
-    // Count reservations that have checkedInAt set
-    return snap.docs.filter(doc => {
-      const data = doc.data();
-      return !!data.checkedInAt;
-    }).length;
+    return snap.size;
   } catch (error: any) {
     console.error("Error fetching checked-in count:", error);
     return 0;

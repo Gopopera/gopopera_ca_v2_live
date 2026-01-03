@@ -1,6 +1,6 @@
 console.log("[BOOT] GroupChat.tsx loaded at runtime");
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { X, Users, Send, Megaphone, BarChart2, MessageCircle, FileText, ChevronRight, ChevronDown, ChevronUp, Sparkles, ArrowLeft, MoreVertical, Pin, Image as ImageIcon, Lock, Download, MessageSquareOff, HelpCircle, Loader2 } from 'lucide-react';
+import { X, Users, Send, Megaphone, BarChart2, MessageCircle, FileText, ChevronRight, ChevronDown, ChevronUp, Sparkles, ArrowLeft, MoreVertical, Pin, Image as ImageIcon, Lock, Download, MessageSquareOff, HelpCircle, Loader2, QrCode } from 'lucide-react';
 import { Event } from '@/types';
 import { useUserStore } from '@/stores/userStore';
 import { useChatStore } from '@/stores/chatStore';
@@ -8,6 +8,7 @@ import { ChatReservationBlocker } from './ChatReservationBlocker';
 import { DemoEventBlocker } from './DemoEventBlocker';
 import { GroupChatHeader } from './GroupChatHeader';
 import { AttendeeList } from './AttendeeList';
+import { ScanTicketsModal } from './ScanTicketsModal';
 import { ExpelUserModal } from './ExpelUserModal';
 import { CreatePollModal } from './CreatePollModal';
 import { CreateAnnouncementModal } from './CreateAnnouncementModal';
@@ -237,6 +238,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
   const [showAttendeeList, setShowAttendeeList] = useState(false);
+  const [showScanTickets, setShowScanTickets] = useState(false);
   const [chatLocked, setChatLocked] = useState(false);
   const [muteAll, setMuteAll] = useState(false);
   const [showExpelModal, setShowExpelModal] = useState(false);
@@ -1613,6 +1615,17 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
              <Users size={18} className="mr-3 text-gray-400 group-hover:text-white" />
              Attendees
            </button>
+           
+           {/* Scan Tickets Button - Host Only */}
+           {isHost && (
+             <button
+               onClick={() => setShowScanTickets(true)}
+               className="w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all text-gray-300 hover:bg-white/10 group"
+             >
+               <QrCode size={18} className="mr-3 text-gray-400 group-hover:text-white" />
+               Scan Tickets
+             </button>
+           )}
         </div>
 
         <div className="p-6 mt-auto border-t border-white/10 bg-[#0f2a2d]">
@@ -2143,6 +2156,17 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
         isOpen={showAttendeeList}
         onClose={() => setShowAttendeeList(false)}
       />
+
+      {/* Scan Tickets Modal - Host Only */}
+      {isHost && (
+        <ScanTicketsModal
+          isOpen={showScanTickets}
+          onClose={() => setShowScanTickets(false)}
+          eventId={event.id}
+          hostUid={currentUserId || ''}
+          eventTitle={event.title}
+        />
+      )}
 
       {/* Expel User Modal */}
       {userToExpel && (

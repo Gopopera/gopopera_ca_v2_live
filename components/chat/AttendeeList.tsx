@@ -15,6 +15,7 @@ interface Attendee {
   reservedAt?: number;
   cancelledAt?: number;
   checkedInAt?: number;
+  status?: 'reserved' | 'checked_in' | 'cancelled';
 }
 
 interface AttendeeListProps {
@@ -94,12 +95,12 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
       const db = getDbSafe();
       if (!db) return;
 
-      // FIX: Only get ACTIVE reservations (status="reserved") to match EventDetailPage count
+      // FIX: Get ACTIVE reservations (status="reserved" OR "checked_in") to show all valid attendees
       const rsvpsRef = collection(db, 'reservations');
       const rsvpsQuery = query(
         rsvpsRef, 
         where('eventId', '==', eventId),
-        where('status', '==', 'reserved')
+        where('status', 'in', ['reserved', 'checked_in'])
       );
       const rsvpsSnapshot = await getDocs(rsvpsQuery);
       
@@ -183,11 +184,12 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
             userName: userData?.displayName || userData?.name || 'User',
             userPhoto: userData?.photoURL || userData?.imageUrl,
             isHost: false,
-            hasRSVP: true, // Always true since we only query status="reserved"
+            hasRSVP: true, // Always true since we only query active statuses
             isBanned,
             reservedAt: rsvpData.reservedAt,
             cancelledAt: rsvpData.cancelledAt,
             checkedInAt: rsvpData.checkedInAt,
+            status: rsvpData.status,
           });
         } catch (error) {
           console.error('Error loading user:', error);
@@ -297,9 +299,17 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
                           Banned
                         </span>
                       )}
+                      {/* Checked in badge - show if status is checked_in OR checkedInAt exists */}
+                      {!attendee.isHost && (attendee.status === 'checked_in' || attendee.checkedInAt) && (
+                        <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold uppercase">
+                          Checked in
+                        </span>
+                      )}
                     </div>
-                    {/* FIX: Always show RSVP'd since query only returns reserved status */}
-                    <p className="text-xs text-gray-500">RSVP'd</p>
+                    {/* Show status: Checked in or RSVP'd */}
+                    <p className="text-xs text-gray-500">
+                      {(attendee.status === 'checked_in' || attendee.checkedInAt) ? 'Checked in' : "RSVP'd"}
+                    </p>
                     {/* Action history log - FIX: Handle Invalid Date by checking type and value */}
                     {(attendee.reservedAt || attendee.checkedInAt) && (
                       <div className="text-[10px] text-gray-400 mt-0.5 space-y-0.5">
