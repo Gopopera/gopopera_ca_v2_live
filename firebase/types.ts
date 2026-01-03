@@ -98,7 +98,7 @@ export interface FirestoreUser {
   username?: string | null;
   createdAt: number;
   updatedAt?: number;
-  
+
   // Extended fields (kept for functionality)
   city?: string;
   preferences?: 'attend' | 'host' | 'both';
@@ -121,13 +121,13 @@ export interface FirestoreUser {
   isOfficialHost?: boolean;
   isVerified?: boolean;
   isPoperaDemoHost?: boolean;
-  
+
   // Stripe Connect fields for host payouts
   stripeAccountId?: string; // Stripe Connect account ID
   stripeOnboardingStatus?: 'pending' | 'incomplete' | 'complete' | 'pending_verification'; // Onboarding status
   stripeOnboardingUrl?: string; // Link to complete onboarding
   stripeAccountEnabled?: boolean; // Whether account can receive payouts
-  
+
   // DEPRECATED FIELDS - kept for backward compatibility during migration
   // These will be removed after migration is complete
   /** @deprecated Use displayName instead */
@@ -197,7 +197,7 @@ export interface FirestoreChatMessage {
   createdAt: number;
   type?: 'message' | 'announcement' | 'poll' | 'system';
   isHost?: boolean;
-  
+
   // DEPRECATED FIELDS - kept for backward compatibility during migration
   /** @deprecated Use senderId instead */
   userId?: string;
@@ -293,7 +293,7 @@ export interface OutreachTemplate {
 /**
  * Lead status for CRM pipeline
  */
-export type LeadStatus = 
+export type LeadStatus =
   | 'new'              // Just imported/added
   | 'contacted'        // Initial outreach sent
   | 'replied'          // Lead responded
@@ -373,4 +373,70 @@ export interface LeadScanCache {
   email?: string;                  // Email if found
   emailSourceUrl?: string;         // URL where email was found
   emailConfidence?: 'high' | 'medium' | 'low';
+}
+
+// ============================================
+// Blog System Types
+// ============================================
+
+/**
+ * Published blog post (public read)
+ * Collection: blog_posts
+ */
+export interface BlogPost {
+  id: string;
+  slug: string;                    // URL-friendly identifier
+  title: string;
+  metaTitle: string;               // SEO title
+  metaDescription: string;         // SEO description
+  excerpt: string;                 // Short preview text
+  contentHtml: string;             // Full article content as sanitized HTML
+  heroImageUrl?: string;           // Featured image URL
+  heroImageAlt?: string;           // Featured image alt text
+  tags?: string[];                 // Topic tags
+  publishedAt: number;             // Timestamp when published
+  updatedAt: number;               // Timestamp of last update
+  canonicalUrl?: string;           // Canonical URL if reposted/imported
+  sourceUrl?: string;              // Original URL if imported
+  attribution?: string;            // Attribution text for imported content
+}
+
+/**
+ * Blog draft (admin-only)
+ * Collection: blog_drafts
+ */
+export interface BlogDraft {
+  id: string;
+  slug: string;                    // URL-friendly identifier
+  title: string;
+  metaTitle: string;               // SEO title
+  metaDescription: string;         // SEO description
+  excerpt: string;                 // Short preview text
+  contentHtml: string;             // Full article content as HTML
+  heroImageUrl?: string;           // Featured image URL
+  heroImageAlt?: string;           // Featured image alt text
+  tags?: string[];                 // Topic tags
+  status: 'draft' | 'review' | 'approved';
+  createdAt: number;               // Timestamp when created
+  updatedAt: number;               // Timestamp of last update
+  topicId?: string;                // Reference to parent topic (if generated)
+  variantLabel?: string;           // 'A' or 'B' for generated variants
+  sourceUrl?: string;              // Original URL if imported
+  attribution?: string;            // Attribution text for imported content
+  canonicalUrl?: string;           // Suggested canonical URL
+}
+
+/**
+ * Blog topic for batch generation (admin-only)
+ * Collection: blog_topics
+ */
+export interface BlogTopic {
+  id: string;
+  title: string;                   // Topic title/prompt
+  context?: string;                // Optional additional context
+  status: 'pending' | 'generating' | 'generated' | 'failed';
+  createdAt: number;               // Timestamp when created
+  updatedAt: number;               // Timestamp of last update
+  draftIds?: string[];             // References to generated drafts
+  errorMessage?: string;           // Error message if generation failed
 }
