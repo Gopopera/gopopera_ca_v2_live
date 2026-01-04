@@ -29,6 +29,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
         const db = getAdminFirestore();
+        if (!db) {
+            return res.status(500).send('<?xml version="1.0" encoding="UTF-8"?><error>Firebase not configured</error>');
+        }
         const postsRef = db.collection('blog_posts');
         const snapshot = await postsRef.orderBy('publishedAt', 'desc').get();
 

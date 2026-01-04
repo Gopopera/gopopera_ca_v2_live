@@ -78,6 +78,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         const db = getAdminFirestore();
+        if (!db) {
+            return res.status(500).json({ success: false, error: 'Firebase not configured' });
+        }
         const draftsRef = db.collection('blog_drafts');
         const now = Date.now();
 

@@ -108,6 +108,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (body.draftId) {
             // Fetch draft from Firestore
             const db = getAdminFirestore();
+            if (!db) {
+                return res.status(500).json({ success: false, error: 'Firebase not configured' });
+            }
             const draftDoc = await db.collection('blog_drafts').doc(body.draftId).get();
             if (!draftDoc.exists) {
                 return res.status(404).json({ success: false, error: 'Draft not found' });
@@ -126,6 +129,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         const db = getAdminFirestore();
+        if (!db) {
+            return res.status(500).json({ success: false, error: 'Firebase not configured' });
+        }
         const now = Date.now();
 
         // Get unique slug
