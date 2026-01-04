@@ -303,6 +303,24 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
   const [blogPublishing, setBlogPublishing] = useState<number | null>(null); // index of draft being published
   const [blogPublishedSlugs, setBlogPublishedSlugs] = useState<Map<number, string>>(new Map()); // index -> published slug
 
+  // Published Posts state (fetched from blog_posts collection)
+  const [publishedPosts, setPublishedPosts] = useState<Array<{
+    id: string;
+    slug: string;
+    title: string;
+    metaTitle: string;
+    metaDescription: string;
+    excerpt: string;
+    contentHtml: string;
+    heroImageUrl?: string;
+    heroImageAlt?: string;
+    tags?: string[];
+    publishedAt: number;
+    updatedAt: number;
+  }>>([]);
+  const [loadingPublishedPosts, setLoadingPublishedPosts] = useState(false);
+  const [unpublishingPostId, setUnpublishingPostId] = useState<string | null>(null);
+
   // Build email params
   const emailParams: MarketingEmailParams = useMemo(() => ({
     subject,
@@ -416,6 +434,36 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       console.log('[MarketingHub] Conditions NOT met, skipping loadLeads()');
     }
   }, [isAdmin, activeTab, loadLeads]);
+
+  // Load published posts for Blog tab
+  const loadPublishedPosts = useCallback(async () => {
+    const db = getDbSafe();
+    if (!db) return;
+
+    setLoadingPublishedPosts(true);
+    try {
+      const postsRef = collection(db, 'blog_posts');
+      const q = query(postsRef, orderBy('publishedAt', 'desc'), limit(50));
+      const snapshot = await getDocs(q);
+
+      const posts = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+      })) as typeof publishedPosts;
+
+      setPublishedPosts(posts);
+    } catch (error) {
+      console.error('[MarketingHub] Error loading published posts:', error);
+    } finally {
+      setLoadingPublishedPosts(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAdmin && activeTab === 'blog') {
+      loadPublishedPosts();
+    }
+  }, [isAdmin, activeTab, loadPublishedPosts]);
 
   // Escape key handler for modals
   useEffect(() => {
@@ -1302,9 +1350,14 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     showNotification('success', 'Copied to clipboard');
   };
 
-  // Blog: Open edit modal for a draft
-  const handleOpenEditDraft = (draft: any, index: number) => {
-    setBlogEditDraft({ ...draft, _index: index });
+  // Blog: Open edit modal for a draft or published post
+  const handleOpenEditDraft = (draft: any, index: number, isPublished = false) => {
+    setBlogEditDraft({
+      ...draft,
+      _index: index,
+      _isPublished: isPublished,
+      _postId: isPublished ? draft.id : undefined,
+    });
     setBlogEditForm({
       title: draft.title || '',
       slug: draft.slug || '',
@@ -1317,15 +1370,14 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
     });
   };
 
-  // Blog: Save edited draft (persists to Firestore via API)
+  // Blog: Save edited draft or published post
   const handleSaveEditDraft = async () => {
     if (!blogEditDraft) return;
     setBlogEditSaving(true);
     setBlogError(null);
 
     try {
-      const updatedDraft = {
-        ...blogEditDraft,
+      const updatedData = {
         title: blogEditForm.title,
         slug: blogEditForm.slug,
         excerpt: blogEditForm.excerpt,
@@ -1334,21 +1386,109 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
         tags: blogEditForm.tags.split(',').map(t => t.trim()).filter(t => t),
         heroImageUrl: blogEditForm.heroImageUrl,
         contentHtml: blogEditForm.contentHtml,
-        updatedAt: Date.now(),
       };
 
-      // Persist to Firestore via API
       const token = await getIdToken();
-      const response = await fetch('/api/blog/save-draft', {
+
+      // If editing a published post, update via /api/blog/publish with postId
+      if (blogEditDraft._isPublished && blogEditDraft._postId) {
+        const response = await fetch('/api/blog/publish', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            postId: blogEditDraft._postId,
+            draft: updatedData,
+          }),
+        });
+
+        const rawText = await response.text();
+        let result: any;
+        try {
+          result = JSON.parse(rawText);
+        } catch {
+          throw new Error(`Server returned non-JSON: ${rawText.substring(0, 100)}...`);
+        }
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to update published post');
+        }
+
+        // Update local published posts array
+        setPublishedPosts(prev =>
+          prev.map(p =>
+            p.id === blogEditDraft._postId
+              ? { ...p, ...updatedData, slug: result.slug, updatedAt: Date.now() }
+              : p
+          )
+        );
+
+        showNotification('success', 'Published post updated');
+        setBlogEditDraft(null);
+      } else {
+        // Existing behavior: save as draft
+        const response = await fetch('/api/blog/save-draft', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            draft: { ...blogEditDraft, ...updatedData, updatedAt: Date.now() },
+            draftId: blogEditDraft.id || blogEditDraft.draftId || undefined,
+          }),
+        });
+
+        const rawText = await response.text();
+        let result: any;
+        try {
+          result = JSON.parse(rawText);
+        } catch {
+          throw new Error(`Server returned non-JSON: ${rawText.substring(0, 100)}...`);
+        }
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to save draft');
+        }
+
+        // Update local drafts array with returned draftId
+        const index = blogEditDraft._index;
+        if (typeof index === 'number' && index >= 0) {
+          setBlogGeneratedDrafts(prev => {
+            const newDrafts = [...prev];
+            newDrafts[index] = { ...prev[index], ...updatedData, draftId: result.draftId };
+            return newDrafts;
+          });
+        }
+
+        showNotification('success', 'Draft saved to Firestore');
+        setBlogEditDraft(null);
+      }
+    } catch (error: any) {
+      console.error('[MarketingHub] Edit draft/post error:', error);
+      setBlogError(error.message || 'Failed to save');
+    } finally {
+      setBlogEditSaving(false);
+    }
+  };
+
+  // Blog: Unpublish a post
+  const handleUnpublishPost = async (postId: string) => {
+    setUnpublishingPostId(postId);
+    setBlogError(null);
+
+    try {
+      const token = await getIdToken();
+
+      const response = await fetch('/api/blog/unpublish', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          draft: updatedDraft,
-          draftId: blogEditDraft.id || blogEditDraft.draftId || undefined,
-        }),
+        body: JSON.stringify({ postId }),
       });
 
       const rawText = await response.text();
@@ -1360,26 +1500,17 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       }
 
       if (!result.success) {
-        throw new Error(result.error || 'Failed to save draft');
+        throw new Error(result.error || 'Failed to unpublish');
       }
 
-      // Update local drafts array with returned draftId
-      const index = blogEditDraft._index;
-      if (typeof index === 'number' && index >= 0) {
-        setBlogGeneratedDrafts(prev => {
-          const newDrafts = [...prev];
-          newDrafts[index] = { ...updatedDraft, draftId: result.draftId };
-          return newDrafts;
-        });
-      }
-
-      showNotification('success', 'Draft saved to Firestore');
-      setBlogEditDraft(null);
+      // Remove from local state
+      setPublishedPosts(prev => prev.filter(p => p.id !== postId));
+      showNotification('success', 'Post unpublished');
     } catch (error: any) {
-      console.error('[MarketingHub] Edit draft error:', error);
-      setBlogError(error.message || 'Failed to save draft');
+      console.error('[MarketingHub] Unpublish error:', error);
+      setBlogError(error.message || 'Failed to unpublish');
     } finally {
-      setBlogEditSaving(false);
+      setUnpublishingPostId(null);
     }
   };
 
@@ -1416,6 +1547,8 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
       if (result.success && result.slug) {
         setBlogPublishedSlugs(prev => new Map(prev).set(index, result.slug));
         showNotification('success', `Published! View at /blog/${result.slug}`);
+        // Refresh published posts list
+        loadPublishedPosts();
       } else {
         throw new Error(result.error || 'Failed to publish');
       }
@@ -3351,6 +3484,88 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
               </div>
             )}
 
+            {/* Published Posts Section */}
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                <h3 className="font-semibold text-[#15383c] flex items-center gap-2">
+                  <Globe2 size={18} />
+                  Published Posts ({publishedPosts.length})
+                </h3>
+                {loadingPublishedPosts && <Loader2 size={16} className="animate-spin text-gray-400" />}
+              </div>
+              {publishedPosts.length === 0 && !loadingPublishedPosts ? (
+                <div className="p-8 text-center text-gray-500">
+                  <Globe2 size={32} className="mx-auto mb-2 opacity-40" />
+                  <p className="text-sm">No published posts yet</p>
+                </div>
+              ) : (
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Title</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Slug</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Published</th>
+                      <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Tags</th>
+                      <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {publishedPosts.map((post, idx) => (
+                      <tr key={post.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-[#15383c] text-sm">{post.title}</p>
+                          <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{post.excerpt}</p>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600 font-mono">{post.slug}</td>
+                        <td className="px-4 py-3 text-sm text-gray-500">
+                          {new Date(post.publishedAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1">
+                            {post.tags?.slice(0, 3).map((tag, i) => (
+                              <span key={i} className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">{tag}</span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <a
+                              href={`/blog/${post.slug}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 text-gray-500 hover:text-[#15383c] hover:bg-gray-100 rounded"
+                              title="View"
+                            >
+                              <ExternalLink size={14} />
+                            </a>
+                            <button
+                              onClick={() => handleOpenEditDraft(post, idx, true)}
+                              className="p-1.5 text-gray-500 hover:text-[#15383c] hover:bg-gray-100 rounded"
+                              title="Edit"
+                            >
+                              <Edit3 size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleUnpublishPost(post.id)}
+                              disabled={unpublishingPostId === post.id}
+                              className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded disabled:opacity-50"
+                              title="Unpublish"
+                            >
+                              {unpublishingPostId === post.id ? (
+                                <Loader2 size={14} className="animate-spin" />
+                              ) : (
+                                <X size={14} />
+                              )}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
             {/* Draft Preview Panel */}
             {blogPreviewDraft && (
               <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -3386,12 +3601,14 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
           </div>
         )}
 
-        {/* Blog Edit Draft Modal */}
+        {/* Blog Edit Draft/Post Modal */}
         {blogEditDraft && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <div className="p-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
-                <h3 className="font-semibold text-[#15383c]">Edit Draft</h3>
+                <h3 className="font-semibold text-[#15383c]">
+                  {blogEditDraft._isPublished ? 'Edit Published Post' : 'Edit Draft'}
+                </h3>
                 <button
                   onClick={() => setBlogEditDraft(null)}
                   className="p-1.5 hover:bg-gray-100 rounded"
@@ -3493,7 +3710,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
                   className="px-4 py-2 bg-[#e35e25] text-white rounded-lg hover:bg-[#d54d1a] disabled:opacity-50 flex items-center gap-2"
                 >
                   {blogEditSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                  Save Draft
+                  {blogEditDraft._isPublished ? 'Update Post' : 'Save Draft'}
                 </button>
               </div>
             </div>

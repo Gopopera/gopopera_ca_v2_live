@@ -36,6 +36,7 @@ interface DraftPayload {
 interface PublishRequest {
     draftId?: string;
     draft?: DraftPayload;
+    postId?: string; // If provided, update this existing blog_posts doc instead of creating new
 }
 
 // ============================================
@@ -44,13 +45,22 @@ interface PublishRequest {
 
 /**
  * Generate a unique slug by appending -2, -3, etc. if the base slug exists
+ * @param excludePostId - If provided, ignore this postId when checking for duplicates (for edits)
  */
-async function getUniqueSlug(db: FirebaseFirestore.Firestore, baseSlug: string): Promise<string> {
+async function getUniqueSlug(
+    db: FirebaseFirestore.Firestore,
+    baseSlug: string,
+    excludePostId?: string
+): Promise<string> {
     const postsRef = db.collection('blog_posts');
 
     // Check if base slug exists
     const baseCheck = await postsRef.where('slug', '==', baseSlug).limit(1).get();
     if (baseCheck.empty) {
+        return baseSlug;
+    }
+    // If the only match is the excluded post, the slug is available
+    if (excludePostId && baseCheck.docs.length === 1 && baseCheck.docs[0].id === excludePostId) {
         return baseSlug;
     }
 
@@ -60,6 +70,10 @@ async function getUniqueSlug(db: FirebaseFirestore.Firestore, baseSlug: string):
         const candidateSlug = `${baseSlug}-${suffix}`;
         const check = await postsRef.where('slug', '==', candidateSlug).limit(1).get();
         if (check.empty) {
+            return candidateSlug;
+        }
+        // If the only match is the excluded post, the slug is available
+        if (excludePostId && check.docs.length === 1 && check.docs[0].id === excludePostId) {
             return candidateSlug;
         }
         suffix++;
@@ -102,15 +116,64 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
         const body = req.body as PublishRequest;
 
-        // Validate input
+        const db = getAdminFirestore();
+        if (!db) {
+            return res.status(500).json({ success: false, error: 'Firebase not configured' });
+        }
+        const now = Date.now();
+        const postsRef = db.collection('blog_posts');
+
+        // ============================================
+        // PATH A: Update existing published post by postId
+        // ============================================
+        if (body.postId && body.draft) {
+            const postDoc = await postsRef.doc(body.postId).get();
+            if (!postDoc.exists) {
+                return res.status(404).json({ success: false, error: 'Published post not found' });
+            }
+
+            const draftData = body.draft;
+
+            // Validate required fields
+            if (!draftData.slug || !draftData.title || !draftData.contentHtml) {
+                return res.status(400).json({ success: false, error: 'Draft missing required fields (slug, title, contentHtml)' });
+            }
+
+            // Get unique slug, excluding current postId from duplicate check
+            const finalSlug = await getUniqueSlug(db, draftData.slug, body.postId);
+
+            await postsRef.doc(body.postId).update({
+                slug: finalSlug,
+                title: draftData.title,
+                metaTitle: draftData.metaTitle || draftData.title,
+                metaDescription: draftData.metaDescription || draftData.excerpt || '',
+                excerpt: draftData.excerpt || '',
+                contentHtml: draftData.contentHtml,
+                heroImageUrl: draftData.heroImageUrl || null,
+                heroImageAlt: draftData.heroImageAlt || null,
+                tags: draftData.tags || [],
+                sourceUrl: draftData.sourceUrl || null,
+                attribution: draftData.attribution || null,
+                canonicalUrl: draftData.canonicalUrl || null,
+                updatedAt: now,
+            });
+
+            console.log('[blog/publish] Updated published post by postId:', body.postId);
+
+            return res.status(200).json({
+                success: true,
+                postId: body.postId,
+                slug: finalSlug,
+            });
+        }
+
+        // ============================================
+        // PATH B: Publish from draft (existing behavior)
+        // ============================================
         let draftData: DraftPayload;
 
         if (body.draftId) {
             // Fetch draft from Firestore
-            const db = getAdminFirestore();
-            if (!db) {
-                return res.status(500).json({ success: false, error: 'Firebase not configured' });
-            }
             const draftDoc = await db.collection('blog_drafts').doc(body.draftId).get();
             if (!draftDoc.exists) {
                 return res.status(404).json({ success: false, error: 'Draft not found' });
@@ -128,17 +191,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(400).json({ success: false, error: 'Draft missing required fields (slug, title, contentHtml)' });
         }
 
-        const db = getAdminFirestore();
-        if (!db) {
-            return res.status(500).json({ success: false, error: 'Firebase not configured' });
-        }
-        const now = Date.now();
-
         // Get unique slug
         const finalSlug = await getUniqueSlug(db, draftData.slug);
-
-        // Create or update blog_posts document
-        const postsRef = db.collection('blog_posts');
 
         // Check if post with this slug already exists (for republishing)
         const existingPost = await postsRef.where('slug', '==', finalSlug).limit(1).get();
