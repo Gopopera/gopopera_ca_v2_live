@@ -2,15 +2,16 @@
  * Blog Draft Generation API
  *
  * POST /api/blog/generate
- * Input: { topics: Array<{ title: string; context?: string }>, variants?: number }
- * Output: { success: true, drafts: Array<Partial<BlogDraft>> }
+ * Input: { topics: Array<{ title: string; context?: string }>, language?: "en" | "fr" }
+ * Output: { success: true, drafts: Array<DraftPayload> } (always length 1)
  *
  * - Node serverless (not Edge)
  * - Requires admin auth
- * - Uses OpenAI gpt-4o-mini via HTTP fetch
- * - Returns draft payloads (client saves to Firestore)
+ * - Uses OpenAI SDK with Structured Outputs
+ * - Returns single draft payload per topic (client saves to Firestore)
  */
 
+import OpenAI from 'openai';
 import { verifyAdminToken } from '../_lib/firebaseAdmin.js';
 
 // ============================================
@@ -24,7 +25,7 @@ interface TopicInput {
 
 interface GenerateRequest {
     topics: TopicInput[];
-    variants?: number;
+    language?: 'en' | 'fr';
 }
 
 interface DraftPayload {
@@ -45,19 +46,6 @@ interface DraftPayload {
 // ============================================
 // Utilities
 // ============================================
-
-/**
- * Generate a URL-friendly slug from a title
- */
-function generateSlug(title: string): string {
-    return title
-        .toLowerCase()
-        .trim()
-        .replace(/[^\w\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '');
-}
 
 /**
  * Sanitize HTML by stripping dangerous tags and attributes
@@ -88,39 +76,93 @@ function sanitizeHtml(html: string): string {
     return clean;
 }
 
-/**
- * Call OpenAI API via HTTP fetch
- */
-async function callOpenAI(
-    apiKey: string,
-    systemPrompt: string,
-    userPrompt: string
-): Promise<string> {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`,
+// ============================================
+// OpenAI Structured Output Schema
+// ============================================
+
+const blogDraftSchema = {
+    name: 'popera_blog_draft',
+    strict: true,
+    schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+            title: { type: 'string', minLength: 10, maxLength: 80 },
+
+            slug: {
+                type: 'string',
+                description:
+                    'Clean production slug. Lowercase. Hyphens. No trailing hyphen. Must NOT end with "-a" or "-b".',
+                pattern: '^(?!.*-(a|b)$)[a-z0-9]+(?:-[a-z0-9]+)*$',
+                minLength: 10,
+                maxLength: 120,
+            },
+
+            metaTitle: { type: 'string', minLength: 10, maxLength: 60 },
+            metaDescription: { type: 'string', minLength: 50, maxLength: 155 },
+            excerpt: { type: 'string', minLength: 80, maxLength: 220 },
+
+            tags: {
+                type: 'array',
+                minItems: 3,
+                maxItems: 6,
+                items: { type: 'string', minLength: 2, maxLength: 24 },
+            },
+
+            heroImageAlt: { type: 'string', minLength: 20, maxLength: 140 },
+
+            tldrBullets: {
+                type: 'array',
+                minItems: 3,
+                maxItems: 5,
+                items: { type: 'string', minLength: 20, maxLength: 120 },
+            },
+
+            internalLinks: {
+                type: 'array',
+                minItems: 2,
+                maxItems: 5,
+                items: {
+                    type: 'object',
+                    additionalProperties: false,
+                    properties: {
+                        anchorText: { type: 'string', minLength: 4, maxLength: 60 },
+                        href: { type: 'string', minLength: 2, maxLength: 120 },
+                    },
+                    required: ['anchorText', 'href'],
+                },
+            },
+
+            visualIdeas: {
+                type: 'array',
+                minItems: 1,
+                maxItems: 3,
+                items: { type: 'string', minLength: 25, maxLength: 160 },
+            },
+
+            contentHtml: {
+                type: 'string',
+                description:
+                    'Full article HTML. Must include TL;DR block near top, Popera-specific examples, 1 mini case study, inline internal links, and a trust block near end.',
+                minLength: 1200,
+                maxLength: 20000,
+            },
         },
-        body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt },
-            ],
-            max_tokens: 2000,
-            temperature: 0.7,
-        }),
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`OpenAI API error: ${response.status} - ${errorText.substring(0, 200)}`);
-    }
-
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content?.trim() || '';
-}
+        required: [
+            'title',
+            'slug',
+            'metaTitle',
+            'metaDescription',
+            'excerpt',
+            'tags',
+            'heroImageAlt',
+            'tldrBullets',
+            'internalLinks',
+            'visualIdeas',
+            'contentHtml',
+        ],
+    },
+} as const;
 
 // ============================================
 // Main Handler
@@ -154,90 +196,113 @@ export default async function handler(req: any, res: any) {
     }
 
     try {
-        const { topics }: GenerateRequest = req.body || {};
-        const variants = 1; // Enforce 1 draft per topic
+        const { topics, language = 'en' }: GenerateRequest = req.body || {};
 
         if (!Array.isArray(topics) || topics.length === 0) {
             return res.status(400).json({ success: false, error: 'topics array is required' });
         }
 
-        if (topics.length > 10) {
-            return res.status(400).json({ success: false, error: 'Maximum 10 topics per request' });
+        // Process only the first topic (single draft)
+        const topic = topics[0];
+        if (!topic?.title) {
+            return res.status(400).json({ success: false, error: 'Topic title is required' });
         }
 
-        const drafts: DraftPayload[] = [];
         const now = Date.now();
+        const topicId = `topic_${now}_${Math.random().toString(36).substring(2, 8)}`;
 
-        const systemPrompt = `You are a content writer for Popera, a platform for small in-person community experiences called "Circles" (3-10 seats each). 
+        // Initialize OpenAI client
+        const client = new OpenAI({ apiKey: OPENAI_API_KEY });
+        const model = process.env.POPERA_BLOG_MODEL ?? 'gpt-4.1-mini';
 
-Your job is to write engaging, educational blog posts that:
-1. Provide valuable tips and insights for people who want to host or attend small gatherings
-2. Include at least ONE specific Popera Circle example (make it realistic but fictional)
-3. End with a call-to-action encouraging readers to host or join a Circle on Popera
-4. Use a warm, friendly, conversational tone
-5. Are SEO-optimized with proper heading structure (H2, H3)
+        const siteBaseUrl = 'https://gopopera.ca';
 
-Output format: Return ONLY valid JSON with these fields:
-{
-  "title": "Engaging blog post title",
-  "excerpt": "2-3 sentence summary for preview cards",
-  "metaTitle": "SEO title (max 60 chars)",
-  "metaDescription": "SEO description (max 160 chars)",
-  "tags": ["tag1", "tag2", "tag3"],
-  "contentHtml": "<h2>Opening...</h2><p>Content...</p>..."
-}
+        // Category taxonomy based on language
+        const categoryTaxonomy =
+            language === 'fr'
+                ? 'CRÉER & FABRIQUER; MANGER & BOIRE; BOUGER & RESPIRER; DISCUTER & RÉFLÉCHIR; COMMUNAUTÉ & SOUTIEN (+ TOUT)'
+                : 'MAKE & CREATE; EAT & DRINK; MOVE & FLOW; TALK & THINK; COMMUNITY & SUPPORT (+ ALL)';
 
-Write the contentHtml as proper HTML with <h2>, <h3>, <p>, <ul>, <li>, <strong>, <em> tags only. No markdown.`;
+        const systemPrompt = `
+You write blog posts for Popera (${siteBaseUrl}).
+Popera is a peer-to-peer marketplace for small in-person circles (3–10 people) designed for real local connection and micro-learning.
+Categories taxonomy:
+${categoryTaxonomy}
 
-        for (const topic of topics) {
-            const topicId = `topic_${now}_${Math.random().toString(36).substring(2, 8)}`;
+Hard rules:
+- Output MUST match the provided JSON schema exactly.
+- Generate EXACTLY ONE blog draft. No variants, no "Version A/B", no multiple options.
+- Slug must be clean production (NO "-a", "-b", "variant", etc.).
+- Writing must NOT sound generic AI: be specific, practical, and opinionated (Popera POV).
+- Add E-E-A-T signals WITHOUT pretending to be a person:
+  include a trust block: "Written by Popera Team" + 1–2 lines about the mission.
+- Avoid fake stats, fake quotes, or made-up sources. If you cannot cite reliably, don't cite.
+- Do NOT invent heroImageUrl. The heroImageUrl field is not in this schema.
+- Must work in ${language === 'fr' ? 'French' : 'English'}.
 
-            for (let v = 0; v < variants; v++) {
-                const variantLabel = String.fromCharCode(65 + v); // A, B, C...
-                const userPrompt = `Write a blog post about: "${topic.title}"${topic.context ? `\n\nAdditional context: ${topic.context}` : ''}
+Content requirements (must be included inside contentHtml):
+1) TL;DR at the top (3–5 bullets) using <ul><li>...</li></ul>
+2) 2–3 Popera-specific "Circle" examples across different categories
+3) 1 mini case study (practical: steps + what works + what fails)
+4) 2–5 inline internal links using provided hrefs (e.g., /explore, /auth, /community)
+5) A "trust block" near the end:
+   <div class="popera-trust"><strong>Written by Popera Team</strong><p>...</p></div>
+6) End with a short, non-cringe CTA paragraph (no shouting).
+`;
 
-This is variant ${variantLabel}. Make it unique and different from other variants.`;
+        const userPrompt = `
+LANGUAGE: ${language}
+TOPIC: ${topic.title}
+SHARED CONTEXT: ${topic.context ?? '(none)'}
 
-                try {
-                    const rawResponse = await callOpenAI(OPENAI_API_KEY, systemPrompt, userPrompt);
+Internal links you can use (choose 2–5):
+- Browse circles: /explore
+- Join Popera: /auth
+- Community: /community
+- Host a Circle: /host
+- Blog: /blog
 
-                    // Parse JSON from response (handle potential markdown code blocks)
-                    let jsonStr = rawResponse;
-                    const jsonMatch = rawResponse.match(/```(?:json)?\s*([\s\S]*?)```/);
-                    if (jsonMatch) {
-                        jsonStr = jsonMatch[1];
-                    }
+Also return:
+- internalLinks array matching the anchors you used
+- visualIdeas: 1–3 original visual suggestions (e.g., simple diagram, screenshot idea)
+- tags: 3–6 short tags
+`;
 
-                    const parsed = JSON.parse(jsonStr);
+        const resp = await client.responses.create({
+            model,
+            input: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt },
+            ],
+            max_output_tokens: 4500,
+            text: {
+                format: {
+                    type: 'json_schema',
+                    json_schema: blogDraftSchema,
+                },
+            },
+        });
 
-                    const draft: DraftPayload = {
-                        title: parsed.title || topic.title,
-                        slug: generateSlug(parsed.title || topic.title) + `-${variantLabel.toLowerCase()}`,
-                        excerpt: parsed.excerpt || '',
-                        metaTitle: parsed.metaTitle || parsed.title || topic.title,
-                        metaDescription: parsed.metaDescription || parsed.excerpt || '',
-                        contentHtml: sanitizeHtml(parsed.contentHtml || ''),
-                        tags: Array.isArray(parsed.tags) ? parsed.tags : [],
-                        status: 'draft',
-                        createdAt: now,
-                        updatedAt: now,
-                        topicId,
-                        variantLabel,
-                    };
+        const parsed = JSON.parse(resp.output_text);
 
-                    drafts.push(draft);
-                } catch (parseError: any) {
-                    console.error(`[blog/generate] Failed to generate variant ${variantLabel} for topic "${topic.title}":`, parseError.message);
-                    // Continue with other topics/variants
-                }
-            }
-        }
+        // Build draft payload matching existing UI expectations
+        const draft: DraftPayload = {
+            title: parsed.title,
+            slug: parsed.slug,
+            excerpt: parsed.excerpt,
+            metaTitle: parsed.metaTitle,
+            metaDescription: parsed.metaDescription,
+            contentHtml: sanitizeHtml(parsed.contentHtml),
+            tags: Array.isArray(parsed.tags) ? parsed.tags : [],
+            status: 'draft',
+            createdAt: now,
+            updatedAt: now,
+            topicId,
+            variantLabel: 'Primary',
+        };
 
-        if (drafts.length === 0) {
-            return res.status(500).json({ success: false, error: 'Failed to generate any drafts' });
-        }
-
-        return res.status(200).json({ success: true, drafts });
+        // Return single draft in array (preserves existing response shape)
+        return res.status(200).json({ success: true, drafts: [draft] });
     } catch (error: any) {
         console.error('[blog/generate] Error:', error.message);
         return res.status(500).json({ success: false, error: error.message || 'Internal server error' });
