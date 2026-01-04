@@ -12,6 +12,15 @@ import { getAdminFirestore } from './_lib/firebaseAdmin.js';
 
 const SITE_URL = 'https://gopopera.ca';
 
+// Static public routes that return HTTP 200 (no auth required, no redirects)
+const STATIC_ROUTES = [
+  { path: '/', changefreq: 'weekly', priority: '1.0' },
+  { path: '/blog', changefreq: 'daily', priority: '0.9' },
+  { path: '/explore', changefreq: 'daily', priority: '0.9' },
+  { path: '/about', changefreq: 'monthly', priority: '0.7' },
+  { path: '/guidelines', changefreq: 'monthly', priority: '0.6' },
+];
+
 interface BlogPost {
     slug: string;
     publishedAt: number;
@@ -50,20 +59,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const now = new Date().toISOString().split('T')[0];
 
         let xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>${SITE_URL}/</loc>
-    <lastmod>${now}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>${SITE_URL}/blog</loc>
-    <lastmod>${now}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>`;
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
 
+        // Add static routes
+        for (const route of STATIC_ROUTES) {
+            xml += `
+  <url>
+    <loc>${SITE_URL}${route.path}</loc>
+    <lastmod>${now}</lastmod>
+    <changefreq>${route.changefreq}</changefreq>
+    <priority>${route.priority}</priority>
+  </url>`;
+        }
+
+        // Add blog posts
         for (const post of posts) {
             const lastmod = new Date(post.updatedAt).toISOString().split('T')[0];
             xml += `
