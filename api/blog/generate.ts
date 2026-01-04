@@ -278,7 +278,7 @@ Also return:
             text: {
                 format: {
                     type: 'json_schema',
-                    json_schema: blogDraftSchema,
+                    ...blogDraftSchema,
                 },
             },
         });
