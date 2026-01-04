@@ -19,6 +19,8 @@ import { useFilterStore } from '../../stores/filterStore';
 import { applyEventFilters } from '../../utils/filterEvents';
 import { matchesLocationFilter } from '../../utils/location';
 import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS, MAIN_CATEGORY_LABELS_FR, type MainCategory } from '../../utils/categoryMapper';
+import { listPublishedPosts } from '../../firebase/blog';
+import type { BlogPost } from '../../firebase/types';
 // Firebase imports moved to dynamic import in newsletter handler for faster initial load
 import { sendEmail } from '../lib/email';
 import { trackEvent } from '../lib/ga4';
@@ -51,17 +53,19 @@ interface LandingPageProps {
   isLoggedIn?: boolean;
   favorites?: string[];
   onToggleFavorite?: (e: React.MouseEvent, eventId: string) => void;
+  setSelectedBlogSlug?: (slug: string | null) => void;
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ 
-  setViewState, 
-  events, 
-  onEventClick, 
-  onChatClick, 
+export const LandingPage: React.FC<LandingPageProps> = ({
+  setViewState,
+  events,
+  onEventClick,
+  onChatClick,
   onReviewsClick,
   isLoggedIn,
   favorites = [],
-  onToggleFavorite
+  onToggleFavorite,
+  setSelectedBlogSlug
 }) => {
   const { t, language } = useLanguage();
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
@@ -73,10 +77,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const setCity = useSetCity();
   const location = city;
   const { filters, isFilterDrawerOpen, setFilterDrawerOpen, getActiveFilterCount, setFilter } = useFilterStore();
-  
+
+  // Blog posts state
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+
   // Initialize location from IP geolocation on mount
   useEffect(() => {
     initializeGeoLocation();
+  }, []);
+
+  // Fetch latest blog posts for homepage section
+  useEffect(() => {
+    const fetchBlogPosts = async () => {
+      const posts = await listPublishedPosts(3);
+      setBlogPosts(posts);
+    };
+    fetchBlogPosts();
   }, []);
 
   // Preload key landing page images for instant scroll-back display
@@ -92,7 +108,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         '/images/pillars/community.webp',
       ]);
     };
-    
+
     // Use requestIdleCallback to defer preloading until browser is idle
     // This prevents competition with hero image for bandwidth on initial load
     if ('requestIdleCallback' in window) {
@@ -102,26 +118,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       setTimeout(preloadBelowFoldImages, 2000);
     }
   }, []);
-  
+
   // PERFORMANCE OPTIMIZED: Filter events based on location and vibes (logging removed)
   const filteredEvents = useMemo(() => {
     let filtered = events;
-    
+
     // Apply city filter using centralized helper (utils/location.ts)
     // Handles "All Locations", "Canada", "United States", and specific cities
     filtered = filtered.filter(event => matchesLocationFilter(event, location));
-    
+
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(event => 
+      filtered = filtered.filter(event =>
         event.title.toLowerCase().includes(query) ||
         event.description.toLowerCase().includes(query) ||
         event.hostName.toLowerCase().includes(query) ||
         event.tags.some(tag => tag.toLowerCase().includes(query))
       );
     }
-    
+
     // Apply filter store filters (vibes, session frequency, mode, etc.)
     return applyEventFilters(filtered, filters);
   }, [events, location, searchQuery, filters]);
@@ -167,20 +183,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     <main className="min-h-screen bg-[#FAFAFA] w-full max-w-full overflow-x-hidden">
       {/* SEO: Landing page meta tags for improved search visibility */}
       <SeoHelmet viewState={ViewState.LANDING} />
-      
+
       {/* 1. Bring Your Crowd Anywhere (Hero section) */}
       <Hero setViewState={setViewState} />
-      
+
       {/* 2. Upcoming Events (event feed section) */}
       <section className="section-padding md:container md:mx-auto md:px-6 lg:px-8 bg-[#FAFAFA] overflow-hidden">
         {/* Header Content */}
         <div className="flex flex-col gap-4 sm:gap-5 md:gap-6 mb-6 sm:mb-8 md:mb-10 lg:mb-12">
           <div className="max-w-3xl">
             <div className="mb-3 sm:mb-4 px-4 sm:px-0">
-               <span className="inline-flex items-center gap-2 py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">
-                  <Sparkles size={10} className="sm:w-3 sm:h-3 -mt-0.5" />
-                  {t('feed.happeningNow')}
-               </span>
+              <span className="inline-flex items-center gap-2 py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">
+                <Sparkles size={10} className="sm:w-3 sm:h-3 -mt-0.5" />
+                {t('feed.happeningNow')}
+              </span>
             </div>
             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-[#15383c] mb-2 sm:mb-3 md:mb-4 px-4 sm:px-0">{t('feed.upcomingPopups')}</h2>
             <p className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-500 font-light leading-relaxed px-4 sm:px-0">{t('feed.seeWhereCrowd')}</p>
@@ -188,80 +204,78 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
           {/* SEARCH BAR & FILTERS */}
           <div className="mt-4 space-y-6 px-4 sm:px-0">
-             {/* Search Inputs Row */}
-             <div className="flex flex-col md:flex-row gap-3 w-full md:max-w-3xl relative z-30">
-                
-                {/* City Input with Autocomplete */}
-                <div className="w-full md:w-1/3">
-                  <CityInput />
-                </div>
+            {/* Search Inputs Row */}
+            <div className="flex flex-col md:flex-row gap-3 w-full md:max-w-3xl relative z-30">
 
-                {/* Search Bar */}
-                <div className="relative w-full md:w-2/3 group z-10">
-                    <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                      <Search size={20} className="text-gray-400 group-focus-within:text-[#e35e25] transition-colors" />
-                    </div>
-                    <input
-                      type="text"
-                      placeholder={t('feed.searchPlaceholder')}
-                      className="w-full pl-12 pr-4 py-3.5 md:py-4 min-h-[48px] sm:min-h-0 bg-white border border-gray-200 rounded-full text-base sm:text-sm focus:outline-none focus:border-[#15383c] focus:ring-2 focus:ring-[#15383c]/10 shadow-sm hover:shadow-md transition-all"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                </div>
-             </div>
+              {/* City Input with Autocomplete */}
+              <div className="w-full md:w-1/3">
+                <CityInput />
+              </div>
 
-             {/* Category Tabs + Filter Button */}
-             <div className="mt-4">
-               <div className="flex items-center justify-between mb-3">
-                 <h3 className="text-sm font-semibold text-gray-600">{t('landing.filterByCategory')}</h3>
-                 <button
-                   onClick={() => setFilterDrawerOpen(true)}
-                   className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border-2 border-[#15383c] text-[#15383c] font-medium hover:bg-[#15383c] hover:text-white transition-colors flex-shrink-0 touch-manipulation active:scale-[0.95] text-xs sm:text-sm"
-                 >
-                   <Filter size={16} className="sm:w-[18px] sm:h-[18px]" />
-                   <span className="hidden sm:inline">{t('landing.filters')}</span>
-                   {getActiveFilterCount() > 0 && (
-                     <span className="px-1.5 py-0.5 rounded-full bg-[#e35e25] text-white text-[10px] sm:text-xs font-bold">
-                       {getActiveFilterCount()}
-                     </span>
-                   )}
-                 </button>
-               </div>
-               <div className="relative z-10">
-                 <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4 scroll-pr-32 md:scroll-pr-4">
-                   {/* All tab */}
-                   <button
-                     onClick={() => setFilter('mainCategory', null)}
-                     className={`shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-bold tracking-wider uppercase transition-all touch-manipulation active:scale-[0.95] ${
-                       filters.mainCategory === null
-                         ? 'bg-[#e35e25] text-white shadow-md'
-                         : 'bg-white/20 backdrop-blur-md text-[#15383c] border border-[#15383c]/20 hover:border-[#e35e25] hover:text-[#e35e25]'
-                     }`}
-                   >
-                     {language === 'fr' ? 'TOUT' : 'ALL'}
-                   </button>
-                   {/* Category tabs */}
-                   {MAIN_CATEGORIES.map(category => (
-                     <button
-                       key={category}
-                       onClick={() => setFilter('mainCategory', filters.mainCategory === category ? null : category)}
-                       className={`shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-bold tracking-wider uppercase transition-all touch-manipulation active:scale-[0.95] whitespace-nowrap ${
-                         filters.mainCategory === category
-                           ? 'bg-[#e35e25] text-white shadow-md'
-                           : 'bg-white/20 backdrop-blur-md text-[#15383c] border border-[#15383c]/20 hover:border-[#e35e25] hover:text-[#e35e25]'
-                       }`}
-                     >
-                       {language === 'fr' ? MAIN_CATEGORY_LABELS_FR[category] : MAIN_CATEGORY_LABELS[category]}
-                     </button>
-                   ))}
-                 </div>
-                 <div className="absolute right-0 top-0 bottom-2 w-6 sm:w-8 bg-gradient-to-l from-[#FAFAFA] to-transparent pointer-events-none md:hidden"></div>
-               </div>
-             </div>
+              {/* Search Bar */}
+              <div className="relative w-full md:w-2/3 group z-10">
+                <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                  <Search size={20} className="text-gray-400 group-focus-within:text-[#e35e25] transition-colors" />
+                </div>
+                <input
+                  type="text"
+                  placeholder={t('feed.searchPlaceholder')}
+                  className="w-full pl-12 pr-4 py-3.5 md:py-4 min-h-[48px] sm:min-h-0 bg-white border border-gray-200 rounded-full text-base sm:text-sm focus:outline-none focus:border-[#15383c] focus:ring-2 focus:ring-[#15383c]/10 shadow-sm hover:shadow-md transition-all"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Category Tabs + Filter Button */}
+            <div className="mt-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-600">{t('landing.filterByCategory')}</h3>
+                <button
+                  onClick={() => setFilterDrawerOpen(true)}
+                  className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border-2 border-[#15383c] text-[#15383c] font-medium hover:bg-[#15383c] hover:text-white transition-colors flex-shrink-0 touch-manipulation active:scale-[0.95] text-xs sm:text-sm"
+                >
+                  <Filter size={16} className="sm:w-[18px] sm:h-[18px]" />
+                  <span className="hidden sm:inline">{t('landing.filters')}</span>
+                  {getActiveFilterCount() > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-[#e35e25] text-white text-[10px] sm:text-xs font-bold">
+                      {getActiveFilterCount()}
+                    </span>
+                  )}
+                </button>
+              </div>
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4 scroll-pr-32 md:scroll-pr-4">
+                  {/* All tab */}
+                  <button
+                    onClick={() => setFilter('mainCategory', null)}
+                    className={`shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-bold tracking-wider uppercase transition-all touch-manipulation active:scale-[0.95] ${filters.mainCategory === null
+                        ? 'bg-[#e35e25] text-white shadow-md'
+                        : 'bg-white/20 backdrop-blur-md text-[#15383c] border border-[#15383c]/20 hover:border-[#e35e25] hover:text-[#e35e25]'
+                      }`}
+                  >
+                    {language === 'fr' ? 'TOUT' : 'ALL'}
+                  </button>
+                  {/* Category tabs */}
+                  {MAIN_CATEGORIES.map(category => (
+                    <button
+                      key={category}
+                      onClick={() => setFilter('mainCategory', filters.mainCategory === category ? null : category)}
+                      className={`shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-bold tracking-wider uppercase transition-all touch-manipulation active:scale-[0.95] whitespace-nowrap ${filters.mainCategory === category
+                          ? 'bg-[#e35e25] text-white shadow-md'
+                          : 'bg-white/20 backdrop-blur-md text-[#15383c] border border-[#15383c]/20 hover:border-[#e35e25] hover:text-[#e35e25]'
+                        }`}
+                    >
+                      {language === 'fr' ? MAIN_CATEGORY_LABELS_FR[category] : MAIN_CATEGORY_LABELS[category]}
+                    </button>
+                  ))}
+                </div>
+                <div className="absolute right-0 top-0 bottom-2 w-6 sm:w-8 bg-gradient-to-l from-[#FAFAFA] to-transparent pointer-events-none md:hidden"></div>
+              </div>
+            </div>
           </div>
         </div>
-        
+
         {/* Single row with one event at a time, horizontally scrollable on all devices */}
         <div className="relative group">
           {/* Left Arrow - Desktop only */}
@@ -277,9 +291,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           >
             <ChevronLeft size={20} />
           </button>
-          
+
           {/* Scrollable Row - One event at a time */}
-          <div 
+          <div
             id="upcoming-circles-scroll"
             className="flex overflow-x-auto gap-4 lg:gap-6 pb-2 snap-x snap-mandatory scroll-smooth hide-scrollbar w-full touch-pan-x overscroll-x-contain cursor-grab active:cursor-grabbing"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-x pan-y', WebkitOverflowScrolling: 'touch' }}
@@ -296,7 +310,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             onMouseDown={(e) => {
               // Enable drag scrolling - only on non-touch devices
               if ('ontouchstart' in window) return;
-              
+
               const container = e.currentTarget;
               const startX = e.pageX - container.offsetLeft;
               const scrollLeft = container.scrollLeft;
@@ -321,9 +335,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           >
             {filteredEvents.map(event => (
               <div key={event.id} className="snap-start shrink-0 w-[85vw] sm:w-[70vw] md:w-[60vw] lg:w-[50vw] xl:w-[40vw] max-w-[500px] flex-shrink-0" style={{ touchAction: 'pan-x pan-y' }}>
-                <EventCard 
-                  event={event} 
-                  onClick={onEventClick} 
+                <EventCard
+                  event={event}
+                  onClick={onEventClick}
                   onChatClick={onChatClick}
                   onReviewsClick={onReviewsClick}
                   isLoggedIn={isLoggedIn}
@@ -333,7 +347,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
             ))}
           </div>
-          
+
           {/* Right Arrow - Desktop only */}
           <button
             onClick={() => {
@@ -350,21 +364,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
 
         <div className="mt-8 sm:mt-10 md:mt-12 text-center">
-           <button 
-             onClick={() => {
-               trackLandingCTA({
-                 cta_id: 'upcoming_view_all',
-                 cta_text: t('landing.viewAllEvents'),
-                 section: 'upcoming_circles',
-                 destination: '/explore',
-                 is_external: false,
-               });
-               setViewState(ViewState.FEED);
-             }}
-             className="w-auto mx-auto sm:w-auto px-8 sm:px-10 py-4 sm:py-4 min-h-[48px] sm:min-h-0 border-2 border-gray-300 rounded-full text-[#15383c] font-bold text-base sm:text-base hover:border-[#15383c] hover:bg-[#15383c] hover:text-white transition-all touch-manipulation active:scale-[0.97] active:bg-[#15383c] active:text-white"
-           >
-             {t('landing.viewAllEvents')}
-           </button>
+          <button
+            onClick={() => {
+              trackLandingCTA({
+                cta_id: 'upcoming_view_all',
+                cta_text: t('landing.viewAllEvents'),
+                section: 'upcoming_circles',
+                destination: '/explore',
+                is_external: false,
+              });
+              setViewState(ViewState.FEED);
+            }}
+            className="w-auto mx-auto sm:w-auto px-8 sm:px-10 py-4 sm:py-4 min-h-[48px] sm:min-h-0 border-2 border-gray-300 rounded-full text-[#15383c] font-bold text-base sm:text-base hover:border-[#15383c] hover:bg-[#15383c] hover:text-white transition-all touch-manipulation active:scale-[0.97] active:bg-[#15383c] active:text-white"
+          >
+            {t('landing.viewAllEvents')}
+          </button>
         </div>
       </section>
 
@@ -390,7 +404,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             }}
           />
           {/* Fade overlay into dark green background - starts at 50% to show more image */}
-          <div 
+          <div
             className="pointer-events-none absolute inset-0"
             style={{
               background: "linear-gradient(to right, transparent 0%, transparent 50%, rgba(21,56,60,0.5) 70%, #15383c 100%)"
@@ -401,41 +415,41 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
         {/* Content - centered on mobile, shifted right on desktop */}
         <div className="relative z-10 w-full lg:w-[65%] lg:ml-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 md:py-20 lg:py-24 xl:py-28 text-center">
-            <div className="mb-6 sm:mb-8 md:mb-10">
-              <span className="inline-flex items-center gap-2 py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-white/5 border border-white/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase backdrop-blur-sm">
-                <Sparkles size={10} className="sm:w-3 sm:h-3 -mt-0.5" />
-                {t('landing.badge')}
-              </span>
-            </div>
+          <div className="mb-6 sm:mb-8 md:mb-10">
+            <span className="inline-flex items-center gap-2 py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-white/5 border border-white/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase backdrop-blur-sm">
+              <Sparkles size={10} className="sm:w-3 sm:h-3 -mt-0.5" />
+              {t('landing.badge')}
+            </span>
+          </div>
 
-            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-heading font-bold text-white mb-5 sm:mb-6 md:mb-8 tracking-tight leading-[1.1] px-2 sm:px-4">
-              {t('landing.title')} <br />
-              <span className="text-[#e35e25]">
-                {t('landing.titleHighlight')}
-              </span>
-            </h2>
-            
-            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-300/90 font-light leading-relaxed mb-8 sm:mb-10 md:mb-12 max-w-4xl mx-auto px-4 sm:px-6">
-              {t('landing.description')}
-            </p>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-heading font-bold text-white mb-5 sm:mb-6 md:mb-8 tracking-tight leading-[1.1] px-2 sm:px-4">
+            {t('landing.title')} <br />
+            <span className="text-[#e35e25]">
+              {t('landing.titleHighlight')}
+            </span>
+          </h2>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-5 md:gap-6 px-4">
-              <button 
-                onClick={() => {
-                  trackLandingCTA({
-                    cta_id: 'pillars_signup',
-                    cta_text: t('landing.signUp'),
-                    section: 'pillars',
-                    destination: '/auth',
-                    is_external: false,
-                  });
-                  setViewState(ViewState.AUTH);
-                }}
-                className="px-8 py-4 bg-transparent border-2 border-white/20 text-white rounded-full font-bold text-base hover:bg-white/5 hover:border-white/30 transition-all duration-300 flex items-center justify-center gap-2 touch-manipulation active:scale-[0.98] whitespace-nowrap"
-              >
-                {t('landing.signUp')} <ArrowRight size={18} className="opacity-70" />
-              </button>
-            </div>
+          <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-300/90 font-light leading-relaxed mb-8 sm:mb-10 md:mb-12 max-w-4xl mx-auto px-4 sm:px-6">
+            {t('landing.description')}
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-5 md:gap-6 px-4">
+            <button
+              onClick={() => {
+                trackLandingCTA({
+                  cta_id: 'pillars_signup',
+                  cta_text: t('landing.signUp'),
+                  section: 'pillars',
+                  destination: '/auth',
+                  is_external: false,
+                });
+                setViewState(ViewState.AUTH);
+              }}
+              className="px-8 py-4 bg-transparent border-2 border-white/20 text-white rounded-full font-bold text-base hover:bg-white/5 hover:border-white/30 transition-all duration-300 flex items-center justify-center gap-2 touch-manipulation active:scale-[0.98] whitespace-nowrap"
+            >
+              {t('landing.signUp')} <ArrowRight size={18} className="opacity-70" />
+            </button>
+          </div>
         </div>
       </section>
 
@@ -448,13 +462,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* 6-7. Trust & FAQ - Unified premium section */}
       <section className="py-10 sm:py-12 lg:py-14 bg-[#15383c] border-t border-white/5 lazy-section far-below-fold relative overflow-hidden">
         {/* Subtle background treatment - soft radial glow */}
-        <div 
+        <div
           className="absolute inset-0 pointer-events-none"
           style={{
             background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(255,255,255,0.03) 0%, transparent 70%)'
           }}
         />
-        
+
         <div className="max-w-[1120px] mx-auto px-4 sm:px-6 relative z-10">
           {/* Section Header */}
           <div className="mb-8 lg:mb-10">
@@ -468,9 +482,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
           {/* Desktop: 12-col grid (4 cols left, 8 cols right), Mobile: stack */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 lg:items-stretch">
-            
+
             {/* Trust Panel - Compact info card */}
-            <div 
+            <div
               className="lg:col-span-4 bg-[#faf9f7] rounded-[20px] lg:rounded-[24px] p-5 sm:p-6 lg:p-7 border border-slate-200/60 flex flex-col"
               style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)' }}
             >
@@ -508,7 +522,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
               {/* CTAs: inline row - pinned to bottom on desktop */}
               <div className="flex items-center gap-4 lg:mt-auto">
-                <button 
+                <button
                   onClick={() => {
                     trackLandingCTA({
                       cta_id: 'guidelines_signup',
@@ -518,12 +532,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       is_external: false,
                     });
                     setViewState(ViewState.AUTH);
-                  }} 
+                  }}
                   className="px-4 py-2 bg-[#e35e25] text-white rounded-full font-semibold text-[13px] hover:bg-[#cf4d1d] transition-colors touch-manipulation active:scale-[0.98]"
                 >
                   {t('landing.signUp')}
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     trackLandingCTA({
                       cta_id: 'guidelines_see_guidelines',
@@ -533,7 +547,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       is_external: false,
                     });
                     setViewState(ViewState.GUIDELINES);
-                  }} 
+                  }}
                   className="text-[#15383c]/60 text-[13px] font-medium hover:text-[#e35e25] transition-colors touch-manipulation"
                 >
                   {t('landing.seeGuidelines')} →
@@ -542,21 +556,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
 
             {/* FAQ Panel - Refined accordion */}
-            <div 
+            <div
               className="lg:col-span-8 bg-[#faf9f7] rounded-[20px] lg:rounded-[24px] p-5 sm:p-6 lg:p-7 border border-slate-200/60 flex flex-col"
               style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)' }}
             >
               <h3 className="text-[17px] sm:text-lg font-heading font-semibold text-[#15383c] mb-4 tracking-tight">
                 FAQs
               </h3>
-              
+
               <div className="space-y-0">
                 {faqs.map((faq, index) => (
-                  <div 
-                    key={index} 
+                  <div
+                    key={index}
                     className={`border-b border-slate-200/70 last:border-b-0 ${index === 0 ? 'border-t border-slate-200/70' : ''}`}
                   >
-                    <button 
+                    <button
                       onClick={() => toggleFaq(index)}
                       className="w-full py-3.5 flex items-center justify-between text-left group hover:bg-slate-100/50 -mx-2 px-2 rounded-lg transition-colors"
                     >
@@ -567,7 +581,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                         <ChevronDown size={16} strokeWidth={2.5} />
                       </span>
                     </button>
-                    
+
                     <div className={`overflow-hidden transition-all duration-300 ease-in-out ${openFaqIndex === index ? 'max-h-[400px] opacity-100 pb-4' : 'max-h-0 opacity-0'}`}>
                       <p className="text-[#15383c]/65 text-[14px] leading-relaxed pr-8">
                         {faq.answer}
@@ -582,19 +596,93 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
+      {/* Latest from the Blog */}
+      {blogPosts.length > 0 && (
+        <section className="py-12 sm:py-16 lg:py-20 bg-[#fafafa] lazy-section far-below-fold">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-8 sm:mb-10 lg:mb-12">
+              <span className="inline-flex items-center gap-2 py-1.5 px-4 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] text-[10px] sm:text-xs font-bold tracking-[0.2em] uppercase mb-4">
+                <Sparkles size={10} className="-mt-0.5" />
+                {language === 'fr' ? 'BLOGUE' : 'BLOG'}
+              </span>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-bold text-[#15383c] tracking-tight">
+                {t('landing.latestBlog')}
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {blogPosts.map((post) => (
+                <article
+                  key={post.id}
+                  onClick={() => {
+                    if (setSelectedBlogSlug) {
+                      setSelectedBlogSlug(post.slug);
+                      setViewState(ViewState.BLOG_POST);
+                      window.history.pushState({ viewState: ViewState.BLOG_POST }, '', `/blog/${post.slug}`);
+                    }
+                  }}
+                  className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-all cursor-pointer group"
+                >
+                  {post.heroImageUrl && (
+                    <div className="aspect-[16/10] overflow-hidden">
+                      <img
+                        src={post.heroImageUrl}
+                        alt={post.heroImageAlt || post.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                      />
+                    </div>
+                  )}
+                  <div className="p-5 sm:p-6">
+                    <p className="text-xs text-gray-500 mb-2">
+                      {new Date(post.publishedAt).toLocaleDateString(language === 'fr' ? 'fr-CA' : 'en-CA', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    </p>
+                    <h3 className="text-lg font-semibold text-[#15383c] mb-2 group-hover:text-[#e35e25] transition-colors line-clamp-2">
+                      {post.title}
+                    </h3>
+                    <p className="text-sm text-gray-600 line-clamp-2 mb-4">
+                      {post.excerpt}
+                    </p>
+                    <span className="text-sm font-medium text-[#e35e25] group-hover:underline">
+                      {t('landing.readArticle')} →
+                    </span>
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            <div className="text-center mt-8">
+              <button
+                onClick={() => {
+                  setViewState(ViewState.BLOG);
+                  window.history.pushState({ viewState: ViewState.BLOG }, '', '/blog');
+                }}
+                className="px-6 py-3 border-2 border-[#15383c] text-[#15383c] rounded-full font-semibold hover:bg-[#15383c] hover:text-white transition-colors"
+              >
+                {language === 'fr' ? 'Voir tous les articles' : 'View all articles'}
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Stay Updated - Uses content-visibility:auto for far-below-fold performance */}
       <section className="py-6 sm:py-8 md:py-12 lg:py-16 xl:py-20 bg-[#15383c] text-white relative overflow-hidden border-t border-white/5 lazy-section far-below-fold">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-[#e35e25] mb-4 sm:mb-6 tracking-tight uppercase leading-none">
             {t('landing.stayUpdated')}
           </h2>
-          
+
           <p className="text-sm sm:text-base text-gray-300 mb-8 sm:mb-10 md:mb-12 font-light max-w-2xl mx-auto leading-relaxed">
             {t('landing.stayUpdatedDesc')}
           </p>
 
-          <form 
-            className="max-w-2xl mx-auto relative flex items-center mb-4 sm:mb-6" 
+          <form
+            className="max-w-2xl mx-auto relative flex items-center mb-4 sm:mb-6"
             onSubmit={async (e) => {
               e.preventDefault();
               if (!newsletterEmail.trim() || newsletterSubmitting) return;
@@ -606,7 +694,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               // Check for missing config before starting
               const db = getDbSafe();
               const resendKey = import.meta.env.VITE_RESEND_API_KEY;
-              
+
               if (!db && !resendKey) {
                 alert('⚠️ Configuration error: Firebase and Resend are not configured.');
                 return;
@@ -614,7 +702,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
               setNewsletterSubmitting(true);
               setNewsletterSuccess(false);
-              
+
               // Timeout fallback - never stay stuck on "Sending..."
               const timeoutId = setTimeout(() => {
                 setNewsletterSubmitting(false);
@@ -622,12 +710,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   alert('⚠️ Request timed out. Your subscription may have been processed. Please try again.');
                 }
               }, 10000); // 10 second timeout
-              
+
               try {
                 const email = newsletterEmail.trim();
-                const timestamp = new Date().toLocaleString('en-US', { 
-                  dateStyle: 'long', 
-                  timeStyle: 'short' 
+                const timestamp = new Date().toLocaleString('en-US', {
+                  dateStyle: 'long',
+                  timeStyle: 'short'
                 });
 
                 // Store to Firestore (non-blocking)
@@ -688,24 +776,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               }
             }}
           >
-              <input 
-                  type="email" 
-                  value={newsletterEmail}
-                  onChange={(e) => setNewsletterEmail(e.target.value)}
-                  placeholder={t('landing.emailPlaceholder')} 
-                  required
-                  disabled={newsletterSubmitting}
-                  className="w-full bg-transparent border border-gray-500/50 rounded-full py-3 sm:py-4 md:py-5 pl-6 sm:pl-8 pr-32 sm:pr-40 text-white placeholder-gray-500 focus:outline-none focus:border-[#e35e25] focus:ring-1 focus:ring-[#e35e25] transition-all text-sm sm:text-base md:text-lg disabled:opacity-50"
-              />
-              <button 
-                  type="submit" 
-                  disabled={newsletterSubmitting || !newsletterEmail.trim()}
-                  className="absolute right-1.5 sm:right-2 top-1.5 sm:top-2 bottom-1.5 sm:bottom-2 bg-white text-[#15383c] px-6 sm:px-8 rounded-full font-bold hover:bg-gray-100 transition-colors shadow-lg text-xs sm:text-sm md:text-base touch-manipulation active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                  {newsletterSubmitting ? '...' : t('landing.submit')}
-              </button>
+            <input
+              type="email"
+              value={newsletterEmail}
+              onChange={(e) => setNewsletterEmail(e.target.value)}
+              placeholder={t('landing.emailPlaceholder')}
+              required
+              disabled={newsletterSubmitting}
+              className="w-full bg-transparent border border-gray-500/50 rounded-full py-3 sm:py-4 md:py-5 pl-6 sm:pl-8 pr-32 sm:pr-40 text-white placeholder-gray-500 focus:outline-none focus:border-[#e35e25] focus:ring-1 focus:ring-[#e35e25] transition-all text-sm sm:text-base md:text-lg disabled:opacity-50"
+            />
+            <button
+              type="submit"
+              disabled={newsletterSubmitting || !newsletterEmail.trim()}
+              className="absolute right-1.5 sm:right-2 top-1.5 sm:top-2 bottom-1.5 sm:bottom-2 bg-white text-[#15383c] px-6 sm:px-8 rounded-full font-bold hover:bg-gray-100 transition-colors shadow-lg text-xs sm:text-sm md:text-base touch-manipulation active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {newsletterSubmitting ? '...' : t('landing.submit')}
+            </button>
           </form>
-          
+
           {newsletterSuccess && (
             <div className="max-w-2xl mx-auto mb-4">
               <div className="bg-green-500/20 border border-green-500/50 rounded-full px-4 py-2 flex items-center justify-center gap-2">
@@ -714,27 +802,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
             </div>
           )}
-          
+
           <p className="text-xs sm:text-sm text-gray-500 opacity-60">
-              {t('landing.termsAgreement')} <button 
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  trackLandingCTA({
-                    cta_id: 'newsletter_terms',
-                    cta_text: t('landing.termsOfUse'),
-                    section: 'newsletter',
-                    destination: '/terms',
-                    is_external: false,
-                  });
-                  setViewState(ViewState.TERMS);
-                  window.scrollTo({ top: 0, behavior: 'instant' });
-                }} 
-                className="underline hover:text-[#e35e25] transition-colors cursor-pointer"
-              >
-                {t('landing.termsOfUse')}
-              </button>.
+            {t('landing.termsAgreement')} <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                trackLandingCTA({
+                  cta_id: 'newsletter_terms',
+                  cta_text: t('landing.termsOfUse'),
+                  section: 'newsletter',
+                  destination: '/terms',
+                  is_external: false,
+                });
+                setViewState(ViewState.TERMS);
+                window.scrollTo({ top: 0, behavior: 'instant' });
+              }}
+              className="underline hover:text-[#e35e25] transition-colors cursor-pointer"
+            >
+              {t('landing.termsOfUse')}
+            </button>.
           </p>
         </div>
       </section>

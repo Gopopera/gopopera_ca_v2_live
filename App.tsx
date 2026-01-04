@@ -1889,6 +1889,7 @@ const AppContent: React.FC = () => {
                 isLoggedIn={isLoggedIn}
                 favorites={favorites}
                 onToggleFavorite={handleToggleFavorite}
+                setSelectedBlogSlug={setSelectedBlogSlug}
               />
             </React.Suspense>
           )}
@@ -2151,8 +2152,8 @@ const AppContent: React.FC = () => {
                             <button
                               onClick={() => setFilter('mainCategory', null)}
                               className={`shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-bold tracking-wider uppercase transition-all touch-manipulation active:scale-[0.95] ${filters.mainCategory === null
-                                  ? 'bg-[#e35e25] text-white shadow-md'
-                                  : 'bg-white/20 backdrop-blur-md text-[#15383c] border border-[#15383c]/20 hover:border-[#e35e25] hover:text-[#e35e25]'
+                                ? 'bg-[#e35e25] text-white shadow-md'
+                                : 'bg-white/20 backdrop-blur-md text-[#15383c] border border-[#15383c]/20 hover:border-[#e35e25] hover:text-[#e35e25]'
                                 }`}
                             >
                               All
@@ -2163,8 +2164,8 @@ const AppContent: React.FC = () => {
                                 key={category}
                                 onClick={() => setFilter('mainCategory', filters.mainCategory === category ? null : category)}
                                 className={`shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-bold tracking-wider uppercase transition-all touch-manipulation active:scale-[0.95] whitespace-nowrap ${filters.mainCategory === category
-                                    ? 'bg-[#e35e25] text-white shadow-md'
-                                    : 'bg-white/20 backdrop-blur-md text-[#15383c] border border-[#15383c]/20 hover:border-[#e35e25] hover:text-[#e35e25]'
+                                  ? 'bg-[#e35e25] text-white shadow-md'
+                                  : 'bg-white/20 backdrop-blur-md text-[#15383c] border border-[#15383c]/20 hover:border-[#e35e25] hover:text-[#e35e25]'
                                   }`}
                               >
                                 {MAIN_CATEGORY_LABELS[category]}

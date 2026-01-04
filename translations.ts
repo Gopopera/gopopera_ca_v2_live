@@ -8,6 +8,7 @@ export const translations = {
       exploreEvents: 'Explore Circles',
       community: 'Community',
       about: 'About',
+      blog: 'Blog',
       signIn: 'Sign In',
       signOut: 'Sign Out',
       hostEvent: 'Host a Circle',
@@ -78,6 +79,8 @@ export const translations = {
       filterByCategory: 'Filter by Category',
       filters: 'Filters',
       viewAllEvents: 'View All Events',
+      latestBlog: 'Latest from the blog',
+      readArticle: 'Read',
       // Community Guidelines section
       safetyTrust: 'Safety & Trust',
       communityGuidelines: 'Community Guidelines',
@@ -173,6 +176,13 @@ export const translations = {
       helpSupport: 'Help & Support',
       social: 'Social',
       copyright: '© {year} Popera Inc. All rights reserved.',
+    },
+    // Blog CTAs
+    blogCta: {
+      title: 'Ready to join the community?',
+      subtitle: 'Discover circles near you or create your own.',
+      browse: 'Browse circles',
+      join: 'Join Popera',
     },
     // Categories
     categories: {
@@ -1312,6 +1322,7 @@ export const translations = {
       exploreEvents: 'Explorer',
       community: 'Communauté',
       about: 'À propos',
+      blog: 'Blogue',
       signIn: 'Se connecter',
       signOut: 'Se déconnecter',
       hostEvent: 'Créer un cercle',
@@ -1382,6 +1393,8 @@ export const translations = {
       filterByCategory: 'Filtrer par catégorie',
       filters: 'Filtres',
       viewAllEvents: 'Voir tous les événements',
+      latestBlog: 'Derniers articles',
+      readArticle: 'Lire',
       // Community Guidelines section
       safetyTrust: 'Sécurité & Confiance',
       communityGuidelines: 'Directives communautaires',
@@ -1477,6 +1490,13 @@ export const translations = {
       helpSupport: 'Aide et support',
       social: 'Social',
       copyright: '© {year} Popera Inc. Tous droits réservés.',
+    },
+    // Blog CTAs
+    blogCta: {
+      title: 'Prêt à rejoindre la communauté?',
+      subtitle: 'Découvrez des cercles près de chez vous ou créez le vôtre.',
+      browse: 'Parcourir les cercles',
+      join: 'Rejoindre Popera',
     },
     // Categories
     categories: {

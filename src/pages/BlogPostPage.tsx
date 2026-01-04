@@ -199,7 +199,7 @@ const articleStyles = `
 `;
 
 export const BlogPostPage: React.FC<BlogPostPageProps> = ({ slug, setViewState, setSelectedBlogSlug }) => {
-    const { language } = useLanguage();
+    const { language, t } = useLanguage();
     const [post, setPost] = useState<BlogPost | null>(null);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
@@ -544,6 +544,40 @@ export const BlogPostPage: React.FC<BlogPostPageProps> = ({ slug, setViewState, 
                                     {language === 'fr' ? 'Partager' : 'Share'}
                                 </button>
                             )}
+                        </div>
+                    </div>
+
+                    {/* Conversion CTAs */}
+                    <div className="mt-12 pt-8 border-t border-gray-200">
+                        <div className="text-center">
+                            <h3 className="text-lg font-semibold text-[#15383c] mb-2">
+                                {t('blogCta.title')}
+                            </h3>
+                            <p className="text-gray-600 text-sm mb-6">
+                                {t('blogCta.subtitle')}
+                            </p>
+                            <div className="flex flex-wrap justify-center gap-4">
+                                <button
+                                    onClick={() => {
+                                        setSelectedBlogSlug(null);
+                                        setViewState(ViewState.FEED);
+                                        window.history.pushState({ viewState: ViewState.FEED }, '', '/explore');
+                                    }}
+                                    className="inline-flex items-center gap-2 px-6 py-3 bg-[#e35e25] text-white rounded-full font-semibold hover:bg-[#d54d1a] transition-colors shadow-lg shadow-[#e35e25]/25"
+                                >
+                                    {t('blogCta.browse')}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setSelectedBlogSlug(null);
+                                        setViewState(ViewState.AUTH);
+                                        window.history.pushState({ viewState: ViewState.AUTH }, '', '/auth');
+                                    }}
+                                    className="inline-flex items-center gap-2 px-6 py-3 border-2 border-[#15383c] text-[#15383c] rounded-full font-semibold hover:bg-[#15383c] hover:text-white transition-colors"
+                                >
+                                    {t('blogCta.join')}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </main>
