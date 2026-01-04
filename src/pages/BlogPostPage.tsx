@@ -222,6 +222,7 @@ export const BlogPostPage: React.FC<BlogPostPageProps> = ({ slug, setViewState, 
     useEffect(() => {
         if (!post) return;
 
+        const SITE_URL = 'https://gopopera.ca';
         const postUrl = getPostUrl();
         const title = post.metaTitle || post.title;
         const description = post.metaDescription || post.excerpt || '';
@@ -252,7 +253,17 @@ export const BlogPostPage: React.FC<BlogPostPageProps> = ({ slug, setViewState, 
         setMeta('twitter:description', description, true);
         if (image) setMeta('twitter:image', image, true);
 
-        const jsonLd = {
+        // Canonical link
+        let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
+        if (!canonical) {
+            canonical = document.createElement('link');
+            canonical.rel = 'canonical';
+            document.head.appendChild(canonical);
+        }
+        canonical.href = postUrl;
+
+        // BlogPosting JSON-LD
+        const blogPostingJsonLd = {
             '@context': 'https://schema.org',
             '@type': 'BlogPosting',
             headline: title,
@@ -261,23 +272,46 @@ export const BlogPostPage: React.FC<BlogPostPageProps> = ({ slug, setViewState, 
             datePublished: new Date(post.publishedAt).toISOString(),
             dateModified: new Date(post.updatedAt).toISOString(),
             image: image || undefined,
-            author: { '@type': 'Organization', name: 'Popera', url: 'https://gopopera.ca' },
-            publisher: { '@type': 'Organization', name: 'Popera', url: 'https://gopopera.ca' },
+            author: { '@type': 'Organization', name: 'Popera', url: SITE_URL },
+            publisher: { '@type': 'Organization', name: 'Popera', url: SITE_URL },
         };
 
-        let scriptTag = document.querySelector('script[data-blog-jsonld]') as HTMLScriptElement;
-        if (!scriptTag) {
-            scriptTag = document.createElement('script');
-            scriptTag.type = 'application/ld+json';
-            scriptTag.setAttribute('data-blog-jsonld', 'true');
-            document.head.appendChild(scriptTag);
+        let blogPostingScript = document.querySelector('script[data-blog-jsonld]') as HTMLScriptElement;
+        if (!blogPostingScript) {
+            blogPostingScript = document.createElement('script');
+            blogPostingScript.type = 'application/ld+json';
+            blogPostingScript.setAttribute('data-blog-jsonld', 'true');
+            document.head.appendChild(blogPostingScript);
         }
-        scriptTag.textContent = JSON.stringify(jsonLd);
+        blogPostingScript.textContent = JSON.stringify(blogPostingJsonLd);
 
+        // BreadcrumbList JSON-LD
+        const breadcrumbJsonLd = {
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+                { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+                { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog` },
+                { '@type': 'ListItem', position: 3, name: post.title, item: postUrl },
+            ],
+        };
+
+        let breadcrumbScript = document.querySelector('script[data-breadcrumb-jsonld]') as HTMLScriptElement;
+        if (!breadcrumbScript) {
+            breadcrumbScript = document.createElement('script');
+            breadcrumbScript.type = 'application/ld+json';
+            breadcrumbScript.setAttribute('data-breadcrumb-jsonld', 'true');
+            document.head.appendChild(breadcrumbScript);
+        }
+        breadcrumbScript.textContent = JSON.stringify(breadcrumbJsonLd);
+
+        // Cleanup
         return () => {
             document.title = 'Popera';
-            const script = document.querySelector('script[data-blog-jsonld]');
-            if (script) script.remove();
+            const blogScript = document.querySelector('script[data-blog-jsonld]');
+            if (blogScript) blogScript.remove();
+            const breadScript = document.querySelector('script[data-breadcrumb-jsonld]');
+            if (breadScript) breadScript.remove();
         };
     }, [post, getPostUrl]);
 

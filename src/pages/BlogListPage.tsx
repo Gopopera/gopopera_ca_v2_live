@@ -30,6 +30,57 @@ export const BlogListPage: React.FC<BlogListPageProps> = ({ setViewState, setSel
         fetchPosts();
     }, []);
 
+    // SEO: Set document title, meta description, canonical, and RSS link
+    useEffect(() => {
+        const SITE_URL = 'https://gopopera.ca';
+
+        // Title
+        document.title = language === 'fr' ? 'Blogue | Popera' : 'Blog | Popera';
+
+        // Helper to set or create meta/link tag
+        const setHeadTag = (tagType: string, attr: string, attrValue: string, content: string, contentAttr = 'content') => {
+            let tag = document.querySelector(`${tagType}[${attr}="${attrValue}"]`) as HTMLElement;
+            if (!tag) {
+                tag = document.createElement(tagType);
+                tag.setAttribute(attr, attrValue);
+                document.head.appendChild(tag);
+            }
+            tag.setAttribute(contentAttr, content);
+            return tag;
+        };
+
+        // Meta description
+        const description = language === 'fr'
+            ? 'Articles et guides pour créer des expériences communautaires mémorables sur Popera.'
+            : 'Articles and guides for hosting and attending small community experiences on Popera.';
+        setHeadTag('meta', 'name', 'description', description);
+
+        // Canonical link
+        let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
+        if (!canonical) {
+            canonical = document.createElement('link');
+            canonical.rel = 'canonical';
+            document.head.appendChild(canonical);
+        }
+        canonical.href = `${SITE_URL}/blog`;
+
+        // RSS alternate link
+        let rssLink = document.querySelector('link[type="application/rss+xml"]') as HTMLLinkElement;
+        if (!rssLink) {
+            rssLink = document.createElement('link');
+            rssLink.rel = 'alternate';
+            rssLink.type = 'application/rss+xml';
+            rssLink.title = 'Popera Blog RSS';
+            document.head.appendChild(rssLink);
+        }
+        rssLink.href = `${SITE_URL}/rss.xml`;
+
+        // Cleanup
+        return () => {
+            document.title = 'Popera';
+        };
+    }, [language]);
+
     const handlePostClick = (slug: string) => {
         setSelectedBlogSlug(slug);
         setViewState(ViewState.BLOG_POST);

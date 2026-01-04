@@ -17,6 +17,8 @@ Allow: /contact
 Allow: /press
 Allow: /cancellation
 Allow: /event/*
+Allow: /blog
+Allow: /blog/*
 
 # Allow sitemap API endpoint (exception to /api/* disallow below)
 Allow: /api/sitemap.xml
