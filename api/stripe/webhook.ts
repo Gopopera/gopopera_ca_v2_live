@@ -5,6 +5,26 @@
 
 import Stripe from 'stripe';
 import admin from 'firebase-admin';
+import { IncomingMessage } from 'http';
+
+/**
+ * Generate a short request ID for log correlation
+ */
+function generateRequestId(): string {
+  return `wh_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 6)}`;
+}
+
+/**
+ * Read raw body from request stream as Buffer
+ * Required for Stripe signature verification
+ */
+async function readRawBody(req: IncomingMessage): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) {
+    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+  }
+  return Buffer.concat(chunks);
+}
 
 // Initialize Firebase Admin
 if (!admin.apps.length) {
@@ -28,6 +48,8 @@ const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY, {
 }) : null;
 
 export default async function handler(req: any, res: any) {
+  const requestId = generateRequestId();
+  
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -35,49 +57,37 @@ export default async function handler(req: any, res: any) {
   try {
     // Validate Stripe is configured
     if (!stripe || !STRIPE_SECRET_KEY) {
-      console.error('[WEBHOOK] Stripe not configured');
+      console.error(`[WEBHOOK] requestId=${requestId} status=stripe_not_configured`);
       return res.status(500).json({ error: 'Stripe service not configured' });
     }
 
-    const sig = req.headers['stripe-signature'] as string;
-    
-    // For Vercel serverless functions, Stripe webhooks need raw body for signature verification
-    // Vercel automatically provides req.body as a string for webhook endpoints
-    // If it's already a string, use it; otherwise try to get raw body
-    let body: string | Buffer;
-    
-    // Check if we have rawBody (Vercel sometimes provides this)
-    if ((req as any).rawBody) {
-      body = (req as any).rawBody;
-    } else if (typeof req.body === 'string') {
-      // If body is already a string, use it directly
-      body = req.body;
-    } else if (Buffer.isBuffer(req.body)) {
-      body = req.body;
-    } else {
-      // Last resort: stringify (may fail signature verification)
-      // This should rarely happen with Vercel
-      console.warn('[WEBHOOK] Body is not string or buffer, stringifying (may fail verification)');
-      body = JSON.stringify(req.body);
+    // Check for webhook secret
+    if (!WEBHOOK_SECRET) {
+      console.error(`[WEBHOOK] requestId=${requestId} status=missing_secret`);
+      return res.status(500).json({ error: 'Webhook secret not configured' });
     }
+
+    // Check for signature header
+    const sig = req.headers['stripe-signature'] as string;
+    if (!sig) {
+      console.error(`[WEBHOOK] requestId=${requestId} status=missing_signature`);
+      return res.status(400).json({ error: 'Missing stripe-signature header' });
+    }
+
+    // Read raw body from request stream for signature verification
+    const rawBody = await readRawBody(req);
 
     let event: Stripe.Event;
 
-    // Verify webhook signature
-    if (WEBHOOK_SECRET) {
-      try {
-        event = stripe.webhooks.constructEvent(body, sig, WEBHOOK_SECRET);
-      } catch (err: any) {
-        console.error('[WEBHOOK] Signature verification failed:', err.message);
-        return res.status(400).send(`Webhook Error: ${err.message}`);
-      }
-    } else {
-      // In development, you might skip signature verification
-      // WARNING: Never do this in production!
-      console.warn('[WEBHOOK] No webhook secret - skipping signature verification');
-      // Parse body if it's a string
-      event = typeof body === 'string' ? JSON.parse(body) : body as any;
+    // Verify webhook signature using raw body
+    try {
+      event = stripe.webhooks.constructEvent(rawBody, sig, WEBHOOK_SECRET);
+    } catch (err: any) {
+      console.error(`[WEBHOOK] requestId=${requestId} status=signature_failed error="${err.message}"`);
+      return res.status(400).json({ error: `Webhook signature verification failed: ${err.message}` });
     }
+
+    console.log(`[WEBHOOK] requestId=${requestId} eventType=${event.type} status=verified`);
 
     // Handle the event
     switch (event.type) {
@@ -103,12 +113,13 @@ export default async function handler(req: any, res: any) {
         break;
 
       default:
-        console.log(`[WEBHOOK] Unhandled event type: ${event.type}`);
+        console.log(`[WEBHOOK] requestId=${requestId} eventType=${event.type} status=unhandled`);
     }
 
+    console.log(`[WEBHOOK] requestId=${requestId} eventType=${event.type} status=processed`);
     return res.status(200).json({ received: true });
   } catch (error: any) {
-    console.error('[WEBHOOK] Error processing webhook:', error);
+    console.error(`[WEBHOOK] requestId=${requestId} status=exception error="${error.message}"`);
     return res.status(500).json({ error: error.message });
   }
 }
