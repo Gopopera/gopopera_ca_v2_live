@@ -1948,21 +1948,26 @@ const AppContent: React.FC = () => {
                   }
 
                   // Create a single reservation with attendee count
-                  // In the future, this will integrate with Stripe/Google Pay for payment processing
-                  const { createReservation } = await import('./firebase/db');
+                  // Import pricing helpers to determine pricing mode
+                  const { getEventPricingType, getEventFeeAmount } = await import('./utils/stripeHelpers');
 
-                  // Calculate total amount
-                  const priceStr = selectedEvent.price?.replace(/[^0-9.]/g, '') || '0';
-                  const pricePerAttendee = parseFloat(priceStr) || 0;
+                  // Calculate total amount using the correct fee amount
+                  const feeAmountCents = getEventFeeAmount(selectedEvent);
+                  const pricePerAttendee = feeAmountCents / 100; // Convert cents to dollars
                   const subtotal = pricePerAttendee * attendeeCount;
                   const totalAmount = subtotal + supportContribution;
+
+                  // Determine pricing mode from event
+                  const pricingMode = getEventPricingType(selectedEvent);
 
                   // Create reservation with options (this will also send notifications)
                   const reservationId = await addRSVP(user.uid, selectedEvent.id, {
                     attendeeCount,
                     supportContribution: supportContribution > 0 ? supportContribution : undefined,
-                    paymentMethod: !selectedEvent.price || selectedEvent.price.toLowerCase() === 'free' ? undefined : paymentMethod,
-                    totalAmount: totalAmount > 0 ? totalAmount : undefined,
+                    // Only set paymentMethod for online payments (Stripe)
+                    paymentMethod: pricingMode === 'online' ? paymentMethod : undefined,
+                    totalAmount: totalAmount > 0 ? Math.round(totalAmount * 100) : undefined, // Store in cents
+                    pricingMode: pricingMode, // Track pricing mode
                   });
 
                   // Update attendee count

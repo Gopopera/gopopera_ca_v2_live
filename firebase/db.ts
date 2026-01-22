@@ -562,6 +562,7 @@ export async function createReservation(
     totalAmount?: number;
     paymentIntentId?: string;
     subscriptionId?: string;
+    pricingMode?: 'free' | 'online' | 'door'; // Pricing mode: free, online (Stripe), or pay at door
   }
 ): Promise<string> {
   const db = getDbSafe();
@@ -739,6 +740,8 @@ export async function createReservation(
       subscriptionId: options?.subscriptionId,
       paymentStatus: options?.paymentIntentId || options?.subscriptionId ? 'succeeded' : undefined,
       payoutStatus: options?.paymentIntentId ? 'held' : undefined, // One-time events: hold until 24h after
+      pricingMode: options?.pricingMode, // Track pricing mode for this reservation
+      doorPaymentStatus: options?.pricingMode === 'door' ? 'unpaid' : undefined, // For door payments, start as unpaid
     };
 
     // Validate and remove undefined values

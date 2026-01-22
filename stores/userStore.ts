@@ -72,7 +72,7 @@ interface UserStore {
   addFavorite: (userId: string, eventId: string) => Promise<void>;
   removeFavorite: (userId: string, eventId: string) => Promise<void>;
   cleanupEndedFavorites: (userId: string, allEvents: any[]) => Promise<string[]>; // Remove ended events from favorites
-  addRSVP: (userId: string, eventId: string, options?: { attendeeCount?: number; supportContribution?: number; paymentMethod?: string; totalAmount?: number; paymentIntentId?: string; subscriptionId?: string }) => Promise<string>; // Returns reservation ID
+  addRSVP: (userId: string, eventId: string, options?: { attendeeCount?: number; supportContribution?: number; paymentMethod?: string; totalAmount?: number; paymentIntentId?: string; subscriptionId?: string; pricingMode?: 'free' | 'online' | 'door' }) => Promise<string>; // Returns reservation ID
   removeRSVP: (userId: string, eventId: string) => Promise<void>;
   getUserFavorites: (userId: string) => string[];
   getUserRSVPs: (userId: string) => string[];
@@ -769,7 +769,7 @@ export const useUserStore = create<UserStore>()(
         }
       },
 
-      addRSVP: async (userId: string, eventId: string, options?: { attendeeCount?: number; supportContribution?: number; paymentMethod?: string; totalAmount?: number; paymentIntentId?: string; subscriptionId?: string }): Promise<string> => {
+      addRSVP: async (userId: string, eventId: string, options?: { attendeeCount?: number; supportContribution?: number; paymentMethod?: string; totalAmount?: number; paymentIntentId?: string; subscriptionId?: string; pricingMode?: 'free' | 'online' | 'door' }): Promise<string> => {
         try {
           // TASK A: DEV-only debug logging
           if (import.meta.env.DEV) {

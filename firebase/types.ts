@@ -78,9 +78,10 @@ export interface FirestoreEvent {
   monthlyDayOfMonth?: number; // 1-31 for monthly sessions
   startDateTime?: number; // Timestamp for session start (alternative to startDate)
   // Payment fields
-  hasFee?: boolean; // Whether event charges a fee
+  hasFee?: boolean; // Whether event charges a fee (legacy, use pricingType)
   feeAmount?: number; // Fee amount in cents
-  currency?: string; // Default: 'cad' or 'usd'
+  currency?: string; // Default: 'cad', 'usd', or 'eur'
+  pricingType?: 'free' | 'online' | 'door'; // Pricing model: free, pay online (Stripe), pay at door
 }
 
 // REFACTORED: Single source of truth for user data
@@ -165,6 +166,9 @@ export interface FirestoreReservation {
   supportContribution?: number; // Optional support contribution amount
   paymentMethod?: string; // Payment method used: 'google-pay', 'stripe', or empty for free events
   totalAmount?: number; // Total amount paid (for paid events)
+  // Pricing mode (mirrors event.pricingType at reservation time)
+  pricingMode?: 'free' | 'online' | 'door'; // How payment is handled
+  doorPaymentStatus?: 'unpaid' | 'paid'; // For door payments: whether host marked as paid
   // Stripe payment fields
   paymentIntentId?: string; // Stripe PaymentIntent ID
   subscriptionId?: string; // Stripe Subscription ID (for recurring events)

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, QrCode, CheckCircle2, XCircle, AlertCircle, Clock, Camera, CameraOff } from 'lucide-react';
+import { X, QrCode, CheckCircle2, XCircle, AlertCircle, Clock, Camera, CameraOff, CreditCard, Banknote, Gift } from 'lucide-react';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { getReservationById, updateReservationCheckIn, getCheckedInCountForEvent } from '../../firebase/db';
 
@@ -10,7 +10,51 @@ interface ScanResult {
   status: 'success' | 'already_checked_in' | 'not_found' | 'wrong_event' | 'cancelled' | 'error';
   message: string;
   attendeeName?: string;
+  // Payment tracking for display
+  pricingMode?: 'free' | 'online' | 'door';
+  doorPaymentStatus?: 'unpaid' | 'paid';
 }
+
+/**
+ * Payment Badge Component for scan results
+ */
+const ScanPaymentBadge: React.FC<{ pricingMode?: string; doorPaymentStatus?: string }> = ({ pricingMode, doorPaymentStatus }) => {
+  if (!pricingMode) return null;
+  
+  if (pricingMode === 'free') {
+    return (
+      <span className="inline-flex items-center gap-1 text-[9px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-medium">
+        <Gift size={9} />
+        FREE
+      </span>
+    );
+  }
+  
+  if (pricingMode === 'online') {
+    return (
+      <span className="inline-flex items-center gap-1 text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">
+        <CreditCard size={9} />
+        PAID
+      </span>
+    );
+  }
+  
+  if (pricingMode === 'door') {
+    const isPaid = doorPaymentStatus === 'paid';
+    return (
+      <span className={`inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded font-medium ${
+        isPaid 
+          ? 'bg-green-100 text-green-700' 
+          : 'bg-amber-100 text-amber-700'
+      }`}>
+        <Banknote size={9} />
+        {isPaid ? 'PAID' : 'UNPAID'}
+      </span>
+    );
+  }
+  
+  return null;
+};
 
 interface ScanTicketsModalProps {
   isOpen: boolean;
@@ -192,6 +236,9 @@ export const ScanTicketsModal: React.FC<ScanTicketsModalProps> = ({
         reservationId,
         status: 'success',
         message: 'Checked in ✓',
+        // Include payment info from reservation
+        pricingMode: reservation.pricingMode as 'free' | 'online' | 'door' | undefined,
+        doorPaymentStatus: reservation.doorPaymentStatus as 'unpaid' | 'paid' | undefined,
       });
       
       // Re-fetch checked-in count from Firestore for accuracy
@@ -445,9 +492,18 @@ export const ScanTicketsModal: React.FC<ScanTicketsModalProps> = ({
                   >
                     {getStatusIcon(scan.status)}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[#15383c] truncate">
-                        {scan.message}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-[#15383c] truncate">
+                          {scan.message}
+                        </p>
+                        {/* Payment badge for successful check-ins */}
+                        {scan.status === 'success' && (
+                          <ScanPaymentBadge 
+                            pricingMode={scan.pricingMode} 
+                            doorPaymentStatus={scan.doorPaymentStatus} 
+                          />
+                        )}
+                      </div>
                       <p className="text-xs text-gray-500">
                         {shortenId(scan.reservationId)} • {formatTime(scan.timestamp)}
                       </p>

@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { Event, ViewState } from '../../types';
-import { ChevronLeft, Calendar, MapPin, User, Minus, Plus, CreditCard } from 'lucide-react';
+import { ChevronLeft, Calendar, MapPin, User, Minus, Plus, CreditCard, Banknote } from 'lucide-react';
 import { formatDate } from '../../utils/dateFormatter';
 import { getUserProfile } from '../../firebase/db';
-import { formatPaymentAmount } from '../../utils/stripeHelpers';
+import { formatPaymentAmount, getEventPricingType, isPayAtDoor, isEventFree, getEventFeeAmount, getEventCurrency } from '../../utils/stripeHelpers';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface ConfirmReservationPageProps {
   event: Event;
@@ -18,31 +19,31 @@ export const ConfirmReservationPage: React.FC<ConfirmReservationPageProps> = ({
   onHostClick,
   onConfirm,
 }) => {
+  const { t, language } = useLanguage();
   const [attendeeCount, setAttendeeCount] = useState(1);
   const [supportContribution, setSupportContribution] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<string>('');
   const [processing, setProcessing] = useState(false);
   const [hostName, setHostName] = useState(event.hostName || event.host);
 
-  // Check if event is free
-  const isFree = useMemo(() => {
-    const priceStr = event.price?.toLowerCase() || '';
-    return priceStr === 'free' || priceStr === '$0' || priceStr === '0' || !priceStr || priceStr.trim() === '';
-  }, [event.price]);
+  // Get pricing type using helper
+  const pricingType = useMemo(() => getEventPricingType(event), [event]);
+  const isFree = useMemo(() => isEventFree(event), [event]);
+  const isDoorPayment = useMemo(() => isPayAtDoor(event), [event]);
 
-  // Extract price per attendee
+  // Extract price per attendee (in dollars) using centralized helper
   const pricePerAttendee = useMemo(() => {
     if (isFree) return 0;
-    const priceStr = event.price?.replace(/[^0-9.]/g, '') || '0';
-    return parseFloat(priceStr) || 0;
-  }, [event.price, isFree]);
+    const feeAmountCents = getEventFeeAmount(event);
+    return feeAmountCents / 100; // Convert cents to dollars
+  }, [event, isFree]);
 
-  // Calculate totals
+  // Calculate totals (in dollars)
   const subtotal = pricePerAttendee * attendeeCount;
   const total = subtotal + supportContribution;
   
-  // Get currency from event (default to cad)
-  const currency = event.currency || 'cad';
+  // Get currency from event using centralized helper
+  const currency = getEventCurrency(event);
   
   // Get currency symbol for display
   const currencySymbol = currency.toLowerCase() === 'eur' ? '€' : currency.toLowerCase() === 'gbp' ? '£' : '$';
@@ -78,7 +79,8 @@ export const ConfirmReservationPage: React.FC<ConfirmReservationPageProps> = ({
   }, [event.date]);
 
   const handleConfirm = async () => {
-    if (!isFree && !paymentMethod) {
+    // Only require payment method for online (Stripe) payments, not for free or door
+    if (!isFree && !isDoorPayment && !paymentMethod) {
       alert('Please select a payment method.');
       return;
     }
@@ -144,7 +146,13 @@ export const ConfirmReservationPage: React.FC<ConfirmReservationPageProps> = ({
         >
           <ChevronLeft size={20} />
         </button>
-        <h1 className="text-xl font-heading font-bold text-[#15383c]">Confirm & Pay</h1>
+        <h1 className="text-xl font-heading font-bold text-[#15383c]">
+          {isFree 
+            ? (language === 'fr' ? 'Confirmer la réservation' : 'Confirm Reservation')
+            : isDoorPayment
+              ? (language === 'fr' ? 'Réserver (paiement sur place)' : 'Reserve (Pay at door)')
+              : (language === 'fr' ? 'Confirmer & Payer' : 'Confirm & Pay')}
+        </h1>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
@@ -287,8 +295,29 @@ export const ConfirmReservationPage: React.FC<ConfirmReservationPageProps> = ({
           </div>
         </div>
 
-        {/* Payment Method - Only show for paid events */}
-        {!isFree && (
+        {/* Pay at Door Info */}
+        {isDoorPayment && (
+          <div className="pb-6 border-b border-gray-200">
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <Banknote className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-base font-heading font-bold text-amber-800 mb-1">
+                    {language === 'fr' ? 'Paiement sur place' : 'Pay at the door'}
+                  </h3>
+                  <p className="text-sm text-amber-700">
+                    {language === 'fr' 
+                      ? `Vous paierez ${formatPaymentAmount((pricePerAttendee * attendeeCount) * 100, currency)} directement à l'hôte lors de l'événement.`
+                      : `You'll pay ${formatPaymentAmount((pricePerAttendee * attendeeCount) * 100, currency)} directly to the host at the event.`}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Payment Method - Only show for online paid events */}
+        {!isFree && !isDoorPayment && (
           <div className="pb-6 border-b border-gray-200">
             <h3 className="text-lg font-heading font-bold text-[#15383c] mb-4">Payment Method</h3>
             <div className="space-y-3">
@@ -336,10 +365,16 @@ export const ConfirmReservationPage: React.FC<ConfirmReservationPageProps> = ({
         {/* Confirm Button */}
         <button
           onClick={handleConfirm}
-          disabled={processing || (!isFree && !paymentMethod)}
+          disabled={processing || (!isFree && !isDoorPayment && !paymentMethod)}
           className="w-full py-4 bg-[#15383c] text-white rounded-full font-bold text-base hover:bg-[#1f4d52] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
         >
-          {processing ? 'Processing...' : isFree ? 'Confirm & Reserve' : 'Confirm & Pay'}
+          {processing 
+            ? (language === 'fr' ? 'Traitement...' : 'Processing...') 
+            : isFree 
+              ? (language === 'fr' ? 'Confirmer & Réserver' : 'Confirm & Reserve')
+              : isDoorPayment
+                ? (language === 'fr' ? 'Réserver (paiement sur place)' : 'Reserve (Pay at door)')
+                : (language === 'fr' ? 'Confirmer & Payer' : 'Confirm & Pay')}
         </button>
       </div>
     </div>

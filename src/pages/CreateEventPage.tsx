@@ -72,7 +72,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
   const [weeklyDayOfWeek, setWeeklyDayOfWeek] = useState<number | undefined>(undefined);
   const [monthlyDayOfMonth, setMonthlyDayOfMonth] = useState<number | undefined>(undefined);
   // Payment fields
-  const [hasFee, setHasFee] = useState(false);
+  const [pricingType, setPricingType] = useState<'free' | 'online' | 'door'>('free');
   const [feeAmount, setFeeAmount] = useState<number>(0); // Fee in dollars (will convert to cents)
   const [currency, setCurrency] = useState<'cad' | 'usd' | 'eur'>('cad');
   
@@ -291,10 +291,10 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       return;
     }
     
-    // Validate Stripe account for paid events
-    if (hasFee && feeAmount > 0) {
+    // Validate Stripe account for online paid events only (not for pay-at-door)
+    if (pricingType === 'online' && feeAmount > 0) {
       if (!userProfile?.stripeAccountId) {
-        alert('Please set up your Stripe account before creating paid events. Go to Profile → Stripe Payout Settings to connect your account.');
+        alert('Please set up your Stripe account before creating online paid events. Go to Profile → Stripe Payout Settings to connect your account.');
         setViewState(ViewState.PROFILE_STRIPE);
         return;
       }
@@ -304,6 +304,12 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         setViewState(ViewState.PROFILE_STRIPE);
         return;
       }
+    }
+    
+    // Validate price amount for paid pricing types
+    if ((pricingType === 'online' || pricingType === 'door') && feeAmount <= 0) {
+      alert('Please enter a price amount greater than 0 for paid events.');
+      return;
     }
     
     // Validate repeat settings for weekly/monthly (only for non-drafts)
@@ -696,10 +702,10 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         whatToExpect: whatToExpect || undefined,
         attendeesCount,
         category: (category || 'Community') as typeof CATEGORIES[number], // Keep for backward compatibility, default to Community
-        // Set price field correctly based on hasFee and feeAmount
-        price: hasFee && feeAmount > 0 
+        // Set price field correctly based on pricingType and feeAmount
+        price: (pricingType === 'online' || pricingType === 'door') && feeAmount > 0 
           ? `$${feeAmount.toFixed(2)} ${currency.toUpperCase()}`
-          : (price && price.trim() !== '' ? price : 'Free'),
+          : 'Free',
         rating: 0,
         reviewCount: 0,
         capacity: attendeesCount || undefined,
@@ -726,9 +732,10 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         weeklyDayOfWeek: sessionFrequency === 'weekly' ? (weeklyDayOfWeek !== undefined ? weeklyDayOfWeek : (date ? new Date(date).getDay() : undefined)) : undefined,
         monthlyDayOfMonth: sessionFrequency === 'monthly' ? (monthlyDayOfMonth !== undefined ? monthlyDayOfMonth : (date ? new Date(date).getDate() : undefined)) : undefined,
         // Payment fields
-        hasFee: hasFee && feeAmount > 0,
-        feeAmount: hasFee && feeAmount > 0 ? Math.round(feeAmount * 100) : undefined, // Convert to cents
-        currency: hasFee && feeAmount > 0 ? currency : undefined,
+        pricingType: pricingType,
+        hasFee: (pricingType === 'online' || pricingType === 'door') && feeAmount > 0,
+        feeAmount: (pricingType === 'online' || pricingType === 'door') && feeAmount > 0 ? Math.round(feeAmount * 100) : undefined, // Convert to cents
+        currency: (pricingType === 'online' || pricingType === 'door') && feeAmount > 0 ? currency : undefined,
       } as any); // Type assertion needed for optional fields
       
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -744,7 +751,8 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         eventId: createdEvent.id,
         title: createdEvent.title,
         hostId: createdEvent.hostId,
-        isDraft: saveAsDraft
+        isDraft: saveAsDraft,
+        pricingType
       });
 
       // Show success message
@@ -770,7 +778,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       setWhatToExpect('');
       setAttendeesCount(0);
       setPrice('Free');
-      setHasFee(false);
+      setPricingType('free');
       setFeeAmount(0);
       setCurrency('cad'); // Reset to default, could also use user.currency
       setIsPrivate(false);
@@ -1360,43 +1368,106 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
-                {t('createEvent.price')}
+            {/* Pricing Type Selector */}
+            <div className="space-y-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+              <label className="block text-sm font-medium text-gray-700">
+                {language === 'fr' ? 'Tarification' : 'Pricing'}
               </label>
-              <input 
-                type="text" 
-                placeholder={t('createEvent.pricePlaceholder')}
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all" 
-              />
-            </div>
-
-            {/* Fee Option */}
-            <div className="space-y-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="hasFee"
-                  checked={hasFee}
-                  onChange={(e) => {
-                    setHasFee(e.target.checked);
-                    if (!e.target.checked) {
-                      setFeeAmount(0);
-                    }
-                  }}
-                  className="w-5 h-5 text-[#15383c] border-gray-300 rounded focus:ring-[#15383c]"
-                />
-                <label htmlFor="hasFee" className="text-sm font-medium text-gray-700 cursor-pointer">
-                  {t('createEvent.chargeFeeForThisEvent')}
-                </label>
-              </div>
               
-              {hasFee && (
-                <div className="space-y-2 pl-8">
-                  {userProfile?.stripeAccountId && userProfile?.stripeOnboardingStatus === 'complete' ? (
+              {/* Free Option */}
+              <label className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                pricingType === 'free' 
+                  ? 'border-[#15383c] bg-[#15383c]/5' 
+                  : 'border-gray-200 hover:bg-gray-50'
+              }`}>
+              <input 
+                  type="radio"
+                  name="pricingType"
+                  value="free"
+                  checked={pricingType === 'free'}
+                  onChange={() => {
+                    setPricingType('free');
+                    setFeeAmount(0);
+                  }}
+                  className="w-5 h-5 text-[#15383c] focus:ring-[#15383c]"
+                />
+                <div>
+                  <span className="text-base font-medium text-gray-700">{language === 'fr' ? 'Gratuit' : 'Free'}</span>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {language === 'fr' ? 'Aucun frais pour les participants' : 'No charge for attendees'}
+                  </p>
+            </div>
+              </label>
+
+              {/* Pay Online Option */}
+              <label className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                pricingType === 'online' 
+                  ? 'border-[#15383c] bg-[#15383c]/5' 
+                  : 'border-gray-200 hover:bg-gray-50'
+              }`}>
+                <input
+                  type="radio"
+                  name="pricingType"
+                  value="online"
+                  checked={pricingType === 'online'}
+                  onChange={() => setPricingType('online')}
+                  className="w-5 h-5 text-[#15383c] focus:ring-[#15383c]"
+                />
+                <div>
+                  <span className="text-base font-medium text-gray-700">{language === 'fr' ? 'Paiement en ligne (Stripe)' : 'Pay online (Stripe)'}</span>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {language === 'fr' ? 'Les participants paient en ligne lors de la réservation' : 'Attendees pay online when reserving'}
+                  </p>
+                </div>
+                </label>
+              
+              {/* Pay at the Door Option */}
+              <label className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                pricingType === 'door' 
+                  ? 'border-[#15383c] bg-[#15383c]/5' 
+                  : 'border-gray-200 hover:bg-gray-50'
+              }`}>
+                <input
+                  type="radio"
+                  name="pricingType"
+                  value="door"
+                  checked={pricingType === 'door'}
+                  onChange={() => setPricingType('door')}
+                  className="w-5 h-5 text-[#15383c] focus:ring-[#15383c]"
+                />
+                <div>
+                  <span className="text-base font-medium text-gray-700">{language === 'fr' ? 'Paiement sur place' : 'Pay at the door'}</span>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {language === 'fr' 
+                      ? 'Les participants paient en personne à l\'événement. Popera sert uniquement pour la réservation et le chat.'
+                      : 'Attendees pay in person at the event. Popera is only used for RSVP and group chat.'}
+                  </p>
+              </div>
+              </label>
+              
+              {/* Price Input (shown for online and door) */}
+              {(pricingType === 'online' || pricingType === 'door') && (
+                <div className="space-y-3 pl-4 border-l-2 border-[#15383c]/20 ml-2 mt-3">
+                  {pricingType === 'online' && (!userProfile?.stripeAccountId || userProfile?.stripeOnboardingStatus !== 'complete') ? (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                      <p className="text-sm text-yellow-800 mb-2">
+                        {language === 'fr' 
+                          ? 'Vous devez configurer Stripe pour recevoir des paiements en ligne.'
+                          : 'You need to set up Stripe to receive online payments.'}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setViewState(ViewState.PROFILE_STRIPE)}
+                        className="text-sm font-semibold text-[#e35e25] hover:underline"
+                      >
+                        {language === 'fr' ? 'Configurer Stripe' : 'Set up Stripe'}
+                      </button>
+                    </div>
+                  ) : (
                     <>
+                      <label className="block text-sm font-medium text-gray-700">
+                        {language === 'fr' ? 'Prix par participant' : 'Price per attendee'}
+                      </label>
                       <div className="flex gap-2">
                         <select
                           value={currency}
@@ -1417,23 +1488,19 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                           className="flex-1 bg-white border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-[#15383c]"
                         />
                       </div>
+                      {pricingType === 'online' && (
                       <p className="text-xs text-gray-500">
-                        {t('createEvent.platformFee')}
+                          {language === 'fr' ? 'Des frais de plateforme de 10% s\'appliquent.' : 'A 10% platform fee applies.'}
                       </p>
+                      )}
+                      {pricingType === 'door' && (
+                        <p className="text-xs text-green-600">
+                          {language === 'fr' 
+                            ? '✓ Aucun frais de plateforme — vous collectez le paiement directement.'
+                            : '✓ No platform fees — you collect payment directly.'}
+                        </p>
+                      )}
                     </>
-                  ) : (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                      <p className="text-sm text-yellow-800 mb-2">
-                        {t('createEvent.needToSetupStripe')}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => setViewState(ViewState.PROFILE_STRIPE)}
-                        className="text-sm font-semibold text-[#e35e25] hover:underline"
-                      >
-                        {t('createEvent.setUpStripeAccount')}
-                      </button>
-                    </div>
                   )}
                 </div>
               )}

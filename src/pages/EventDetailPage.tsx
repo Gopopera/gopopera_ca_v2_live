@@ -26,7 +26,7 @@ import { useHostData } from '../../hooks/useHostProfileCache';
 import { useHostReviews } from '../../hooks/useHostReviewsCache';
 import { MetricSkeleton } from '../../components/ui/MetricSkeleton';
 import { PaymentModal } from '../../components/payments/PaymentModal';
-import { hasEventFee, isRecurringEvent, getEventFeeAmount } from '../../utils/stripeHelpers';
+import { hasEventFee, isRecurringEvent, getEventFeeAmount, getEventPricingType, isPayAtDoor, isEventFree as isEventFreeHelper, formatPaymentAmount, getEventCurrency, requiresOnlinePayment } from '../../utils/stripeHelpers';
 
 /**
  * VALIDATION CHECKLIST (Manual Testing):
@@ -54,45 +54,33 @@ import { hasEventFee, isRecurringEvent, getEventFeeAmount } from '../../utils/st
  */
 
 /**
- * Helper to format event price display - matches EventCard logic exactly
- * Checks new payment fields first, then falls back to legacy price field
+ * Helper to format event price display
+ * Now supports pricingType: 'free', 'online', 'door'
  */
-const formatEventPrice = (event: Event, showCurrency: boolean = true): string => {
-  // Check new payment fields first (hasFee + feeAmount)
-  if (event.hasFee && event.feeAmount && event.feeAmount > 0) {
-    const amount = event.feeAmount / 100; // Convert from cents
-    if (showCurrency) {
-      const currency = event.currency?.toUpperCase() || 'CAD';
-      return `$${amount.toFixed(0)} ${currency}`;
-    }
-    return `$${amount.toFixed(0)}`;
+const formatEventPrice = (event: Event, showCurrency: boolean = true, showPricingMode: boolean = false): string => {
+  const pricingType = getEventPricingType(event);
+  const feeAmount = getEventFeeAmount(event);
+  const currency = getEventCurrency(event);
+  
+  if (pricingType === 'free') {
+    return 'Free';
   }
-  // Fallback to legacy price field - ALWAYS ensure $ prefix
-  if (event.price && event.price !== 'Free' && event.price !== '' && event.price !== '$0' && event.price !== '0') {
-    // Ensure the price always starts with $
-    const priceStr = event.price.toString();
-    if (priceStr.startsWith('$')) {
-      return priceStr;
-    }
-    return `$${priceStr}`;
+  
+  const formatted = formatPaymentAmount(feeAmount, currency);
+  
+  if (showPricingMode && pricingType === 'door') {
+    return `Pay at door: ${formatted}`;
   }
-  return 'Free';
+  
+  return formatted;
 };
 
 /**
- * Helper to check if an event is free - matches EventCard logic exactly
- * Returns true only if event has no fee (checking both new and legacy fields)
+ * Helper to check if an event is free
+ * Uses the centralized isEventFree helper
  */
 const isEventFree = (event: Event): boolean => {
-  // Check new payment fields first
-  if (event.hasFee && event.feeAmount && event.feeAmount > 0) {
-    return false;
-  }
-  // Check legacy price field
-  if (event.price && event.price !== 'Free' && event.price !== '' && event.price !== '$0' && event.price !== '0') {
-    return false;
-  }
-  return true;
+  return isEventFreeHelper(event);
 };
 
 /**
@@ -696,11 +684,14 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       } else {
         // Check if event is free (using consistent helper that checks both new and legacy price fields)
         const isFree = isEventFree(event);
-        const hasFee = hasEventFee(event);
+        const needsStripe = requiresOnlinePayment(event); // Only true for pricingType === 'online'
+        const isDoorPayment = isPayAtDoor(event); // pricingType === 'door'
         
         console.log('[EVENT_DETAIL] Event payment check:', {
           isFree,
-          hasFee,
+          needsStripe,
+          isDoorPayment,
+          pricingType: event?.pricingType,
           hasFeeField: event?.hasFee,
           feeAmount: event?.feeAmount,
           price: event?.price,
@@ -791,34 +782,37 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             setHasActiveReservation(false);
             throw error; // Re-throw to be caught by outer catch
           }
-        } else {
-          // Check if event has Stripe fee (new payment system)
-          console.log('[EVENT_DETAIL] 🔥 NOT FREE - hasFee=', hasFee, 'hostStripeStatus=', hostStripeStatus);
-          if (hasFee) {
-            console.log('[EVENT_DETAIL] Stripe payment event - checking host status');
-            // Verify host has Stripe account enabled
-            if (!hostStripeStatus.checked) {
-              console.log('[EVENT_DETAIL] Host Stripe status not checked yet, waiting...');
-              setReserving(false);
-              return;
-            }
-            
-            if (!hostStripeStatus.enabled) {
-              console.log('[EVENT_DETAIL] ⚠️ Host does not have Stripe enabled - showing error modal');
-              setShowHostPaymentSetupError(true);
-              setReserving(false);
-              return;
-            }
-            
-            // Show payment modal for Stripe payments
-            console.log('[EVENT_DETAIL] ✅ Opening payment modal - feeAmount:', getEventFeeAmount(event));
-            setShowPaymentModal(true);
-            setReserving(false); // Stop loading state since we're showing the modal
-          } else {
-            // For legacy paid events, navigate to Confirm & Pay page
-            console.log('[EVENT_DETAIL] Legacy paid event - navigating to confirm page');
-            setViewState(ViewState.CONFIRM_RESERVATION);
+        } else if (needsStripe) {
+          // STRIPE PAYMENT REQUIRED (pricingType === 'online')
+          console.log('[EVENT_DETAIL] 🔥 STRIPE payment required - needsStripe=', needsStripe, 'hostStripeStatus=', hostStripeStatus);
+          
+          // Verify host has Stripe account enabled
+          if (!hostStripeStatus.checked) {
+            console.log('[EVENT_DETAIL] Host Stripe status not checked yet, waiting...');
+            setReserving(false);
+            return;
           }
+          
+          if (!hostStripeStatus.enabled) {
+            console.log('[EVENT_DETAIL] ⚠️ Host does not have Stripe enabled - showing error modal');
+            setShowHostPaymentSetupError(true);
+            setReserving(false);
+            return;
+          }
+          
+          // Show payment modal for Stripe payments
+          console.log('[EVENT_DETAIL] ✅ Opening payment modal - feeAmount:', getEventFeeAmount(event));
+          setShowPaymentModal(true);
+          setReserving(false); // Stop loading state since we're showing the modal
+        } else if (isDoorPayment) {
+          // PAY AT DOOR - NO STRIPE (pricingType === 'door')
+          // Navigate to confirm page to capture reservation WITHOUT Stripe
+          console.log('[EVENT_DETAIL] 💵 Pay at door event - navigating to confirm page (NO Stripe)');
+          setViewState(ViewState.CONFIRM_RESERVATION);
+        } else {
+          // For legacy paid events without pricingType, navigate to Confirm & Pay page
+          console.log('[EVENT_DETAIL] Legacy paid event - navigating to confirm page');
+          setViewState(ViewState.CONFIRM_RESERVATION);
         }
       }
     } catch (error) {
@@ -930,7 +924,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         onClose={() => setShowFakeEventModal(false)}
         onBrowseEvents={handleBrowseEvents}
       />
-      {hasEventFee(event) && (
+      {requiresOnlinePayment(event) && (
         <PaymentModal
           isOpen={showPaymentModal}
           onClose={() => setShowPaymentModal(false)}
@@ -1419,7 +1413,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   )}
                   <div className="flex items-center gap-2.5 text-gray-600">
                     <DollarSign size={16} className="text-[#e35e25] shrink-0" />
-                    <span className="text-base">{formatEventPrice(event, true)}</span>
+                    <span className="text-base">
+                      {isPayAtDoor(event) && <span className="text-amber-600 font-medium">Pay at door: </span>}
+                      {formatEventPrice(event, true)}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1508,6 +1505,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                       <div className="flex items-center gap-2.5 text-gray-600">
                         <DollarSign size={16} className="text-[#e35e25] shrink-0" />
                         <span className="text-sm sm:text-base">
+                          {isPayAtDoor(event) && <span className="text-amber-600 font-medium">Pay at door: </span>}
                           {formatEventPrice(event, true)}
                         </span>
                       </div>

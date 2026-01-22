@@ -13,6 +13,8 @@ import { EventImage } from './EventImage';
 // PERFORMANCE: Use cached host profile hook to share subscriptions across cards
 import { useHostProfile } from '../../hooks/useHostProfileCache';
 import { useHostReviews } from '../../hooks/useHostReviewsCache';
+// Pricing helpers for pay-at-door support
+import { getEventPricingType, getEventFeeAmount, getEventCurrency, formatPaymentAmount, isPayAtDoor as isEventPayAtDoor } from '../../utils/stripeHelpers';
 
 // PERFORMANCE: Real-time attendees count component (logging removed for performance)
 const EventAttendeesCount: React.FC<{ eventId: string; capacity?: number; inline?: boolean }> = ({ eventId, capacity, inline = false }) => {
@@ -70,23 +72,23 @@ const EventAttendeesCount: React.FC<{ eventId: string; capacity?: number; inline
   );
 };
 
-// Helper to format event price display - ALWAYS ensures $ prefix for paid events
-const formatEventPrice = (event: Event): string => {
-  // Check new payment fields first
-  if (event.hasFee && event.feeAmount && event.feeAmount > 0) {
-    const amount = event.feeAmount / 100; // Convert from cents
-    const currency = event.currency?.toUpperCase() || 'CAD';
-    return `$${amount.toFixed(0)} ${currency}`;
+// Helper to format event price display - supports pricingType
+const formatEventPrice = (event: Event, showDoorPrefix: boolean = false): string => {
+  const pricingType = getEventPricingType(event);
+  
+  if (pricingType === 'free') {
+    return 'Free';
   }
-  // Fallback to legacy price field - ALWAYS ensure $ prefix
-  if (event.price && event.price !== 'Free' && event.price !== '' && event.price !== '$0' && event.price !== '0') {
-    const priceStr = event.price.toString();
-    if (priceStr.startsWith('$')) {
-      return priceStr;
-    }
-    return `$${priceStr}`;
+  
+  const feeAmount = getEventFeeAmount(event);
+  const currency = getEventCurrency(event);
+  const formatted = formatPaymentAmount(feeAmount, currency);
+  
+  if (showDoorPrefix && pricingType === 'door') {
+    return `At door: ${formatted}`;
   }
-  return 'Free';
+  
+  return formatted;
 };
 
 interface EventCardProps {

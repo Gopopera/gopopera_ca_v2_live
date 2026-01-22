@@ -8,7 +8,7 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import { formatDate } from '../../utils/dateFormatter';
 import { formatTicketDate } from '../utils/formatTicketText';
-import { formatPaymentAmount } from '../../utils/stripeHelpers';
+import { formatPaymentAmount, getEventPricingType, isPayAtDoor, getEventCurrency } from '../../utils/stripeHelpers';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useUserStore } from '../../stores/userStore';
 import { AddToCalendarButton } from '../components/AddToCalendarButton';
@@ -264,12 +264,26 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
   // Transaction summary - use event currency for proper formatting
   const transactionSummary = useMemo(() => {
     if (!ticketData?.reservation) return 'Free';
+    if (!ticketData.event) return 'Free';
+    
+    const pricingType = getEventPricingType(ticketData.event);
+    const currency = getEventCurrency(ticketData.event);
+    
+    // Pay at door events show the amount as "unpaid" or the status
+    if (pricingType === 'door') {
+      const amount = ticketData.reservation.totalAmount || 0;
+      if (amount > 0) {
+        const doorStatus = (ticketData.reservation as any).doorPaymentStatus === 'paid' ? '(Paid)' : '(Pay at door)';
+        return `${formatPaymentAmount(amount, currency)} ${doorStatus}`;
+      }
+      return 'Pay at door';
+    }
+    
     if (ticketData.reservation.totalAmount && ticketData.reservation.totalAmount > 0) {
-      const currency = ticketData.event?.currency || 'cad';
       return formatPaymentAmount(ticketData.reservation.totalAmount, currency);
     }
     return 'Free';
-  }, [ticketData?.reservation, ticketData?.event?.currency]);
+  }, [ticketData?.reservation, ticketData?.event]);
 
   // Handle check-in
   const handleCheckIn = async () => {

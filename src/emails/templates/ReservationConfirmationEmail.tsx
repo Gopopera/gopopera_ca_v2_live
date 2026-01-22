@@ -29,6 +29,7 @@ export function ReservationConfirmationEmailTemplate(data: {
   attendeeCount?: number;
   totalAmount?: number;
   currency?: string;
+  pricingType?: 'free' | 'online' | 'door'; // Pricing type: free, online (Stripe), or door
 }): string {
   // Use ticketUrl if provided, otherwise fall back to eventUrl
   const ctaUrl = data.ticketUrl || data.eventUrl || '#';
@@ -80,7 +81,24 @@ export function ReservationConfirmationEmailTemplate(data: {
       </table>
       ` : ''}
       
-      ${data.totalAmount && data.totalAmount > 0 ? `
+      ${data.pricingType === 'door' && data.totalAmount && data.totalAmount > 0 ? `
+      <table role="presentation" style="width: 100%; margin-top: 8px;">
+        <tr>
+          <td>
+            ${getInfoRow('Payment', `<span style="color: #d97706; font-weight: 600;">Pay at the door: ${formatEmailCurrency(data.totalAmount, data.currency)}</span>`)}
+          </td>
+        </tr>
+      </table>
+      <table role="presentation" style="width: 100%; margin-top: 4px;">
+        <tr>
+          <td>
+            <p style="margin: 0; color: rgba(255, 255, 255, 0.6); font-size: 13px;">
+              💡 Please bring cash or your preferred payment method to pay the host directly at the event.
+            </p>
+          </td>
+        </tr>
+      </table>
+      ` : data.totalAmount && data.totalAmount > 0 ? `
       <table role="presentation" style="width: 100%; margin-top: 8px;">
         <tr>
           <td>

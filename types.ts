@@ -62,9 +62,10 @@ export interface Event {
   startDateTime?: number; // Timestamp for session start (alternative to startDate)
   startDate?: string; // ISO date string for session start
   // Payment fields
-  hasFee?: boolean; // Whether event charges a fee
+  hasFee?: boolean; // Whether event charges a fee (legacy, use pricingType)
   feeAmount?: number; // Fee amount in cents
-  currency?: string; // 'cad' or 'usd'
+  currency?: string; // 'cad', 'usd', or 'eur'
+  pricingType?: 'free' | 'online' | 'door'; // Pricing model: free, pay online (Stripe), pay at door
 
   // AI Features
   aiWarmupEnabled?: boolean; // If true, AI posts one icebreaker at event start (default: false)

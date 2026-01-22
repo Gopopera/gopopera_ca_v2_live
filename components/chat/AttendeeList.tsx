@@ -1,9 +1,51 @@
 import React, { useState, useEffect } from 'react';
-import { Users, X, UserX, Ban, Crown } from 'lucide-react';
+import { Users, X, UserX, Ban, Crown, CreditCard, Banknote, Gift } from 'lucide-react';
 import { getDbSafe } from '../../src/lib/firebase';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { useUserStore } from '../../stores/userStore';
 import { subscribeToMultipleUserProfiles } from '../../firebase/userSubscriptions';
+
+/**
+ * Payment Badge Component
+ * Displays payment status for attendees based on reservation.pricingMode and doorPaymentStatus
+ */
+const PaymentBadge: React.FC<{ pricingMode?: string; doorPaymentStatus?: string }> = ({ pricingMode, doorPaymentStatus }) => {
+  if (!pricingMode) return null;
+  
+  if (pricingMode === 'free') {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">
+        <Gift size={10} />
+        FREE
+      </span>
+    );
+  }
+  
+  if (pricingMode === 'online') {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+        <CreditCard size={10} />
+        PAID ONLINE
+      </span>
+    );
+  }
+  
+  if (pricingMode === 'door') {
+    const isPaid = doorPaymentStatus === 'paid';
+    return (
+      <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium ${
+        isPaid 
+          ? 'bg-green-100 text-green-700' 
+          : 'bg-amber-100 text-amber-700'
+      }`}>
+        <Banknote size={10} />
+        {isPaid ? 'DOOR — PAID' : 'DOOR — UNPAID'}
+      </span>
+    );
+  }
+  
+  return null;
+};
 
 interface Attendee {
   userId: string;
@@ -16,6 +58,9 @@ interface Attendee {
   cancelledAt?: number;
   checkedInAt?: number;
   status?: 'reserved' | 'checked_in' | 'cancelled';
+  // Payment tracking fields
+  pricingMode?: 'free' | 'online' | 'door';
+  doorPaymentStatus?: 'unpaid' | 'paid';
 }
 
 interface AttendeeListProps {
@@ -190,6 +235,9 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
             cancelledAt: rsvpData.cancelledAt,
             checkedInAt: rsvpData.checkedInAt,
             status: rsvpData.status,
+            // Payment tracking fields from reservation
+            pricingMode: rsvpData.pricingMode,
+            doorPaymentStatus: rsvpData.doorPaymentStatus,
           });
         } catch (error) {
           console.error('Error loading user:', error);
@@ -304,6 +352,13 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
                         <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold uppercase">
                           Checked in
                         </span>
+                      )}
+                      {/* Payment badge - show pricing mode for non-host attendees */}
+                      {!attendee.isHost && (
+                        <PaymentBadge 
+                          pricingMode={attendee.pricingMode} 
+                          doorPaymentStatus={attendee.doorPaymentStatus} 
+                        />
                       )}
                     </div>
                     {/* Show status: Checked in or RSVP'd */}

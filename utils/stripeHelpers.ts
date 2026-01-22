@@ -88,6 +88,127 @@ export function getEventCurrency(event: Event): string {
 }
 
 /**
+ * Pricing type for events
+ * - free: no charge
+ * - online: pay via Stripe
+ * - door: pay at the door (in person)
+ */
+export type PricingType = 'free' | 'online' | 'door';
+
+/**
+ * Get the pricing type for an event (backward compatible)
+ * - If event.pricingType is set, use it directly
+ * - If hasFee/feeAmount is set, it's "online" (legacy paid events)
+ * - If price is set and not "Free", it's "online" (legacy)
+ * - Otherwise, it's "free"
+ * @param event Event object
+ * @returns Pricing type: 'free' | 'online' | 'door'
+ */
+export function getEventPricingType(event: Event): PricingType {
+  // Use explicit pricingType if set
+  if (event.pricingType && ['free', 'online', 'door'].includes(event.pricingType)) {
+    return event.pricingType;
+  }
+  
+  // Backward compatibility: derive from legacy fields
+  if (hasEventFee(event)) {
+    return 'online'; // Legacy paid events default to online
+  }
+  
+  return 'free';
+}
+
+/**
+ * Format event price for display based on pricing type
+ * @param event Event object
+ * @param showPricingMode Whether to include the pricing mode (e.g., "Pay at the door:")
+ * @returns Formatted price string
+ */
+export function formatEventPriceDisplay(event: Event, showPricingMode: boolean = false): string {
+  const pricingType = getEventPricingType(event);
+  const currency = getEventCurrency(event);
+  const amountCents = getEventFeeAmount(event);
+  
+  if (pricingType === 'free') {
+    return 'Free';
+  }
+  
+  const formattedAmount = formatPaymentAmount(amountCents, currency);
+  
+  if (!showPricingMode) {
+    return formattedAmount;
+  }
+  
+  if (pricingType === 'door') {
+    return `Pay at the door: ${formattedAmount}`;
+  }
+  
+  return formattedAmount; // Online payment - no prefix needed
+}
+
+/**
+ * Check if event requires online payment (Stripe)
+ * @param event Event object
+ * @returns True if payment happens via Stripe
+ */
+export function requiresOnlinePayment(event: Event): boolean {
+  return getEventPricingType(event) === 'online';
+}
+
+/**
+ * Check if event is pay-at-door
+ * @param event Event object
+ * @returns True if payment happens in person
+ */
+export function isPayAtDoor(event: Event): boolean {
+  return getEventPricingType(event) === 'door';
+}
+
+/**
+ * Check if event is completely free
+ * @param event Event object
+ * @returns True if event has no charge
+ */
+export function isEventFree(event: Event): boolean {
+  return getEventPricingType(event) === 'free';
+}
+
+/**
+ * STRIPE GATING GUARD
+ * Use this before calling any Stripe API function to prevent accidental charges for door events.
+ * Logs an error and returns false if the event is pay-at-door.
+ * 
+ * @param event Event object
+ * @param callerContext Context string for logging (e.g., "PaymentModal.handleSubmit")
+ * @returns True if Stripe call is allowed, false if blocked
+ */
+export function assertStripeAllowed(event: Event, callerContext: string): boolean {
+  const pricingType = getEventPricingType(event);
+  
+  if (pricingType === 'door') {
+    console.error(`[STRIPE_GUARD] ❌ BLOCKED: Stripe call attempted for pay-at-door event!`, {
+      callerContext,
+      eventId: event?.id,
+      pricingType,
+      eventTitle: event?.title,
+    });
+    return false;
+  }
+  
+  if (pricingType === 'free') {
+    console.warn(`[STRIPE_GUARD] ⚠️ Warning: Stripe call for free event`, {
+      callerContext,
+      eventId: event?.id,
+      pricingType,
+    });
+    // Allow but warn - some flows might use Stripe for tips/donations on free events
+    return true;
+  }
+  
+  return true; // 'online' pricing type - Stripe allowed
+}
+
+/**
  * Get next event date for recurring events
  * @param event Event object
  * @returns Next event date or null if not recurring or invalid
