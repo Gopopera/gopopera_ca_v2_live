@@ -12,9 +12,18 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "check-secrets": "! grep -rn 'AIza' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.json' --exclude-dir=node_modules --exclude-dir=dist . || (echo '⚠️  Found potential API key leak!' && exit 1)",
-    "encode:firebase:key": "node scripts/encode-firebase-private-key.mjs"
+    "encode:firebase:key": "node scripts/encode-firebase-private-key.mjs",
+    "mobile:build": "npm run build && npx cap sync",
+    "mobile:sync": "npx cap sync",
+    "mobile:ios": "npx cap open ios",
+    "mobile:android": "npx cap open android",
+    "mobile:dev:ios": "npm run build && npx cap sync ios && npx cap open ios",
+    "mobile:dev:android": "npm run build && npx cap sync android && npx cap open android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.0.1",
+    "@capacitor/core": "^8.0.1",
+    "@capacitor/ios": "^8.0.1",
     "@react-google-maps/api": "^2.20.7",
     "@stripe/react-stripe-js": "^5.4.1",
     "@stripe/stripe-js": "^8.5.3",
@@ -38,6 +47,7 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.0.1",
     "@chromatic-com/storybook": "^4.1.3",
     "@playwright/test": "^1.57.0",
     "@storybook/addon-a11y": "^10.0.8",
