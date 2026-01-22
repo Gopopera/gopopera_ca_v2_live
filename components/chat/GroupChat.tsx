@@ -249,6 +249,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
   const [showMoreToolsModal, setShowMoreToolsModal] = useState(false);
   const [showSubscriptionOptOut, setShowSubscriptionOptOut] = useState(false);
   const [userSubscription, setUserSubscription] = useState<{ subscriptionId: string; nextChargeDate?: Date } | null>(null);
+  const [activeTab, setActiveTab] = useState<'Chat' | 'Poll' | 'Survey' | 'Announcement'>('Chat');
   const [isFollowingHost, setIsFollowingHost] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [hasReservedRealTime, setHasReservedRealTime] = useState<boolean | null>(null); // null = not checked yet
@@ -1546,21 +1547,35 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
 
   // Menu tabs - Poll, Survey, and Announcement are host-only
   const tabs = useMemo(() => {
-    const baseTabs = [
-      { name: 'Chat', active: true, icon: MessageCircle },
+    const baseTabs: { name: 'Chat' | 'Poll' | 'Survey' | 'Announcement'; icon: typeof MessageCircle }[] = [
+      { name: 'Chat', icon: MessageCircle },
     ];
     
     // Host-only tabs
     if (isHost) {
       baseTabs.push(
-        { name: 'Poll', active: false, icon: BarChart2 },
-        { name: 'Survey', active: false, icon: FileText },
-        { name: 'Announcement', active: false, icon: Megaphone }
+        { name: 'Poll', icon: BarChart2 },
+        { name: 'Survey', icon: FileText },
+        { name: 'Announcement', icon: Megaphone }
       );
     }
     
     return baseTabs;
   }, [isHost]);
+  
+  // Handler for sidebar tab clicks
+  const handleTabClick = (tabName: 'Chat' | 'Poll' | 'Survey' | 'Announcement') => {
+    setActiveTab(tabName);
+    
+    // For host-only tabs, also open the corresponding modal
+    if (tabName === 'Poll') {
+      setShowCreatePollModal(true);
+    } else if (tabName === 'Survey') {
+      setShowCreateSurveyModal(true);
+    } else if (tabName === 'Announcement') {
+      setShowCreateAnnouncementModal(true);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-gray-50 flex flex-col md:flex-row overflow-hidden font-sans z-50">
@@ -1595,14 +1610,15 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
            {tabs.map((tab) => (
              <button
                key={tab.name}
+               onClick={() => handleTabClick(tab.name)}
                className={`
                  w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all group
-                 ${tab.active 
+                 ${activeTab === tab.name 
                    ? 'bg-[#e35e25] text-white shadow-lg shadow-orange-900/20' 
                    : 'text-gray-300 hover:bg-white/10'}
                `}
              >
-               <tab.icon size={18} className={`mr-3 ${tab.active ? 'text-white' : 'text-gray-400 group-hover:text-white'}`} />
+               <tab.icon size={18} className={`mr-3 ${activeTab === tab.name ? 'text-white' : 'text-gray-400 group-hover:text-white'}`} />
                {tab.name}
              </button>
            ))}
