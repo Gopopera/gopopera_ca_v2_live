@@ -236,8 +236,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             <span className="font-semibold text-[#15383c]">{formatPaymentAmount(totalAmount, currency)}</span>
           </div>
           <div className="flex justify-between items-center text-xs">
-            <span className="text-gray-400">Platform Fee (10%)</span>
-            <span className="text-gray-400">{formatPaymentAmount(platformFee, currency)}</span>
+            <span className="text-gray-400">Platform Fee</span>
+            <span className="text-green-600 font-medium">$0.00 (2026 Promo)</span>
           </div>
           <div className="border-t border-white/60 pt-3">
             <div className="flex justify-between items-center">

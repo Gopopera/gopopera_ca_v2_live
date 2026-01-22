@@ -1489,8 +1489,8 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                         />
                       </div>
                       {pricingType === 'online' && (
-                      <p className="text-xs text-gray-500">
-                          {language === 'fr' ? 'Des frais de plateforme de 10% s\'appliquent.' : 'A 10% platform fee applies.'}
+                      <p className="text-xs text-green-600">
+                          {language === 'fr' ? '✓ Aucun frais Popera en 2026! Seulement les frais Stripe (2,9% + 0,30$ CA/US, 1,5% + 0,25€ EU).' : '✓ No Popera fees in 2026! Only Stripe fees (2.9% + $0.30 CA/US, 1.5% + €0.25 EU).'}
                       </p>
                       )}
                       {pricingType === 'door' && (

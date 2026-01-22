@@ -6,13 +6,14 @@
 
 import { Event } from '../types';
 
-// Platform fee is 10% including Stripe fees
-// Stripe charges ~2.9% + $0.30 per transaction
-// We calculate 10% of total, which covers our platform fee and Stripe fees
-const PLATFORM_FEE_PERCENTAGE = 0.10; // 10%
+// 2026 PROMOTIONAL PERIOD: Popera takes NO platform fee
+// Hosts only pay Stripe processing fees:
+// - Canada/US: 2.9% + $0.30 per transaction
+// - Europe (EEA): 1.5% + €0.25 (EU cards) / 2.5% + €0.25 (international cards)
+const PLATFORM_FEE_PERCENTAGE = 0; // 0% - 2026 Promo: No Popera fee
 
 /**
- * Calculate platform fee (10% of total amount, including Stripe fees)
+ * Calculate platform fee (0% during 2026 promotional period)
  * @param amount Total amount in cents
  * @returns Platform fee in cents
  */

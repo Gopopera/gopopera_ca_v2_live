@@ -447,7 +447,7 @@ export const StripeSettingsPage: React.FC<StripeSettingsPageProps> = ({ setViewS
                 </div>
                 <div>
                   <p className="font-semibold text-gray-800 mb-1">Add Fees to Events</p>
-                  <p>When creating events, you can choose to charge a fee. The platform fee is 10% (including Stripe fees).</p>
+                  <p>When creating events, you can choose to charge a fee. In 2026, Popera takes no platform fee — only Stripe processing fees apply (2.9% + $0.30 CA/US, 1.5% + €0.25 EU).</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">

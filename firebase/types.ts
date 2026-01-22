@@ -265,7 +265,7 @@ export interface FirestorePayment {
   userId: string;
   hostId: string;
   amount: number; // Total amount in cents
-  platformFee: number; // Platform fee in cents (10% including Stripe fees)
+  platformFee: number; // Platform fee in cents (0% in 2026 - Popera takes no fee)
   hostPayout: number; // Amount to host in cents
   currency: string; // 'cad' or 'usd'
   paymentIntentId: string; // Stripe PaymentIntent ID

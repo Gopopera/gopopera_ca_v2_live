@@ -135,9 +135,10 @@ export default async function handler(req: any, res: any) {
       finalCurrency = eventCurrency;
     }
 
-    // Calculate platform fee (10%)
-    const platformFee = Math.round(amount * 0.10);
-    const hostPayout = amount - platformFee;
+    // 2026 PROMOTIONAL PERIOD: Popera takes NO platform fee
+    // Hosts only pay Stripe processing fees (deducted by Stripe separately)
+    const platformFee = 0;
+    const hostPayout = amount;
 
     // Debug log: Payment intent creation attempt (now includes pricingType validation)
     console.log(`[PAYMENT] requestId=${requestId} eventId=${maskedEvent} userId=${maskedUser} currency=${finalCurrency} amount=${amount} platformFee=${platformFee} isRecurring=${isRecurring || false} pricingType=${pricingType} status=creating`);
