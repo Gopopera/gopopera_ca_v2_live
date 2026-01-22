@@ -3,6 +3,7 @@ import { Event, ViewState } from '../../types';
 import { ChevronLeft, Calendar, MapPin, User, Minus, Plus, CreditCard } from 'lucide-react';
 import { formatDate } from '../../utils/dateFormatter';
 import { getUserProfile } from '../../firebase/db';
+import { formatPaymentAmount } from '../../utils/stripeHelpers';
 
 interface ConfirmReservationPageProps {
   event: Event;
@@ -39,6 +40,12 @@ export const ConfirmReservationPage: React.FC<ConfirmReservationPageProps> = ({
   // Calculate totals
   const subtotal = pricePerAttendee * attendeeCount;
   const total = subtotal + supportContribution;
+  
+  // Get currency from event (default to cad)
+  const currency = event.currency || 'cad';
+  
+  // Get currency symbol for display
+  const currencySymbol = currency.toLowerCase() === 'eur' ? '€' : currency.toLowerCase() === 'gbp' ? '£' : '$';
 
   // Support contribution options
   const contributionOptions = [5, 10, 15, 20, 25];
@@ -216,7 +223,7 @@ export const ConfirmReservationPage: React.FC<ConfirmReservationPageProps> = ({
           </div>
           {!isFree && (
             <p className="text-sm text-gray-500 mt-1">
-              ${pricePerAttendee.toFixed(2)} per attendee
+              {formatPaymentAmount(pricePerAttendee * 100, currency)} per attendee
             </p>
           )}
         </div>
@@ -240,12 +247,12 @@ export const ConfirmReservationPage: React.FC<ConfirmReservationPageProps> = ({
                     : 'border-gray-300 text-gray-700 hover:border-[#15383c] hover:text-[#15383c]'
                 }`}
               >
-                ${amount}
+                {currencySymbol}{amount}
               </button>
             ))}
             <button
               onClick={() => {
-                const customAmount = prompt('Enter custom amount ($):');
+                const customAmount = prompt(`Enter custom amount (${currencySymbol}):`);
                 if (customAmount) {
                   const amount = parseFloat(customAmount);
                   if (!isNaN(amount) && amount > 0) {
@@ -267,14 +274,14 @@ export const ConfirmReservationPage: React.FC<ConfirmReservationPageProps> = ({
               <h3 className="text-lg font-heading font-bold text-[#15383c] mb-1">Total</h3>
               {!isFree && (
                 <p className="text-sm text-gray-500">
-                  {attendeeCount} attendee(s) × ${pricePerAttendee.toFixed(2)}
-                  {supportContribution > 0 && ` + $${supportContribution.toFixed(2)} support`}
+                  {attendeeCount} attendee(s) × {formatPaymentAmount(pricePerAttendee * 100, currency)}
+                  {supportContribution > 0 && ` + ${formatPaymentAmount(supportContribution * 100, currency)} support`}
                 </p>
               )}
             </div>
             <div className="text-right">
               <p className="text-2xl font-heading font-bold text-[#15383c]">
-                ${total.toFixed(2)}
+                {formatPaymentAmount(total * 100, currency)}
               </p>
             </div>
           </div>

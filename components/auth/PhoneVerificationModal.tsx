@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Phone, X, CheckCircle2 } from 'lucide-react';
+import { Phone, X, CheckCircle2, ChevronDown } from 'lucide-react';
 import { getDbSafe } from '../../src/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { useUserStore } from '../../stores/userStore';
@@ -15,7 +15,47 @@ import {
   createRecaptchaVerifier,
 } from '../../src/lib/firebaseAuth';
 import { createOrUpdateUserProfile } from '../../firebase/db';
+import { parseToE164 } from '../../utils/phoneVerification';
 import type { ConfirmationResult } from 'firebase/auth';
+import type { CountryCode } from 'libphonenumber-js';
+
+// Supported countries for phone verification
+const SUPPORTED_COUNTRIES = [
+  { code: 'CA' as CountryCode, name: 'Canada', dial: '+1', flag: '🇨🇦' },
+  { code: 'US' as CountryCode, name: 'United States', dial: '+1', flag: '🇺🇸' },
+  { code: 'BE' as CountryCode, name: 'Belgium', dial: '+32', flag: '🇧🇪' },
+  { code: 'FR' as CountryCode, name: 'France', dial: '+33', flag: '🇫🇷' },
+  { code: 'DE' as CountryCode, name: 'Germany', dial: '+49', flag: '🇩🇪' },
+  { code: 'NL' as CountryCode, name: 'Netherlands', dial: '+31', flag: '🇳🇱' },
+  { code: 'GB' as CountryCode, name: 'United Kingdom', dial: '+44', flag: '🇬🇧' },
+  { code: 'ES' as CountryCode, name: 'Spain', dial: '+34', flag: '🇪🇸' },
+  { code: 'IT' as CountryCode, name: 'Italy', dial: '+39', flag: '🇮🇹' },
+];
+
+/**
+ * Detect default country from browser timezone
+ */
+function detectDefaultCountry(): CountryCode {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz.startsWith('Europe/Brussels')) return 'BE';
+    if (tz.startsWith('Europe/Paris')) return 'FR';
+    if (tz.startsWith('Europe/Berlin')) return 'DE';
+    if (tz.startsWith('Europe/Amsterdam')) return 'NL';
+    if (tz.startsWith('Europe/London')) return 'GB';
+    if (tz.startsWith('Europe/Madrid')) return 'ES';
+    if (tz.startsWith('Europe/Rome')) return 'IT';
+    if (tz.startsWith('America/')) {
+      if (tz.includes('New_York') || tz.includes('Chicago') || tz.includes('Denver') || tz.includes('Los_Angeles')) {
+        return 'US';
+      }
+      return 'CA';
+    }
+  } catch {
+    // Ignore detection errors
+  }
+  return 'CA';
+}
 
 interface PhoneVerificationModalProps {
   isOpen: boolean;
@@ -33,6 +73,7 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
   useMfaEnrollment = false,
 }) => {
   const user = useUserStore((state) => state.user);
+  const [selectedCountry, setSelectedCountry] = useState<CountryCode>(detectDefaultCountry());
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [step, setStep] = useState<'phone' | 'code'>('phone');
@@ -41,7 +82,10 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
   const [success, setSuccess] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [mfaVerificationId, setMfaVerificationId] = useState<string | null>(null);
+  const [showCountryDropdown, setShowCountryDropdown] = useState(false);
   const recaptchaVerifierRef = useRef<boolean>(false);
+
+  const currentCountry = SUPPORTED_COUNTRIES.find(c => c.code === selectedCountry) || SUPPORTED_COUNTRIES[0];
 
   useEffect(() => {
     if (!isOpen) {
@@ -53,6 +97,7 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
       setStep('phone');
       setError(null);
       setSuccess(false);
+      setShowCountryDropdown(false);
       resetPhoneRecaptcha();
       resetRecaptchaVerifier();
     }
@@ -64,12 +109,17 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
       return;
     }
 
+    // Parse phone with country
+    const formattedPhone = parseToE164(phoneNumber, selectedCountry);
+    if (!formattedPhone) {
+      setError(`Please enter a valid phone number for ${currentCountry.name}`);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+1${phoneNumber.replace(/\D/g, '')}`;
-      
       if (useMfaEnrollment) {
         // Use MFA enrollment (official SDK methods only)
         resetRecaptchaVerifier();
@@ -132,14 +182,18 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
       // Update user profile
       const db = getDbSafe();
       if (db && user) {
-        const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+1${phoneNumber.replace(/\D/g, '')}`;
+        const formattedPhone = parseToE164(phoneNumber, selectedCountry);
         await setDoc(doc(db, 'users', user.uid), {
           phone_verified: true,
           phone_number: formattedPhone,
+          countryCode: selectedCountry,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         }, { merge: true });
         await createOrUpdateUserProfile(user.uid, {
           phone_verified: true,
           phone_number: formattedPhone,
+          countryCode: selectedCountry,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         });
 
         // Update user store
@@ -165,7 +219,7 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
       console.error('[PHONE_VERIFY] Error verifying code:', error);
       
       // Handle specific Firebase auth errors
-      const errorMessage = error?.message || 'We couldn’t verify your code. Please try again or request a new code.';
+      const errorMessage = error?.message || 'We couldn't verify your code. Please try again or request a new code.';
       
       setError(errorMessage);
     } finally {
@@ -218,15 +272,60 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
               </p>
             </div>
 
+            {/* Country Selector */}
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
+              <button
+                type="button"
+                onClick={() => setShowCountryDropdown(!showCountryDropdown)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg flex items-center justify-between bg-white hover:bg-gray-50 transition-colors"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="text-xl">{currentCountry.flag}</span>
+                  <span>{currentCountry.name}</span>
+                  <span className="text-gray-400">({currentCountry.dial})</span>
+                </span>
+                <ChevronDown size={20} className={`text-gray-400 transition-transform ${showCountryDropdown ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {showCountryDropdown && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  {SUPPORTED_COUNTRIES.map((country) => (
+                    <button
+                      key={country.code}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCountry(country.code);
+                        setShowCountryDropdown(false);
+                      }}
+                      className={`w-full px-4 py-3 flex items-center gap-2 hover:bg-gray-50 transition-colors text-left ${
+                        selectedCountry === country.code ? 'bg-[#eef4f5]' : ''
+                      }`}
+                    >
+                      <span className="text-xl">{country.flag}</span>
+                      <span>{country.name}</span>
+                      <span className="text-gray-400 text-sm">({country.dial})</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Phone Input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-              <input
-                type="tel"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="+1234567890"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#15383c] focus:border-transparent"
-              />
+              <div className="flex">
+                <span className="inline-flex items-center px-4 py-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-gray-500 text-sm">
+                  {currentCountry.dial}
+                </span>
+                <input
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder="Enter your number"
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-[#15383c] focus:border-transparent"
+                />
+              </div>
             </div>
 
             {error && (
@@ -257,7 +356,7 @@ export const PhoneVerificationModal: React.FC<PhoneVerificationModalProps> = ({
           <div className="space-y-4">
             <div className="text-center mb-6">
               <p className="text-gray-600 text-sm">
-                Enter the 6-digit code sent to {phoneNumber}
+                Enter the 6-digit code sent to {currentCountry.dial} {phoneNumber}
               </p>
             </div>
 

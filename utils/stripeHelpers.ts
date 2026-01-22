@@ -1,6 +1,7 @@
 /**
  * Stripe Payment Helpers
  * Utility functions for payment calculations and event type checks
+ * EU-compatible: supports EUR and proper currency formatting
  */
 
 import { Event } from '../types';
@@ -67,14 +68,23 @@ export function getEventFeeAmount(event: Event): number {
   }
   // Convert legacy price field to cents
   if (event.price && event.price !== 'Free' && event.price !== '' && event.price !== '$0' && event.price !== '0') {
-    // Parse the price string (e.g., "5", "$5", "5.00")
-    const priceStr = event.price.toString().replace(/[$,]/g, '');
+    // Parse the price string (e.g., "5", "$5", "5.00", "€5")
+    const priceStr = event.price.toString().replace(/[$€£,]/g, '');
     const priceNum = parseFloat(priceStr);
     if (!isNaN(priceNum) && priceNum > 0) {
       return Math.round(priceNum * 100); // Convert dollars to cents
     }
   }
   return 0;
+}
+
+/**
+ * Get the currency for an event
+ * @param event Event object
+ * @returns Currency code in lowercase (e.g., "cad", "eur")
+ */
+export function getEventCurrency(event: Event): string {
+  return (event.currency || 'cad').toLowerCase();
 }
 
 /**
@@ -108,19 +118,74 @@ export function getNextEventDate(event: Event): Date | null {
     console.error('Error calculating next event date:', error);
     return null;
   }
-
 }
 
 /**
- * Format amount for display (cents to dollars)
- * @param amount Amount in cents
- * @param currency Currency code (default: 'CAD')
- * @returns Formatted string
+ * Get appropriate locale for a currency
  */
-export function formatPaymentAmount(amount: number, currency: string = 'CAD'): string {
+function getCurrencyLocale(currency: string): string {
+  switch (currency.toUpperCase()) {
+    case 'EUR':
+      return 'de-DE'; // Euro formatting with comma decimal
+    case 'GBP':
+      return 'en-GB';
+    case 'USD':
+      return 'en-US';
+    case 'CAD':
+    default:
+      return 'en-CA';
+  }
+}
+
+/**
+ * Get currency symbol fallback
+ */
+function getCurrencySymbol(currency: string): string {
+  switch (currency.toUpperCase()) {
+    case 'EUR':
+      return '€';
+    case 'GBP':
+      return '£';
+    case 'USD':
+    case 'CAD':
+    default:
+      return '$';
+  }
+}
+
+/**
+ * Format amount for display using Intl.NumberFormat
+ * @param amount Amount in cents
+ * @param currency Currency code (default: 'cad')
+ * @param locale Optional locale for formatting (auto-detected from currency if not provided)
+ * @returns Formatted currency string (e.g., "$10.00 CAD", "€10,00 EUR")
+ */
+export function formatPaymentAmount(
+  amount: number, 
+  currency: string = 'cad',
+  locale?: string
+): string {
   const dollars = amount / 100;
-  const currencySymbol = currency === 'USD' ? '$' : '$'; // Both use $, but you could add more
-  return `${currencySymbol}${dollars.toFixed(2)} ${currency}`;
+  const currencyUpper = currency.toUpperCase();
+  
+  // Determine locale based on currency if not provided
+  const formatLocale = locale || getCurrencyLocale(currencyUpper);
+  
+  try {
+    const formatted = new Intl.NumberFormat(formatLocale, {
+      style: 'currency',
+      currency: currencyUpper,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(dollars);
+    
+    // Append currency code for clarity (e.g., "$10.00 CAD")
+    return `${formatted} ${currencyUpper}`;
+  } catch (error) {
+    // Fallback for unsupported currencies
+    const symbol = getCurrencySymbol(currencyUpper);
+    return `${symbol}${dollars.toFixed(2)} ${currencyUpper}`;
+  }
 }
 
 /**
@@ -150,4 +215,3 @@ export function centsToDollars(cents: number): number {
 export function calculateTotalAmount(feeAmount: number, attendeeCount: number = 1): number {
   return feeAmount * attendeeCount;
 }
-

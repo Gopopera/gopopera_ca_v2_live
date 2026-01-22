@@ -147,6 +147,7 @@ export const StripeSettingsPage: React.FC<StripeSettingsPageProps> = ({ setViewS
         email: user.email,
         returnUrl: `${window.location.origin}${currentPath}?stripe_return=true`,
         existingAccountId: userProfile?.stripeAccountId || undefined, // Pass existing account if available
+        countryCode: userProfile?.countryCode || undefined, // Pass country for EU hosts
       };
       console.log('[STRIPE_SETTINGS] Return URL:', `${window.location.origin}${currentPath}?stripe_return=true`);
 

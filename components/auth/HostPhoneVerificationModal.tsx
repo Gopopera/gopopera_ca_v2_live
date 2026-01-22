@@ -3,6 +3,7 @@
  * 
  * This modal handles one-time phone verification for users who want to host events.
  * Uses Twilio SMS via our serverless function (no Firebase Phone Auth needed).
+ * EU-compatible: supports international phone numbers with country selector.
  * 
  * After successful verification:
  * - Updates user profile: phoneVerifiedForHosting = true, hostPhoneNumber = phoneNumber
@@ -12,10 +13,50 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Phone, X, CheckCircle2 } from 'lucide-react';
+import { Phone, X, CheckCircle2, ChevronDown } from 'lucide-react';
 import { useUserStore } from '../../stores/userStore';
-import { sendVerificationCode, verifyPhoneCode, formatPhoneNumber, validatePhoneNumber } from '../../utils/phoneVerification';
+import { sendVerificationCode, verifyPhoneCode, parseToE164 } from '../../utils/phoneVerification';
 import { createOrUpdateUserProfile } from '../../firebase/db';
+import type { CountryCode } from 'libphonenumber-js';
+
+// Supported countries for phone verification
+const SUPPORTED_COUNTRIES = [
+  { code: 'CA' as CountryCode, name: 'Canada', dial: '+1', flag: '🇨🇦' },
+  { code: 'US' as CountryCode, name: 'United States', dial: '+1', flag: '🇺🇸' },
+  { code: 'BE' as CountryCode, name: 'Belgium', dial: '+32', flag: '🇧🇪' },
+  { code: 'FR' as CountryCode, name: 'France', dial: '+33', flag: '🇫🇷' },
+  { code: 'DE' as CountryCode, name: 'Germany', dial: '+49', flag: '🇩🇪' },
+  { code: 'NL' as CountryCode, name: 'Netherlands', dial: '+31', flag: '🇳🇱' },
+  { code: 'GB' as CountryCode, name: 'United Kingdom', dial: '+44', flag: '🇬🇧' },
+  { code: 'ES' as CountryCode, name: 'Spain', dial: '+34', flag: '🇪🇸' },
+  { code: 'IT' as CountryCode, name: 'Italy', dial: '+39', flag: '🇮🇹' },
+];
+
+/**
+ * Detect default country from browser timezone
+ */
+function detectDefaultCountry(): CountryCode {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz.startsWith('Europe/Brussels')) return 'BE';
+    if (tz.startsWith('Europe/Paris')) return 'FR';
+    if (tz.startsWith('Europe/Berlin')) return 'DE';
+    if (tz.startsWith('Europe/Amsterdam')) return 'NL';
+    if (tz.startsWith('Europe/London')) return 'GB';
+    if (tz.startsWith('Europe/Madrid')) return 'ES';
+    if (tz.startsWith('Europe/Rome')) return 'IT';
+    if (tz.startsWith('America/')) {
+      // Check for US timezones
+      if (tz.includes('New_York') || tz.includes('Chicago') || tz.includes('Denver') || tz.includes('Los_Angeles')) {
+        return 'US';
+      }
+      return 'CA'; // Default to Canada for other Americas
+    }
+  } catch {
+    // Ignore detection errors
+  }
+  return 'CA'; // Default fallback
+}
 
 interface HostPhoneVerificationModalProps {
   isOpen: boolean;
@@ -32,6 +73,8 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
 }) => {
   const user = useUserStore((state) => state.user);
   const refreshUserProfile = useUserStore((state) => state.refreshUserProfile);
+  
+  const [selectedCountry, setSelectedCountry] = useState<CountryCode>(detectDefaultCountry());
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [step, setStep] = useState<'phone' | 'code'>('phone');
@@ -40,6 +83,9 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
   const [success, setSuccess] = useState(false);
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [showCountryDropdown, setShowCountryDropdown] = useState(false);
+
+  const currentCountry = SUPPORTED_COUNTRIES.find(c => c.code === selectedCountry) || SUPPORTED_COUNTRIES[0];
 
   // Reset state when modal closes
   useEffect(() => {
@@ -51,6 +97,7 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       setSuccess(false);
       setIsSendingCode(false);
       setIsVerifying(false);
+      setShowCountryDropdown(false);
     }
   }, [isOpen]);
 
@@ -64,8 +111,10 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       return;
     }
 
-    if (!validatePhoneNumber(formatPhoneNumber(phoneNumber))) {
-      setError('Please enter a valid 10-digit phone number (US or Canada)');
+    // Validate phone with selected country
+    const e164 = parseToE164(phoneNumber, selectedCountry);
+    if (!e164) {
+      setError(`Please enter a valid phone number for ${currentCountry.name}`);
       return;
     }
 
@@ -79,8 +128,7 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
     setError(null);
 
     try {
-      const formattedPhone = formatPhoneNumber(phoneNumber);
-      const result = await sendVerificationCode(user.uid, formattedPhone);
+      const result = await sendVerificationCode(user.uid, phoneNumber, selectedCountry);
 
       if (!result.success) {
         setError(result.error || 'Failed to send verification code. Please try again.');
@@ -121,8 +169,7 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
     setError(null);
 
     try {
-      const formattedPhone = formatPhoneNumber(phoneNumber);
-      const result = await verifyPhoneCode(user.uid, formattedPhone, verificationCode);
+      const result = await verifyPhoneCode(user.uid, phoneNumber, verificationCode, selectedCountry);
 
       if (!result.success) {
         setError(result.error || 'Invalid verification code. Please try again.');
@@ -131,10 +178,15 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
         return;
       }
 
-      // Code verified successfully - update user profile
+      const formattedPhone = parseToE164(phoneNumber, selectedCountry);
+      
+      // Update user profile with phone and region info
       await createOrUpdateUserProfile(user.uid, {
         phoneVerifiedForHosting: true,
         hostPhoneNumber: formattedPhone,
+        countryCode: selectedCountry,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        currency: ['BE', 'FR', 'DE', 'NL', 'ES', 'IT'].includes(selectedCountry) ? 'eur' : 'cad',
       });
 
       // Update user store
@@ -204,17 +256,62 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
               </p>
             </div>
 
+            {/* Country Selector */}
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
+              <button
+                type="button"
+                onClick={() => setShowCountryDropdown(!showCountryDropdown)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg flex items-center justify-between bg-white hover:bg-gray-50 transition-colors"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="text-xl">{currentCountry.flag}</span>
+                  <span>{currentCountry.name}</span>
+                  <span className="text-gray-400">({currentCountry.dial})</span>
+                </span>
+                <ChevronDown size={20} className={`text-gray-400 transition-transform ${showCountryDropdown ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {showCountryDropdown && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  {SUPPORTED_COUNTRIES.map((country) => (
+                    <button
+                      key={country.code}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCountry(country.code);
+                        setShowCountryDropdown(false);
+                      }}
+                      className={`w-full px-4 py-3 flex items-center gap-2 hover:bg-gray-50 transition-colors text-left ${
+                        selectedCountry === country.code ? 'bg-[#eef4f5]' : ''
+                      }`}
+                    >
+                      <span className="text-xl">{country.flag}</span>
+                      <span>{country.name}</span>
+                      <span className="text-gray-400 text-sm">({country.dial})</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Phone Input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-              <input
-                type="tel"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="(123) 456-7890 or 123-456-7890"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#15383c] focus:border-transparent"
-              />
+              <div className="flex">
+                <span className="inline-flex items-center px-4 py-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-gray-500 text-sm">
+                  {currentCountry.dial}
+                </span>
+                <input
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder="Enter your number"
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-[#15383c] focus:border-transparent"
+                />
+              </div>
               <p className="text-xs text-gray-500 mt-1">
-                Enter a US or Canada phone number. Country code (+1) will be added automatically.
+                We'll send a verification code to this number
               </p>
             </div>
 
@@ -249,7 +346,7 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
                 <Phone size={32} className="text-[#e35e25]" />
               </div>
               <p className="text-gray-600 text-sm">
-                Enter the 6-digit code sent to {phoneNumber}
+                Enter the 6-digit code sent to {currentCountry.dial} {phoneNumber}
               </p>
             </div>
 

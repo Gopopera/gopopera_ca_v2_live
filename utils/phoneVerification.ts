@@ -1,10 +1,11 @@
 /**
  * Phone Verification Helper using Twilio SMS
- * Simple client-side implementation with Firestore for code storage
+ * EU-compatible: supports international phone numbers via libphonenumber-js
  */
 
+import { parsePhoneNumberFromString, CountryCode, isValidPhoneNumber } from 'libphonenumber-js';
 import { getDbSafe } from '../src/lib/firebase';
-import { collection, doc, setDoc, getDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { sendSMSNotification } from './smsNotifications';
 
 const IS_DEV = import.meta.env.DEV;
@@ -17,62 +18,74 @@ function generateVerificationCode(): string {
 }
 
 /**
- * Format phone number to E.164 format
- * Automatically adds +1 for US/Canada (10-digit numbers)
+ * Parse and format phone number to E.164 format using libphonenumber-js
+ * @param phone - Raw phone input (can be local or international format)
+ * @param defaultCountry - ISO2 country code (e.g., "CA", "BE", "US")
+ * @returns E.164 formatted number or null if invalid
  */
-export function formatPhoneNumber(phone: string): string {
+export function parseToE164(phone: string, defaultCountry: CountryCode = 'CA'): string | null {
+  if (!phone || typeof phone !== 'string') return null;
+  
   const cleaned = phone.trim();
-  const digitsOnly = cleaned.replace(/\D/g, '');
-  
-  // If already starts with +, clean and return
-  if (cleaned.startsWith('+')) {
-    const cleanedPlus = '+' + cleaned.replace(/\D/g, '');
-    return cleanedPlus;
+  if (!cleaned) return null;
+
+  try {
+    const parsed = parsePhoneNumberFromString(cleaned, defaultCountry);
+    if (parsed && parsed.isValid()) {
+      return parsed.format('E.164');
+    }
+    return null;
+  } catch (error) {
+    if (IS_DEV) {
+      console.warn('[PHONE] Failed to parse phone number:', { phone, defaultCountry, error });
+    }
+    return null;
   }
-  
-  // Handle 10-digit numbers (US/Canada) - auto-add +1
-  if (digitsOnly.length === 10) {
-    return `+1${digitsOnly}`;
-  }
-  
-  // Handle 11-digit numbers starting with 1 (US/Canada with country code)
-  if (digitsOnly.length === 11 && digitsOnly.startsWith('1')) {
-    return `+${digitsOnly}`;
-  }
-  
-  // For other valid lengths, try to add + prefix
-  if (digitsOnly.length >= 7 && digitsOnly.length <= 15) {
-    return `+${digitsOnly}`;
-  }
-  
-  return phone; // Return as-is if format is unclear
 }
 
 /**
- * Validate phone number format (E.164)
- * Validates AFTER formatting - number should start with + and have valid digits
+ * Validate phone number for a given country
+ * @param phone - Raw phone input
+ * @param defaultCountry - ISO2 country code
+ * @returns true if valid
  */
-export function validatePhoneNumber(phone: string): boolean {
-  const cleanPhone = phone.trim().replace(/\s/g, '');
+export function isValidPhone(phone: string, defaultCountry: CountryCode = 'CA'): boolean {
+  if (!phone || typeof phone !== 'string') return false;
   
-  // Must start with +
-  if (!cleanPhone.startsWith('+')) {
+  const cleaned = phone.trim();
+  if (!cleaned) return false;
+
+  try {
+    return isValidPhoneNumber(cleaned, defaultCountry);
+  } catch {
     return false;
   }
-  
-  const digitsOnly = cleanPhone.slice(1).replace(/\D/g, '');
-  
-  // E.164: + followed by 1-15 digits, first digit must be 1-9
-  if (digitsOnly.length < 1 || digitsOnly.length > 15) {
-    return false;
+}
+
+/**
+ * Format phone number to E.164 format (legacy compatibility wrapper)
+ * @deprecated Use parseToE164 with explicit country instead
+ */
+export function formatPhoneNumber(phone: string, defaultCountry: CountryCode = 'CA'): string {
+  const e164 = parseToE164(phone, defaultCountry);
+  return e164 || phone; // Return original if parsing fails
+}
+
+/**
+ * Validate phone number format (legacy compatibility wrapper)
+ * @deprecated Use isValidPhone with explicit country instead
+ */
+export function validatePhoneNumber(phone: string, defaultCountry: CountryCode = 'CA'): boolean {
+  // If already E.164 format (starts with +), validate it directly
+  if (phone.trim().startsWith('+')) {
+    try {
+      const parsed = parsePhoneNumberFromString(phone.trim());
+      return parsed ? parsed.isValid() : false;
+    } catch {
+      return false;
+    }
   }
-  
-  // First digit after + must be 1-9 (country codes don't start with 0)
-  if (!/^[1-9]/.test(digitsOnly)) {
-    return false;
-  }
-  
-  return true;
+  return isValidPhone(phone, defaultCountry);
 }
 
 /**
@@ -81,7 +94,8 @@ export function validatePhoneNumber(phone: string): boolean {
  */
 export async function sendVerificationCode(
   userId: string,
-  phoneNumber: string
+  phoneNumber: string,
+  countryCode: CountryCode = 'CA'
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const db = getDbSafe();
@@ -89,10 +103,10 @@ export async function sendVerificationCode(
       return { success: false, error: 'Database not available' };
     }
 
-    // Format and validate phone number
-    const formattedPhone = formatPhoneNumber(phoneNumber);
-    if (!validatePhoneNumber(formattedPhone)) {
-      return { success: false, error: 'Please enter a valid 10-digit phone number (US or Canada)' };
+    // Parse and validate phone number with country context
+    const formattedPhone = parseToE164(phoneNumber, countryCode);
+    if (!formattedPhone) {
+      return { success: false, error: 'Please enter a valid phone number for your selected country' };
     }
 
     // Generate verification code
@@ -104,6 +118,7 @@ export async function sendVerificationCode(
     await setDoc(codeDocRef, {
       code,
       phoneNumber: formattedPhone,
+      countryCode,
       userId,
       expiresAt,
       createdAt: serverTimestamp(),
@@ -111,7 +126,7 @@ export async function sendVerificationCode(
     });
 
     if (IS_DEV) {
-      console.log('[PHONE_VERIFY] Verification code stored:', { userId, phoneNumber: formattedPhone });
+      console.log('[PHONE_VERIFY] Verification code stored:', { userId, phoneNumber: formattedPhone, countryCode });
     }
 
     // Send SMS via existing Twilio SMS function
@@ -122,11 +137,10 @@ export async function sendVerificationCode(
     });
 
     if (!smsSent) {
-      // SMS failed but code is stored - user can request new one if needed
       if (IS_DEV) {
         console.warn('[PHONE_VERIFY] SMS send failed but code is stored');
       }
-      return { success: false, error: 'Failed to send SMS. Please try again.' };
+      return { success: false, error: 'Failed to send SMS. Please check your phone number and try again.' };
     }
 
     if (IS_DEV) {
@@ -148,7 +162,8 @@ export async function sendVerificationCode(
 export async function verifyPhoneCode(
   userId: string,
   phoneNumber: string,
-  code: string
+  code: string,
+  countryCode: CountryCode = 'CA'
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const db = getDbSafe();
@@ -156,7 +171,10 @@ export async function verifyPhoneCode(
       return { success: false, error: 'Database not available' };
     }
 
-    const formattedPhone = formatPhoneNumber(phoneNumber);
+    const formattedPhone = parseToE164(phoneNumber, countryCode);
+    if (!formattedPhone) {
+      return { success: false, error: 'Invalid phone number format' };
+    }
 
     // Get verification code from Firestore
     const codeDocRef = doc(db, 'phone_verification_codes', userId);
@@ -170,7 +188,6 @@ export async function verifyPhoneCode(
 
     // Check if code is expired
     if (Date.now() > codeData.expiresAt) {
-      // Delete expired code
       await deleteDoc(codeDocRef);
       return { success: false, error: 'Verification code expired. Please request a new code.' };
     }
@@ -182,12 +199,10 @@ export async function verifyPhoneCode(
 
     // Check code
     if (codeData.code !== code) {
-      // Increment attempts
       const attempts = (codeData.attempts || 0) + 1;
       await setDoc(codeDocRef, { attempts }, { merge: true });
 
       if (attempts >= 5) {
-        // Too many attempts - delete code
         await deleteDoc(codeDocRef);
         return { success: false, error: 'Too many failed attempts. Please request a new code.' };
       }
@@ -216,4 +231,3 @@ export async function verifyPhoneCode(
     return { success: false, error: error.message || 'Failed to verify code' };
   }
 }
-

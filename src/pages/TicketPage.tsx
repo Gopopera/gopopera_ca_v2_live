@@ -8,6 +8,7 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import { formatDate } from '../../utils/dateFormatter';
 import { formatTicketDate } from '../utils/formatTicketText';
+import { formatPaymentAmount } from '../../utils/stripeHelpers';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useUserStore } from '../../stores/userStore';
 import { AddToCalendarButton } from '../components/AddToCalendarButton';
@@ -260,15 +261,15 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
     return `https://picsum.photos/seed/${ticketData.event.id}/800/450`;
   }, [ticketData?.event]);
 
-  // Transaction summary
+  // Transaction summary - use event currency for proper formatting
   const transactionSummary = useMemo(() => {
     if (!ticketData?.reservation) return 'Free';
     if (ticketData.reservation.totalAmount && ticketData.reservation.totalAmount > 0) {
-      const amount = ticketData.reservation.totalAmount / 100;
-      return `$${amount.toFixed(2)} CAD`;
+      const currency = ticketData.event?.currency || 'cad';
+      return formatPaymentAmount(ticketData.reservation.totalAmount, currency);
     }
     return 'Free';
-  }, [ticketData?.reservation]);
+  }, [ticketData?.reservation, ticketData?.event?.currency]);
 
   // Handle check-in
   const handleCheckIn = async () => {

@@ -74,7 +74,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
   // Payment fields
   const [hasFee, setHasFee] = useState(false);
   const [feeAmount, setFeeAmount] = useState<number>(0); // Fee in dollars (will convert to cents)
-  const [currency, setCurrency] = useState<'cad' | 'usd'>('cad');
+  const [currency, setCurrency] = useState<'cad' | 'usd' | 'eur'>('cad');
   
   // Privacy settings
   const [isPrivate, setIsPrivate] = useState(false);
@@ -772,7 +772,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       setPrice('Free');
       setHasFee(false);
       setFeeAmount(0);
-      setCurrency('cad');
+      setCurrency('cad'); // Reset to default, could also use user.currency
       setIsPrivate(false);
       setSessionFrequency('');
       setSessionMode('');
@@ -1400,11 +1400,12 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
                       <div className="flex gap-2">
                         <select
                           value={currency}
-                          onChange={(e) => setCurrency(e.target.value as 'cad' | 'usd')}
+                          onChange={(e) => setCurrency(e.target.value as 'cad' | 'usd' | 'eur')}
                           className="bg-white border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-[#15383c]"
                         >
                           <option value="cad">CAD ($)</option>
                           <option value="usd">USD ($)</option>
+                          <option value="eur">EUR (€)</option>
                         </select>
                         <input
                           type="number"

@@ -1,6 +1,7 @@
 /**
  * SMS Notifications Helper
  * Uses Vercel serverless function to send SMS via Twilio (server-side)
+ * EU-compatible: no auto-prefix, expects E.164 input
  */
 
 import { getDbSafe } from '../src/lib/firebase';
@@ -10,42 +11,20 @@ const IS_DEV = import.meta.env.DEV;
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 interface SMSOptions {
-  to: string; // Phone number with country code (e.g., +1234567890)
+  to: string; // Phone number in E.164 format (e.g., +14165551234, +32475123456)
   message: string;
 }
 
 /**
- * Format phone number to E.164 format (for SMS sending)
- * Automatically adds +1 for US/Canada (10-digit numbers)
- */
-function formatPhoneToE164(phone: string): string {
-  const cleaned = phone.trim();
-  const digitsOnly = cleaned.replace(/\D/g, '');
-  
-  if (cleaned.startsWith('+')) {
-    return '+' + cleaned.replace(/\D/g, '');
-  }
-  
-  // Auto-add +1 for US/Canada (10 digits)
-  if (digitsOnly.length === 10) {
-    return `+1${digitsOnly}`;
-  }
-  
-  if (digitsOnly.length === 11 && digitsOnly.startsWith('1')) {
-    return `+${digitsOnly}`;
-  }
-  
-  return digitsOnly.length > 0 ? `+${digitsOnly}` : phone;
-}
-
-/**
  * Validate E.164 formatted phone number
+ * Must start with + followed by 7-15 digits, first digit 1-9
  */
 function validateE164Phone(phone: string): boolean {
   const cleanPhone = phone.trim().replace(/\s/g, '');
   if (!cleanPhone.startsWith('+')) return false;
   const digitsOnly = cleanPhone.slice(1).replace(/\D/g, '');
-  return /^[1-9]\d{0,14}$/.test(digitsOnly);
+  // E.164: 7-15 digits, first digit must be 1-9 (country codes don't start with 0)
+  return /^[1-9]\d{6,14}$/.test(digitsOnly);
 }
 
 /**
@@ -83,25 +62,22 @@ async function logSMSToFirestore(log: {
 
 /**
  * Send SMS notification via serverless function (Twilio on server-side)
- * Logs all attempts to Firestore sms_logs collection
+ * Expects phone number in E.164 format - NO auto-prefix applied
  */
 export async function sendSMSNotification(options: SMSOptions): Promise<boolean> {
   const logId = `sms_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   
-  // CRITICAL: Format phone number FIRST, then validate
-  const formattedPhone = formatPhoneToE164(options.to);
+  const phone = options.to.trim();
   
-  if (!validateE164Phone(formattedPhone)) {
-    console.error('[SMS] Invalid phone number format after formatting:', { 
-      original: options.to, 
-      formatted: formattedPhone 
-    });
+  // Validate E.164 format - do NOT modify the number
+  if (!validateE164Phone(phone)) {
+    console.error('[SMS] Invalid phone number format:', { phone });
     logSMSToFirestore({
       id: logId,
       to: options.to,
       message: options.message,
       status: 'failed',
-      error: `Invalid phone number: ${options.to}. Please use a valid 10-digit US/Canada number.`,
+      error: `Invalid phone number format: ${options.to}. Must be E.164 format (e.g., +14165551234)`,
       timestamp: Date.now(),
     }).catch(() => {});
     return false;
@@ -110,20 +86,19 @@ export async function sendSMSNotification(options: SMSOptions): Promise<boolean>
   try {
     if (IS_DEV) {
       console.log('[SMS] Sending SMS via serverless function:', { 
-        original: options.to,
-        formatted: formattedPhone,
+        to: phone,
         messageLength: options.message.length 
       });
     }
 
-    // Send SMS via Vercel serverless function (server-side) - use FORMATTED number
+    // Send SMS via Vercel serverless function - pass E.164 number directly
     const response = await fetch(`${API_BASE_URL}/send-sms`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        to: formattedPhone, // Use formatted number
+        to: phone,
         message: options.message,
       }),
     });
@@ -140,13 +115,13 @@ export async function sendSMSNotification(options: SMSOptions): Promise<boolean>
     }
 
     if (IS_DEV) {
-      console.log('[SMS] ✅ SMS sent successfully:', { messageId: result.messageId, to: formattedPhone });
+      console.log('[SMS] ✅ SMS sent successfully:', { messageId: result.messageId, to: phone });
     }
 
     // Log success to Firestore (non-blocking)
     logSMSToFirestore({
       id: logId,
-      to: formattedPhone, // Use formatted number for logs
+      to: phone,
       message: options.message,
       status: 'sent',
       messageId: result.messageId,
@@ -230,4 +205,3 @@ export async function notifyNewMessageSMS(
     message: `Popera: New message from ${senderName} in ${eventTitle}`,
   });
 }
-

@@ -1,7 +1,47 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, X } from 'lucide-react';
+import { Phone, X, ChevronDown } from 'lucide-react';
 import { useUserStore } from '../../stores/userStore';
 import { createOrUpdateUserProfile } from '../../firebase/db';
+import { parseToE164 } from '../../utils/phoneVerification';
+import type { CountryCode } from 'libphonenumber-js';
+
+// Supported countries for phone collection
+const SUPPORTED_COUNTRIES = [
+  { code: 'CA' as CountryCode, name: 'Canada', dial: '+1', flag: '🇨🇦' },
+  { code: 'US' as CountryCode, name: 'United States', dial: '+1', flag: '🇺🇸' },
+  { code: 'BE' as CountryCode, name: 'Belgium', dial: '+32', flag: '🇧🇪' },
+  { code: 'FR' as CountryCode, name: 'France', dial: '+33', flag: '🇫🇷' },
+  { code: 'DE' as CountryCode, name: 'Germany', dial: '+49', flag: '🇩🇪' },
+  { code: 'NL' as CountryCode, name: 'Netherlands', dial: '+31', flag: '🇳🇱' },
+  { code: 'GB' as CountryCode, name: 'United Kingdom', dial: '+44', flag: '🇬🇧' },
+  { code: 'ES' as CountryCode, name: 'Spain', dial: '+34', flag: '🇪🇸' },
+  { code: 'IT' as CountryCode, name: 'Italy', dial: '+39', flag: '🇮🇹' },
+];
+
+/**
+ * Detect default country from browser timezone
+ */
+function detectDefaultCountry(): CountryCode {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz.startsWith('Europe/Brussels')) return 'BE';
+    if (tz.startsWith('Europe/Paris')) return 'FR';
+    if (tz.startsWith('Europe/Berlin')) return 'DE';
+    if (tz.startsWith('Europe/Amsterdam')) return 'NL';
+    if (tz.startsWith('Europe/London')) return 'GB';
+    if (tz.startsWith('Europe/Madrid')) return 'ES';
+    if (tz.startsWith('Europe/Rome')) return 'IT';
+    if (tz.startsWith('America/')) {
+      if (tz.includes('New_York') || tz.includes('Chicago') || tz.includes('Denver') || tz.includes('Los_Angeles')) {
+        return 'US';
+      }
+      return 'CA';
+    }
+  } catch {
+    // Ignore detection errors
+  }
+  return 'CA';
+}
 
 interface PhoneCollectionModalProps {
   isOpen: boolean;
@@ -15,37 +55,21 @@ export const PhoneCollectionModal: React.FC<PhoneCollectionModalProps> = ({
   onSuccess,
 }) => {
   const user = useUserStore((state) => state.user);
+  const [selectedCountry, setSelectedCountry] = useState<CountryCode>(detectDefaultCountry());
   const [phoneNumber, setPhoneNumber] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showCountryDropdown, setShowCountryDropdown] = useState(false);
+
+  const currentCountry = SUPPORTED_COUNTRIES.find(c => c.code === selectedCountry) || SUPPORTED_COUNTRIES[0];
 
   useEffect(() => {
     if (!isOpen) {
       setPhoneNumber('');
       setError(null);
+      setShowCountryDropdown(false);
     }
   }, [isOpen]);
-
-  const formatPhoneNumber = (input: string): string => {
-    // Remove all non-digits
-    const digits = input.replace(/\D/g, '');
-    // Add country code if not present
-    if (digits.length === 10) {
-      return `+1${digits}`;
-    }
-    if (digits.length === 11 && digits.startsWith('1')) {
-      return `+${digits}`;
-    }
-    if (input.startsWith('+')) {
-      return input;
-    }
-    return `+1${digits}`;
-  };
-
-  const validatePhoneNumber = (phone: string): boolean => {
-    const digits = phone.replace(/\D/g, '');
-    return digits.length >= 10 && digits.length <= 15;
-  };
 
   const handleSubmit = async () => {
     if (!phoneNumber.trim()) {
@@ -53,8 +77,10 @@ export const PhoneCollectionModal: React.FC<PhoneCollectionModalProps> = ({
       return;
     }
 
-    if (!validatePhoneNumber(phoneNumber)) {
-      setError('Please enter a valid phone number');
+    // Parse and validate phone with country
+    const formattedPhone = parseToE164(phoneNumber, selectedCountry);
+    if (!formattedPhone) {
+      setError(`Please enter a valid phone number for ${currentCountry.name}`);
       return;
     }
 
@@ -67,11 +93,12 @@ export const PhoneCollectionModal: React.FC<PhoneCollectionModalProps> = ({
     setError(null);
 
     try {
-      const formattedPhone = formatPhoneNumber(phoneNumber);
-      
-      // Update user profile with phone number
+      // Update user profile with phone number and region info
       await createOrUpdateUserProfile(user.uid, {
         phone_number: formattedPhone,
+        countryCode: selectedCountry,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        currency: ['BE', 'FR', 'DE', 'NL', 'ES', 'IT'].includes(selectedCountry) ? 'eur' : 'cad',
       });
 
       // Update local store
@@ -123,18 +150,63 @@ export const PhoneCollectionModal: React.FC<PhoneCollectionModalProps> = ({
             </p>
           </div>
 
+          {/* Country Selector */}
+          <div className="relative">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
+            <button
+              type="button"
+              onClick={() => setShowCountryDropdown(!showCountryDropdown)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg flex items-center justify-between bg-white hover:bg-gray-50 transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <span className="text-xl">{currentCountry.flag}</span>
+                <span>{currentCountry.name}</span>
+                <span className="text-gray-400">({currentCountry.dial})</span>
+              </span>
+              <ChevronDown size={20} className={`text-gray-400 transition-transform ${showCountryDropdown ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {showCountryDropdown && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                {SUPPORTED_COUNTRIES.map((country) => (
+                  <button
+                    key={country.code}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCountry(country.code);
+                      setShowCountryDropdown(false);
+                    }}
+                    className={`w-full px-4 py-3 flex items-center gap-2 hover:bg-gray-50 transition-colors text-left ${
+                      selectedCountry === country.code ? 'bg-[#eef4f5]' : ''
+                    }`}
+                  >
+                    <span className="text-xl">{country.flag}</span>
+                    <span>{country.name}</span>
+                    <span className="text-gray-400 text-sm">({country.dial})</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Phone Input */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Phone Number
             </label>
-            <input
-              type="tel"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="+1 (555) 123-4567"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#15383c] focus:border-transparent"
-              autoFocus
-            />
+            <div className="flex">
+              <span className="inline-flex items-center px-4 py-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-gray-500 text-sm">
+                {currentCountry.dial}
+              </span>
+              <input
+                type="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="Enter your number"
+                className="flex-1 px-4 py-3 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-[#15383c] focus:border-transparent"
+                autoFocus
+              />
+            </div>
           </div>
 
           {error && (
@@ -167,4 +239,3 @@ export const PhoneCollectionModal: React.FC<PhoneCollectionModalProps> = ({
     </div>
   );
 };
-

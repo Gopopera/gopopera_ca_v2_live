@@ -1,6 +1,7 @@
 /**
  * Vercel Serverless Function for Sending SMS via Twilio
- * This runs server-side to keep API keys secure
+ * EU-compatible: expects E.164 format, no auto-prefix
+ * Includes debug instrumentation for Belgium launch verification
  */
 
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
@@ -9,40 +10,87 @@ const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER;
 const TWILIO_API_URL = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
 
 /**
- * Format phone number to E.164 format
- * Automatically adds +1 for US/Canada (10-digit numbers)
+ * Generate a short request ID for log correlation
  */
-function formatPhoneToE164(phone: string): string {
-  const cleaned = phone.trim();
-  const digitsOnly = cleaned.replace(/\D/g, '');
-  
-  if (cleaned.startsWith('+')) {
-    return '+' + cleaned.replace(/\D/g, '');
+function generateRequestId(): string {
+  return `sms_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 6)}`;
+}
+
+/**
+ * Mask phone number for logging (show country code only)
+ * +32475123456 → +32***
+ */
+function maskPhone(phone: string): string {
+  if (!phone || phone.length < 4) return '***';
+  // Extract country code (1-3 digits after +)
+  const match = phone.match(/^\+(\d{1,3})/);
+  if (match) {
+    return `+${match[1]}***`;
   }
+  return '+***';
+}
+
+/**
+ * Extract country code from E.164 number
+ */
+function detectCountryFromPhone(phone: string): string {
+  if (!phone.startsWith('+')) return 'unknown';
   
-  // Auto-add +1 for US/Canada (10 digits)
-  if (digitsOnly.length === 10) {
-    return `+1${digitsOnly}`;
-  }
+  // Common country codes
+  if (phone.startsWith('+1')) return 'US/CA';
+  if (phone.startsWith('+32')) return 'BE';
+  if (phone.startsWith('+33')) return 'FR';
+  if (phone.startsWith('+49')) return 'DE';
+  if (phone.startsWith('+31')) return 'NL';
+  if (phone.startsWith('+44')) return 'GB';
+  if (phone.startsWith('+34')) return 'ES';
+  if (phone.startsWith('+39')) return 'IT';
   
-  if (digitsOnly.length === 11 && digitsOnly.startsWith('1')) {
-    return `+${digitsOnly}`;
-  }
-  
-  return digitsOnly.length > 0 ? `+${digitsOnly}` : phone;
+  // Return first 2-3 digits as country indicator
+  const match = phone.match(/^\+(\d{1,3})/);
+  return match ? `+${match[1]}` : 'unknown';
 }
 
 /**
  * Validate E.164 formatted phone number
+ * Must start with + followed by 7-15 digits, first digit 1-9
  */
 function validateE164Phone(phone: string): boolean {
   const cleanPhone = phone.trim().replace(/\s/g, '');
   if (!cleanPhone.startsWith('+')) return false;
   const digitsOnly = cleanPhone.slice(1).replace(/\D/g, '');
-  return /^[1-9]\d{0,14}$/.test(digitsOnly);
+  return /^[1-9]\d{6,14}$/.test(digitsOnly);
+}
+
+/**
+ * Map Twilio error codes to user-friendly messages
+ */
+function mapTwilioError(errorCode: number | string, errorMessage: string): string {
+  const code = typeof errorCode === 'string' ? parseInt(errorCode, 10) : errorCode;
+  
+  switch (code) {
+    case 21211:
+      return 'Invalid phone number format. Please check and try again.';
+    case 21214:
+      return 'This phone number cannot receive SMS messages.';
+    case 21408:
+    case 21610:
+      return 'SMS delivery to this region is not currently available. Please contact support.';
+    case 21612:
+    case 21614:
+      return 'This phone number appears to be invalid or not a mobile number.';
+    case 30003:
+    case 30005:
+    case 30006:
+      return 'Unable to deliver SMS to this number. Please verify it\'s a mobile number.';
+    default:
+      return 'Failed to send SMS. Please try again later.';
+  }
 }
 
 export default async function handler(req: any, res: any) {
+  const requestId = generateRequestId();
+  
   // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -61,7 +109,7 @@ export default async function handler(req: any, res: any) {
   try {
     // Validate Twilio is configured
     if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
-      console.error('[API] Twilio not configured - missing credentials');
+      console.error(`[SMS] requestId=${requestId} status=config_error reason=missing_credentials`);
       return res.status(500).json({ 
         success: false, 
         error: 'SMS service not configured' 
@@ -73,32 +121,33 @@ export default async function handler(req: any, res: any) {
 
     // Validate required fields
     if (!to || !message) {
+      console.warn(`[SMS] requestId=${requestId} status=validation_error reason=missing_fields`);
       return res.status(400).json({ 
         success: false, 
         error: 'Missing required fields: to, message' 
       });
     }
 
-    // CRITICAL: Format phone number FIRST, then validate
-    const formattedPhone = formatPhoneToE164(to);
+    // Validate E.164 format - do NOT modify the number
+    const phone = to.trim();
+    const maskedPhone = maskPhone(phone);
+    const detectedCountry = detectCountryFromPhone(phone);
     
-    if (!validateE164Phone(formattedPhone)) {
+    if (!validateE164Phone(phone)) {
+      console.warn(`[SMS] requestId=${requestId} to=${maskedPhone} country=${detectedCountry} status=validation_error reason=invalid_e164`);
       return res.status(400).json({ 
         success: false, 
-        error: `Invalid phone number: ${to}. Please use a valid 10-digit US/Canada number.` 
+        error: 'Invalid phone number format. Must be E.164 format (e.g., +14165551234, +32475123456)' 
       });
     }
 
-    console.log('[API] Sending SMS:', { 
-      original: to,
-      formatted: formattedPhone,
-      messageLength: message.length 
-    });
+    // Debug log: SMS send attempt
+    console.log(`[SMS] requestId=${requestId} to=${maskedPhone} country=${detectedCountry} messageLength=${message.length} status=sending`);
 
     // Prepare Twilio API request
     const formData = new URLSearchParams();
     formData.append('From', TWILIO_PHONE_NUMBER);
-    formData.append('To', formattedPhone); // Use formatted number
+    formData.append('To', phone);
     formData.append('Body', message);
 
     // Send SMS via Twilio API
@@ -111,26 +160,31 @@ export default async function handler(req: any, res: any) {
       body: formData.toString(),
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[API] Twilio API error:', errorText);
-      return res.status(500).json({ 
+      const errorCode = data.code || data.error_code;
+      const errorMessage = data.message || data.error_message || 'Unknown error';
+      
+      // Debug log: Twilio error with code
+      console.error(`[SMS] requestId=${requestId} to=${maskedPhone} country=${detectedCountry} status=twilio_error errorCode=${errorCode} errorMessage="${errorMessage.substring(0, 100)}"`);
+      
+      return res.status(400).json({ 
         success: false, 
-        error: `Twilio API error: ${errorText.substring(0, 200)}` 
+        error: mapTwilioError(errorCode, errorMessage)
       });
     }
-
-    const data = await response.json();
     
     if (!data.sid) {
-      console.error('[API] Twilio response missing SID:', data);
+      console.error(`[SMS] requestId=${requestId} to=${maskedPhone} country=${detectedCountry} status=invalid_response reason=missing_sid`);
       return res.status(500).json({ 
         success: false, 
-        error: 'Twilio response invalid' 
+        error: 'SMS service returned an invalid response' 
       });
     }
 
-    console.log('[API] SMS sent successfully:', { messageId: data.sid });
+    // Debug log: Success
+    console.log(`[SMS] requestId=${requestId} to=${maskedPhone} country=${detectedCountry} status=sent messageId=${data.sid}`);
 
     return res.status(200).json({ 
       success: true, 
@@ -138,11 +192,10 @@ export default async function handler(req: any, res: any) {
     });
 
   } catch (error: any) {
-    console.error('[API] Error sending SMS:', error);
+    console.error(`[SMS] requestId=${requestId} status=exception error="${error.message?.substring(0, 100)}"`);
     return res.status(500).json({ 
       success: false, 
-      error: error.message || 'Unknown error' 
+      error: 'Failed to send SMS. Please try again later.' 
     });
   }
 }
-

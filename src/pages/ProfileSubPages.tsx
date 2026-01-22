@@ -761,6 +761,8 @@ export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => 
           returnUrl: `${window.location.origin}/profile`,
           // Pass existing account ID to avoid creating duplicate accounts
           existingAccountId: stripeAccountId || undefined,
+          // Pass country code for EU hosts (defaults to CA if not set)
+          countryCode: userProfile?.countryCode || undefined,
         }),
       });
 

@@ -5,6 +5,16 @@
 
 import { getBaseEmailTemplate, getGlassPanel, getInfoRow } from './base';
 
+/**
+ * Format currency amount for email display
+ */
+function formatEmailCurrency(cents: number, currency: string = 'cad'): string {
+  const dollars = cents / 100;
+  const currencyUpper = currency.toUpperCase();
+  const symbol = currencyUpper === 'EUR' ? '€' : currencyUpper === 'GBP' ? '£' : '$';
+  return `${symbol}${dollars.toFixed(2)} ${currencyUpper}`;
+}
+
 export function ReservationConfirmationEmailTemplate(data: {
   userName: string;
   eventTitle: string;
@@ -18,6 +28,7 @@ export function ReservationConfirmationEmailTemplate(data: {
   eventImageUrl?: string;
   attendeeCount?: number;
   totalAmount?: number;
+  currency?: string;
 }): string {
   // Use ticketUrl if provided, otherwise fall back to eventUrl
   const ctaUrl = data.ticketUrl || data.eventUrl || '#';
@@ -73,7 +84,7 @@ export function ReservationConfirmationEmailTemplate(data: {
       <table role="presentation" style="width: 100%; margin-top: 8px;">
         <tr>
           <td>
-            ${getInfoRow('Transaction', `$${(data.totalAmount / 100).toFixed(2)} CAD`)}
+            ${getInfoRow('Transaction', formatEmailCurrency(data.totalAmount, data.currency))}
           </td>
         </tr>
       </table>

@@ -40,6 +40,7 @@ import { Footer } from './components/layout/Footer';
 import { CityInput } from './components/layout/CityInput';
 import { FilterDrawer } from './components/filters/FilterDrawer';
 import { SeoHelmet } from './components/seo/SeoHelmet';
+import { CookieConsentBanner } from './components/ui/CookieConsentBanner';
 import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS, type MainCategory } from './utils/categoryMapper';
 // Route-level code splitting for performance
 const LandingPage = React.lazy(() => import('./src/pages/LandingPage').then(m => ({ default: m.LandingPage })));
@@ -2451,6 +2452,9 @@ const AppContent: React.FC = () => {
       {viewState !== ViewState.AUTH && <Footer setViewState={setViewState} isLoggedIn={isLoggedIn} onProtectedNav={handleProtectedNav} />}
 
       {viewState === ViewState.DETAIL && <div className="h-24 lg:hidden bg-[#15383c]" />}
+
+      {/* Cookie Consent Banner (GDPR) */}
+      <CookieConsentBanner />
     </div>
   );
 };

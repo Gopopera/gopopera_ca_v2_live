@@ -74,6 +74,8 @@ export const PayoutSetupPage: React.FC<PageProps> = ({ setViewState }) => {
           existingAccountId: userProfile?.stripeAccountId || undefined,
           returnUrl: `${appUrl}/host/payouts?stripe=return`,
           refreshUrl: `${appUrl}/host/payouts?stripe=refresh`,
+          // Pass country code for EU hosts (defaults to CA if not set)
+          countryCode: userProfile?.countryCode || undefined,
         }),
       });
       
@@ -319,6 +321,8 @@ export const PayoutsPage: React.FC<PageProps> = ({ setViewState }) => {
           existingAccountId: userProfile?.stripeAccountId || undefined,
           returnUrl: `${appUrl}/host/payouts?stripe=return`,
           refreshUrl: `${appUrl}/host/payouts?stripe=refresh`,
+          // Pass country code for EU hosts (defaults to CA if not set)
+          countryCode: userProfile?.countryCode || undefined,
         }),
       });
       

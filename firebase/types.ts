@@ -128,6 +128,11 @@ export interface FirestoreUser {
   stripeOnboardingUrl?: string; // Link to complete onboarding
   stripeAccountEnabled?: boolean; // Whether account can receive payouts
 
+  // Region/locale fields (EU compatibility)
+  countryCode?: string;  // ISO2 country code (e.g., "CA", "BE", "US")
+  currency?: string;     // Preferred currency (e.g., "cad", "eur", "usd")
+  timezone?: string;     // IANA timezone (e.g., "America/Toronto", "Europe/Brussels")
+
   // DEPRECATED FIELDS - kept for backward compatibility during migration
   // These will be removed after migration is complete
   /** @deprecated Use displayName instead */
