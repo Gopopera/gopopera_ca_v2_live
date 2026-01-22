@@ -57,9 +57,10 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
       // User is logged in, navigate directly
       setViewState(view);
     } else {
-      // User not logged in, redirect to auth first and set redirect for after login
+      // User not logged in, redirect to auth in signin mode (they likely have an account)
       setRedirectAfterLogin(view);
       setViewState(ViewState.AUTH);
+      window.history.pushState({ viewState: ViewState.AUTH }, '', '/auth?mode=signin');
     }
     window.scrollTo({ top: 0, behavior: 'instant' });
   };

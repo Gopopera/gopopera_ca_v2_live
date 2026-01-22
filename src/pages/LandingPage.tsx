@@ -440,10 +440,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   cta_id: 'pillars_signup',
                   cta_text: t('landing.signUp'),
                   section: 'pillars',
-                  destination: '/auth',
+                  destination: '/auth?mode=signup',
                   is_external: false,
                 });
                 setViewState(ViewState.AUTH);
+                window.history.pushState({ viewState: ViewState.AUTH }, '', '/auth?mode=signup');
               }}
               className="px-8 py-4 bg-transparent border-2 border-white/20 text-white rounded-full font-bold text-base hover:bg-white/5 hover:border-white/30 transition-all duration-300 flex items-center justify-center gap-2 touch-manipulation active:scale-[0.98] whitespace-nowrap"
             >
@@ -528,10 +529,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       cta_id: 'guidelines_signup',
                       cta_text: t('landing.signUp'),
                       section: 'guidelines',
-                      destination: '/auth',
+                      destination: '/auth?mode=signup',
                       is_external: false,
                     });
                     setViewState(ViewState.AUTH);
+                    window.history.pushState({ viewState: ViewState.AUTH }, '', '/auth?mode=signup');
                   }}
                   className="px-4 py-2 bg-[#e35e25] text-white rounded-full font-semibold text-[13px] hover:bg-[#cf4d1d] transition-colors touch-manipulation active:scale-[0.98]"
                 >

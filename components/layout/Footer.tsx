@@ -22,6 +22,8 @@ export const Footer: React.FC<FooterProps> = ({ setViewState, isLoggedIn = false
           onProtectedNav(view);
         } else {
           setViewState(ViewState.AUTH);
+          // Use signin mode for protected routes (user likely has an account)
+          window.history.pushState({ viewState: ViewState.AUTH }, '', '/auth?mode=signin');
         }
       } else {
         setViewState(view);

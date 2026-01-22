@@ -1065,6 +1065,7 @@ const AppContent: React.FC = () => {
     if (!user) {
       useUserStore.getState().setRedirectAfterLogin(ViewState.CHAT);
       setViewState(ViewState.AUTH);
+      window.history.pushState({ viewState: ViewState.AUTH }, '', '/auth?mode=signin');
       return;
     }
 
@@ -1137,6 +1138,8 @@ const AppContent: React.FC = () => {
     }
     useUserStore.getState().setRedirectAfterLogin(view);
     setViewState(ViewState.AUTH);
+    // Use signin mode for protected routes (user likely has an account)
+    window.history.pushState({ viewState: ViewState.AUTH }, '', '/auth?mode=signin');
   };
 
   const handleLogin = async (email: string, password: string) => {
@@ -1170,6 +1173,7 @@ const AppContent: React.FC = () => {
       // Redirect to auth if not logged in
       useUserStore.getState().setRedirectAfterLogin(ViewState.DETAIL);
       setViewState(ViewState.AUTH);
+      window.history.pushState({ viewState: ViewState.AUTH }, '', '/auth?mode=signin');
       return;
     }
 
@@ -1218,6 +1222,7 @@ const AppContent: React.FC = () => {
     if (!user) {
       useUserStore.getState().setRedirectAfterLogin(ViewState.FEED);
       setViewState(ViewState.AUTH);
+      window.history.pushState({ viewState: ViewState.AUTH }, '', '/auth?mode=signin');
       return;
     }
     debouncedToggleFavorite(e, eventId);
@@ -1360,8 +1365,11 @@ const AppContent: React.FC = () => {
       // HOST_PROFILE doesn't need URL sync - it's a modal-like overlay
       // Keep current URL to allow back button to work
     } else if (viewState === ViewState.AUTH) {
-      if (currentUrl !== '/auth') {
-        window.history.replaceState({ viewState: ViewState.AUTH }, '', '/auth');
+      // Preserve mode param if present, otherwise don't modify URL
+      const currentSearch = window.location.search;
+      const targetUrl = currentSearch ? `/auth${currentSearch}` : '/auth';
+      if (currentUrl !== '/auth' || !window.location.href.includes('/auth')) {
+        window.history.replaceState({ viewState: ViewState.AUTH }, '', targetUrl);
       }
     } else if (viewState === ViewState.PAYOUT_SETUP) {
       if (currentUrl !== '/host/payouts/setup') {
@@ -1798,6 +1806,7 @@ const AppContent: React.FC = () => {
       console.warn('[CHAT_RENDER_GATE] BLOCKED: user not logged in');
       useUserStore.getState().setRedirectAfterLogin(ViewState.CHAT);
       setViewState(ViewState.AUTH);
+      window.history.pushState({ viewState: ViewState.AUTH }, '', '/auth?mode=signin');
       return null;
     }
 
@@ -1816,6 +1825,7 @@ const AppContent: React.FC = () => {
             if (!user) {
               useUserStore.getState().setRedirectAfterLogin(ViewState.CHAT);
               setViewState(ViewState.AUTH);
+              window.history.pushState({ viewState: ViewState.AUTH }, '', '/auth?mode=signin');
             } else {
               handleRSVP(selectedEvent.id);
             }
@@ -1932,6 +1942,7 @@ const AppContent: React.FC = () => {
                 onConfirm={async (attendeeCount, supportContribution, paymentMethod) => {
                   if (!user?.uid) {
                     setViewState(ViewState.AUTH);
+                    window.history.pushState({ viewState: ViewState.AUTH }, '', '/auth?mode=signin');
                     throw new Error('User not logged in');
                   }
 

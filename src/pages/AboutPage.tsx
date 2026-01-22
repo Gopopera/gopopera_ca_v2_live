@@ -164,7 +164,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({ setViewState }) => {
             <div className="bg-black/20 backdrop-blur-md p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-black/5">
               <h4 className="font-bold text-base sm:text-lg mb-3 sm:mb-4">{t('about.howFeesWork')}</h4>
               <p className="text-white/90 leading-relaxed mb-4 sm:mb-6 text-sm sm:text-base">{t('about.feesWorkDesc')} <span className="font-bold bg-white text-[#e35e25] px-1 rounded">10%</span>.</p>
-              <button onClick={() => setViewState(ViewState.AUTH)} className="w-full py-3.5 sm:py-4 bg-white text-[#e35e25] rounded-full font-bold hover:bg-gray-100 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base touch-manipulation active:scale-95">
+              <button onClick={() => { setViewState(ViewState.AUTH); window.history.pushState({ viewState: ViewState.AUTH }, '', '/auth?mode=signup'); }} className="w-full py-3.5 sm:py-4 bg-white text-[#e35e25] rounded-full font-bold hover:bg-gray-100 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base touch-manipulation active:scale-95">
                 {t('about.startHosting')} <ArrowRight size={16} className="sm:w-[18px] sm:h-[18px]" />
               </button>
             </div>

@@ -1070,8 +1070,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 onClick={() => {
                   setShowAuthModal(false);
                   setViewState(ViewState.AUTH);
-                  // Update URL to prevent viewState from being reset
-                  window.history.replaceState({ viewState: ViewState.AUTH }, '', '/auth');
+                  // Update URL to prevent viewState from being reset - use signin mode
+                  window.history.replaceState({ viewState: ViewState.AUTH }, '', '/auth?mode=signin');
                   window.scrollTo(0, 0);
                 }}
                 className="w-full px-6 py-3 bg-[#e35e25] text-white rounded-full font-medium hover:bg-[#d14e1a] transition-colors"
@@ -1945,8 +1945,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 onClick={() => {
                   setShowAuthModal(false);
                   setViewState(ViewState.AUTH);
-                  // Update URL to prevent viewState from being reset
-                  window.history.replaceState({ viewState: ViewState.AUTH }, '', '/auth');
+                  // Update URL to prevent viewState from being reset - use signin mode
+                  window.history.replaceState({ viewState: ViewState.AUTH }, '', '/auth?mode=signin');
                   window.scrollTo(0, 0);
                 }}
                 className="w-full px-6 py-3 bg-[#e35e25] text-white rounded-full font-medium hover:bg-[#d14e1a] transition-colors"

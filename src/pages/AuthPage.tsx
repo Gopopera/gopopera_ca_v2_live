@@ -16,7 +16,18 @@ type AuthStep = 'create-account' | 'email-signup' | 'preferences' | 'sign-in';
 export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => {
   // ALL HOOKS MUST BE DECLARED AT THE TOP LEVEL - BEFORE ANY CONDITIONAL LOGIC
   const { t } = useLanguage();
-  const [step, setStep] = useState<AuthStep>('create-account');
+  
+  // Read mode from URL query params on mount
+  const getInitialStep = (): AuthStep => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const mode = params.get('mode');
+      if (mode === 'signin') return 'sign-in';
+    }
+    return 'create-account'; // Default to signup
+  };
+  
+  const [step, setStep] = useState<AuthStep>(getInitialStep);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -36,6 +47,22 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
   // REMOVED: Duplicate getRedirectResult() call that was consuming redirect results
   // before userStore.init() could process them. userStore.init() handles redirect results
   // properly, so we don't need to check here. This was causing mobile login to fail.
+
+  // Sync step with URL mode param changes (for back button support)
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const mode = params.get('mode');
+      if (mode === 'signin') {
+        setStep('sign-in');
+      } else {
+        setStep('create-account');
+      }
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Regular functions can be declared after all hooks
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -249,6 +276,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
                 onClick={() => {
                   setStep('sign-in');
                   setFormData({ name: '', email: '', password: '' });
+                  // Update URL to reflect mode change
+                  window.history.pushState({ viewState: 'AUTH' }, '', '/auth?mode=signin');
                 }}
                 className="text-[#e35e25] font-semibold hover:underline"
               >
@@ -585,6 +614,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ setViewState, onLogin }) => 
                 onClick={() => {
                   setStep('create-account');
                   setFormData({ name: '', email: '', password: '' });
+                  // Update URL to reflect mode change
+                  window.history.pushState({ viewState: 'AUTH' }, '', '/auth?mode=signup');
                 }}
                 className="text-[#e35e25] font-semibold hover:underline"
               >

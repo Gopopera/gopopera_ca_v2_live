@@ -571,7 +571,7 @@ export const BlogPostPage: React.FC<BlogPostPageProps> = ({ slug, setViewState, 
                                     onClick={() => {
                                         setSelectedBlogSlug(null);
                                         setViewState(ViewState.AUTH);
-                                        window.history.pushState({ viewState: ViewState.AUTH }, '', '/auth');
+                                        window.history.pushState({ viewState: ViewState.AUTH }, '', '/auth?mode=signup');
                                     }}
                                     className="inline-flex items-center gap-2 px-6 py-3 border-2 border-[#15383c] text-[#15383c] rounded-full font-semibold hover:bg-[#15383c] hover:text-white transition-colors"
                                 >

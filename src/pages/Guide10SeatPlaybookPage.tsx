@@ -42,6 +42,7 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
     } else {
       setRedirectAfterLogin(ViewState.CREATE_EVENT);
       setViewState(ViewState.AUTH);
+      window.history.pushState({ viewState: ViewState.AUTH }, '', '/auth?mode=signin');
     }
     window.scrollTo({ top: 0, behavior: 'instant' });
   };

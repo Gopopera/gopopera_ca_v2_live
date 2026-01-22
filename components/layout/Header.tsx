@@ -141,7 +141,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
     // No cleanup needed when menu is closed
   }, [mobileMenuOpen]);
 
-  const handleNav = (view: ViewState, event?: any, hostId?: string) => {
+  const handleNav = (view: ViewState, event?: any, hostId?: string, authMode?: 'signin' | 'signup') => {
     // Safe navigation - ensure we don't navigate to views that require state
     // If navigating from DETAIL view, ensure we have proper state for the target view
     try {
@@ -152,7 +152,9 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
       } else if (view === ViewState.LANDING) {
         window.history.pushState({ viewState: ViewState.LANDING }, '', '/');
       } else if (view === ViewState.AUTH) {
-        window.history.pushState({ viewState: ViewState.AUTH }, '', '/auth');
+        // Default to signup mode if no mode specified
+        const modeParam = authMode ? `?mode=${authMode}` : '?mode=signup';
+        window.history.pushState({ viewState: ViewState.AUTH }, '', `/auth${modeParam}`);
         window.scrollTo(0, 0);
       } else if (view === ViewState.PROFILE || view === ViewState.MY_POPS || view === ViewState.FAVORITES) {
         // These views don't require additional state, safe to navigate
@@ -312,7 +314,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
             </>
           ) : (
             <button
-              onClick={() => handleNav(ViewState.AUTH)}
+              onClick={() => handleNav(ViewState.AUTH, undefined, undefined, 'signin')}
               className="px-5 py-2 rounded-full bg-[#e35e25] text-white font-semibold text-sm hover:bg-[#cf4d1d] transition-all shadow-lg shadow-[#e35e25]/25 hover:shadow-xl hover:-translate-y-0.5"
             >
               {t('header.signIn')}
@@ -505,7 +507,7 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
                   </button>
                   <hr className="border-gray-200 my-3 sm:my-2" />
                   <button
-                    onClick={() => handleNav(ViewState.AUTH)}
+                    onClick={() => handleNav(ViewState.AUTH, undefined, undefined, 'signin')}
                     className="text-right flex items-center justify-end text-base sm:text-lg font-medium text-gray-700 sm:text-gray-600 hover:text-popera-orange active:text-popera-orange active:bg-orange-50 transition-all touch-manipulation py-3.5 sm:py-2 min-h-[52px] sm:min-h-0 rounded-xl sm:rounded-none active:scale-[0.98]"
                   >
                     <LogIn size={20} className="sm:w-5 sm:h-5 shrink-0" />
