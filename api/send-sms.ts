@@ -7,6 +7,7 @@
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER;
+const TWILIO_MESSAGING_SERVICE_SID = process.env.TWILIO_MESSAGING_SERVICE_SID;
 const TWILIO_API_URL = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
 
 /**
@@ -108,13 +109,20 @@ export default async function handler(req: any, res: any) {
 
   try {
     // Validate Twilio is configured
-    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
+    // Either TWILIO_MESSAGING_SERVICE_SID or TWILIO_PHONE_NUMBER must be set
+    const hasMessagingService = !!TWILIO_MESSAGING_SERVICE_SID;
+    const hasFromNumber = !!TWILIO_PHONE_NUMBER;
+    
+    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || (!hasMessagingService && !hasFromNumber)) {
       console.error(`[SMS] requestId=${requestId} status=config_error reason=missing_credentials`);
       return res.status(500).json({ 
         success: false, 
         error: 'SMS service not configured' 
       });
     }
+    
+    // Determine send mode: prefer Messaging Service for better EU deliverability
+    const sendMode = hasMessagingService ? 'messaging_service' : 'from_number';
 
     // Extract SMS data from request
     const { to, message } = req.body;
@@ -141,12 +149,19 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    // Debug log: SMS send attempt
-    console.log(`[SMS] requestId=${requestId} to=${maskedPhone} country=${detectedCountry} messageLength=${message.length} status=sending`);
+    // Debug log: SMS send attempt with mode indicator
+    console.log(`[SMS] requestId=${requestId} to=${maskedPhone} country=${detectedCountry} messageLength=${message.length} mode=${sendMode} status=sending`);
 
     // Prepare Twilio API request
     const formData = new URLSearchParams();
-    formData.append('From', TWILIO_PHONE_NUMBER);
+    
+    // Use Messaging Service SID if available (better EU deliverability), otherwise use From number
+    if (hasMessagingService) {
+      formData.append('MessagingServiceSid', TWILIO_MESSAGING_SERVICE_SID!);
+    } else {
+      formData.append('From', TWILIO_PHONE_NUMBER!);
+    }
+    
     formData.append('To', phone);
     formData.append('Body', message);
 
@@ -184,7 +199,7 @@ export default async function handler(req: any, res: any) {
     }
 
     // Debug log: Success
-    console.log(`[SMS] requestId=${requestId} to=${maskedPhone} country=${detectedCountry} status=sent messageId=${data.sid}`);
+    console.log(`[SMS] requestId=${requestId} to=${maskedPhone} country=${detectedCountry} mode=${sendMode} status=sent messageId=${data.sid}`);
 
     return res.status(200).json({ 
       success: true, 
