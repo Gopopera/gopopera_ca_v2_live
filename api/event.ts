@@ -108,6 +108,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   </head>
   <body>
     <p>Loading event…</p>
+    <p>If you are not redirected, <a href="${escapeHtml(eventUrl)}">tap here to open the event</a>.</p>
   </body>
 </html>`;
 

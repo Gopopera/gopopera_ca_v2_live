@@ -34,7 +34,7 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": ".*(facebookexternalhit|twitterbot|slackbot|discordbot|linkedinbot|whatsapp|telegrambot|imessage|instagram|pinterest|bot|crawl|spider).*"
+          "value": ".*(facebookexternalhit|facebot|twitterbot|slackbot|discordbot|linkedinbot|whatsapp|telegrambot|imessage|pinterest|instagrambot).*"
         }
       ],
       "destination": "/api/event?eventId=:id"
