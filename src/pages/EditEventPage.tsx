@@ -5,7 +5,7 @@ import { useEventStore } from '../../stores/eventStore';
 import { useUserStore } from '../../stores/userStore';
 import { uploadImage } from '../../firebase/imageStorage';
 import { processImageForUploadLazy, prefetchImageProcessing } from '../lib/imageProcessingLoader';
-import { getEventById, updateEvent, deleteEvent } from '../../firebase/db';
+import { getActiveReservationCountForEvent, getEventById, updateEvent, deleteEvent } from '../../firebase/db';
 import { geocodeAddress } from '../../utils/geocoding';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
@@ -78,12 +78,21 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
   const [price, setPrice] = useState(initialEvent?.price || 'Free');
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [reservationCount, setReservationCount] = useState<number | null>(null);
+  const [originalEvent, setOriginalEvent] = useState<Event | null>(initialEvent || null);
 
   // Prefetch image processing chunk on mount (non-blocking)
   // This warms the cache before user uploads, improving perceived speed
   useEffect(() => {
     prefetchImageProcessing();
   }, []);
+
+  // Sync original event when provided directly
+  useEffect(() => {
+    if (initialEvent) {
+      setOriginalEvent(initialEvent);
+    }
+  }, [initialEvent]);
 
   // Load event if eventId provided but no initial event
   useEffect(() => {
@@ -109,6 +118,7 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
             setAttendeesCount(event.attendeesCount || 0);
             setHost(event.host || event.hostName || 'You');
             setPrice(event.price || 'Free');
+            setOriginalEvent(event);
           }
         } catch (error) {
           console.error('Error loading event:', error);
@@ -121,6 +131,31 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
       loadEvent();
     }
   }, [eventId, initialEvent, setViewState]);
+
+  useEffect(() => {
+    const eventIdToCheck = eventId || initialEvent?.id;
+    if (!eventIdToCheck) return;
+    let isMounted = true;
+    
+    const fetchReservationCount = async () => {
+      try {
+        const count = await getActiveReservationCountForEvent(eventIdToCheck);
+        if (isMounted) {
+          setReservationCount(count);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setReservationCount(0);
+        }
+      }
+    };
+    
+    fetchReservationCount();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [eventId, initialEvent?.id]);
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,7 +193,7 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
     }
 
     // Validate required fields
-    if (!title || !description || !city || !time || selectedVibes.length === 0) {
+    if (!title || !description || !city || !date || !time || selectedVibes.length === 0) {
       alert('Please fill in all required fields, including at least one vibe.');
       return;
     }
@@ -174,6 +209,23 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
     setIsSubmitting(true);
 
     try {
+      const original = originalEvent || eventToEdit;
+      const dateTimeChanged = !!original && (date !== (original.date || '') || time !== (original.time || ''));
+      
+      if (dateTimeChanged) {
+        const activeCount = await getActiveReservationCountForEvent(eventIdToUpdate);
+        if (activeCount > 0) {
+          alert('Someone just reserved a spot. Date changes are now locked.');
+          if (original) {
+            setDate(original.date || '');
+            setTime(original.time || '');
+          }
+          setReservationCount(activeCount);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+      
       // Store ORIGINAL image URLs from the event (before any user modifications)
       // This ensures we can fall back to original images if upload fails
       const originalImageUrl = initialEvent?.imageUrl || eventToEdit?.imageUrl || '';
@@ -337,7 +389,8 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
         description,
         city,
         address,
-        time, // Date is NOT editable
+        date,
+        time,
         mainCategory: mainCategory || undefined, // Category can now be updated
         vibes: selectedVibes.length > 0 ? selectedVibes : undefined,
         tags,
@@ -359,6 +412,7 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
         description,
         city,
         address,
+        date,
         time,
         mainCategory: mainCategory || undefined, // Category can now be updated
         vibes: selectedVibes.length > 0 ? selectedVibes : undefined,
@@ -376,7 +430,11 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
       setViewState(ViewState.MY_POPS);
     } catch (error: any) {
       console.error('[EDIT_EVENT] Error updating event:', error);
-      alert(`Failed to update event: ${error?.message || 'Unknown error'}. Please try again.`);
+      if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+        alert('Someone just reserved a spot. Date changes are now locked.');
+      } else {
+        alert(`Failed to update event: ${error?.message || 'Unknown error'}. Please try again.`);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -553,6 +611,32 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
       </div>
     );
   }
+
+  const isDateTimeLocked = (reservationCount ?? 0) > 0;
+  const normalizeStrings = (values: string[] = []) => [...values].sort().join('|');
+  const originalVibeKeys = originalEvent ? normalizeStrings(normalizeLegacyVibes(originalEvent.vibes || []).map(v => v.key)) : '';
+  const currentVibeKeys = normalizeStrings(selectedVibes.map(v => v.key));
+  const dateTimeChanged = originalEvent
+    ? date !== (originalEvent.date || '') || time !== (originalEvent.time || '')
+    : false;
+  const hasNonDateTimeChanges = originalEvent
+    ? (
+      title !== (originalEvent.title || '') ||
+      description !== (originalEvent.description || '') ||
+      city !== (originalEvent.city || '') ||
+      address !== (originalEvent.address || '') ||
+      mainCategory !== ((originalEvent.mainCategory as MainCategory) || '') ||
+      normalizeStrings(tags) !== normalizeStrings(originalEvent.tags || []) ||
+      imageUrl !== (originalEvent.imageUrl || '') ||
+      normalizeStrings(imageUrls) !== normalizeStrings(originalEvent.imageUrls || []) ||
+      imageFiles.length > 0 ||
+      whatToExpect !== (originalEvent.whatToExpect || '') ||
+      attendeesCount !== (originalEvent.attendeesCount || 0) ||
+      price !== (originalEvent.price || 'Free') ||
+      currentVibeKeys !== originalVibeKeys
+    )
+    : false;
+  const isSaveDisabled = isSubmitting || uploadingImage || isDeleting || (isDateTimeLocked && dateTimeChanged && !hasNonDateTimeChanges);
 
   return (
     <div className="min-h-screen bg-[#f8fafb] pt-20 sm:pt-24 md:pt-28 pb-12 sm:pb-16 md:pb-20 font-sans">
@@ -841,13 +925,15 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
             
             <div className="space-y-2">
               <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1">
-                Date <span className="text-gray-400 font-normal">(Not editable)</span>
+                Date <span className="text-red-500">*</span>
               </label>
               <input 
-                type="text" 
+                type="date" 
                 value={date}
-                disabled
-                className="w-full bg-gray-100 border border-gray-200 rounded-xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base text-gray-500 cursor-not-allowed" 
+                onChange={(e) => setDate(e.target.value)}
+                required
+                disabled={isDateTimeLocked}
+                className={`w-full border border-gray-200 rounded-xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base transition-all ${isDateTimeLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-gray-50 focus:outline-none focus:border-[#15383c]'}`} 
               />
             </div>
 
@@ -860,9 +946,16 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
                 required
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all" 
+                disabled={isDateTimeLocked}
+                className={`w-full border border-gray-200 rounded-xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base transition-all ${isDateTimeLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-gray-50 focus:outline-none focus:border-[#15383c]'}`} 
               />
             </div>
+            
+            {isDateTimeLocked && (
+              <p className="text-sm text-amber-600">
+                You can’t change the date once someone has reserved a spot. Create a new event or contact support.
+              </p>
+            )}
           </div>
 
           {/* Images - Same as CreateEventPage */}
@@ -953,7 +1046,7 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
             {/* Update Button */}
             <button 
               type="submit"
-              disabled={isSubmitting || uploadingImage || isDeleting}
+              disabled={isSaveDisabled}
               className="w-full py-3.5 sm:py-4 md:py-4.5 bg-[#15383c] text-white font-bold rounded-full hover:bg-[#1f4d52] transition-colors shadow-lg touch-manipulation active:scale-95 text-sm sm:text-base md:text-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {uploadingImage ? 'Uploading Images...' : isSubmitting ? 'Updating Event...' : 'Update'}

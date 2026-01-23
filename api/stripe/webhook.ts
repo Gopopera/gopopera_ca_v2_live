@@ -7,6 +7,14 @@ import Stripe from 'stripe';
 import admin from 'firebase-admin';
 import { IncomingMessage } from 'http';
 
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+export const runtime = 'nodejs';
+
 /**
  * Generate a short request ID for log correlation
  */
@@ -26,19 +34,29 @@ async function readRawBody(req: IncomingMessage): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
-// Initialize Firebase Admin
-if (!admin.apps.length) {
+let db: FirebaseFirestore.Firestore | null = null;
+
+async function initializeFirebase(requestId: string): Promise<FirebaseFirestore.Firestore | null> {
+  if (db) {
+    return db;
+  }
+
   try {
-    const serviceAccount = require('../../firebase-service-account.json');
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
+    if (!admin.apps.length) {
+      const serviceAccountModule = await import('../../firebase-service-account.json');
+      const serviceAccount = (serviceAccountModule as any).default ?? serviceAccountModule;
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+      });
+    }
+
+    db = admin.firestore();
+    return db;
   } catch (error) {
-    console.error('[WEBHOOK] Failed to initialize Firebase Admin:', error);
+    console.error(`[WEBHOOK] requestId=${requestId} status=firebase_init_failed`, error);
+    return null;
   }
 }
-
-const db = admin.apps.length > 0 ? admin.firestore() : null;
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || process.env.VITE_STRIPE_SECRET_KEY;
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || process.env.VITE_STRIPE_WEBHOOK_SECRET;
@@ -61,33 +79,81 @@ export default async function handler(req: any, res: any) {
       return res.status(500).json({ error: 'Stripe service not configured' });
     }
 
+    // Check for signature header
+    const sig = req.headers['stripe-signature'] as string;
+    const hasSignatureHeader = Boolean(sig);
+    const signatureHeaderLength = sig ? sig.length : 0;
+    const runtimeEnv =
+      process.env.NEXT_RUNTIME ||
+      process.env.VERCEL_RUNTIME ||
+      process.env.AWS_EXECUTION_ENV ||
+      'unknown';
+
+    // Read raw body from request stream for signature verification
+    const rawBody = await readRawBody(req);
+    console.log(
+      `[WEBHOOK] requestId=${requestId} hasSignatureHeader=${hasSignatureHeader} signatureHeaderLength=${signatureHeaderLength} rawBodyByteLength=${rawBody.length} runtime=${runtimeEnv} webhookSecretPresent=${Boolean(WEBHOOK_SECRET)}`
+    );
+
     // Check for webhook secret
     if (!WEBHOOK_SECRET) {
       console.error(`[WEBHOOK] requestId=${requestId} status=missing_secret`);
       return res.status(500).json({ error: 'Webhook secret not configured' });
     }
 
-    // Check for signature header
-    const sig = req.headers['stripe-signature'] as string;
     if (!sig) {
       console.error(`[WEBHOOK] requestId=${requestId} status=missing_signature`);
       return res.status(400).json({ error: 'Missing stripe-signature header' });
     }
 
-    // Read raw body from request stream for signature verification
-    const rawBody = await readRawBody(req);
+    let event: Stripe.Event | null = null;
+    const webhookSecrets = WEBHOOK_SECRET.split(',')
+      .map((secret) => secret.trim())
+      .filter(Boolean);
 
-    let event: Stripe.Event;
+    if (!webhookSecrets.length) {
+      console.error(`[WEBHOOK] requestId=${requestId} status=missing_secret`);
+      return res.status(500).json({ error: 'Webhook secret not configured' });
+    }
 
     // Verify webhook signature using raw body
     try {
-      event = stripe.webhooks.constructEvent(rawBody, sig, WEBHOOK_SECRET);
+      let matchedSecretIndex = -1;
+      let lastError: any = null;
+      for (let i = 0; i < webhookSecrets.length; i += 1) {
+        try {
+          event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecrets[i]);
+          matchedSecretIndex = i;
+          break;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+
+      if (!event) {
+        const errorMessage = lastError?.message || 'Unknown signature verification error';
+        console.error(
+          `[WEBHOOK] requestId=${requestId} status=signature_failed error="${errorMessage}"`
+        );
+        return res
+          .status(400)
+          .json({ error: `Webhook signature verification failed: ${errorMessage}` });
+      }
+
+      console.log(
+        `[WEBHOOK] requestId=${requestId} eventType=${event.type} status=verified matchedSecretIndex=${matchedSecretIndex}`
+      );
     } catch (err: any) {
       console.error(`[WEBHOOK] requestId=${requestId} status=signature_failed error="${err.message}"`);
       return res.status(400).json({ error: `Webhook signature verification failed: ${err.message}` });
     }
 
-    console.log(`[WEBHOOK] requestId=${requestId} eventType=${event.type} status=verified`);
+    if (!event) {
+      console.error(`[WEBHOOK] requestId=${requestId} status=signature_failed error="Unknown signature verification error"`);
+      return res.status(400).json({ error: 'Webhook signature verification failed: Unknown error' });
+    }
+
+    db = await initializeFirebase(requestId);
 
     // Handle the event
     switch (event.type) {

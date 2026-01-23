@@ -11,11 +11,21 @@ service cloud.firestore {
     }
     
     match /events/{eventId} {
+      function isDateTimeChanged() {
+        return request.resource.data.date != resource.data.date ||
+               request.resource.data.time != resource.data.time;
+      }
+      
+      function hasActiveReservations() {
+        return resource.data.attendeeCount != null && resource.data.attendeeCount > 0;
+      }
+      
       allow read: if true;
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && 
         (resource.data.hostId == request.auth.uid || 
-         request.resource.data.hostId == request.auth.uid);
+         request.resource.data.hostId == request.auth.uid) &&
+        (!isDateTimeChanged() || !hasActiveReservations());
       allow delete: if isAuthenticated() && resource.data.hostId == request.auth.uid;
     }
     

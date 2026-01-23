@@ -18,9 +18,16 @@ import { validateFirestoreData, removeUndefinedValues, sanitizeFirestoreData } f
 // Host data (hostName, hostPhotoURL) is fetched in real-time from /users/{hostId}
 // attendeesCount is computed in real-time from reservations
 export const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event => {
+  const derivedCoverImageUrl =
+    firestoreEvent.coverImageUrl ||
+    (firestoreEvent.imageUrls && firestoreEvent.imageUrls.length > 0 ? firestoreEvent.imageUrls[0] : '') ||
+    firestoreEvent.imageUrl ||
+    null;
+
   const standardizedEvent: Event = {
     id: firestoreEvent.id || '',
     title: firestoreEvent.title || '',
+    shortDescription: firestoreEvent.shortDescription || undefined,
     description: firestoreEvent.description || '',
     city: firestoreEvent.city || '',
     address: firestoreEvent.address || '',
@@ -29,6 +36,7 @@ export const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event 
     tags: Array.isArray(firestoreEvent.tags) ? firestoreEvent.tags : [],
     hostId: firestoreEvent.hostId || '', // Primary field - fetch host data from /users/{hostId}
     imageUrls: firestoreEvent.imageUrls || (firestoreEvent.imageUrl ? [firestoreEvent.imageUrl] : undefined),
+    coverImageUrl: derivedCoverImageUrl,
     // REMOVED: attendeesCount - computed in real-time from reservations
     // Backward compatibility (will be removed after migration)
     host: firestoreEvent.host || firestoreEvent.hostName || '',
@@ -147,8 +155,15 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
     }
     
     // Build event data with defaults
+    const derivedCoverImageUrl =
+      eventData.coverImageUrl ||
+      (eventData.imageUrls && eventData.imageUrls.length > 0 ? eventData.imageUrls[0] : '') ||
+      eventData.imageUrl ||
+      '';
+
     const eventDataRaw: Omit<FirestoreEvent, 'id'> = {
       title: eventData.title,
+      shortDescription: eventData.shortDescription,
       description: eventData.description,
       date: eventData.date,
       time: eventData.time,
@@ -165,6 +180,7 @@ export async function createEvent(eventData: Omit<Event, 'id' | 'createdAt' | 'l
       hostName: hostProfileData?.displayName || hostProfileData?.name || (eventData as any).hostName || 'Unknown Host',
       imageUrl: eventData.imageUrl || (eventData.imageUrls && eventData.imageUrls.length > 0 ? eventData.imageUrls[0] : ''),
       imageUrls: eventData.imageUrls || (eventData.imageUrl ? [eventData.imageUrl] : undefined),
+      coverImageUrl: derivedCoverImageUrl || undefined,
       rating: eventData.rating || 0,
       reviewCount: eventData.reviewCount || 0,
       // REMOVED: attendeesCount - computed in real-time from reservations
@@ -368,6 +384,7 @@ export async function updateEvent(eventId: string, eventData: Partial<Omit<Event
     
     // Map frontend Event fields to FirestoreEvent fields
     if (eventData.title !== undefined) updateData.title = eventData.title;
+    if (eventData.shortDescription !== undefined) updateData.shortDescription = eventData.shortDescription;
     if (eventData.description !== undefined) updateData.description = eventData.description;
     if (eventData.city !== undefined) {
       updateData.city = eventData.city;
@@ -379,6 +396,7 @@ export async function updateEvent(eventId: string, eventData: Partial<Omit<Event
       // Update location if address changed
       updateData.location = eventData.address ? `${eventData.address}, ${existingEvent.city || eventData.city || ''}` : (existingEvent.city || eventData.city || '');
     }
+    if (eventData.date !== undefined) updateData.date = eventData.date;
     if (eventData.time !== undefined) updateData.time = eventData.time;
     if (eventData.category !== undefined) updateData.category = eventData.category;
     if (eventData.price !== undefined) updateData.price = eventData.price;
@@ -389,6 +407,11 @@ export async function updateEvent(eventId: string, eventData: Partial<Omit<Event
     }
     if (eventData.imageUrl !== undefined) updateData.imageUrl = eventData.imageUrl;
     if (eventData.imageUrls !== undefined) updateData.imageUrls = eventData.imageUrls;
+    if (eventData.coverImageUrl !== undefined) {
+      const normalizedCover =
+        typeof eventData.coverImageUrl === 'string' ? eventData.coverImageUrl.trim() : eventData.coverImageUrl;
+      updateData.coverImageUrl = normalizedCover && normalizedCover.length > 0 ? normalizedCover : null;
+    }
     if (eventData.whatToExpect !== undefined) updateData.whatToExpect = eventData.whatToExpect;
     if (eventData.aboutEvent !== undefined) updateData.aboutEvent = eventData.aboutEvent;
     if (eventData.capacity !== undefined) updateData.capacity = eventData.capacity;
@@ -404,6 +427,22 @@ export async function updateEvent(eventId: string, eventData: Partial<Omit<Event
     // Handle mainCategory and vibes updates
     if ((eventData as any).mainCategory !== undefined) updateData.mainCategory = (eventData as any).mainCategory;
     if ((eventData as any).vibes !== undefined) updateData.vibes = (eventData as any).vibes;
+
+    // Ensure coverImageUrl stays valid when images change
+    if (eventData.coverImageUrl === undefined && (eventData.imageUrls !== undefined || eventData.imageUrl !== undefined)) {
+      const nextImageUrls =
+        eventData.imageUrls !== undefined
+          ? eventData.imageUrls
+          : existingEvent.imageUrls || (eventData.imageUrl ? [eventData.imageUrl] : existingEvent.imageUrl ? [existingEvent.imageUrl] : undefined);
+      const existingCover = typeof existingEvent.coverImageUrl === 'string' ? existingEvent.coverImageUrl.trim() : '';
+      const coverStillExists = !!existingCover && (nextImageUrls ? nextImageUrls.includes(existingCover) : existingCover === (eventData.imageUrl || existingEvent.imageUrl));
+      const fallbackCover =
+        (nextImageUrls && nextImageUrls.length > 0 ? nextImageUrls[0] : '') ||
+        eventData.imageUrl ||
+        existingEvent.imageUrl ||
+        '';
+      updateData.coverImageUrl = coverStillExists ? existingCover : (fallbackCover || null);
+    }
     
     // Validate and sanitize update data
     const sanitizedUpdate = sanitizeFirestoreData(updateData);
@@ -552,6 +591,7 @@ export async function searchEvents(searchQuery: string): Promise<Event[]> {
 }
 
 // Reservations
+const ACTIVE_RESERVATION_STATUSES = ['reserved', 'checked_in'] as const;
 export async function createReservation(
   eventId: string, 
   userId: string,
@@ -796,18 +836,17 @@ async function syncEventAttendeeCount(eventId: string): Promise<void> {
   if (!db) return;
   
   try {
-    // Count all reserved reservations for this event
+    // Count all active reservations for this event (non-cancelled)
     const reservationsCol = collection(db, "reservations");
-    const q = query(
-      reservationsCol,
-      where("eventId", "==", eventId),
-      where("status", "==", "reserved")
-    );
+    const q = query(reservationsCol, where("eventId", "==", eventId));
     const snapshot = await getDocs(q);
     
     // Sum up attendeeCount from all reservations
     const totalCount = snapshot.docs.reduce((total, docSnap) => {
       const data = docSnap.data() as FirestoreReservation;
+      if (data.status === 'cancelled') {
+        return total;
+      }
       return total + (data.attendeeCount || 1);
     }, 0);
     
@@ -968,6 +1007,8 @@ export async function updateReservationCheckIn(reservationId: string, checkedInB
   
   try {
     const reservationRef = doc(db, "reservations", reservationId);
+    const reservationDoc = await getDoc(reservationRef);
+    const eventId = reservationDoc.data()?.eventId;
     
     await updateDoc(reservationRef, {
       status: "checked_in",
@@ -976,6 +1017,12 @@ export async function updateReservationCheckIn(reservationId: string, checkedInB
     });
     
     console.log('[CHECK_IN] ✅ Reservation checked in:', { reservationId, checkedInBy: checkedInByUid, status: 'checked_in' });
+    
+    if (eventId) {
+      syncEventAttendeeCount(eventId).catch(err => {
+        console.warn('[CHECK_IN] ⚠️ Failed to sync attendeeCount:', err);
+      });
+    }
   } catch (error: any) {
     console.error('Error checking in reservation:', error);
     throw error;
@@ -1083,7 +1130,11 @@ export async function getReservationCountForEvent(eventId: string): Promise<numb
   
   try {
     const reservationsCol = collection(db, "reservations");
-    const q = query(reservationsCol, where("eventId", "==", eventId), where("status", "==", "reserved"));
+    const q = query(
+      reservationsCol,
+      where("eventId", "==", eventId),
+      where("status", "in", ACTIVE_RESERVATION_STATUSES)
+    );
     const snap = await getDocs(q);
     // Sum up attendeeCount from all reservations (default to 1 if not specified for backward compatibility)
     return snap.docs.reduce((total, doc) => {
@@ -1094,6 +1145,38 @@ export async function getReservationCountForEvent(eventId: string): Promise<numb
     // Don't log permission errors - they're expected and handled elsewhere
     if (error?.code !== 'permission-denied' && !error?.message?.includes('permission')) {
       console.error("Error fetching reservation count:", error);
+    }
+    return 0;
+  }
+}
+
+/**
+ * Get count of active (non-cancelled) reservations for an event
+ * Counts reservation documents (not attendees)
+ */
+export async function getActiveReservationCountForEvent(eventId: string): Promise<number> {
+  const db = getDbSafe();
+  if (!db) {
+    return 0;
+  }
+  
+  // Ensure Firestore is ready before calling collection()
+  if (typeof db === 'undefined' || db === null) {
+    return 0;
+  }
+  
+  try {
+    const reservationsCol = collection(db, "reservations");
+    const q = query(reservationsCol, where("eventId", "==", eventId));
+    const snap = await getDocs(q);
+    return snap.docs.filter(doc => {
+      const data = doc.data() as FirestoreReservation;
+      return data.status !== 'cancelled';
+    }).length;
+  } catch (error: any) {
+    // Don't log permission errors - they're expected and handled elsewhere
+    if (error?.code !== 'permission-denied' && !error?.message?.includes('permission')) {
+      console.error("Error fetching active reservation count:", error);
     }
     return 0;
   }
@@ -1206,7 +1289,7 @@ export function subscribeToReservationCount(
     const q = query(
       reservationsCol, 
       where("eventId", "==", eventId), 
-      where("status", "==", "reserved")
+      where("status", "in", ACTIVE_RESERVATION_STATUSES)
     );
     
     reservationsUnsubscribe = onSnapshot(
