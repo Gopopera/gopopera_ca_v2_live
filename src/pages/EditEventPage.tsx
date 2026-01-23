@@ -77,7 +77,11 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
   const [imagePreviews, setImagePreviews] = useState<string[]>(initialEvent?.imageUrls || []);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [whatToExpect, setWhatToExpect] = useState(initialEvent?.whatToExpect || '');
-  const [attendeesCount, setAttendeesCount] = useState(initialEvent?.attendeesCount || 0);
+  const [attendeesCount, setAttendeesCount] = useState(() => {
+    const capacity = initialEvent?.capacity;
+    if (typeof capacity === 'number') return capacity;
+    return initialEvent?.attendeesCount || 0;
+  });
   const [host, setHost] = useState(initialEvent?.host || 'You');
   const [price, setPrice] = useState(initialEvent?.price || 'Free');
   const [pricingType, setPricingType] = useState<'free' | 'online' | 'door'>(
@@ -108,6 +112,11 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
   useEffect(() => {
     if (initialEvent) {
       setOriginalEvent(initialEvent);
+      setAttendeesCount(
+        typeof initialEvent.capacity === 'number'
+          ? initialEvent.capacity
+          : initialEvent.attendeesCount || 0
+      );
       setPricingType(getEventPricingType(initialEvent));
       const initialFeeCents = getEventFeeAmount(initialEvent);
       setFeeAmount(initialFeeCents > 0 ? initialFeeCents / 100 : 0);
@@ -141,7 +150,11 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
             setImageUrls(event.imageUrls || []);
             setImagePreviews(event.imageUrls || [event.imageUrl].filter(Boolean));
             setWhatToExpect(event.whatToExpect || '');
-            setAttendeesCount(event.attendeesCount || 0);
+            setAttendeesCount(
+              typeof event.capacity === 'number'
+                ? event.capacity
+                : event.attendeesCount || 0
+            );
             setHost(event.host || event.hostName || 'You');
             setPrice(event.price || 'Free');
             setPricingType(getEventPricingType(event));
@@ -534,7 +547,6 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
         imageUrls: finalImageUrls.length > 0 ? finalImageUrls : undefined,
         coverImageUrl: nextCoverImageUrl,
         whatToExpect: whatToExpect || undefined,
-        attendeesCount,
         price,
         host: hostName, // Use actual name, never 'You'
         hostPhotoURL, // Store host photo URL
@@ -558,10 +570,13 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
         imageUrls: finalImageUrls.length > 0 ? finalImageUrls : undefined,
         coverImageUrl: nextCoverImageUrl,
         whatToExpect: whatToExpect || undefined,
-        attendeesCount,
         price,
         host: hostName,
         capacity: attendeesCount || undefined,
+        pricingType,
+        hasFee: paymentHasFee,
+        feeAmount: feeAmountCents,
+        currency: normalizedCurrency,
       });
 
       alert('Event updated successfully!');
@@ -775,6 +790,11 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
         originalHasFee !== currentHasFee
       )
     : false;
+  const originalCapacity = originalEvent
+    ? (typeof originalEvent.capacity === 'number'
+        ? originalEvent.capacity
+        : originalEvent.attendeesCount || 0)
+    : 0;
   const hasNonDateTimeChanges = originalEvent
     ? (
       title !== (originalEvent.title || '') ||
@@ -787,7 +807,7 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
       normalizeStrings(imageUrls) !== normalizeStrings(originalEvent.imageUrls || []) ||
       imageFiles.length > 0 ||
       whatToExpect !== (originalEvent.whatToExpect || '') ||
-      attendeesCount !== (originalEvent.attendeesCount || 0) ||
+      attendeesCount !== originalCapacity ||
       price !== (originalEvent.price || 'Free') ||
       currentVibeKeys !== originalVibeKeys ||
       paymentConfigChanged
