@@ -101,6 +101,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     <meta name="twitter:title" content="${escapeHtml(title)}" />
     <meta name="twitter:description" content="${escapeHtml(description)}" />
     <meta name="twitter:image" content="${escapeHtml(ogImage)}" />
+    <meta http-equiv="refresh" content="0;url=${escapeHtml(eventUrl)}" />
+    <script>
+      window.location.replace(${JSON.stringify(eventUrl)});
+    </script>
   </head>
   <body>
     <p>Loading event…</p>
