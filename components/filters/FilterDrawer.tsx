@@ -74,6 +74,44 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
     'Iqaluit, CA',
   ];
 
+  const US_CITIES = [
+    'New York, US',
+    'Los Angeles, US',
+    'Chicago, US',
+    'Houston, US',
+    'Phoenix, US',
+    'Philadelphia, US',
+    'San Antonio, US',
+    'San Diego, US',
+    'Dallas, US',
+    'San Jose, US',
+    'Austin, US',
+    'Miami, US',
+    'San Francisco, US',
+    'Seattle, US',
+    'Boston, US',
+    'Denver, US',
+  ];
+
+  const EUROPE_CITIES = [
+    'Paris, FR',
+    'Berlin, DE',
+    'Madrid, ES',
+    'Rome, IT',
+    'London, UK',
+    'Amsterdam, NL',
+    'Brussels, BE',
+    'Zurich, CH',
+    'Stockholm, SE',
+    'Oslo, NO',
+    'Copenhagen, DK',
+    'Vienna, AT',
+    'Dublin, IE',
+    'Lisbon, PT',
+    'Warsaw, PL',
+    'Prague, CZ',
+  ];
+
   // Get unique countries and cities from events
   const countries = React.useMemo(() => {
     const countrySet = new Set<string>();
@@ -84,6 +122,9 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
     if (CANADIAN_CITIES.length > 0) {
       countrySet.add('Canada');
     }
+    // Always include United States and Europe for browsing
+    countrySet.add('United States');
+    countrySet.add('Europe');
     return Array.from(countrySet).sort();
   }, [events]);
 
@@ -91,6 +132,16 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
     // If Canada is selected, show all Canadian cities
     if (filters.country === 'Canada') {
       return CANADIAN_CITIES.sort();
+    }
+
+    // If United States is selected, show main US cities
+    if (filters.country === 'United States') {
+      return US_CITIES.sort();
+    }
+
+    // If Europe is selected, show main European cities
+    if (filters.country === 'Europe') {
+      return EUROPE_CITIES.sort();
     }
     
     // Otherwise, show cities from events that match the selected country

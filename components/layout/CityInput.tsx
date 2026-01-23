@@ -9,6 +9,31 @@ import { useSelectedCity, useSetCity } from '../../src/stores/cityStore';
 const POPULAR_CITIES = [
   // Show all events
   'All Locations',
+  // Europe
+  'Europe',
+  'France',
+  'Germany',
+  'Spain',
+  'Italy',
+  'United Kingdom',
+  'Netherlands',
+  'Belgium',
+  'Switzerland',
+  'Sweden',
+  'Norway',
+  'Portugal',
+  'Ireland',
+  'Poland',
+  'Paris, FR',
+  'Berlin, DE',
+  'Madrid, ES',
+  'Rome, IT',
+  'London, UK',
+  'Amsterdam, NL',
+  'Brussels, BE',
+  'Zurich, CH',
+  'Stockholm, SE',
+  'Oslo, NO',
   // Canada
   'Canada',
   'Montreal, CA',
@@ -46,6 +71,10 @@ const COUNTRY_ALIASES: Record<string, string> = {
   'ca': 'Canada',
   'can': 'Canada',
   'canada': 'Canada',
+  // Europe aliases
+  'eu': 'Europe',
+  'europe': 'Europe',
+  'european union': 'Europe',
   // All Locations aliases
   'all': 'All Locations',
   'alllocations': 'All Locations',

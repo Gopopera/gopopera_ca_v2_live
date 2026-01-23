@@ -2,6 +2,7 @@ import { Event } from '../types';
 import { EventFilters } from '../stores/filterStore';
 import { getCircleContinuity, getAvailableSpots } from './eventHelpers';
 import { getMainCategory, normalizeCategory, type MainCategory } from './categoryMapper';
+import { matchesLocationFilter } from './location';
 
 /**
  * Apply filters to events array
@@ -22,10 +23,10 @@ export function applyEventFilters(events: Event[], filters: EventFilters): Event
 
   // Location filters
   if (filters.country) {
-    filtered = filtered.filter(event => event.country === filters.country);
+    filtered = filtered.filter(event => matchesLocationFilter(event, filters.country));
   }
   if (filters.city) {
-    filtered = filtered.filter(event => event.city === filters.city);
+    filtered = filtered.filter(event => matchesLocationFilter(event, filters.city));
   }
 
   // Group size filter

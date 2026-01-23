@@ -24,6 +24,123 @@
 /** Matches ", CA", ", US", ", USA", ", Canada", ", United States" at end (case-insensitive) */
 const ANY_COUNTRY_SUFFIX_REGEX = /,\s*(ca|us|usa|canada|united states)$/i;
 
+const ALL_LOCATIONS_ALIASES = new Set([
+  'all locations',
+  'all',
+  'everywhere',
+  'world',
+  'worldwide',
+  'global',
+]);
+
+const EUROPE_ALIASES = new Set([
+  'europe',
+  'eu',
+  'european union',
+]);
+
+const EUROPE_COUNTRIES = new Set([
+  'Albania',
+  'Andorra',
+  'Austria',
+  'Belarus',
+  'Belgium',
+  'Bosnia and Herzegovina',
+  'Bulgaria',
+  'Croatia',
+  'Cyprus',
+  'Czechia',
+  'Denmark',
+  'Estonia',
+  'Finland',
+  'France',
+  'Germany',
+  'Greece',
+  'Hungary',
+  'Iceland',
+  'Ireland',
+  'Italy',
+  'Kosovo',
+  'Latvia',
+  'Liechtenstein',
+  'Lithuania',
+  'Luxembourg',
+  'Malta',
+  'Moldova',
+  'Monaco',
+  'Montenegro',
+  'Netherlands',
+  'North Macedonia',
+  'Norway',
+  'Poland',
+  'Portugal',
+  'Romania',
+  'San Marino',
+  'Serbia',
+  'Slovakia',
+  'Slovenia',
+  'Spain',
+  'Sweden',
+  'Switzerland',
+  'Ukraine',
+  'United Kingdom',
+  'Vatican City',
+]);
+
+const COUNTRY_ALIASES: Record<string, string> = {
+  // North America
+  'ca': 'Canada',
+  'can': 'Canada',
+  'canada': 'Canada',
+  'us': 'United States',
+  'usa': 'United States',
+  'united states': 'United States',
+  'unitedstates': 'United States',
+  'america': 'United States',
+
+  // Europe (common)
+  'fr': 'France',
+  'france': 'France',
+  'de': 'Germany',
+  'germany': 'Germany',
+  'es': 'Spain',
+  'spain': 'Spain',
+  'it': 'Italy',
+  'italy': 'Italy',
+  'uk': 'United Kingdom',
+  'united kingdom': 'United Kingdom',
+  'great britain': 'United Kingdom',
+  'gb': 'United Kingdom',
+  'nl': 'Netherlands',
+  'netherlands': 'Netherlands',
+  'be': 'Belgium',
+  'belgium': 'Belgium',
+  'ch': 'Switzerland',
+  'switzerland': 'Switzerland',
+  'se': 'Sweden',
+  'sweden': 'Sweden',
+  'no': 'Norway',
+  'norway': 'Norway',
+  'pt': 'Portugal',
+  'portugal': 'Portugal',
+  'ie': 'Ireland',
+  'ireland': 'Ireland',
+  'pl': 'Poland',
+  'poland': 'Poland',
+  'at': 'Austria',
+  'austria': 'Austria',
+  'dk': 'Denmark',
+  'denmark': 'Denmark',
+  'fi': 'Finland',
+  'finland': 'Finland',
+  'gr': 'Greece',
+  'greece': 'Greece',
+};
+
+const NORMALIZED_COUNTRY_CANONICALS = new Set(
+  Object.values(COUNTRY_ALIASES).map(normalizeCountryToken)
+);
+
 // =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
@@ -49,6 +166,43 @@ export function normalizeCityToken(str: string | undefined | null): string {
     .replace(ANY_COUNTRY_SUFFIX_REGEX, '')
     .replace(/-/g, ' ')
     .trim();
+}
+
+/**
+ * Normalize a country token for comparison.
+ */
+function normalizeCountryToken(str: string | undefined | null): string {
+  return (str || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[().']/g, '')
+    .replace(/[-_]/g, ' ')
+    .replace(/\s+/g, ' ');
+}
+
+/**
+ * Extract country token from a city string when it has a comma suffix.
+ * e.g., "Paris, FR" -> "FR"
+ */
+function getCountryTokenFromCity(city: string | undefined | null): string | null {
+  if (!city) return null;
+  const idx = city.lastIndexOf(',');
+  if (idx === -1) return null;
+  return city.slice(idx + 1).trim();
+}
+
+/**
+ * Resolve aliases / variants to a canonical country name.
+ */
+function resolveCountryName(token: string | undefined | null): string | undefined {
+  if (!token) return undefined;
+  const normalized = normalizeCountryToken(token);
+  return COUNTRY_ALIASES[normalized] || (normalized ? token.trim() : undefined);
+}
+
+function isEventInEurope(event: { city?: string; country?: string }): boolean {
+  const country = getCountryFromEvent(event);
+  return !!country && EUROPE_COUNTRIES.has(country);
 }
 
 /**
@@ -95,20 +249,19 @@ export function getCountrySuffixFromCity(city: string | undefined | null): 'CA' 
  * getCountryFromEvent({ city: "NYC", country: "United States" }) → "United States"
  * getCountryFromEvent({ city: "Paris" }) → undefined
  */
-export function getCountryFromEvent(event: { city?: string; country?: string }): 'Canada' | 'United States' | undefined {
+export function getCountryFromEvent(event: { city?: string; country?: string }): string | undefined {
   // 1. Check explicit country field first
   if (event.country) {
-    const normalized = event.country.trim().toLowerCase();
-    if (normalized === 'canada' || normalized === 'ca') return 'Canada';
-    if (normalized === 'united states' || normalized === 'us' || normalized === 'usa') return 'United States';
+    return resolveCountryName(event.country);
   }
-  
-  // 2. Infer from city suffix
-  const suffix = getCountrySuffixFromCity(event.city);
-  if (suffix === 'CA') return 'Canada';
-  if (suffix === 'US') return 'United States';
-  
-  // SAFETY: Unknown cities return undefined (not assumed to be Canada)
+
+  // 2. Infer from city suffix (e.g., "Paris, FR")
+  const suffixToken = getCountryTokenFromCity(event.city);
+  if (suffixToken) {
+    return resolveCountryName(suffixToken);
+  }
+
+  // SAFETY: Unknown cities return undefined (not assumed to be any country)
   return undefined;
 }
 
@@ -137,47 +290,56 @@ export function matchesLocationFilter(
 ): boolean {
   // No filter → show everything
   if (!selectedCity || !selectedCity.trim()) return true;
-  
-  const filterLower = selectedCity.trim().toLowerCase().replace(/-/g, ' ');
-  
-  // "All Locations" variants (with hyphens normalized to spaces)
-  if (filterLower === 'all locations') {
+
+  const normalizedFilter = normalizeCountryToken(selectedCity);
+
+  // "All Locations" variants
+  if (ALL_LOCATIONS_ALIASES.has(normalizedFilter)) {
     return true;
   }
-  
-  // Country-level filters
-  if (filterLower === 'canada') {
-    return getCountryFromEvent(event) === 'Canada';
+
+  // Europe region filter
+  if (EUROPE_ALIASES.has(normalizedFilter)) {
+    return isEventInEurope(event);
   }
-  
-  if (filterLower === 'united states') {
-    return getCountryFromEvent(event) === 'United States';
+
+  // Country-level filters (includes aliases)
+  const filterCountry =
+    COUNTRY_ALIASES[normalizedFilter] ||
+    (NORMALIZED_COUNTRY_CANONICALS.has(normalizedFilter) ? selectedCity.trim() : undefined);
+
+  if (filterCountry) {
+    const eventCountry = getCountryFromEvent(event);
+    return (
+      !!eventCountry &&
+      normalizeCountryToken(eventCountry) === normalizeCountryToken(filterCountry)
+    );
   }
-  
+
   // City-level filter: strict matching
   const eventCity = event.city || '';
   if (!eventCity) return false;
-  
+
   const normalizedEventCity = normalizeCityToken(eventCity);
-  const normalizedFilter = normalizeCityToken(selectedCity);
-  
-  if (!normalizedFilter) return false;
-  
+  const normalizedFilterCity = normalizeCityToken(selectedCity);
+
+  if (!normalizedFilterCity) return false;
+
   // Exact match after normalization (e.g., "montreal" === "montreal")
-  if (normalizedEventCity === normalizedFilter) {
+  if (normalizedEventCity === normalizedFilterCity) {
     return true;
   }
-  
+
   // For multi-word filters, check if event city STARTS with filter or vice versa
   // This prevents "tor" matching "toronto" but allows "new york" to match "new york city"
   // Only allow includes() for filters >= 4 chars to prevent false positives
-  if (normalizedFilter.length >= 4) {
-    if (normalizedEventCity.includes(normalizedFilter) || 
-        normalizedFilter.includes(normalizedEventCity)) {
+  if (normalizedFilterCity.length >= 4) {
+    if (normalizedEventCity.includes(normalizedFilterCity) || 
+        normalizedFilterCity.includes(normalizedEventCity)) {
       return true;
     }
   }
-  
+
   return false;
 }
 
