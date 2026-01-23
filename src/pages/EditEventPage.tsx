@@ -497,6 +497,7 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
         ? existingCoverImageUrl
         : ((finalImageUrls.length > 0 ? finalImageUrls[0] : finalImageUrl) || null);
 
+      let paymentUpdateError: string | null = null;
       if (paymentConfigChanged) {
         try {
           const token = await getIdToken();
@@ -525,9 +526,7 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
           }
         } catch (paymentError: any) {
           console.error('[EDIT_EVENT] Payment update failed:', paymentError);
-          alert(paymentError?.message || 'Failed to update payment settings.');
-          setIsSubmitting(false);
-          return;
+          paymentUpdateError = paymentError?.message || 'Failed to update payment settings.';
         }
       }
 
@@ -553,6 +552,10 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
         capacity: attendeesCount || undefined,
         lat,
         lng,
+        pricingType,
+        hasFee: paymentHasFee,
+        feeAmount: feeAmountCents,
+        currency: normalizedCurrency,
       });
 
       // Also update in store for immediate UI sync
@@ -579,6 +582,9 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
         currency: normalizedCurrency,
       });
 
+      if (paymentUpdateError) {
+        alert(`Payment settings saved, but server validation failed: ${paymentUpdateError}`);
+      }
       alert('Event updated successfully!');
       setViewState(ViewState.MY_POPS);
     } catch (error: any) {

@@ -420,6 +420,10 @@ export async function updateEvent(eventId: string, eventData: Partial<Omit<Event
     if ((eventData as any).hostPhotoURL !== undefined) updateData.hostPhotoURL = (eventData as any).hostPhotoURL;
     if ((eventData as any).lat !== undefined) updateData.lat = (eventData as any).lat;
     if ((eventData as any).lng !== undefined) updateData.lng = (eventData as any).lng;
+    if ((eventData as any).pricingType !== undefined) updateData.pricingType = (eventData as any).pricingType;
+    if ((eventData as any).feeAmount !== undefined) updateData.feeAmount = (eventData as any).feeAmount;
+    if ((eventData as any).currency !== undefined) updateData.currency = (eventData as any).currency;
+    if ((eventData as any).hasFee !== undefined) updateData.hasFee = (eventData as any).hasFee === true;
     if ((eventData as any).isDraft !== undefined) updateData.isDraft = (eventData as any).isDraft === true;
     if ((eventData as any).isPublic !== undefined) updateData.isPublic = (eventData as any).isPublic === true;
     if ((eventData as any).allowChat !== undefined) updateData.allowChat = (eventData as any).allowChat === true;
