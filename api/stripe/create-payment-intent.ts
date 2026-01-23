@@ -88,15 +88,19 @@ export default async function handler(req: any, res: any) {
       return res.status(500).json({ error: 'Stripe service not configured' });
     }
 
-    const { amount, currency: clientCurrency, isRecurring, eventId, hostId, userId } = req.body;
+    const { amount, currency: clientCurrency, isRecurring, eventId, hostId, userId, mode, attendeeEmail, customerEmail } = req.body;
 
-    if (!amount || !eventId || !hostId || !userId) {
+    if (!amount || !eventId || !hostId) {
       console.warn(`[PAYMENT] requestId=${requestId} status=validation_error reason=missing_fields`);
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    if (mode !== 'guest' && !userId) {
+      console.warn(`[PAYMENT] requestId=${requestId} status=validation_error reason=missing_user`);
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
     const maskedEvent = maskId(eventId);
-    const maskedUser = maskId(userId);
+    const maskedUser = userId ? maskId(userId) : 'guest';
 
     // =========================================================================
     // SERVER-SIDE STRIPE GATING: Fetch event and validate pricingType
@@ -144,20 +148,24 @@ export default async function handler(req: any, res: any) {
     console.log(`[PAYMENT] requestId=${requestId} eventId=${maskedEvent} userId=${maskedUser} currency=${finalCurrency} amount=${amount} platformFee=${platformFee} isRecurring=${isRecurring || false} pricingType=${pricingType} status=creating`);
 
     // Create payment intent (only reached if pricingType === 'online')
+    const receiptEmail = attendeeEmail || customerEmail;
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency: finalCurrency,
       automatic_payment_methods: {
         enabled: true,
       },
+      ...(receiptEmail ? { receipt_email: receiptEmail } : {}),
       metadata: {
         eventId,
         hostId,
-        userId,
+        userId: userId || '',
         platformFee: platformFee.toString(),
         hostPayout: hostPayout.toString(),
         isRecurring: isRecurring ? 'true' : 'false',
         pricingType, // Track in metadata for audit
+        mode: mode || 'auth',
+        attendeeEmail: receiptEmail || '',
       },
     });
 

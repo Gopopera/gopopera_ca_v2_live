@@ -305,16 +305,27 @@ export async function notifyAttendeesOfAnnouncement(
   announcementTitle: string,
   announcementMessage: string,
   eventTitle: string,
-  attendeeIds: string[]
+  attendees: Array<{
+    userId: string;
+    attendeeEmail?: string;
+    attendeePhoneE164?: string;
+    smsOptIn?: boolean;
+    attendeeName?: string;
+    isGuestCreated?: boolean;
+  }>
 ): Promise<void> {
-  const notifications = attendeeIds.map(async (userId) => {
-    const contactInfo = await getUserContactInfo(userId);
-    const preferences = await getUserNotificationPreferences(userId);
+  const notifications = attendees.map(async (attendee) => {
+    const contactInfo = await getUserContactInfo(attendee.userId);
+    const preferences = await getUserNotificationPreferences(attendee.userId);
+
+    const isGuest = attendee.isGuestCreated === true && !!attendee.attendeeEmail;
+    const emailTarget = attendee.attendeeEmail || contactInfo.email;
+    const nameTarget = attendee.attendeeName || contactInfo.name || 'there';
 
     // ALWAYS send in-app notification (cannot be disabled)
     try {
-      await createNotification(userId, {
-        userId,
+      await createNotification(attendee.userId, {
+        userId: attendee.userId,
         type: 'announcement',
         title: announcementTitle,
         body: announcementMessage,
@@ -324,11 +335,11 @@ export async function notifyAttendeesOfAnnouncement(
       console.error('[NOTIFICATION_HELPERS] ❌ Error creating announcement notification:', error);
     }
 
-    // Email
-    if (preferences.email_opt_in && contactInfo.email) {
+    // Email (always for guests; preference-based for signed-in users)
+    if (emailTarget && (isGuest || preferences.email_opt_in)) {
       try {
         const emailHtml = AnnouncementEmailTemplate({
-          userName: contactInfo.name || 'there',
+          userName: nameTarget,
           eventTitle,
           announcementTitle,
           announcementMessage,
@@ -336,7 +347,7 @@ export async function notifyAttendeesOfAnnouncement(
         });
 
         await sendEmail({
-          to: contactInfo.email,
+          to: emailTarget,
           subject: `Update: ${announcementTitle} - ${eventTitle}`,
           html: emailHtml,
           templateName: 'announcement',
@@ -347,26 +358,14 @@ export async function notifyAttendeesOfAnnouncement(
       } catch (error) {
         console.error('[NOTIFICATION_HELPERS] ❌ Error sending announcement email:', error);
       }
-    } else if (contactInfo.email) {
-      // Log skipped email due to preference
-      try {
-        await sendEmail({
-          to: contactInfo.email,
-          subject: `Update: ${announcementTitle} - ${eventTitle}`,
-          html: '',
-          templateName: 'announcement',
-          eventId,
-          notificationType: 'announcement_created',
-          skippedByPreference: true,
-        });
-      } catch (error) {
-        // Silent fail for skipped emails
-      }
     }
 
-    // SMS
-    if (preferences.sms_opt_in && contactInfo.phone) {
-      await notifyAnnouncementSMS(contactInfo.phone, eventTitle, announcementTitle);
+    const smsAllowed = isGuest ? attendee.smsOptIn === true : (attendee.smsOptIn === true ? true : attendee.smsOptIn === false ? false : preferences.sms_opt_in);
+    const phoneTarget = attendee.attendeePhoneE164 || contactInfo.phone;
+
+    // SMS only if explicitly opted-in
+    if (smsAllowed && phoneTarget) {
+      await notifyAnnouncementSMS(phoneTarget, eventTitle, announcementTitle);
     }
   });
 
@@ -559,14 +558,24 @@ export async function notifyUserOfReservationConfirmation(
   eventTime: string,
   eventLocation: string,
   attendeeCount?: number,
-  totalAmount?: number
+  totalAmount?: number,
+  overrides?: {
+    email?: string;
+    name?: string;
+    ticketUrl?: string;
+    claimUrl?: string;
+    forceEmail?: boolean;
+  }
 ): Promise<void> {
   try {
     const userInfo = await getUserContactInfo(userId);
     const preferences = await getUserNotificationPreferences(userId);
     const orderId = `#${reservationId.substring(0, 10).toUpperCase()}`;
     const eventUrl = `${getNotificationBaseUrl()}/event/${eventId}`;
-    const ticketUrl = `${getNotificationBaseUrl()}/ticket/${reservationId}`;
+    const ticketUrl = overrides?.ticketUrl || `${getNotificationBaseUrl()}/ticket/${reservationId}`;
+    const emailTarget = overrides?.email || userInfo.email;
+    const nameTarget = overrides?.name || userInfo.name || 'there';
+    const forceEmail = overrides?.forceEmail === true;
 
     // ALWAYS send in-app notification (cannot be disabled)
     try {
@@ -582,10 +591,10 @@ export async function notifyUserOfReservationConfirmation(
     }
 
     // Email notification
-    if (preferences.email_opt_in && userInfo.email) {
+    if ((forceEmail || preferences.email_opt_in) && emailTarget) {
       try {
         const emailHtml = ReservationConfirmationEmailTemplate({
-          userName: userInfo.name || 'there',
+          userName: nameTarget,
           eventTitle,
           eventDate,
           eventTime,
@@ -596,10 +605,11 @@ export async function notifyUserOfReservationConfirmation(
           ticketUrl,
           attendeeCount,
           totalAmount,
+          claimUrl: overrides?.claimUrl,
         });
 
         await sendEmail({
-          to: userInfo.email,
+          to: emailTarget,
           subject: `Reservation Confirmed: ${eventTitle}`,
           html: emailHtml,
           templateName: 'reservation-confirmation',
@@ -610,11 +620,11 @@ export async function notifyUserOfReservationConfirmation(
       } catch (error) {
         console.error('[NOTIFICATION_HELPERS] ❌ Error sending reservation confirmation email:', error);
       }
-    } else if (userInfo.email) {
+    } else if (emailTarget) {
       // Log skipped email due to preference
       try {
         await sendEmail({
-          to: userInfo.email,
+          to: emailTarget,
           subject: `Reservation Confirmed: ${eventTitle}`,
           html: '',
           templateName: 'reservation-confirmation',

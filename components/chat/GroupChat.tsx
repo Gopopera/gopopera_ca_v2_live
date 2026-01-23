@@ -2225,7 +2225,7 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                   const q = query(
                     reservationsRef,
                     where('eventId', '==', event.id),
-                    where('status', '==', 'reserved')
+                    where('status', 'in', ['reserved', 'checked_in'])
                   );
                   const snapshot = await getDocs(q);
                   const attendeeIds = snapshot.docs.map(doc => doc.data().userId).filter(Boolean);
@@ -2307,11 +2307,21 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                     where('status', '==', 'reserved')
                   );
                   const snapshot = await getDocs(q);
-                  const attendeeIds = snapshot.docs.map(doc => doc.data().userId).filter(Boolean);
+                  const attendeeRecords = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                      userId: data.userId,
+                      attendeeEmail: data.attendeeEmail,
+                      attendeePhoneE164: data.attendeePhoneE164,
+                      smsOptIn: data.smsOptIn,
+                      attendeeName: data.attendeeName,
+                      isGuestCreated: data.isGuestCreated,
+                    };
+                  }).filter(r => r.userId);
                   
                   // Include host in notifications
-                  if (event.hostId && !attendeeIds.includes(event.hostId)) {
-                    attendeeIds.push(event.hostId);
+                  if (event.hostId && !attendeeRecords.find(a => a.userId === event.hostId)) {
+                    attendeeRecords.push({ userId: event.hostId });
                   }
                   
                   console.log('[GROUP_CHAT] Notifying attendees of announcement:', {
@@ -2319,13 +2329,13 @@ export const GroupChat: React.FC<GroupChatProps> = ({ event, onClose, onViewDeta
                     attendeeCount: attendeeIds.length,
                   });
                   
-                  if (attendeeIds.length > 0) {
+                  if (attendeeRecords.length > 0) {
                     await notifyAttendeesOfAnnouncement(
                       event.id,
                       title,
                       message,
                       event.title || 'Event',
-                      attendeeIds
+                      attendeeRecords
                     );
                     console.log('[GROUP_CHAT] ✅ Announcement notifications sent');
                   }

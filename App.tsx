@@ -1171,10 +1171,6 @@ const AppContent: React.FC = () => {
   const handleRSVP = async (eventId: string, reservationId?: string) => {
     if (!authInitialized) return null;
     if (!user) {
-      // Redirect to auth if not logged in
-      useUserStore.getState().setRedirectAfterLogin(ViewState.DETAIL);
-      setViewState(ViewState.AUTH);
-      window.history.pushState({ viewState: ViewState.AUTH }, '', '/auth?mode=signin');
       return;
     }
 

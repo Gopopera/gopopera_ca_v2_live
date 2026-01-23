@@ -30,6 +30,7 @@ export function ReservationConfirmationEmailTemplate(data: {
   totalAmount?: number;
   currency?: string;
   pricingType?: 'free' | 'online' | 'door'; // Pricing type: free, online (Stripe), or door
+  claimUrl?: string;
 }): string {
   // Use ticketUrl if provided, otherwise fall back to eventUrl
   const ctaUrl = data.ticketUrl || data.eventUrl || '#';
@@ -108,6 +109,18 @@ export function ReservationConfirmationEmailTemplate(data: {
       </table>
       ` : ''}
     `)}
+
+    ${data.claimUrl ? `
+    <table role="presentation" style="width: 100%; margin-top: 24px;">
+      <tr>
+        <td align="center">
+          <a href="${data.claimUrl}" style="display: inline-block; background: rgba(255, 255, 255, 0.08); color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 50px; font-weight: 600; font-size: 14px; border: 1px solid rgba(255, 255, 255, 0.25);">
+            Claim your account / Sign in
+          </a>
+        </td>
+      </tr>
+    </table>
+    ` : ''}
   `;
 
   return getBaseEmailTemplate(content, 'View Your Ticket', ctaUrl);

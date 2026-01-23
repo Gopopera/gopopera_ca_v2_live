@@ -51,6 +51,8 @@ interface PaymentModalProps {
   userId?: string;
   userEmail?: string;
   subscriptionInterval?: 'week' | 'month';
+  mode?: 'guest' | 'auth';
+  attendeeEmail?: string;
 }
 
 interface PaymentFormProps {
@@ -66,6 +68,8 @@ interface PaymentFormProps {
   userId?: string;
   userEmail?: string;
   subscriptionInterval?: 'week' | 'month';
+  mode?: 'guest' | 'auth';
+  attendeeEmail?: string;
 }
 
 const PaymentForm: React.FC<PaymentFormProps> = ({
@@ -81,6 +85,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   userId,
   userEmail,
   subscriptionInterval,
+  mode,
+  attendeeEmail,
 }) => {
   const stripe = useStripe();
   const elements = useElements();
@@ -130,6 +136,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
           userId,
           interval: isRecurring ? (subscriptionInterval || 'week') : undefined,
           customerEmail: userEmail,
+          mode,
+          attendeeEmail,
         }),
       });
 
@@ -347,6 +355,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   userId,
   userEmail,
   subscriptionInterval,
+  mode = 'auth',
+  attendeeEmail,
 }) => {
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
@@ -492,6 +502,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   userId={userId}
                   userEmail={userEmail}
                   subscriptionInterval={subscriptionInterval}
+                  mode={mode}
+                  attendeeEmail={attendeeEmail}
                 />
               </Elements>
             </>

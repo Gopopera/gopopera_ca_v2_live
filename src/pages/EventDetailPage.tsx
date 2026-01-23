@@ -26,6 +26,7 @@ import { useHostData } from '../../hooks/useHostProfileCache';
 import { useHostReviews } from '../../hooks/useHostReviewsCache';
 import { MetricSkeleton } from '../../components/ui/MetricSkeleton';
 import { PaymentModal } from '../../components/payments/PaymentModal';
+import { GuestReserveModal } from '../components/events/GuestReserveModal';
 import { hasEventFee, isRecurringEvent, getEventFeeAmount, getEventPricingType, isPayAtDoor, isEventFree as isEventFreeHelper, formatPaymentAmount, getEventCurrency, requiresOnlinePayment } from '../../utils/stripeHelpers';
 
 /**
@@ -243,6 +244,11 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const [reserving, setReserving] = useState(false);
   const [reservationSuccess, setReservationSuccess] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showGuestReserveModal, setShowGuestReserveModal] = useState(false);
+  const [guestLoading, setGuestLoading] = useState(false);
+  const [guestError, setGuestError] = useState<string | null>(null);
+  const [guestSuccess, setGuestSuccess] = useState<{ email: string; ticketUrl: string; claimLink: string } | null>(null);
+  const [guestDraft, setGuestDraft] = useState<{ attendeeName: string; attendeeEmail: string; attendeePhoneE164: string; smsOptIn: boolean } | null>(null);
   const [hostStripeStatus, setHostStripeStatus] = useState<{ enabled: boolean; checked: boolean }>({ enabled: false, checked: false });
   const [showHostPaymentSetupError, setShowHostPaymentSetupError] = useState(false);
   
@@ -609,6 +615,30 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     }
   };
   
+  const createGuestReservation = async (payload: {
+    eventId: string;
+    attendeeName: string;
+    attendeeEmail: string;
+    attendeePhoneE164: string;
+    smsOptIn: boolean;
+    paymentIntentId?: string;
+    paymentStatus?: string;
+    totalAmount?: number;
+  }) => {
+    const response = await fetch('/api/reservations/create-guest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || 'Guest reservation failed');
+    }
+
+    return response.json() as Promise<{ reservationId: string; ticketUrl: string; claimLink: string }>;
+  };
+
   const handleRSVP = async () => {
     console.log('[EVENT_DETAIL] 🎯 handleRSVP called', {
       isDemo,
@@ -628,15 +658,11 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       return;
     }
     
-    if (!isLoggedIn) {
-      console.log('[EVENT_DETAIL] Not logged in - showing auth modal');
-      setShowAuthModal(true);
-      return;
-    }
-    
-    if (!user?.uid) {
-      console.log('[EVENT_DETAIL] No user uid - showing auth modal');
-      setShowAuthModal(true);
+    if (!isLoggedIn || !user?.uid) {
+      console.log('[EVENT_DETAIL] Not logged in - showing guest reserve modal');
+      setGuestError(null);
+      setGuestSuccess(null);
+      setShowGuestReserveModal(true);
       return;
     }
     
@@ -930,8 +956,37 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       {requiresOnlinePayment(event) && (
         <PaymentModal
           isOpen={showPaymentModal}
-          onClose={() => setShowPaymentModal(false)}
-          onSuccess={handlePaymentSuccess}
+          onClose={() => {
+            setShowPaymentModal(false);
+            setGuestDraft(null);
+          }}
+          onSuccess={async (paymentIntentId: string, subscriptionId?: string) => {
+            if (guestDraft) {
+              try {
+                setGuestLoading(true);
+                const result = await createGuestReservation({
+                  eventId: event.id,
+                  attendeeName: guestDraft.attendeeName,
+                  attendeeEmail: guestDraft.attendeeEmail,
+                  attendeePhoneE164: guestDraft.attendeePhoneE164,
+                  smsOptIn: guestDraft.smsOptIn,
+                  paymentIntentId,
+                  paymentStatus: 'succeeded',
+                  totalAmount: event.feeAmount,
+                });
+                setGuestSuccess({ email: guestDraft.attendeeEmail, ticketUrl: result.ticketUrl, claimLink: result.claimLink });
+                setShowGuestReserveModal(true);
+              } catch (error: any) {
+                setGuestError(error?.message || 'Failed to create reservation');
+                setShowGuestReserveModal(true);
+              } finally {
+                setGuestLoading(false);
+                setShowPaymentModal(false);
+              }
+              return;
+            }
+            await handlePaymentSuccess(paymentIntentId, subscriptionId);
+          }}
           eventTitle={event.title}
           feeAmount={getEventFeeAmount(event)}
           currency={event.currency || 'cad'}
@@ -942,8 +997,61 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           userId={user?.uid}
           userEmail={user?.email}
           subscriptionInterval={event.sessionFrequency === 'weekly' ? 'week' : event.sessionFrequency === 'monthly' ? 'month' : undefined}
+          mode={guestDraft ? 'guest' : 'auth'}
+          attendeeEmail={guestDraft?.attendeeEmail}
         />
       )}
+
+      <GuestReserveModal
+        isOpen={showGuestReserveModal}
+        eventTitle={event.title}
+        loading={guestLoading}
+        error={guestError}
+        success={guestSuccess}
+        onClose={() => {
+          setShowGuestReserveModal(false);
+          if (!showPaymentModal) {
+            setGuestDraft(null);
+          }
+        }}
+        onSignIn={() => {
+          setShowGuestReserveModal(false);
+          setViewState(ViewState.AUTH);
+          window.history.replaceState({ viewState: ViewState.AUTH }, '', '/auth?mode=signin');
+        }}
+        onSubmit={async (data) => {
+          try {
+            setGuestError(null);
+            setGuestLoading(true);
+            setGuestDraft(data);
+
+            const needsStripe = requiresOnlinePayment(event);
+            const isDoor = isPayAtDoor(event);
+            const isFree = isEventFree(event);
+
+            if (needsStripe) {
+              setShowGuestReserveModal(false);
+              setShowPaymentModal(true);
+              return;
+            }
+
+            const result = await createGuestReservation({
+              eventId: event.id,
+              attendeeName: data.attendeeName,
+              attendeeEmail: data.attendeeEmail,
+              attendeePhoneE164: data.attendeePhoneE164,
+              smsOptIn: data.smsOptIn,
+              totalAmount: isDoor && !isFree ? getEventFeeAmount(event) : undefined,
+            });
+
+            setGuestSuccess({ email: data.attendeeEmail, ticketUrl: result.ticketUrl, claimLink: result.claimLink });
+          } catch (error: any) {
+            setGuestError(error?.message || 'Failed to reserve');
+          } finally {
+            setGuestLoading(false);
+          }
+        }}
+      />
       
       {/* Host Payment Setup Error Modal */}
       {showHostPaymentSetupError && (

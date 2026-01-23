@@ -174,7 +174,7 @@ export interface FirestoreReservation {
   // Stripe payment fields
   paymentIntentId?: string; // Stripe PaymentIntent ID
   subscriptionId?: string; // Stripe Subscription ID (for recurring events)
-  paymentStatus?: 'pending' | 'succeeded' | 'failed' | 'refunded';
+  paymentStatus?: 'pending' | 'succeeded' | 'failed' | 'refunded' | 'not_required';
   payoutStatus?: 'pending' | 'held' | 'released' | 'paid'; // For one-time events
   payoutReleasedAt?: number; // Timestamp when payout was released
   nextChargeDate?: number; // For subscriptions - when next charge occurs
@@ -186,6 +186,15 @@ export interface FirestoreReservation {
   // Cancellation fields (v1)
   cancelledAt?: number; // Timestamp when reservation was cancelled
   cancelledByUid?: string; // UID of user who cancelled (can be attendee or host)
+  attendeeName?: string;
+  attendeeEmail?: string;
+  attendeePhoneE164?: string;
+  smsOptIn?: boolean;
+  publicTicketTokenHash?: string;
+  isGuestCreated?: boolean;
+  createdVia?: 'guest' | 'auth';
+  createdIpHash?: string;
+  createdUserAgent?: string;
 }
 
 export interface FirestoreExpulsion {

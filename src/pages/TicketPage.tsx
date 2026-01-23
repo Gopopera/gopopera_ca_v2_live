@@ -63,6 +63,14 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
     return undefined;
   }, [propReservationId]);
   
+  const publicToken = useMemo(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('t');
+    }
+    return null;
+  }, []);
+  
   // Check for check-in mode from URL
   const isCheckInMode = useMemo(() => {
     if (typeof window !== 'undefined') {
@@ -132,47 +140,64 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
       }
 
       try {
-        // Get reservation
-        const reservation = await getReservationById(reservationId);
-        if (!reservation) {
-          setError('Reservation not found');
-          setLoading(false);
-          return;
-        }
-
-        // Get event
-        const event = await getEventById(reservation.eventId);
-        if (!event) {
-          setError('Event not found');
-          setLoading(false);
-          return;
-        }
-
-        // Get host profile
-        let host = null;
-        if (event.hostId) {
-          try {
-            const hostProfile = await getUserProfile(event.hostId);
-            if (hostProfile) {
-              host = {
-                id: event.hostId,
-                displayName: hostProfile.displayName || hostProfile.name || 'Unknown Host',
-                photoURL: hostProfile.photoURL || hostProfile.imageUrl,
-              };
-            }
-          } catch (err) {
-            console.warn('Failed to load host profile:', err);
+        if (publicToken) {
+          const response = await fetch(`/api/tickets/get?reservationId=${reservationId}&t=${encodeURIComponent(publicToken)}`);
+          if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || 'Failed to load ticket');
           }
-        }
+          const data = await response.json();
+          setTicketData({
+            reservation: {
+              id: reservationId,
+              ...data.reservation,
+            },
+            event: data.event,
+            host: data.host || null,
+          });
+        } else {
+          // Get reservation
+          const reservation = await getReservationById(reservationId);
+          if (!reservation) {
+            setError('Reservation not found');
+            setLoading(false);
+            return;
+          }
 
-        setTicketData({
-          reservation: {
-            id: reservationId,
-            ...reservation,
-          },
-          event,
-          host,
-        });
+          // Get event
+          const event = await getEventById(reservation.eventId);
+          if (!event) {
+            setError('Event not found');
+            setLoading(false);
+            return;
+          }
+
+          // Get host profile
+          let host = null;
+          if (event.hostId) {
+            try {
+              const hostProfile = await getUserProfile(event.hostId);
+              if (hostProfile) {
+                host = {
+                  id: event.hostId,
+                  displayName: hostProfile.displayName || hostProfile.name || 'Unknown Host',
+                  photoURL: hostProfile.photoURL || hostProfile.imageUrl,
+                };
+              }
+            } catch (err) {
+              console.warn('Failed to load host profile:', err);
+            }
+          }
+
+          setTicketData({
+            reservation: {
+              id: reservationId,
+              ...reservation,
+            },
+            event,
+            host,
+          });
+        }
       } catch (err) {
         console.error('Error loading ticket:', err);
         setError('Failed to load ticket');
@@ -182,11 +207,11 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
     };
 
     loadTicketData();
-  }, [reservationId]);
+  }, [reservationId, publicToken]);
 
   // Check if user needs to add phone number after ticket is loaded
   useEffect(() => {
-    if (!loading && ticketData && user?.uid) {
+    if (!loading && ticketData && user?.uid && !publicToken) {
       const hasPhoneNumber = userProfile?.phone_number || user?.phone_number;
       if (!hasPhoneNumber) {
         // Small delay to let the user see their ticket first
@@ -224,8 +249,9 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
   // Uses getBaseUrl() to ensure we never encode vercel.app preview URLs
   const qrUrl = useMemo(() => {
     if (!reservationId) return '';
-    return `${getBaseUrl()}/ticket/${reservationId}?mode=checkin`;
-  }, [reservationId]);
+    const tokenParam = publicToken ? `&t=${encodeURIComponent(publicToken)}` : '';
+    return `${getBaseUrl()}/ticket/${reservationId}?mode=checkin${tokenParam}`;
+  }, [reservationId, publicToken]);
 
   // Format date for display
   const formattedDate = useMemo(() => {
@@ -314,7 +340,8 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
 
   // Handle share
   const handleShare = async () => {
-    const ticketUrl = `${getBaseUrl()}/ticket/${reservationId}`;
+    const tokenParam = publicToken ? `?t=${encodeURIComponent(publicToken)}` : '';
+    const ticketUrl = `${getBaseUrl()}/ticket/${reservationId}${tokenParam}`;
     const shareText = `My ticket for ${ticketData?.event?.title || 'Event'}`;
 
     if (navigator.share) {
