@@ -70,6 +70,7 @@ export default async function handler(req: any, res: any) {
     }
 
     const maskedUser = maskUserId(userId);
+    console.log(`[STRIPE_ONBOARD] requestId=${requestId} status=country_received countryCode=${countryCode || 'none'}`);
 
     // GUARDRAIL: Require country selection for new accounts (prevent wrong country assignment)
     if (!existingAccountId && (!countryCode || countryCode.length !== 2)) {

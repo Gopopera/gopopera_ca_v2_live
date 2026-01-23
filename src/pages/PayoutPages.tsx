@@ -17,6 +17,18 @@ interface PageProps {
   setViewState: (view: ViewState) => void;
 }
 
+const STRIPE_COUNTRY_OPTIONS = [
+  { code: 'CA', name: 'Canada' },
+  { code: 'US', name: 'United States' },
+  { code: 'BE', name: 'Belgium' },
+  { code: 'FR', name: 'France' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'NL', name: 'Netherlands' },
+  { code: 'GB', name: 'United Kingdom' },
+  { code: 'ES', name: 'Spain' },
+  { code: 'IT', name: 'Italy' },
+];
+
 // Analytics helper (emit events if analytics available)
 const trackEvent = (eventName: string, properties?: Record<string, any>) => {
   try {
@@ -43,10 +55,22 @@ export const PayoutSetupPage: React.FC<PageProps> = ({ setViewState }) => {
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedCountry, setSelectedCountry] = useState<string>(userProfile?.countryCode || '');
+
+  useEffect(() => {
+    if (userProfile?.countryCode && !selectedCountry) {
+      setSelectedCountry(userProfile.countryCode);
+    }
+  }, [userProfile?.countryCode, selectedCountry]);
   
   const handleContinue = async () => {
     if (!user?.uid || !user?.email) {
       setError('Please log in to set up payouts.');
+      return;
+    }
+
+    if (!selectedCountry) {
+      setError('Please select your country before setting up payouts.');
       return;
     }
     
@@ -60,6 +84,18 @@ export const PayoutSetupPage: React.FC<PageProps> = ({ setViewState }) => {
     });
     
     try {
+      if (userProfile?.countryCode !== selectedCountry) {
+        const db = getDbSafe();
+        if (db && user.uid) {
+          await updateDoc(doc(db, 'users', user.uid), {
+            countryCode: selectedCountry,
+          });
+          await refreshUserProfile();
+        }
+      }
+
+      console.log('[PAYOUT_SETUP] Creating onboarding link', { countryCode: selectedCountry });
+
       // Get canonical app URL from env or default
       const appUrl = typeof window !== 'undefined' 
         ? window.location.origin 
@@ -75,7 +111,7 @@ export const PayoutSetupPage: React.FC<PageProps> = ({ setViewState }) => {
           returnUrl: `${appUrl}/host/payouts?stripe=return`,
           refreshUrl: `${appUrl}/host/payouts?stripe=refresh`,
           // Pass country code for EU hosts (defaults to CA if not set)
-          countryCode: userProfile?.countryCode || undefined,
+          countryCode: selectedCountry || userProfile?.countryCode || undefined,
         }),
       });
       
@@ -148,6 +184,27 @@ export const PayoutSetupPage: React.FC<PageProps> = ({ setViewState }) => {
             To receive payments from your circles, you'll complete a quick Stripe verification step. 
             You'll return to Popera right after.
           </p>
+
+          {!userProfile?.countryCode && (
+            <div className="text-left mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
+              <select
+                value={selectedCountry}
+                onChange={(e) => setSelectedCountry(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-700 focus:ring-2 focus:ring-[#15383c] focus:border-transparent"
+              >
+                <option value="">Select your country</option>
+                {STRIPE_COUNTRY_OPTIONS.map((country) => (
+                  <option key={country.code} value={country.code}>
+                    {country.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-2">
+                This sets the country for your Stripe payouts account.
+              </p>
+            </div>
+          )}
           
           {/* Stripe badge */}
           <div className="flex items-center justify-center gap-2 mb-8 text-sm text-gray-500">

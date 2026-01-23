@@ -14,6 +14,18 @@ interface SubPageProps {
   setViewState: (view: ViewState) => void;
 }
 
+const STRIPE_COUNTRY_OPTIONS = [
+  { code: 'CA', name: 'Canada' },
+  { code: 'US', name: 'United States' },
+  { code: 'BE', name: 'Belgium' },
+  { code: 'FR', name: 'France' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'NL', name: 'Netherlands' },
+  { code: 'GB', name: 'United Kingdom' },
+  { code: 'ES', name: 'Spain' },
+  { code: 'IT', name: 'Italy' },
+];
+
 // --- Basic Details Page ---
 export const BasicDetailsPage: React.FC<SubPageProps> = ({ setViewState }) => {
   const { t } = useLanguage();
@@ -646,6 +658,7 @@ export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [onboardingUrl, setOnboardingUrl] = useState<string | null>(null);
+  const [selectedCountry, setSelectedCountry] = useState<string>(userProfile?.countryCode || '');
 
   const stripeAccountId = userProfile?.stripeAccountId;
   const onboardingStatus = userProfile?.stripeOnboardingStatus;
@@ -729,6 +742,12 @@ export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => 
     }
   }, [refreshUserProfile, stripeAccountId, user?.uid]);
 
+  useEffect(() => {
+    if (userProfile?.countryCode && !selectedCountry) {
+      setSelectedCountry(userProfile.countryCode);
+    }
+  }, [userProfile?.countryCode, selectedCountry]);
+
   const handleCreateAccount = async () => {
     console.log('[STRIPE_SETTINGS] handleCreateAccount called', { 
       hasUser: !!user, 
@@ -750,6 +769,25 @@ export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => 
     setError(null);
 
     try {
+      const effectiveCountryCode = selectedCountry || userProfile?.countryCode || '';
+      if (!stripeAccountId && !effectiveCountryCode) {
+        setError('Please select your country before setting up payouts.');
+        setLoading(false);
+        return;
+      }
+
+      if (effectiveCountryCode && userProfile?.countryCode !== effectiveCountryCode) {
+        const db = getDbSafe();
+        if (db && user?.uid) {
+          await updateDoc(doc(db, 'users', user.uid), {
+            countryCode: effectiveCountryCode,
+          });
+          await refreshUserProfile();
+        }
+      }
+
+      console.log('[STRIPE_SETTINGS] Creating onboarding link', { countryCode: effectiveCountryCode || null });
+
       const response = await fetch('/api/stripe/create-account-link', {
         method: 'POST',
         headers: {
@@ -762,7 +800,7 @@ export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => 
           // Pass existing account ID to avoid creating duplicate accounts
           existingAccountId: stripeAccountId || undefined,
           // Pass country code for EU hosts (defaults to CA if not set)
-          countryCode: userProfile?.countryCode || undefined,
+          countryCode: effectiveCountryCode || undefined,
         }),
       });
 
@@ -953,6 +991,27 @@ export const StripeSettingsPage: React.FC<SubPageProps> = ({ setViewState }) => 
             <p className="text-gray-600 max-w-md mx-auto mb-8 text-base leading-relaxed">
               {statusDisplay.description}
             </p>
+
+            {!userProfile?.countryCode && (
+              <div className="max-w-md mx-auto mb-6 text-left">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
+                <select
+                  value={selectedCountry}
+                  onChange={(e) => setSelectedCountry(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-700 focus:ring-2 focus:ring-[#15383c] focus:border-transparent"
+                >
+                  <option value="">Select your country</option>
+                  {STRIPE_COUNTRY_OPTIONS.map((country) => (
+                    <option key={country.code} value={country.code}>
+                      {country.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-2">
+                  This sets the country for your Stripe payouts account.
+                </p>
+              </div>
+            )}
 
             {/* Complete Status - Success Confirmation */}
             {statusDisplay.status === 'complete' && (
