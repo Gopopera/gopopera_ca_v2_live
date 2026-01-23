@@ -73,7 +73,14 @@ export default async function handler(req: any, res: any) {
     // For existing accounts without countryCode, we'll use the account's existing country
     const stripeCountry = (countryCode && countryCode.length === 2) ? countryCode.toUpperCase() : null;
 
+    const capabilitiesPayload = {
+      card_payments: { requested: true },
+      transfers: { requested: true },
+    };
+
     let accountId: string;
+    let usedExistingAccount = false;
+    let logCountry: string | null = stripeCountry;
 
     // Check if user already has a Stripe account
     if (existingAccountId) {
@@ -83,6 +90,8 @@ export default async function handler(req: any, res: any) {
         if (existingAccount.metadata?.userId === userId) {
           // Use existing account - just create a new onboarding link
           accountId = existingAccountId;
+          usedExistingAccount = true;
+          logCountry = existingAccount.country || stripeCountry || countryCode || null;
           console.log(`[STRIPE_CONNECT] requestId=${requestId} userId=${maskedUser} action=use_existing accountId=${accountId} existingCountry=${existingAccount.country}`);
         } else {
           // Account doesn't belong to this user - create new one
@@ -102,12 +111,10 @@ export default async function handler(req: any, res: any) {
             metadata: {
               userId,
             },
-            capabilities: {
-              transfers: { requested: true },
-            },
+            capabilities: capabilitiesPayload,
           });
           accountId = account.id;
-          console.log(`[STRIPE_CONNECT] requestId=${requestId} userId=${maskedUser} action=created accountId=${accountId} country=${stripeCountry} type=express capabilities=transfers`);
+          console.log(`[STRIPE_CONNECT] requestId=${requestId} userId=${maskedUser} action=created accountId=${accountId} country=${stripeCountry} type=express capabilities=transfers,card_payments`);
         }
       } catch (error: any) {
         // Account doesn't exist or error retrieving - create new one
@@ -127,12 +134,10 @@ export default async function handler(req: any, res: any) {
           metadata: {
             userId,
           },
-          capabilities: {
-            transfers: { requested: true },
-          },
+          capabilities: capabilitiesPayload,
         });
         accountId = account.id;
-        console.log(`[STRIPE_CONNECT] requestId=${requestId} userId=${maskedUser} action=created accountId=${accountId} country=${stripeCountry} type=express capabilities=transfers`);
+        console.log(`[STRIPE_CONNECT] requestId=${requestId} userId=${maskedUser} action=created accountId=${accountId} country=${stripeCountry} type=express capabilities=transfers,card_payments`);
       }
     } else {
       // No existing account - create new one (stripeCountry is guaranteed by guardrail above)
@@ -143,13 +148,20 @@ export default async function handler(req: any, res: any) {
         metadata: {
           userId,
         },
-        capabilities: {
-          transfers: { requested: true },
-        },
+        capabilities: capabilitiesPayload,
       });
       accountId = account.id;
-      console.log(`[STRIPE_CONNECT] requestId=${requestId} userId=${maskedUser} action=created accountId=${accountId} country=${stripeCountry} type=express capabilities=transfers`);
+      console.log(`[STRIPE_CONNECT] requestId=${requestId} userId=${maskedUser} action=created accountId=${accountId} country=${stripeCountry} type=express capabilities=transfers,card_payments`);
     }
+
+    if (usedExistingAccount) {
+      await stripe.accounts.update(accountId, {
+        capabilities: capabilitiesPayload,
+      });
+    }
+
+    const requestedCountry = (logCountry || countryCode || stripeCountry || 'unknown').toString().toUpperCase();
+    console.log(`[STRIPE_CONNECT] status=capabilities_requested country=${requestedCountry} existingAccount=${usedExistingAccount ? 'true' : 'false'}`);
 
     // Create account link for onboarding
     const accountLink = await stripe.accountLinks.create({
