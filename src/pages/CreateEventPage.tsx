@@ -1274,6 +1274,13 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
           <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 lg:p-10 border border-gray-100 shadow-sm mb-6 sm:mb-8">
             <label className="block text-xs sm:text-sm md:text-base font-medium text-gray-700 pl-1 mb-3 sm:mb-4 md:mb-5">
               {t('createEvent.addEventPictures')} <span className="text-gray-400 font-normal">{t('createEvent.firstImageIsMainPhoto')}</span>
+              <span
+                className="inline-flex items-center gap-1 text-[10px] sm:text-xs text-gray-400 font-normal ml-2"
+                title="Recommended: 1600×2000 (4:5). Center the subject; edges may crop."
+              >
+                <Info size={12} className="text-gray-400" aria-hidden="true" />
+                1600×2000 (4:5) recommended
+              </span>
             </label>
             
             {/* Image Gallery Preview */}

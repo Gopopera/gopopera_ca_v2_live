@@ -1456,7 +1456,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         </div>
 
         {/* Desktop: tighter padding to reduce gap under hero; Mobile: unchanged */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-14 lg:pt-4 pb-12 sm:pb-16 md:pb-20 lg:pb-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-14 lg:pt-0 lg:-mt-24 pb-12 sm:pb-16 md:pb-20 lg:pb-24">
           {/* Reservation Success Message */}
           {reservationSuccess && (
             <div className="mb-6 bg-green-50 border border-green-200 rounded-2xl p-4 sm:p-5 flex items-center gap-3 animate-fade-in">
