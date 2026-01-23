@@ -107,20 +107,19 @@ export const EventImage: React.FC<EventImageProps> = ({
     );
   }
 
-  // Hero variant: full width, natural height - no dead space
-  // Image displays at its natural aspect ratio, container adapts to fit
+  // Hero variant: fill container and cover to avoid letterboxing
   return (
     <>
       {/* Skeleton placeholder for hero variant */}
       {!isLoaded && (
-        <div className="w-full aspect-[3/2] skeleton-shimmer" />
+        <div className="absolute inset-0 skeleton-shimmer" />
       )}
       <img
         src={src}
         alt={alt}
         width={1200}
         height={800}
-        className={`block w-full h-auto transition-opacity duration-500 ${isLoaded ? 'opacity-100' : 'opacity-0'} ${className}`}
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${isLoaded ? 'opacity-100' : 'opacity-0'} ${className}`}
         loading={priority ? 'eager' : 'lazy'}
         decoding="async"
         fetchPriority={priority ? 'high' : 'low'}

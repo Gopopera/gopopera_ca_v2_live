@@ -686,6 +686,8 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       // Add timeout to detect if addEvent is hanging
       // Increased timeout to 60 seconds to account for network latency and large data
       const EVENT_CREATION_TIMEOUT = 45000; // 45 seconds (reduced for faster feedback)
+      const coverImageUrl = (finalImageUrls.length > 0 ? finalImageUrls[0] : finalImageUrl) || null;
+
       const addEventPromise = addEvent({
         title,
         description,
@@ -699,6 +701,7 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
         hostPhotoURL: hostPhotoURL, // Store host photo URL for consistency
         imageUrl: finalImageUrl, // Main image (backward compatibility)
         imageUrls: finalImageUrls.length > 0 ? finalImageUrls : undefined, // Array of all images
+        coverImageUrl,
         whatToExpect: whatToExpect || undefined,
         attendeesCount,
         category: (category || 'Community') as typeof CATEGORIES[number], // Keep for backward compatibility, default to Community

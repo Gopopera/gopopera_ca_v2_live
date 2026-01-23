@@ -74,6 +74,15 @@ function truncate(text: string, maxLength: number): string {
 }
 
 /**
+ * Ensure URLs are absolute for Open Graph metadata
+ */
+function toAbsoluteUrl(url: string): string {
+  if (!url) return '';
+  if (/^https?:\/\//i.test(url)) return url;
+  return `${BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
+/**
  * Get experience type label from event
  */
 function getExperienceTypeLabel(event: Event): string {
@@ -200,16 +209,19 @@ function getEventDetailMetadata(event: Event): SeoMetadata {
   const city = event.city || 'your neighborhood';
   const formattedDate = formatEventDate(event.date);
   const groupSize = event.capacity ? `${event.capacity} people` : 'a small group';
-  
-  // Build a rich, SEO-friendly description
+  const dateCitySummary = [formattedDate, city].filter(Boolean).join(' • ');
+  const summaryText = dateCitySummary || event.shortDescription || event.description || '';
   const description = truncate(
-    `${event.title} — ${experienceType} in ${city}. Hosted by ${hostName} for ${groupSize} on ${formattedDate}. ${event.description || ''}`,
+    summaryText || `${event.title} — ${experienceType} in ${city}. Hosted by ${hostName} for ${groupSize}.`,
     160
   );
 
-  // Use dynamic OG image that matches the event info page design
-  // This creates a beautiful, consistent preview for social media sharing
-  const ogImage = `${BASE_URL}/api/og-image?eventId=${event.id}`;
+  const coverImage =
+    event.coverImageUrl ||
+    (event.imageUrls && event.imageUrls.length > 0 ? event.imageUrls[0] : '') ||
+    event.imageUrl ||
+    DEFAULT_OG_IMAGE;
+  const ogImage = toAbsoluteUrl(coverImage) || DEFAULT_OG_IMAGE;
 
   return {
     title: `${event.title} — ${BRAND_NAME}`,

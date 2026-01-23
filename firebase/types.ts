@@ -15,6 +15,7 @@ export interface FirestoreEventVibe {
 export interface FirestoreEvent {
   id: string;
   title: string;
+  shortDescription?: string;
   description: string;
   date: string;         // Keep as string, parse at UI layer
   time: string;
@@ -34,6 +35,7 @@ export interface FirestoreEvent {
   hostPhotoURL?: string;
   imageUrl?: string;
   imageUrls?: string[]; // Array of image URLs (first one is the main photo)
+  coverImageUrl?: string | null; // Durable cover image URL (preferred for previews)
   rating?: number;
   reviewCount?: number;
   // DEPRECATED: attendeesCount - prefer computing from reservations collection

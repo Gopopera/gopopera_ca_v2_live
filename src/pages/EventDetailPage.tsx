@@ -163,7 +163,7 @@ function buildEventJsonLd(event: Event, reservationCount: number | null): object
     eventStatus: 'https://schema.org/EventScheduled',
     location,
     organizer,
-    image: event.imageUrls?.[0] || event.imageUrl || 'https://gopopera.ca/2.jpg',
+    image: event.coverImageUrl || event.imageUrls?.[0] || event.imageUrl || 'https://gopopera.ca/2.jpg',
     url: `https://gopopera.ca/event/${event.id}`,
   };
 
@@ -258,11 +258,14 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   
   // Filter out empty/invalid image URLs to ensure only real uploaded images are shown
   const validImageUrls = useMemo(() => {
-    if (!event?.imageUrls || !Array.isArray(event.imageUrls)) return [];
-    return event.imageUrls.filter((url): url is string => 
+    if (!event?.imageUrls || !Array.isArray(event.imageUrls)) {
+      return event?.coverImageUrl ? [event.coverImageUrl] : [];
+    }
+    const filtered = event.imageUrls.filter((url): url is string => 
       typeof url === 'string' && url.trim().length > 0 && url !== 'undefined' && url !== 'null'
     );
-  }, [event?.imageUrls]);
+    return filtered.length > 0 ? filtered : (event?.coverImageUrl ? [event.coverImageUrl] : []);
+  }, [event?.imageUrls, event?.coverImageUrl]);
   
   // Use refs to track the last event ID and values to prevent unnecessary recalculations
   const lastEventIdRef = useRef<string>('');
@@ -1093,15 +1096,16 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
 
           {/* HERO IMAGE - Left column (desktop grid) */}
           <div className="pt-16 sm:pt-0 lg:pt-0">
-            <div className="relative w-full h-full overflow-hidden lg:rounded-2xl">
+            <div className="relative w-full overflow-hidden lg:rounded-2xl aspect-[4/5] sm:aspect-[3/2] lg:aspect-[16/9]">
         {validImageUrls.length > 1 ? (
           // Multiple images - horizontal snap gallery (image-driven height)
           <div 
-            className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth hide-scrollbar cursor-pointer"
+            data-testid="event-image-carousel"
+            className="flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth hide-scrollbar cursor-pointer touch-pan-x overscroll-x-contain"
             onScroll={(e) => {
               const container = e.currentTarget;
               const scrollLeft = container.scrollLeft;
-              const imageWidth = container.scrollWidth / validImageUrls.length;
+              const imageWidth = container.clientWidth || (container.scrollWidth / validImageUrls.length);
               const newIndex = Math.round(scrollLeft / imageWidth);
               setCurrentImageIndex(Math.min(newIndex, validImageUrls.length - 1));
             }}
@@ -1113,14 +1117,13 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             }}
           >
             {validImageUrls.map((url, index) => (
-                      <div key={index} className="min-w-full snap-start flex-shrink-0 lg:h-full">
+                      <div key={index} className="relative w-full h-full snap-start snap-always flex-shrink-0">
                 <EventImage
                   src={url}
                   alt={`${event.title} - Image ${index + 1}`}
                   variant="hero"
                   priority={index === 0}
                   eventId={event.id}
-                  className="lg:!h-full lg:object-cover"
                 />
               </div>
             ))}
@@ -1128,11 +1131,11 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         ) : (
           // Single image - image-driven height (no dead space)
           <div
-                    className="w-full h-full cursor-pointer"
+                    className="relative w-full h-full cursor-pointer"
             onClick={() => {
               const images = validImageUrls.length > 0 
                 ? validImageUrls 
-                : (event.imageUrl ? [event.imageUrl] : []);
+                : (event.coverImageUrl ? [event.coverImageUrl] : (event.imageUrl ? [event.imageUrl] : []));
               if (images.length > 0) {
                 setImageViewerIndex(0);
                 setShowImageViewer(true);
@@ -1145,7 +1148,6 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               variant="hero"
               priority={true}
               eventId={event.id}
-              className="lg:!h-full lg:object-cover"
             />
           </div>
         )}
@@ -1966,7 +1968,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       <ImageViewerModal
         images={event.imageUrls && event.imageUrls.length > 0 
           ? event.imageUrls 
-          : (event.imageUrl ? [event.imageUrl] : [])}
+          : (event.coverImageUrl ? [event.coverImageUrl] : (event.imageUrl ? [event.imageUrl] : []))}
         initialIndex={imageViewerIndex}
         isOpen={showImageViewer}
         onClose={() => setShowImageViewer(false)}

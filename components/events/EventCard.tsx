@@ -210,7 +210,7 @@ export const EventCard: React.FC<EventCardProps> = ({
       {/* Image Container - Premium cinematic design */}
       <div className={`relative w-full ${profileVariant ? 'aspect-square' : 'aspect-[4/3]'} overflow-hidden bg-gradient-to-br from-[#15383c] to-[#1f4d52] flex-shrink-0`} style={{ position: 'relative' }}>
         <EventImage
-          src={event.imageUrls && event.imageUrls.length > 0 ? event.imageUrls[0] : (event.imageUrl || `https://picsum.photos/seed/${event.id || 'event'}/800/600`)}
+          src={event.coverImageUrl || (event.imageUrls && event.imageUrls.length > 0 ? event.imageUrls[0] : (event.imageUrl || `https://picsum.photos/seed/${event.id || 'event'}/800/600`))}
           alt={event.title}
           variant="card"
           eventId={event.id}

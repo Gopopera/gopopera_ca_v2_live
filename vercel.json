@@ -29,6 +29,17 @@
       "destination": "/api/$1"
     },
     {
+      "source": "/event/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|twitterbot|slackbot|discordbot|linkedinbot|whatsapp|telegrambot|imessage|instagram|pinterest|bot|crawl|spider).*"
+        }
+      ],
+      "destination": "/api/event?eventId=:id"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

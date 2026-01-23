@@ -1,6 +1,7 @@
 export interface Event {
   id: string;
   title: string;
+  shortDescription?: string;
   description: string;
   city: string;
   address: string;
@@ -9,6 +10,7 @@ export interface Event {
   tags: string[];
   hostId?: string; // Single field - host data fetched from /users/{hostId} in real-time
   imageUrls?: string[]; // Array of image URLs (first one is the main photo)
+  coverImageUrl?: string | null; // Durable cover image URL (preferred for previews)
   // REMOVED: attendeesCount - computed in real-time from reservations
   // DEPRECATED FIELDS - kept for backward compatibility during migration
   /** @deprecated Use hostId and fetch from /users/{hostId} instead */

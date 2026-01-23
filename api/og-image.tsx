@@ -46,6 +46,7 @@ async function getEventData(eventId: string): Promise<any | null> {
       hostName: fields.hostName?.stringValue || 'Local Host',
       imageUrl: fields.imageUrl?.stringValue || '',
       imageUrls: fields.imageUrls?.arrayValue?.values?.map((v: any) => v.stringValue) || [],
+      coverImageUrl: fields.coverImageUrl?.stringValue || '',
       feeAmount: fields.feeAmount?.integerValue ? parseInt(fields.feeAmount.integerValue) : null,
       hasFee: fields.hasFee?.booleanValue || false,
     };
@@ -154,7 +155,7 @@ export default async function handler(request: Request) {
     }
     
     // Get event image
-    const eventImage = event.imageUrls?.[0] || event.imageUrl || '';
+    const eventImage = event.coverImageUrl || event.imageUrls?.[0] || event.imageUrl || '';
     const priceText = formatPrice(event);
     const dateText = formatDate(event.date);
     const locationText = event.location || event.city || '';

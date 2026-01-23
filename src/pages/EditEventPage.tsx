@@ -381,6 +381,10 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
       // Get host name from user profile (most accurate)
       const hostName = userProfile?.name || userProfile?.displayName || user?.displayName || user?.name || user?.email?.split('@')[0] || 'Unknown Host';
       const hostPhotoURL = userProfile?.photoURL || userProfile?.imageUrl || user?.photoURL || user?.profileImageUrl || undefined;
+      const existingCoverImageUrl = initialEvent?.coverImageUrl || eventToEdit?.coverImageUrl || '';
+      const nextCoverImageUrl = existingCoverImageUrl && finalImageUrls.includes(existingCoverImageUrl)
+        ? existingCoverImageUrl
+        : ((finalImageUrls.length > 0 ? finalImageUrls[0] : finalImageUrl) || null);
 
       // Update event in Firestore using the db function (ensures proper sync)
       console.log('[EDIT_EVENT] Updating event:', eventIdToUpdate);
@@ -396,6 +400,7 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
         tags,
         imageUrl: finalImageUrl,
         imageUrls: finalImageUrls.length > 0 ? finalImageUrls : undefined,
+        coverImageUrl: nextCoverImageUrl,
         whatToExpect: whatToExpect || undefined,
         attendeesCount,
         price,
@@ -419,6 +424,7 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
         tags,
         imageUrl: finalImageUrl,
         imageUrls: finalImageUrls.length > 0 ? finalImageUrls : undefined,
+        coverImageUrl: nextCoverImageUrl,
         whatToExpect: whatToExpect || undefined,
         attendeesCount,
         price,
