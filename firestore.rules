@@ -15,8 +15,17 @@ service cloud.firestore {
         return request.resource.data.date != resource.data.date ||
                request.resource.data.time != resource.data.time;
       }
+
+      function isPaymentConfigChanged() {
+        return request.resource.data.pricingType != resource.data.pricingType ||
+               request.resource.data.feeAmount != resource.data.feeAmount ||
+               request.resource.data.currency != resource.data.currency ||
+               request.resource.data.hasFee != resource.data.hasFee;
+      }
       
-      function hasActiveReservations() {
+      // Best-effort guard only. Uses event.attendeeCount (may be stale).
+      // Authoritative lock is enforced by server API via reservations query.
+      function hasAttendeeCountLock() {
         return resource.data.attendeeCount != null && resource.data.attendeeCount > 0;
       }
       
@@ -25,7 +34,8 @@ service cloud.firestore {
       allow update: if isAuthenticated() && 
         (resource.data.hostId == request.auth.uid || 
          request.resource.data.hostId == request.auth.uid) &&
-        (!isDateTimeChanged() || !hasActiveReservations());
+        (!isDateTimeChanged() || !hasAttendeeCountLock()) &&
+        (!isPaymentConfigChanged() || !hasAttendeeCountLock());
       allow delete: if isAuthenticated() && resource.data.hostId == request.auth.uid;
     }
     

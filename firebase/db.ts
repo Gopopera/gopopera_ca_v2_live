@@ -1151,8 +1151,8 @@ export async function getReservationCountForEvent(eventId: string): Promise<numb
 }
 
 /**
- * Get count of active (non-cancelled) reservations for an event
- * Counts reservation documents (not attendees)
+ * Get count of active reservations for an event
+ * Counts attendees from active reservations (default to 1 per reservation)
  */
 export async function getActiveReservationCountForEvent(eventId: string): Promise<number> {
   const db = getDbSafe();
@@ -1167,12 +1167,16 @@ export async function getActiveReservationCountForEvent(eventId: string): Promis
   
   try {
     const reservationsCol = collection(db, "reservations");
-    const q = query(reservationsCol, where("eventId", "==", eventId));
+    const q = query(
+      reservationsCol,
+      where("eventId", "==", eventId),
+      where("status", "in", ACTIVE_RESERVATION_STATUSES)
+    );
     const snap = await getDocs(q);
-    return snap.docs.filter(doc => {
+    return snap.docs.reduce((total, doc) => {
       const data = doc.data() as FirestoreReservation;
-      return data.status !== 'cancelled';
-    }).length;
+      return total + (data.attendeeCount || 1);
+    }, 0);
   } catch (error: any) {
     // Don't log permission errors - they're expected and handled elsewhere
     if (error?.code !== 'permission-denied' && !error?.message?.includes('permission')) {

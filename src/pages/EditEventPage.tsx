@@ -8,6 +8,8 @@ import { processImageForUploadLazy, prefetchImageProcessing } from '../lib/image
 import { getActiveReservationCountForEvent, getEventById, updateEvent, deleteEvent } from '../../firebase/db';
 import { geocodeAddress } from '../../utils/geocoding';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { getAuthInstance } from '../lib/firebaseAuth';
+import { getEventPricingType, getEventFeeAmount, getEventCurrency } from '../../utils/stripeHelpers';
 import { 
   type EventVibe,
   getVibeLabel,
@@ -36,6 +38,8 @@ const POPULAR_CITIES = [
   'Montreal, CA', 'Toronto, CA', 'Vancouver, CA', 'Ottawa, CA', 'Quebec City, CA',
   'Calgary, CA', 'Edmonton, CA', 'New York, US', 'Los Angeles, US', 'Chicago, US'
 ];
+const PAYMENT_CURRENCIES = ['cad', 'usd', 'eur'] as const;
+const MAX_FEE_AMOUNT = 10000;
 
 export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, eventId, event: initialEvent }) => {
   const { language } = useLanguage();
@@ -76,6 +80,19 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
   const [attendeesCount, setAttendeesCount] = useState(initialEvent?.attendeesCount || 0);
   const [host, setHost] = useState(initialEvent?.host || 'You');
   const [price, setPrice] = useState(initialEvent?.price || 'Free');
+  const [pricingType, setPricingType] = useState<'free' | 'online' | 'door'>(
+    initialEvent ? getEventPricingType(initialEvent) : 'free'
+  );
+  const [feeAmount, setFeeAmount] = useState<number>(() => {
+    const cents = initialEvent ? getEventFeeAmount(initialEvent) : 0;
+    return cents > 0 ? cents / 100 : 0;
+  });
+  const [currency, setCurrency] = useState<'cad' | 'usd' | 'eur'>(() => {
+    const initialCurrency = initialEvent ? getEventCurrency(initialEvent) : 'cad';
+    return (PAYMENT_CURRENCIES as readonly string[]).includes(initialCurrency)
+      ? (initialCurrency as 'cad' | 'usd' | 'eur')
+      : 'cad';
+  });
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reservationCount, setReservationCount] = useState<number | null>(null);
@@ -91,6 +108,15 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
   useEffect(() => {
     if (initialEvent) {
       setOriginalEvent(initialEvent);
+      setPricingType(getEventPricingType(initialEvent));
+      const initialFeeCents = getEventFeeAmount(initialEvent);
+      setFeeAmount(initialFeeCents > 0 ? initialFeeCents / 100 : 0);
+      const initialCurrency = getEventCurrency(initialEvent);
+      setCurrency(
+        (PAYMENT_CURRENCIES as readonly string[]).includes(initialCurrency)
+          ? (initialCurrency as 'cad' | 'usd' | 'eur')
+          : 'cad'
+      );
     }
   }, [initialEvent]);
 
@@ -118,6 +144,15 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
             setAttendeesCount(event.attendeesCount || 0);
             setHost(event.host || event.hostName || 'You');
             setPrice(event.price || 'Free');
+            setPricingType(getEventPricingType(event));
+            const eventFeeCents = getEventFeeAmount(event);
+            setFeeAmount(eventFeeCents > 0 ? eventFeeCents / 100 : 0);
+            const eventCurrency = getEventCurrency(event);
+            setCurrency(
+              (PAYMENT_CURRENCIES as readonly string[]).includes(eventCurrency)
+                ? (eventCurrency as 'cad' | 'usd' | 'eur')
+                : 'cad'
+            );
             setOriginalEvent(event);
           }
         } catch (error) {
@@ -156,6 +191,15 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
       isMounted = false;
     };
   }, [eventId, initialEvent?.id]);
+
+  const getIdToken = async (): Promise<string> => {
+    const auth = getAuthInstance();
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('You must be logged in to edit an event.');
+    }
+    return currentUser.getIdToken(true);
+  };
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -206,21 +250,75 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
       return;
     }
 
+    const normalizedCurrency = (currency || 'cad').toLowerCase();
+    const safeFeeAmount = Number.isFinite(feeAmount) ? feeAmount : 0;
+    const feeAmountDollars = Math.max(0, safeFeeAmount);
+    const feeAmountCents = pricingType === 'free' ? 0 : Math.round(feeAmountDollars * 100);
+    const paymentHasFee = pricingType !== 'free' && feeAmountCents > 0;
+
+    const originalForPayment = originalEvent || eventToEdit;
+    const originalPricingType = originalForPayment ? getEventPricingType(originalForPayment) : 'free';
+    const originalFeeAmountCents = originalForPayment ? getEventFeeAmount(originalForPayment) : 0;
+    const originalCurrency = originalForPayment ? getEventCurrency(originalForPayment) : 'cad';
+    const originalHasFee = originalForPayment
+      ? (originalForPayment.hasFee === true && (originalForPayment.feeAmount ?? 0) > 0)
+      : false;
+
+    const paymentConfigChanged =
+      originalPricingType !== pricingType ||
+      originalFeeAmountCents !== feeAmountCents ||
+      originalCurrency !== normalizedCurrency ||
+      originalHasFee !== paymentHasFee;
+
+    if (!PAYMENT_CURRENCIES.includes(normalizedCurrency as any)) {
+      alert('Please select a supported currency (CAD, USD, EUR).');
+      return;
+    }
+
+    if (feeAmountDollars < 0 || feeAmountDollars > MAX_FEE_AMOUNT) {
+      alert(`Fee amount must be between 0 and ${MAX_FEE_AMOUNT.toLocaleString()}.`);
+      return;
+    }
+
+    if (pricingType === 'online' && feeAmountDollars <= 0) {
+      alert('Please enter a price amount greater than 0 for online paid events.');
+      return;
+    }
+
+    if (pricingType === 'online' && feeAmountDollars > 0) {
+      if (!userProfile?.stripeAccountId) {
+        alert('Please set up your Stripe account before creating online paid events. Go to Profile → Stripe Payout Settings to connect your account.');
+        setViewState(ViewState.PROFILE_STRIPE);
+        return;
+      }
+      
+      if (userProfile?.stripeOnboardingStatus !== 'complete' || !userProfile?.stripeAccountEnabled) {
+        alert('Your Stripe account setup is incomplete. Please complete the onboarding process to charge fees for events.');
+        setViewState(ViewState.PROFILE_STRIPE);
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
     try {
       const original = originalEvent || eventToEdit;
       const dateTimeChanged = !!original && (date !== (original.date || '') || time !== (original.time || ''));
+      const shouldCheckReservations = dateTimeChanged || paymentConfigChanged;
       
-      if (dateTimeChanged) {
+      if (shouldCheckReservations) {
         const activeCount = await getActiveReservationCountForEvent(eventIdToUpdate);
         if (activeCount > 0) {
-          alert('Someone just reserved a spot. Date changes are now locked.');
-          if (original) {
+          if (dateTimeChanged && original) {
             setDate(original.date || '');
             setTime(original.time || '');
           }
           setReservationCount(activeCount);
+          if (paymentConfigChanged) {
+            alert('Payments are locked because you already have attendees. To change pricing, create a new event.');
+          } else {
+            alert('Someone just reserved a spot. Date changes are now locked.');
+          }
           setIsSubmitting(false);
           return;
         }
@@ -385,6 +483,40 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
       const nextCoverImageUrl = existingCoverImageUrl && finalImageUrls.includes(existingCoverImageUrl)
         ? existingCoverImageUrl
         : ((finalImageUrls.length > 0 ? finalImageUrls[0] : finalImageUrl) || null);
+
+      if (paymentConfigChanged) {
+        try {
+          const token = await getIdToken();
+          const response = await fetch('/api/events/update-payment', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              eventId: eventIdToUpdate,
+              pricingType,
+              feeAmountCents,
+              currency: normalizedCurrency,
+            }),
+          });
+
+          if (!response.ok) {
+            const payload = await response.json().catch(() => ({}));
+            if (response.status === 409) {
+              alert(payload.error || 'Payments are locked because you already have attendees. To change pricing, create a new event.');
+              setIsSubmitting(false);
+              return;
+            }
+            throw new Error(payload.error || 'Failed to update payment settings.');
+          }
+        } catch (paymentError: any) {
+          console.error('[EDIT_EVENT] Payment update failed:', paymentError);
+          alert(paymentError?.message || 'Failed to update payment settings.');
+          setIsSubmitting(false);
+          return;
+        }
+      }
 
       // Update event in Firestore using the db function (ensures proper sync)
       console.log('[EDIT_EVENT] Updating event:', eventIdToUpdate);
@@ -619,11 +751,29 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
   }
 
   const isDateTimeLocked = (reservationCount ?? 0) > 0;
+  const isPaymentLocked = (reservationCount ?? 0) > 0;
   const normalizeStrings = (values: string[] = []) => [...values].sort().join('|');
   const originalVibeKeys = originalEvent ? normalizeStrings(normalizeLegacyVibes(originalEvent.vibes || []).map(v => v.key)) : '';
   const currentVibeKeys = normalizeStrings(selectedVibes.map(v => v.key));
   const dateTimeChanged = originalEvent
     ? date !== (originalEvent.date || '') || time !== (originalEvent.time || '')
+    : false;
+  const normalizedPaymentCurrency = (currency || 'cad').toLowerCase();
+  const currentFeeAmountCents = Math.round((Number.isFinite(feeAmount) ? feeAmount : 0) * 100);
+  const currentHasFee = pricingType !== 'free' && currentFeeAmountCents > 0;
+  const originalPricingType = originalEvent ? getEventPricingType(originalEvent) : 'free';
+  const originalFeeAmountCents = originalEvent ? getEventFeeAmount(originalEvent) : 0;
+  const originalCurrency = originalEvent ? getEventCurrency(originalEvent) : 'cad';
+  const originalHasFee = originalEvent
+    ? (originalEvent.hasFee === true && (originalEvent.feeAmount ?? 0) > 0)
+    : false;
+  const paymentConfigChanged = originalEvent
+    ? (
+        originalPricingType !== pricingType ||
+        originalFeeAmountCents !== currentFeeAmountCents ||
+        originalCurrency !== normalizedPaymentCurrency ||
+        originalHasFee !== currentHasFee
+      )
     : false;
   const hasNonDateTimeChanges = originalEvent
     ? (
@@ -639,7 +789,8 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
       whatToExpect !== (originalEvent.whatToExpect || '') ||
       attendeesCount !== (originalEvent.attendeesCount || 0) ||
       price !== (originalEvent.price || 'Free') ||
-      currentVibeKeys !== originalVibeKeys
+      currentVibeKeys !== originalVibeKeys ||
+      paymentConfigChanged
     )
     : false;
   const isSaveDisabled = isSubmitting || uploadingImage || isDeleting || (isDateTimeLocked && dateTimeChanged && !hasNonDateTimeChanges);
@@ -1031,6 +1182,167 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
                 min="0"
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 sm:py-3.5 md:py-4 px-4 text-sm sm:text-base focus:outline-none focus:border-[#15383c] transition-all" 
               />
+            </div>
+
+            {/* Pricing Type Selector */}
+            <div className="space-y-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+              <label className="block text-sm font-medium text-gray-700">
+                {language === 'fr' ? 'Tarification' : 'Pricing'}
+              </label>
+
+              {isPaymentLocked && (
+                <p className="text-sm text-amber-600">
+                  Payments are locked because you already have attendees. To change pricing, create a new event.
+                </p>
+              )}
+              
+              {/* Free Option */}
+              <label className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                pricingType === 'free' 
+                  ? 'border-[#15383c] bg-[#15383c]/5' 
+                  : 'border-gray-200 hover:bg-gray-50'
+              } ${isPaymentLocked ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}>
+                <input 
+                  type="radio"
+                  name="pricingType"
+                  value="free"
+                  checked={pricingType === 'free'}
+                  onChange={() => {
+                    if (isPaymentLocked) return;
+                    setPricingType('free');
+                    setFeeAmount(0);
+                  }}
+                  disabled={isPaymentLocked}
+                  className="w-5 h-5 text-[#15383c] focus:ring-[#15383c]"
+                />
+                <div>
+                  <span className="text-base font-medium text-gray-700">{language === 'fr' ? 'Gratuit' : 'Free'}</span>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {language === 'fr' ? 'Aucun frais pour les participants' : 'No charge for attendees'}
+                  </p>
+                </div>
+              </label>
+
+              {/* Pay Online Option */}
+              <label className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                pricingType === 'online' 
+                  ? 'border-[#15383c] bg-[#15383c]/5' 
+                  : 'border-gray-200 hover:bg-gray-50'
+              } ${isPaymentLocked ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}>
+                <input
+                  type="radio"
+                  name="pricingType"
+                  value="online"
+                  checked={pricingType === 'online'}
+                  onChange={() => {
+                    if (isPaymentLocked) return;
+                    setPricingType('online');
+                  }}
+                  disabled={isPaymentLocked}
+                  className="w-5 h-5 text-[#15383c] focus:ring-[#15383c]"
+                />
+                <div>
+                  <span className="text-base font-medium text-gray-700">{language === 'fr' ? 'Paiement en ligne (Stripe)' : 'Pay online (Stripe)'}</span>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {language === 'fr' ? 'Les participants paient en ligne lors de la réservation' : 'Attendees pay online when reserving'}
+                  </p>
+                </div>
+              </label>
+
+              {/* Pay at the Door Option */}
+              <label className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                pricingType === 'door' 
+                  ? 'border-[#15383c] bg-[#15383c]/5' 
+                  : 'border-gray-200 hover:bg-gray-50'
+              } ${isPaymentLocked ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}>
+                <input
+                  type="radio"
+                  name="pricingType"
+                  value="door"
+                  checked={pricingType === 'door'}
+                  onChange={() => {
+                    if (isPaymentLocked) return;
+                    setPricingType('door');
+                  }}
+                  disabled={isPaymentLocked}
+                  className="w-5 h-5 text-[#15383c] focus:ring-[#15383c]"
+                />
+                <div>
+                  <span className="text-base font-medium text-gray-700">{language === 'fr' ? 'Paiement sur place' : 'Pay at the door'}</span>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {language === 'fr' 
+                      ? 'Les participants paient en personne à l\'événement. Popera sert uniquement pour la réservation et le chat.'
+                      : 'Attendees pay in person at the event. Popera is only used for RSVP and group chat.'}
+                  </p>
+                </div>
+              </label>
+
+              {/* Price Input (shown for online and door) */}
+              {(pricingType === 'online' || pricingType === 'door') && (
+                <div className="space-y-3 pl-4 border-l-2 border-[#15383c]/20 ml-2 mt-3">
+                  {pricingType === 'online' && (!userProfile?.stripeAccountId || userProfile?.stripeOnboardingStatus !== 'complete') ? (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                      <p className="text-sm text-yellow-800 mb-2">
+                        {language === 'fr' 
+                          ? 'Vous devez configurer Stripe pour recevoir des paiements en ligne.'
+                          : 'You need to set up Stripe to receive online payments.'}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setViewState(ViewState.PROFILE_STRIPE)}
+                        className="text-sm font-semibold text-[#e35e25] hover:underline"
+                      >
+                        {language === 'fr' ? 'Configurer Stripe' : 'Set up Stripe'}
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <label className="block text-sm font-medium text-gray-700">
+                        {language === 'fr' ? 'Prix par participant' : 'Price per attendee'}
+                      </label>
+                      <div className="flex gap-2">
+                        <select
+                          value={currency}
+                          onChange={(e) => !isPaymentLocked && setCurrency(e.target.value as 'cad' | 'usd' | 'eur')}
+                          disabled={isPaymentLocked}
+                          className={`border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-[#15383c] ${
+                            isPaymentLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white'
+                          }`}
+                        >
+                          <option value="cad">CAD ($)</option>
+                          <option value="usd">USD ($)</option>
+                          <option value="eur">EUR (€)</option>
+                        </select>
+                        <input
+                          type="number"
+                          placeholder={pricingType === 'door' ? '0.00 (optional)' : '0.00'}
+                          value={feeAmount || ''}
+                          onChange={(e) => !isPaymentLocked && setFeeAmount(parseFloat(e.target.value) || 0)}
+                          min="0"
+                          max={MAX_FEE_AMOUNT}
+                          step="0.01"
+                          disabled={isPaymentLocked}
+                          className={`flex-1 border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-[#15383c] ${
+                            isPaymentLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white'
+                          }`}
+                        />
+                      </div>
+                      {pricingType === 'online' && (
+                        <p className="text-xs text-green-600">
+                          {language === 'fr' ? '✓ Aucun frais Popera en 2026! Seulement les frais Stripe.' : '✓ No Popera fees in 2026! Only Stripe fees.'}
+                        </p>
+                      )}
+                      {pricingType === 'door' && (
+                        <p className="text-xs text-green-600">
+                          {language === 'fr' 
+                            ? '✓ Aucun frais de plateforme — vous collectez le paiement directement.'
+                            : '✓ No platform fees — you collect payment directly.'}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
