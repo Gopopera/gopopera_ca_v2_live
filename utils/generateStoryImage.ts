@@ -15,72 +15,6 @@ export interface StoryImageOptions {
 }
 
 /**
- * Analyze background brightness to determine logo color
- * Returns true if background is dark (use white logo), false if light (use orange logo)
- */
-async function analyzeBackgroundBrightness(imageUrl: string, x: number, y: number, width: number, height: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    
-    img.onload = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        
-        if (!ctx) {
-          resolve(true); // Default to white (dark background assumption)
-          return;
-        }
-        
-        // Draw the area where logo will be (top-left)
-        ctx.drawImage(img, x, y, width, height, 0, 0, width, height);
-        
-        // Get image data and calculate average brightness
-        const imageData = ctx.getImageData(0, 0, width, height);
-        const data = imageData.data;
-        
-        let totalBrightness = 0;
-        let pixelCount = 0;
-        
-        // Calculate brightness for each pixel (skip transparent pixels)
-        for (let i = 0; i < data.length; i += 4) {
-          const r = data[i];
-          const g = data[i + 1];
-          const b = data[i + 2];
-          const a = data[i + 3];
-          
-          if (a > 0) {
-            // Calculate relative luminance (perceived brightness)
-            const brightness = (0.299 * r + 0.587 * g + 0.114 * b);
-            totalBrightness += brightness;
-            pixelCount++;
-          }
-        }
-        
-        const averageBrightness = pixelCount > 0 ? totalBrightness / pixelCount : 128;
-        
-        // If average brightness is below 128 (midpoint), background is dark -> use white logo
-        // If above 128, background is light -> use orange logo
-        resolve(averageBrightness < 128);
-      } catch (error) {
-        console.warn('[STORY_IMAGE] Error analyzing background:', error);
-        resolve(true); // Default to white on error
-      }
-    };
-    
-    img.onerror = () => {
-      console.warn('[STORY_IMAGE] Error loading image for analysis:', imageUrl);
-      resolve(true); // Default to white on error
-    };
-    
-    img.src = imageUrl;
-  });
-}
-
-/**
  * Generate Instagram Story image (1080x1920px)
  */
 export async function generateStoryImage(options: StoryImageOptions): Promise<Blob> {
@@ -144,19 +78,6 @@ export async function generateStoryImage(options: StoryImageOptions): Promise<Bl
     0, 0, width, height // Destination (full canvas)
   );
   
-  // Analyze top-left area (where logo will be) to determine logo color
-  // Analyze a 200x200px area in the top-left corner
-  const logoAreaSize = 200;
-  const isDarkBackground = await analyzeBackgroundBrightness(
-    eventImageUrl,
-    0,
-    0,
-    logoAreaSize,
-    logoAreaSize
-  );
-  
-  const logoColor = isDarkBackground ? '#FFFFFF' : '#e35e25';
-  
   // Add gradient overlay (same as event info page)
   const gradient = ctx.createLinearGradient(0, 0, 0, height);
   gradient.addColorStop(0, 'rgba(21, 56, 60, 0.4)');
@@ -164,32 +85,8 @@ export async function generateStoryImage(options: StoryImageOptions): Promise<Bl
   gradient.addColorStop(1, 'rgba(21, 56, 60, 0.9)');
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
-  
-  // Add Popera logo in top-left corner (72px - 3x bigger, conditional color)
-  ctx.fillStyle = logoColor;
-  ctx.font = 'bold 72px system-ui, -apple-system, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
+
   const logoPadding = 40;
-  ctx.fillText('Popera', logoPadding, logoPadding);
-  
-  // Add category badge (top-left, below logo) - 3x bigger
-  const categoryY = logoPadding + 100; // More spacing (was 40, now 100)
-  ctx.fillStyle = '#e35e25';
-  ctx.font = 'bold 54px system-ui, -apple-system, sans-serif'; // 3x bigger (was 18px)
-  const categoryPadding = 24; // 3x bigger padding
-  const categoryText = eventCategory.toUpperCase();
-  const categoryMetrics = ctx.measureText(categoryText);
-  const categoryWidth = categoryMetrics.width + categoryPadding * 2;
-  const categoryHeight = 96; // 3x bigger (was 32)
-  
-  // Draw category badge background
-  ctx.fillStyle = 'rgba(227, 94, 37, 0.9)';
-  ctx.fillRect(logoPadding, categoryY, categoryWidth, categoryHeight);
-  
-  // Draw category text
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillText(categoryText, logoPadding + categoryPadding, categoryY + 24); // Adjusted padding
   
   // Add event title (large, bold, white)
   // Position title higher to leave more room for details below
@@ -244,6 +141,13 @@ export async function generateStoryImage(options: StoryImageOptions): Promise<Bl
     const priceY = locationY - 100; // Space between location and price
     ctx.fillText(eventPrice, logoPadding, priceY);
   }
+
+  // Brand URL bottom-left
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+  ctx.font = 'bold 32px system-ui, -apple-system, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('gopopera.com', logoPadding, height - 40);
   
   // Add clickable URL at bottom for deep linking (Instagram Stories support link stickers)
   // Display a short, memorable URL that users can type or use with Instagram's link sticker
