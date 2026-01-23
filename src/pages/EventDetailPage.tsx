@@ -321,7 +321,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const hostProfilePicture = hostData?.photoURL || null;
   const displayHostName = hostData?.displayName || eventHostName || 'Unknown Host';
   const followersCount = hostData?.followersCount ?? 0;
-  const hostDataLoading = hostData === null || hostData.isLoading;
+  const hostDataLoading = hostData?.isLoading === true;
   
   // Extract remaining stable values from ref
   const eventRating = stableValuesRef.current.rating;
@@ -1101,7 +1101,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
           // Multiple images - horizontal snap gallery (image-driven height)
           <div 
             data-testid="event-image-carousel"
-            className="flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth hide-scrollbar cursor-pointer touch-pan-x overscroll-x-contain"
+            className="flex w-full h-full overflow-x-auto snap-x snap-mandatory scroll-smooth hide-scrollbar cursor-pointer touch-auto overscroll-x-contain"
             onScroll={(e) => {
               const container = e.currentTarget;
               const scrollLeft = container.scrollLeft;

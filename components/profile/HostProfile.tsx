@@ -117,7 +117,7 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
   const hostCoverPhoto = hostData?.coverPhotoURL || null;
   const hostMemberSince = hostData?.createdAt || null;
   const followersCount = hostData?.followersCount ?? 0;
-  const hostDataLoading = hostData === null || hostData.isLoading;
+  const hostDataLoading = hostData?.isLoading === true;
   
   // Filter events by host - uses same logic as Explore page for consistency
   // FIXED: Removed Popera-specific filter that was causing mismatch with Explore
