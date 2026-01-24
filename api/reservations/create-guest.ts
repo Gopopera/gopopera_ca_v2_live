@@ -189,15 +189,24 @@ export default async function handler(req: any, res: any) {
     let userRecord;
     try {
       userRecord = await auth.getUserByEmail(email);
+      console.log('[CREATE_GUEST_RESERVATION] Existing user found:', { uid: userRecord.uid, email });
     } catch (error: any) {
       if (error?.code === 'auth/user-not-found') {
-        const randomPassword = crypto.randomBytes(32).toString('base64url');
-        userRecord = await auth.createUser({
-          email,
-          displayName: attendeeName,
-          password: randomPassword,
-        });
+        console.log('[CREATE_GUEST_RESERVATION] Creating new user for:', email);
+        try {
+          const randomPassword = crypto.randomBytes(32).toString('base64url');
+          userRecord = await auth.createUser({
+            email,
+            displayName: attendeeName,
+            password: randomPassword,
+          });
+          console.log('[CREATE_GUEST_RESERVATION] New user created:', { uid: userRecord.uid, email });
+        } catch (createError: any) {
+          console.error('[CREATE_GUEST_RESERVATION] Failed to create user:', createError?.message, createError?.code);
+          throw new Error(`Failed to create user: ${createError?.message || 'Unknown error'}`);
+        }
       } else {
+        console.error('[CREATE_GUEST_RESERVATION] Auth error:', error?.message, error?.code);
         throw error;
       }
     }
@@ -213,17 +222,23 @@ export default async function handler(req: any, res: any) {
       // Create guest user profile with isGuestAccount marker
       // This user cannot sign in normally until they complete the claim flow
       // (password reset link converts them to a full account)
-      await userRef.set(
-        {
-          uid,
-          email,
-          displayName: attendeeName,
-          createdAt: Date.now(),
-          isGuestAccount: true, // Safety marker: not a full account yet
-          guestCreatedAt: Date.now(),
-        },
-        { merge: true }
-      );
+      try {
+        await userRef.set(
+          {
+            uid,
+            email,
+            displayName: attendeeName,
+            createdAt: Date.now(),
+            isGuestAccount: true, // Safety marker: not a full account yet
+            guestCreatedAt: Date.now(),
+          },
+          { merge: true }
+        );
+        console.log('[CREATE_GUEST_RESERVATION] Guest user profile created:', { uid, email });
+      } catch (profileError: any) {
+        console.error('[CREATE_GUEST_RESERVATION] Failed to create user profile:', profileError?.message);
+        throw new Error(`Failed to create user profile: ${profileError?.message || 'Unknown error'}`);
+      }
     }
 
     const { raw: publicToken, hash: publicTicketTokenHash } = generateToken();
@@ -279,13 +294,20 @@ export default async function handler(req: any, res: any) {
     }
 
     let reservationId: string;
-    if (!existingSnapshot.empty) {
-      const existingDoc = existingSnapshot.docs[0];
-      await existingDoc.ref.set(reservationPayload, { merge: true });
-      reservationId = existingDoc.id;
-    } else {
-      const docRef = await reservationsRef.add(reservationPayload);
-      reservationId = docRef.id;
+    try {
+      if (!existingSnapshot.empty) {
+        const existingDoc = existingSnapshot.docs[0];
+        await existingDoc.ref.set(reservationPayload, { merge: true });
+        reservationId = existingDoc.id;
+        console.log('[CREATE_GUEST_RESERVATION] Updated existing reservation:', reservationId);
+      } else {
+        const docRef = await reservationsRef.add(reservationPayload);
+        reservationId = docRef.id;
+        console.log('[CREATE_GUEST_RESERVATION] Created new reservation:', reservationId);
+      }
+    } catch (reservationError: any) {
+      console.error('[CREATE_GUEST_RESERVATION] Failed to save reservation:', reservationError?.message);
+      throw new Error(`Failed to save reservation: ${reservationError?.message || 'Unknown error'}`);
     }
 
     const baseUrl = getBaseUrlServer();
