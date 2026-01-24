@@ -2,8 +2,8 @@ import crypto from 'node:crypto';
 import { Resend } from 'resend';
 import { getAdminAuth, getAdminFirestore } from '../_lib/firebaseAdmin.js';
 import { RESEND_FROM, RESEND_REPLY_TO, RESEND_API_KEY } from '../_lib/emailConfig.js';
-import { ReservationConfirmationEmailTemplate } from '../../src/emails/templates/ReservationConfirmationEmail';
-import { formatDate } from '../../utils/dateFormatter';
+import { ReservationConfirmationEmailTemplate } from '../_lib/reservationEmail.js';
+import { formatDate } from '../_lib/dateFormatter.js';
 
 type RateLimitEntry = { count: number; resetAt: number };
 const ipRateLimit = new Map<string, RateLimitEntry>();
