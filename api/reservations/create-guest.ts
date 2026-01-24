@@ -205,10 +205,10 @@ export default async function handler(req: any, res: any) {
     const uid = userRecord.uid;
     const userRef = db.collection('users').doc(uid);
     const userSnap = await userRef.get();
-    
+
     // Track if this is a newly created guest user
     const isNewGuestUser = !userSnap.exists;
-    
+
     if (isNewGuestUser) {
       // Create guest user profile with isGuestAccount marker
       // This user cannot sign in normally until they complete the claim flow
@@ -290,10 +290,21 @@ export default async function handler(req: any, res: any) {
 
     const baseUrl = getBaseUrlServer();
     const ticketUrl = `${baseUrl}/ticket/${reservationId}?t=${publicToken}`;
-    const claimLink = await auth.generatePasswordResetLink(email, {
-      url: `${baseUrl}/auth?mode=signin`,
-      handleCodeInApp: false,
-    });
+
+    // Only generate claim link for NEW guest users
+    // Returning users (existing accounts) don't need it, and OAuth users can't use password reset
+    let claimLink: string | null = null;
+    if (isNewGuestUser) {
+      try {
+        claimLink = await auth.generatePasswordResetLink(email, {
+          url: `${baseUrl}/auth?mode=signin`,
+          handleCodeInApp: false,
+        });
+      } catch (claimError) {
+        // Non-fatal: user can still access their ticket via ticketUrl
+        console.warn('[CREATE_GUEST_RESERVATION] Could not generate claim link:', claimError);
+      }
+    }
 
     if (RESEND_API_KEY) {
       try {
@@ -322,7 +333,7 @@ export default async function handler(req: any, res: any) {
 
         await resend.emails.send({
           from: RESEND_FROM,
-          reply_to: RESEND_REPLY_TO,
+          replyTo: RESEND_REPLY_TO,
           to: email,
           subject: `Reservation Confirmed: ${eventData.title || 'Event'}`,
           html: emailHtml,
