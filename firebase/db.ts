@@ -607,6 +607,7 @@ export async function createReservation(
     paymentIntentId?: string;
     subscriptionId?: string;
     pricingMode?: 'free' | 'online' | 'door'; // Pricing mode: free, online (Stripe), or pay at door
+    attendeePhone?: string; // Optional phone for door payments
   }
 ): Promise<string> {
   const db = getDbSafe();
@@ -675,6 +676,9 @@ export async function createReservation(
       }
       if (options?.totalAmount !== undefined) {
         updateData.totalAmount = options.totalAmount;
+      }
+      if (options?.attendeePhone) {
+        updateData.attendeePhone = options.attendeePhone;
       }
       if (options?.paymentIntentId) {
         updateData.paymentIntentId = options.paymentIntentId;
@@ -747,6 +751,7 @@ export async function createReservation(
         if (options?.supportContribution !== undefined) updateData.supportContribution = options.supportContribution;
         if (options?.paymentMethod) updateData.paymentMethod = options.paymentMethod;
         if (options?.totalAmount !== undefined) updateData.totalAmount = options.totalAmount;
+        if (options?.attendeePhone) updateData.attendeePhone = options.attendeePhone;
         if (options?.paymentIntentId) {
           updateData.paymentIntentId = options.paymentIntentId;
           updateData.paymentStatus = 'succeeded';
@@ -786,6 +791,7 @@ export async function createReservation(
       payoutStatus: options?.paymentIntentId ? 'held' : undefined, // One-time events: hold until 24h after
       pricingMode: options?.pricingMode, // Track pricing mode for this reservation
       doorPaymentStatus: options?.pricingMode === 'door' ? 'unpaid' : undefined, // For door payments, start as unpaid
+      attendeePhone: options?.attendeePhone, // Optional phone for door payments
     };
 
     // Validate and remove undefined values

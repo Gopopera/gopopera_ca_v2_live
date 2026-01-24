@@ -189,6 +189,7 @@ export interface FirestoreReservation {
   attendeeName?: string;
   attendeeEmail?: string;
   attendeePhoneE164?: string;
+  attendeePhone?: string; // Optional phone (any format, for door payments)
   smsOptIn?: boolean;
   publicTicketTokenHash?: string;
   isGuestCreated?: boolean;

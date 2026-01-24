@@ -1936,7 +1936,7 @@ const AppContent: React.FC = () => {
                 event={selectedEvent}
                 setViewState={setViewState}
                 onHostClick={handleHostClick}
-                onConfirm={async (attendeeCount, supportContribution, paymentMethod) => {
+                onConfirm={async (attendeeCount, supportContribution, paymentMethod, attendeePhone) => {
                   if (!user?.uid) {
                     setViewState(ViewState.AUTH);
                     window.history.pushState({ viewState: ViewState.AUTH }, '', '/auth?mode=signin');
@@ -1964,6 +1964,8 @@ const AppContent: React.FC = () => {
                     paymentMethod: pricingMode === 'online' ? paymentMethod : undefined,
                     totalAmount: totalAmount > 0 ? Math.round(totalAmount * 100) : undefined, // Store in cents
                     pricingMode: pricingMode, // Track pricing mode
+                    // Pass phone for door payments (optional)
+                    attendeePhone: attendeePhone || undefined,
                   });
 
                   // Update attendee count

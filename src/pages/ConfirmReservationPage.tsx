@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Event, ViewState } from '../../types';
-import { ChevronLeft, Calendar, MapPin, User, Minus, Plus, CreditCard, Banknote } from 'lucide-react';
+import { ChevronLeft, Calendar, MapPin, User, Minus, Plus, CreditCard, Banknote, Phone } from 'lucide-react';
 import { formatDate } from '../../utils/dateFormatter';
 import { getUserProfile } from '../../firebase/db';
 import { formatPaymentAmount, getEventPricingType, isPayAtDoor, isEventFree, getEventFeeAmount, getEventCurrency } from '../../utils/stripeHelpers';
@@ -10,7 +10,7 @@ interface ConfirmReservationPageProps {
   event: Event;
   setViewState: (view: ViewState) => void;
   onHostClick?: (hostName: string, hostId?: string) => void;
-  onConfirm: (attendeeCount: number, supportContribution: number, paymentMethod: string) => Promise<string>;
+  onConfirm: (attendeeCount: number, supportContribution: number, paymentMethod: string, attendeePhone?: string) => Promise<string>;
 }
 
 export const ConfirmReservationPage: React.FC<ConfirmReservationPageProps> = ({
@@ -23,6 +23,7 @@ export const ConfirmReservationPage: React.FC<ConfirmReservationPageProps> = ({
   const [attendeeCount, setAttendeeCount] = useState(1);
   const [supportContribution, setSupportContribution] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<string>('');
+  const [attendeePhone, setAttendeePhone] = useState('');
   const [processing, setProcessing] = useState(false);
   const [hostName, setHostName] = useState(event.hostName || event.host);
 
@@ -108,7 +109,9 @@ export const ConfirmReservationPage: React.FC<ConfirmReservationPageProps> = ({
 
     setProcessing(true);
     try {
-      const reservationId = await onConfirm(attendeeCount, supportContribution, paymentMethod);
+      // Pass phone (trimmed) for door payments; pass undefined for other flows
+      const phoneTrimmed = attendeePhone.trim() || undefined;
+      const reservationId = await onConfirm(attendeeCount, supportContribution, paymentMethod, phoneTrimmed);
       // Navigation to confirmation page will be handled by parent
     } catch (error) {
       console.error('Error confirming reservation:', error);
@@ -313,6 +316,30 @@ export const ConfirmReservationPage: React.FC<ConfirmReservationPageProps> = ({
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Phone Input (optional) - shown for door payments */}
+        {isDoorPayment && (
+          <div className="pb-6 border-b border-gray-200">
+            <label className="block text-base font-medium text-gray-700 mb-2">
+              <span className="flex items-center gap-2">
+                <Phone size={16} className="text-gray-400" />
+                {language === 'fr' ? 'Téléphone (optionnel)' : 'Phone (optional)'}
+              </span>
+            </label>
+            <input
+              type="tel"
+              value={attendeePhone}
+              onChange={(e) => setAttendeePhone(e.target.value)}
+              placeholder={language === 'fr' ? 'Ex: 514-555-1234' : 'e.g. 514-555-1234'}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-[#15383c]/20 focus:border-[#15383c] transition-colors"
+            />
+            <p className="text-xs text-gray-500 mt-2">
+              {language === 'fr' 
+                ? "L'hôte pourra vous contacter si nécessaire."
+                : 'The host may contact you if needed.'}
+            </p>
           </div>
         )}
 

@@ -4,8 +4,8 @@
  * Modern liquid glass UI design
  */
 
-import React, { useState, useEffect } from 'react';
-import { X, Loader2, AlertCircle, CheckCircle2, Shield, Lock } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, Loader2, AlertCircle, CheckCircle2, Shield, Lock, ExternalLink } from 'lucide-react';
 import { loadStripe, StripeElementsOptions } from '@stripe/stripe-js';
 import {
   Elements,
@@ -14,12 +14,74 @@ import {
   useElements,
 } from '@stripe/react-stripe-js';
 import type { StripeCardElement } from '@stripe/stripe-js';
-import { formatPaymentAmount, calculateTotalAmount, calculatePlatformFee } from '../../utils/stripeHelpers';
+import { formatPaymentAmount, calculateTotalAmount } from '../../utils/stripeHelpers';
 
 // Initialize Stripe (you'll need to set VITE_STRIPE_PUBLISHABLE_KEY in your .env)
 const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
 console.log('[PAYMENT_MODAL] Stripe publishable key configured:', stripeKey ? `${stripeKey.substring(0, 12)}...` : 'NOT SET');
 const stripePromise = stripeKey ? loadStripe(stripeKey) : null;
+
+// ============================================
+// STRIPE PAYMENT GUARDS (prevent "pattern" error)
+// ============================================
+
+const ALLOWED_CURRENCIES = ['cad', 'usd', 'eur'] as const;
+const MIN_AMOUNT_CENTS = 50; // Stripe minimum
+
+/**
+ * Sanitize currency code for Stripe Elements
+ * Returns valid 3-letter lowercase code or 'cad' as default
+ */
+function sanitizeCurrency(raw: string | undefined | null): string {
+  if (!raw) return 'cad';
+  const cleaned = raw.toString().trim().toLowerCase();
+  if (cleaned.length !== 3 || !/^[a-z]{3}$/.test(cleaned)) {
+    console.warn('[PAYMENT_MODAL] Invalid currency format, defaulting to cad:', raw);
+    return 'cad';
+  }
+  if (!ALLOWED_CURRENCIES.includes(cleaned as typeof ALLOWED_CURRENCIES[number])) {
+    console.warn('[PAYMENT_MODAL] Unsupported currency, defaulting to cad:', cleaned);
+    return 'cad';
+  }
+  return cleaned;
+}
+
+/**
+ * Sanitize amount for Stripe Elements
+ * Returns { valid: true, amount } or { valid: false, reason }
+ */
+function sanitizeAmount(raw: number | undefined | null): { valid: true; amount: number } | { valid: false; reason: string } {
+  if (raw === undefined || raw === null) {
+    return { valid: false, reason: 'Amount is missing' };
+  }
+  if (!Number.isFinite(raw)) {
+    return { valid: false, reason: 'Amount is not a valid number' };
+  }
+  const rounded = Math.round(raw);
+  if (rounded < MIN_AMOUNT_CENTS) {
+    return { valid: false, reason: `Amount must be at least ${MIN_AMOUNT_CENTS} cents` };
+  }
+  return { valid: true, amount: rounded };
+}
+
+/**
+ * Detect Instagram/Facebook in-app browser (WebView)
+ */
+function isInAppBrowser(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  return ua.includes('Instagram') || ua.includes('FBAN') || ua.includes('FBAV');
+}
+
+/**
+ * Open current URL in external browser
+ */
+function openInExternalBrowser(): void {
+  if (typeof window !== 'undefined') {
+    // Try to open in new tab/window (some WebViews block this, but it's the best we can do)
+    window.open(window.location.href, '_blank');
+  }
+}
 
 // Stripe text logo component (using official Stripe purple color)
 const StripeText = ({ className = "" }: { className?: string }) => (
@@ -94,7 +156,6 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const totalAmount = calculateTotalAmount(feeAmount, attendeeCount);
-  const platformFee = calculatePlatformFee(totalAmount);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -243,10 +304,6 @@ const PaymentForm: React.FC<PaymentFormProps> = ({
             <span className="text-gray-600 text-sm">Event Fee ({attendeeCount} {attendeeCount === 1 ? 'attendee' : 'attendees'})</span>
             <span className="font-semibold text-[#15383c]">{formatPaymentAmount(totalAmount, currency)}</span>
           </div>
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-gray-400">Platform Fee</span>
-            <span className="text-green-600 font-medium">$0.00 (2026 Promo)</span>
-          </div>
           <div className="border-t border-white/60 pt-3">
             <div className="flex justify-between items-center">
               <span className="font-bold text-[#15383c]">Total</span>
@@ -359,23 +416,35 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   attendeeEmail,
 }) => {
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  
+  // Detect Instagram/Facebook in-app browser
+  const isIGBrowser = useMemo(() => isInAppBrowser(), []);
 
+  // Sanitize and validate currency/amount BEFORE rendering Elements
+  const sanitizedCurrency = useMemo(() => sanitizeCurrency(currency), [currency]);
+  const rawAmount = useMemo(() => calculateTotalAmount(feeAmount, attendeeCount), [feeAmount, attendeeCount]);
+  const amountValidation = useMemo(() => sanitizeAmount(rawAmount), [rawAmount]);
+  
+  // Log on open for debugging
   useEffect(() => {
     if (isOpen) {
       console.log('[PAYMENT_MODAL] Modal opened', {
         eventTitle,
-        feeAmount,
-        currency,
+        rawFeeAmount: feeAmount,
+        rawCurrency: currency,
+        sanitizedCurrency,
+        rawAmount,
+        amountValid: amountValidation.valid,
+        amountReason: !amountValidation.valid ? amountValidation.reason : undefined,
         eventId,
-        hostId,
-        userId,
         isRecurring,
+        isInAppBrowser: isIGBrowser,
         stripeConfigured: !!stripePromise,
       });
     } else {
       setPaymentSuccess(false);
     }
-  }, [isOpen, eventTitle, feeAmount, currency, eventId, hostId, userId, isRecurring]);
+  }, [isOpen, eventTitle, feeAmount, currency, sanitizedCurrency, rawAmount, amountValidation, eventId, isRecurring, isIGBrowser]);
 
   if (!isOpen) return null;
 
@@ -414,6 +483,58 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     );
   }
 
+  // Invalid amount - show error UI (do NOT mount Stripe Elements with invalid config)
+  if (!amountValidation.valid) {
+    console.error('[PAYMENT_MODAL] Invalid payment config, refusing to mount Elements:', {
+      rawFeeAmount: feeAmount,
+      rawCurrency: currency,
+      rawAmount,
+      reason: amountValidation.reason,
+    });
+    
+    return (
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div className="relative overflow-hidden rounded-3xl max-w-md w-full">
+          <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-white/90 to-white/85 backdrop-blur-2xl" />
+          <div className="absolute inset-0 border border-white/60 rounded-3xl" />
+          
+          <div className="relative p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-[#15383c]">Payment Error</h2>
+              <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-black/5 transition-colors">
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+            <div className="bg-red-50/80 backdrop-blur-sm border border-red-200/50 rounded-xl p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-900 mb-1">Unable to process payment</p>
+                <p className="text-sm text-red-700">{amountValidation.reason}. Please go back and try again.</p>
+              </div>
+            </div>
+            <div className="mt-4 space-y-2">
+              <button
+                onClick={onClose}
+                className="w-full py-3 bg-gray-100/80 backdrop-blur-sm text-gray-700 font-semibold rounded-xl hover:bg-gray-200/80 transition-colors"
+              >
+                Try Again
+              </button>
+              {isIGBrowser && (
+                <button
+                  onClick={openInExternalBrowser}
+                  className="w-full py-3 bg-blue-50/80 backdrop-blur-sm text-blue-700 font-semibold rounded-xl hover:bg-blue-100/80 transition-colors flex items-center justify-center gap-2"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Open in Safari/Chrome
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const handleSuccess = (paymentIntentId: string, subscriptionId?: string) => {
     setPaymentSuccess(true);
     setTimeout(() => {
@@ -426,10 +547,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     console.error('Payment error:', error);
   };
 
+  // Use validated/sanitized values for Elements options
   const elementsOptions: StripeElementsOptions = {
     mode: 'payment',
-    amount: calculateTotalAmount(feeAmount, attendeeCount),
-    currency: currency.toLowerCase(),
+    amount: amountValidation.amount,
+    currency: sanitizedCurrency,
   };
 
   return (
@@ -443,6 +565,26 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         <div className="absolute inset-0 border border-white/60 rounded-3xl" />
         {/* Subtle inner glow */}
         <div className="absolute inset-0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8)]" />
+        
+        {/* Instagram in-app browser warning banner */}
+        {isIGBrowser && !paymentSuccess && (
+          <div className="relative bg-amber-50 border-b border-amber-200 px-4 py-3">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm text-amber-800">
+                  Having trouble paying inside Instagram?{' '}
+                  <button 
+                    onClick={openInExternalBrowser}
+                    className="text-amber-900 underline font-medium"
+                  >
+                    Open in Safari/Chrome
+                  </button>
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Header */}
         <div className="relative sticky top-0 z-10 px-6 py-5 border-b border-white/40">
@@ -493,7 +635,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   onSuccess={handleSuccess}
                   onError={handleError}
                   feeAmount={feeAmount}
-                  currency={currency}
+                  currency={sanitizedCurrency}
                   attendeeCount={attendeeCount}
                   isRecurring={isRecurring}
                   eventTitle={eventTitle}
