@@ -69,6 +69,9 @@ export const useEventStore = create<EventStore>((set, get) => ({
 
     const db = getDbSafe();
     if (!db) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre',hypothesisId:'E1',location:'eventStore.init:70',message:'db unavailable',data:{hasDb:false},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion agent log
       console.warn('[EVENT_STORE] Firestore not available, cannot initialize events subscription');
       set({ isLoading: false, error: 'Firestore not available' });
       return;
@@ -133,6 +136,9 @@ export const useEventStore = create<EventStore>((set, get) => ({
               eventCities: events.map(e => e.city),
               note: 'All events without explicit isPublic=false or isDraft=true are shown'
             });
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre',hypothesisId:'E2',location:'eventStore.onSnapshot:127',message:'snapshot processed',data:{totalDocs:snapshot.docs.length,totalEvents:events.length,filteredOut:snapshot.docs.length - events.length},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion agent log
             set({ events, isLoading: false, error: null });
           } catch (error) {
             console.error('[EVENT_STORE] Error processing snapshot:', error);
@@ -141,6 +147,9 @@ export const useEventStore = create<EventStore>((set, get) => ({
         },
         (error: any) => {
           console.error('[EVENT_STORE] Snapshot error:', error);
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre',hypothesisId:'E3',location:'eventStore.onSnapshot:142',message:'snapshot error',data:{code:error?.code || null,message:error?.message || null},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion agent log
           // Handle permission errors gracefully
           if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
             console.warn('[EVENT_STORE] Permission denied - user may not have access to events collection');

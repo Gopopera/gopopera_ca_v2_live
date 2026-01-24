@@ -22,6 +22,9 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('[Popera] ErrorBoundary caught an error:', error, errorInfo);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre',hypothesisId:'C1',location:'ErrorBoundary.componentDidCatch:23',message:'error boundary caught',data:{message:error?.message || null,stack:(error as any)?.stack || null,componentStack:errorInfo?.componentStack || null},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion agent log
   }
 
   render() {

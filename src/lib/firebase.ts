@@ -58,6 +58,9 @@ export const firebaseEnabled =
 if (!firebaseEnabled) {
   console.error('[FIREBASE] Missing environment variables; Firebase disabled.', missingVars);
 }
+// #region agent log
+fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre',hypothesisId:'E1',location:'firebase.ts:55',message:'firebase config',data:{firebaseEnabled,missingVarsCount:missingVars.length,missingVars,hasApiKey:!!requiredFirebaseVars.apiKey,hasAuthDomain:!!requiredFirebaseVars.authDomain,hasProjectId:!!requiredFirebaseVars.projectId,hasStorageBucket:!!requiredFirebaseVars.storageBucket,hasSenderId:!!requiredFirebaseVars.messagingSenderId,hasAppId:!!requiredFirebaseVars.appId},timestamp:Date.now()})}).catch(()=>{});
+// #endregion agent log
 
 const cfg = {
   apiKey: requiredFirebaseVars.apiKey,

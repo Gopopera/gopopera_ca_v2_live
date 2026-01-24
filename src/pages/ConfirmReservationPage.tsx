@@ -32,6 +32,7 @@ export const ConfirmReservationPage: React.FC<ConfirmReservationPageProps> = ({
   const isFree = useMemo(() => isEventFree(event), [event]);
   const isDoorPayment = useMemo(() => isPayAtDoor(event), [event]);
 
+
   // Extract price per attendee (in dollars) using centralized helper
   const pricePerAttendee = useMemo(() => {
     if (isFree) return 0;

@@ -517,6 +517,9 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
 
           if (!response.ok) {
             const payload = await response.json().catch(() => ({}));
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre',hypothesisId:'H5',location:'EditEventPage.handleUpdate:520',message:'update-payment error',data:{status:response.status,hasError:!!payload?.error,pricingType,feeAmountCents,currency:normalizedCurrency},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion agent log
             if (response.status === 409) {
               alert(payload.error || 'Payments are locked because you already have attendees. To change pricing, create a new event.');
               setIsSubmitting(false);
@@ -524,6 +527,9 @@ export const EditEventPage: React.FC<EditEventPageProps> = ({ setViewState, even
             }
             throw new Error(payload.error || 'Failed to update payment settings.');
           }
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre',hypothesisId:'H5',location:'EditEventPage.handleUpdate:528',message:'update-payment ok',data:{status:response.status,pricingType,feeAmountCents,currency:normalizedCurrency},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion agent log
         } catch (paymentError: any) {
           console.error('[EDIT_EVENT] Payment update failed:', paymentError);
           paymentUpdateError = paymentError?.message || 'Failed to update payment settings.';

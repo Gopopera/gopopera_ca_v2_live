@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { getAdminFirestore } from '../_lib/firebaseAdmin';
+import { getAdminFirestore } from '../_lib/firebaseAdmin.js';
 
 type RateLimitEntry = { count: number; resetAt: number };
 const ipRateLimit = new Map<string, RateLimitEntry>();

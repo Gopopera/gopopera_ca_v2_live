@@ -11,7 +11,7 @@
  */
 
 import Stripe from 'stripe';
-import { getAdminFirestore } from '../_lib/firebaseAdmin';
+import { getAdminFirestore } from '../_lib/firebaseAdmin.js';
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || process.env.VITE_STRIPE_SECRET_KEY;
 
@@ -43,18 +43,18 @@ function getEventPricingType(event: Record<string, any>): 'free' | 'online' | 'd
   if (event.pricingType && ['free', 'online', 'door'].includes(event.pricingType)) {
     return event.pricingType;
   }
-  
+
   // Backward compatibility: derive from legacy fields
   // Check hasFee + feeAmount
   if (event.hasFee === true && (event.feeAmount ?? 0) > 0) {
     return 'online'; // Legacy paid events default to online
   }
-  
+
   // Check legacy price field
   if (event.price && event.price !== 'Free' && event.price !== '' && event.price !== '$0' && event.price !== '0') {
     return 'online';
   }
-  
+
   return 'free';
 }
 
@@ -67,7 +67,7 @@ function getEventCurrency(event: Record<string, any>): string {
 
 export default async function handler(req: any, res: any) {
   const requestId = generateRequestId();
-  
+
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -113,7 +113,7 @@ export default async function handler(req: any, res: any) {
 
     // Fetch event from Firestore
     const eventDoc = await db.collection('events').doc(eventId).get();
-    
+
     if (!eventDoc.exists) {
       console.warn(`[PAYMENT] requestId=${requestId} eventId=${maskedEvent} status=blocked reason=event_not_found`);
       return res.status(404).json({ error: 'Event not found', code: 'EVENT_NOT_FOUND' });
@@ -126,9 +126,9 @@ export default async function handler(req: any, res: any) {
     // HARD BLOCK: Only allow Stripe for pricingType === 'online'
     if (pricingType !== 'online') {
       console.error(`[PAYMENT] requestId=${requestId} eventId=${maskedEvent} userId=${maskedUser} status=blocked reason=pricingType_not_online pricingType=${pricingType}`);
-      return res.status(400).json({ 
-        error: 'This event does not support online payment.', 
-        code: 'STRIPE_NOT_ALLOWED' 
+      return res.status(400).json({
+        error: 'This event does not support online payment.',
+        code: 'STRIPE_NOT_ALLOWED'
       });
     }
 

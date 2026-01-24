@@ -1,6 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Language, translations } from '../translations';
 
+// #region agent log
+fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre',hypothesisId:'C1',location:'LanguageContext.tsx:3',message:'react module snapshot',data:{reactType:typeof React,reactVersion:(React as any)?.version || null,useStateType:typeof useState,useContextType:typeof useContext},timestamp:Date.now()})}).catch(()=>{});
+// #endregion agent log
+
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;

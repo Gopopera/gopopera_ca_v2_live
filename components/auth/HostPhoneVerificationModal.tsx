@@ -130,6 +130,10 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
     try {
       const result = await sendVerificationCode(user.uid, phoneNumber, selectedCountry);
 
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre',hypothesisId:'H2',location:'HostPhoneVerificationModal.handleSendCode:132',message:'sendVerificationCode result',data:{success:result.success,hasError:!!result.error},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion agent log
+
       if (!result.success) {
         setError(result.error || 'Failed to send verification code. Please try again.');
         setLoading(false);
@@ -170,6 +174,10 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
 
     try {
       const result = await verifyPhoneCode(user.uid, phoneNumber, verificationCode, selectedCountry);
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre',hypothesisId:'H2',location:'HostPhoneVerificationModal.handleVerifyCode:173',message:'verifyPhoneCode result',data:{success:result.success,hasError:!!result.error,codeLength:verificationCode?.length || 0},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion agent log
 
       if (!result.success) {
         setError(result.error || 'Invalid verification code. Please try again.');

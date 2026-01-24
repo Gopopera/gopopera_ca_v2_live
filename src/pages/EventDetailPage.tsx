@@ -247,6 +247,11 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
   const [showGuestReserveModal, setShowGuestReserveModal] = useState(false);
   const [guestLoading, setGuestLoading] = useState(false);
   const [guestError, setGuestError] = useState<string | null>(null);
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre',hypothesisId:'C2',location:'EventDetailPage.useEffect:252',message:'event detail mount',data:{eventId:event?.id || null,hasEvent:!!event,hasTitle:!!event?.title,pricingType:event?.pricingType || null,hasFee:!!event?.hasFee},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion agent log
+  }, [event?.id]);
   const [guestSuccess, setGuestSuccess] = useState<{ email: string; ticketUrl: string; claimLink: string } | null>(null);
   const [guestDraft, setGuestDraft] = useState<{ attendeeName: string; attendeeEmail: string; attendeePhoneE164: string; smsOptIn: boolean } | null>(null);
   const [hostStripeStatus, setHostStripeStatus] = useState<{ enabled: boolean; checked: boolean }>({ enabled: false, checked: false });
@@ -625,14 +630,33 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     paymentStatus?: string;
     totalAmount?: number;
   }) => {
-    const response = await fetch('/api/reservations/create-guest', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre',hypothesisId:'H4',location:'EventDetailPage.createGuestReservation:628',message:'guest reservation request',data:{eventId:payload.eventId,hasPhone:!!payload.attendeePhoneE164,smsOptIn:!!payload.smsOptIn,hasPaymentIntent:!!payload.paymentIntentId,paymentStatus:payload.paymentStatus || null,hasTotalAmount:typeof payload.totalAmount === 'number'},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion agent log
+    let response: Response;
+    try {
+      response = await fetch(`${apiBaseUrl}/reservations/create-guest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch (error: any) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre',hypothesisId:'H4',location:'EventDetailPage.createGuestReservation:636',message:'guest reservation fetch failed',data:{message:error?.message || null,name:error?.name || null},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion agent log
+      throw error;
+    }
+
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre',hypothesisId:'H4',location:'EventDetailPage.createGuestReservation:646',message:'guest reservation response',data:{status:response.status,ok:response.ok},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion agent log
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre',hypothesisId:'H4',location:'EventDetailPage.createGuestReservation:635',message:'guest reservation response error',data:{status:response.status,hasError:!!err?.error,errorCode:err?.code || null},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion agent log
       throw new Error(err.error || 'Guest reservation failed');
     }
 
@@ -716,6 +740,10 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         const needsStripe = requiresOnlinePayment(event); // Only true for pricingType === 'online'
         const isDoorPayment = isPayAtDoor(event); // pricingType === 'door'
         
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre',hypothesisId:'H3',location:'EventDetailPage.handleReserve:715',message:'pricing decision',data:{pricingType:event?.pricingType,hasFee:event?.hasFee,feeAmount:event?.feeAmount,currency:event?.currency,isFree,needsStripe,isDoorPayment},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion agent log
+
         console.log('[EVENT_DETAIL] Event payment check:', {
           isFree,
           needsStripe,

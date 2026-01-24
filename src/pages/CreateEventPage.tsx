@@ -249,6 +249,10 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
       user?.phone_verified
     );
     
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre',hypothesisId:'H1',location:'CreateEventPage.handleSubmit:248',message:'host verification check',data:{hasFreshProfile:!!freshProfile,phoneVerifiedForHosting:!!freshProfile?.phoneVerifiedForHosting,phoneVerified:!!(freshProfile as any)?.phoneVerified,phone_verified:!!(freshProfile as any)?.phone_verified,hasHostPhoneNumber:!!freshProfile?.hostPhoneNumber,authPhoneVerified:!!user?.phone_verified},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion agent log
+
     if (!isHostPhoneVerified) {
       setShowHostVerificationModal(true);
       return;

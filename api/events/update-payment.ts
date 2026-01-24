@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAdminAuth, getAdminFirestore } from '../_lib/firebaseAdmin';
+import { getAdminAuth, getAdminFirestore } from '../_lib/firebaseAdmin.js';
 
 const ACTIVE_RESERVATION_STATUSES = ['reserved', 'checked_in'] as const;
 const ALLOWED_CURRENCIES = new Set(['cad', 'usd', 'eur']);

@@ -78,6 +78,9 @@ export const GuestReserveModal: React.FC<GuestReserveModalProps> = ({
     }
     
     setLocalError(null);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre',hypothesisId:'H4',location:'GuestReserveModal.handleSubmit:81',message:'guest submit',data:{hasName:!!name.trim(),hasEmail:!!email.trim(),hasPhone:!!phone, smsOptIn:!!smsOptIn},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion agent log
     onSubmit({
       attendeeName: name.trim(),
       attendeeEmail: email.trim(),
