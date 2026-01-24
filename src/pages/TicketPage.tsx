@@ -294,15 +294,22 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
     
     const pricingType = getEventPricingType(ticketData.event);
     const currency = getEventCurrency(ticketData.event);
+    const reservationPricingMode = (ticketData.reservation as any).pricingMode;
     
-    // Pay at door events show the amount as "unpaid" or the status
-    if (pricingType === 'door') {
+    // Check for door payment using both event pricingType and reservation pricingMode
+    const isDoorPayment = pricingType === 'door' || reservationPricingMode === 'door';
+    
+    if (isDoorPayment) {
       const amount = ticketData.reservation.totalAmount || 0;
-      if (amount > 0) {
-        const doorStatus = (ticketData.reservation as any).doorPaymentStatus === 'paid' ? '(Paid)' : '(Pay at door)';
-        return `${formatPaymentAmount(amount, currency)} ${doorStatus}`;
+      const doorPaymentStatus = (ticketData.reservation as any).doorPaymentStatus;
+      
+      if (doorPaymentStatus === 'paid') {
+        return amount > 0 ? `${formatPaymentAmount(amount, currency)} (Paid)` : 'Paid';
       }
-      return 'Pay at door';
+      // Unpaid door payment - clear "Payment due" phrasing
+      return amount > 0 
+        ? `${formatPaymentAmount(amount, currency)} — Payment due at door` 
+        : 'Payment due at door';
     }
     
     if (ticketData.reservation.totalAmount && ticketData.reservation.totalAmount > 0) {

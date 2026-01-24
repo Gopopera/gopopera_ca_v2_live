@@ -129,13 +129,13 @@ export default async function handler(req: any, res: any) {
       totalAmount,
     } = req.body || {};
 
-    if (!eventId || !attendeeName || !attendeeEmail || !attendeePhoneE164) {
+    // Phone is now optional - only name, email, and eventId are required
+    if (!eventId || !attendeeName || !attendeeEmail) {
       recordFailure(ipKey);
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
     const email = normalizeEmail(attendeeEmail);
-    const phone = normalizePhone(attendeePhoneE164);
     const emailKey = `email:${email}`;
 
     if (!checkRateLimit(emailRateLimit, emailKey, EMAIL_LIMIT)) {
@@ -147,7 +147,9 @@ export default async function handler(req: any, res: any) {
       return res.status(429).json({ error: 'Too many failed attempts' });
     }
 
-    if (!isValidE164(phone)) {
+    // Phone is optional - normalize and validate only if provided
+    const phone = attendeePhoneE164 ? normalizePhone(attendeePhoneE164) : '';
+    if (phone && !isValidE164(phone)) {
       recordFailure(failureKey);
       return res.status(400).json({ error: 'Invalid phone number format (E.164 required)' });
     }
@@ -203,13 +205,22 @@ export default async function handler(req: any, res: any) {
     const uid = userRecord.uid;
     const userRef = db.collection('users').doc(uid);
     const userSnap = await userRef.get();
-    if (!userSnap.exists) {
+    
+    // Track if this is a newly created guest user
+    const isNewGuestUser = !userSnap.exists;
+    
+    if (isNewGuestUser) {
+      // Create guest user profile with isGuestAccount marker
+      // This user cannot sign in normally until they complete the claim flow
+      // (password reset link converts them to a full account)
       await userRef.set(
         {
           uid,
           email,
           displayName: attendeeName,
           createdAt: Date.now(),
+          isGuestAccount: true, // Safety marker: not a full account yet
+          guestCreatedAt: Date.now(),
         },
         { merge: true }
       );
@@ -230,8 +241,6 @@ export default async function handler(req: any, res: any) {
       attendeeCount: 1,
       attendeeName,
       attendeeEmail: email,
-      attendeePhoneE164: phone,
-      smsOptIn: Boolean(smsOptIn),
       publicTicketTokenHash,
       isGuestCreated: true,
       pricingMode: pricingType,
@@ -239,6 +248,14 @@ export default async function handler(req: any, res: any) {
       createdIpHash: hashIp(ip),
       createdUserAgent: userAgent,
     };
+
+    // Only set phone fields if phone was provided
+    if (phone) {
+      reservationPayload.attendeePhoneE164 = phone;
+      reservationPayload.smsOptIn = Boolean(smsOptIn);
+    } else {
+      reservationPayload.smsOptIn = false; // Explicit: no SMS without phone
+    }
 
     if (pricingType === 'door') {
       reservationPayload.doorPaymentStatus = 'unpaid';

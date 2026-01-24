@@ -310,8 +310,8 @@ export const ConfirmReservationPage: React.FC<ConfirmReservationPageProps> = ({
                   </h3>
                   <p className="text-sm text-amber-700">
                     {language === 'fr' 
-                      ? `Vous paierez ${formatPaymentAmount((pricePerAttendee * attendeeCount) * 100, currency)} directement à l'hôte lors de l'événement.`
-                      : `You'll pay ${formatPaymentAmount((pricePerAttendee * attendeeCount) * 100, currency)} directly to the host at the event.`}
+                      ? `Réservez maintenant, payez ${formatPaymentAmount((pricePerAttendee * attendeeCount) * 100, currency)} en espèces à l'arrivée. Votre billet confirme votre place.`
+                      : `Reserve now, pay ${formatPaymentAmount((pricePerAttendee * attendeeCount) * 100, currency)} cash at the door. Your ticket confirms your spot.`}
                   </p>
                 </div>
               </div>

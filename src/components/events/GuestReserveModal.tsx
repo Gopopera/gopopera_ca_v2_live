@@ -64,21 +64,25 @@ export const GuestReserveModal: React.FC<GuestReserveModalProps> = ({
   if (!isOpen) return null;
 
   const handleSubmit = () => {
+    // Name and email are required; phone is optional
+    if (!name.trim() || !email.trim()) {
+      setLocalError('Please fill out name and email.');
+      return;
+    }
+    
+    // Normalize and validate phone only if provided
     const phone = normalizePhone(phoneRaw);
-    if (!name.trim() || !email.trim() || !phone) {
-      setLocalError('Please fill out all required fields.');
+    if (phone && !isValidE164(phone)) {
+      setLocalError('Please enter a valid phone number (e.g. +14165551234) or leave blank.');
       return;
     }
-    if (!isValidE164(phone)) {
-      setLocalError('Please enter a valid phone number in E.164 format (e.g. +14165551234).');
-      return;
-    }
+    
     setLocalError(null);
     onSubmit({
       attendeeName: name.trim(),
       attendeeEmail: email.trim(),
-      attendeePhoneE164: phone,
-      smsOptIn,
+      attendeePhoneE164: phone || '', // Empty string if not provided
+      smsOptIn: phone ? smsOptIn : false, // Only opt-in if phone provided
     });
   };
 
@@ -114,7 +118,9 @@ export const GuestReserveModal: React.FC<GuestReserveModalProps> = ({
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#15383c] mb-2">Phone (E.164)</label>
+                <label className="block text-xs font-semibold text-[#15383c] mb-2">
+                  Phone <span className="font-normal text-gray-500">(optional — for SMS updates)</span>
+                </label>
                 <input
                   value={phoneRaw}
                   onChange={(e) => setPhoneRaw(e.target.value)}
@@ -123,14 +129,16 @@ export const GuestReserveModal: React.FC<GuestReserveModalProps> = ({
                 />
               </div>
 
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={smsOptIn}
-                  onChange={(e) => setSmsOptIn(e.target.checked)}
-                />
-                SMS updates for host announcements (optional)
-              </label>
+              {phoneRaw.trim() && (
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={smsOptIn}
+                    onChange={(e) => setSmsOptIn(e.target.checked)}
+                  />
+                  Send me SMS updates for host announcements
+                </label>
+              )}
 
               {(localError || error) && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
