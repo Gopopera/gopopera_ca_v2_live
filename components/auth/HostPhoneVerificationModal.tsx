@@ -184,6 +184,8 @@ export const HostPhoneVerificationModal: React.FC<HostPhoneVerificationModalProp
       await createOrUpdateUserProfile(user.uid, {
         phoneVerifiedForHosting: true,
         hostPhoneNumber: formattedPhone,
+        phoneVerified: true,
+        phone_verified: true,
         countryCode: selectedCountry,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         currency: ['BE', 'FR', 'DE', 'NL', 'ES', 'IT'].includes(selectedCountry) ? 'eur' : 'cad',

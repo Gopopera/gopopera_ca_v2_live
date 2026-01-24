@@ -241,7 +241,13 @@ export const CreateEventPage: React.FC<CreateEventPageProps> = ({ setViewState }
     const freshProfile = useUserStore.getState().userProfile;
     
     // Use OR logic: userProfile.phoneVerifiedForHosting OR user.phone_verified (backward compatibility)
-    const isHostPhoneVerified = !!(freshProfile?.phoneVerifiedForHosting || user?.phone_verified);
+    const isHostPhoneVerified = !!(
+      freshProfile?.phoneVerifiedForHosting ||
+      freshProfile?.phoneVerified ||
+      (freshProfile as any)?.phone_verified ||
+      freshProfile?.hostPhoneNumber ||
+      user?.phone_verified
+    );
     
     if (!isHostPhoneVerified) {
       setShowHostVerificationModal(true);

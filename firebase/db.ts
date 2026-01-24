@@ -77,6 +77,7 @@ export const mapFirestoreEventToEvent = (firestoreEvent: FirestoreEvent): Event 
     hasFee: firestoreEvent.hasFee === true,
     feeAmount: typeof firestoreEvent.feeAmount === 'number' ? firestoreEvent.feeAmount : undefined,
     currency: firestoreEvent.currency || undefined,
+    pricingType: firestoreEvent.pricingType || undefined,
   };
   
   return standardizedEvent;
