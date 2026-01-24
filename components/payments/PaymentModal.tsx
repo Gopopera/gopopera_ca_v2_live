@@ -75,11 +75,13 @@ function isInAppBrowser(): boolean {
 
 /**
  * Open current URL in external browser
+ * Uses noopener,noreferrer for security
  */
 function openInExternalBrowser(): void {
   if (typeof window !== 'undefined') {
+    const url = window.location.href;
     // Try to open in new tab/window (some WebViews block this, but it's the best we can do)
-    window.open(window.location.href, '_blank');
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 }
 
@@ -422,7 +424,12 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
   // Sanitize and validate currency/amount BEFORE rendering Elements
   const sanitizedCurrency = useMemo(() => sanitizeCurrency(currency), [currency]);
-  const rawAmount = useMemo(() => calculateTotalAmount(feeAmount, attendeeCount), [feeAmount, attendeeCount]);
+  // Guard: ensure attendeeCount is a valid positive integer (default to 1 if missing/invalid)
+  const safeAttendeeCount = useMemo(() => {
+    if (!Number.isFinite(attendeeCount) || attendeeCount < 1) return 1;
+    return Math.floor(attendeeCount);
+  }, [attendeeCount]);
+  const rawAmount = useMemo(() => calculateTotalAmount(feeAmount, safeAttendeeCount), [feeAmount, safeAttendeeCount]);
   const amountValidation = useMemo(() => sanitizeAmount(rawAmount), [rawAmount]);
   
   // Log on open for debugging
