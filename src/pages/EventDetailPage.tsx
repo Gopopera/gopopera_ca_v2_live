@@ -1344,7 +1344,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             </div>{/* End hero image container */}
 
             {/* TITLE + META - below hero image on desktop */}
-            <div className="hidden lg:block mt-6">
+            <div className="hidden lg:block mt-6 mb-8">
               <h1 className="text-3xl font-heading font-bold text-[#15383c] leading-tight mb-4">
                 {event.title}
               </h1>
@@ -1730,8 +1730,8 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               </div>
             </div>
 
-            {/* Description Section - Reduced spacing on desktop */}
-            <div className="mb-12 sm:mb-16 lg:mb-10">
+            {/* Description Section - Better spacing on desktop */}
+            <div className="mb-12 sm:mb-16 lg:mt-8 lg:mb-10">
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-6 sm:mb-8">
                 {t('event.aboutEvent')}
               </h2>
