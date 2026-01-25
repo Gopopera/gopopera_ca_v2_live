@@ -41,6 +41,7 @@ import { CityInput } from './components/layout/CityInput';
 import { FilterDrawer } from './components/filters/FilterDrawer';
 import { SeoHelmet } from './components/seo/SeoHelmet';
 import { CookieConsentBanner } from './components/ui/CookieConsentBanner';
+import { PageErrorBoundary } from './components/error/PageErrorBoundary';
 import { MAIN_CATEGORIES, MAIN_CATEGORY_LABELS, type MainCategory } from './utils/categoryMapper';
 // Route-level code splitting for performance
 const LandingPage = React.lazy(() => import('./src/pages/LandingPage').then(m => ({ default: m.LandingPage })));
@@ -1889,498 +1890,500 @@ const AppContent: React.FC = () => {
       )}
 
       <div className="flex-grow">
-        {/* Single Suspense boundary for ALL lazy-loaded pages */}
-        <React.Suspense fallback={<PageSkeleton />}>
-          {viewState === ViewState.LANDING && (
-            <LandingPage
-              setViewState={setViewState}
-              events={allEvents}
-              onEventClick={handleEventClick}
-              onChatClick={handleChatClick}
-              onReviewsClick={handleReviewsClick}
-              onHostClick={handleHostClick}
-              isLoggedIn={isLoggedIn}
-              favorites={favorites}
-              onToggleFavorite={handleToggleFavorite}
-              setSelectedBlogSlug={setSelectedBlogSlug}
-            />
-          )}
+        {/* Error boundary catches chunk load failures; Suspense handles loading */}
+        <PageErrorBoundary>
+          <React.Suspense fallback={<PageSkeleton />}>
+            {viewState === ViewState.LANDING && (
+              <LandingPage
+                setViewState={setViewState}
+                events={allEvents}
+                onEventClick={handleEventClick}
+                onChatClick={handleChatClick}
+                onReviewsClick={handleReviewsClick}
+                onHostClick={handleHostClick}
+                isLoggedIn={isLoggedIn}
+                favorites={favorites}
+                onToggleFavorite={handleToggleFavorite}
+                setSelectedBlogSlug={setSelectedBlogSlug}
+              />
+            )}
 
-          {viewState === ViewState.AUTH && (
-            <AuthPage setViewState={setViewState} onLogin={handleLogin} />
-          )}
+            {viewState === ViewState.AUTH && (
+              <AuthPage setViewState={setViewState} onLogin={handleLogin} />
+            )}
 
-          {viewState === ViewState.PROFILE && (
-            <ProfilePage setViewState={setViewState} userName={user?.displayName || user?.name || ''} onLogout={handleLogout} />
-          )}
+            {viewState === ViewState.PROFILE && (
+              <ProfilePage setViewState={setViewState} userName={user?.displayName || user?.name || ''} onLogout={handleLogout} />
+            )}
 
-          {/* PROFILE SUB-PAGES */}
-          {viewState === ViewState.PROFILE_BASIC && <BasicDetailsPage setViewState={setViewState} />}
-          {viewState === ViewState.PROFILE_NOTIFICATIONS && <NotificationSettingsPage setViewState={setViewState} />}
-          {viewState === ViewState.PROFILE_PRIVACY && <PrivacySettingsPage setViewState={setViewState} />}
-          {viewState === ViewState.PROFILE_STRIPE && <StripeSettingsPage setViewState={setViewState} />}
-          {viewState === ViewState.PAYOUT_SETUP && <PayoutSetupPage setViewState={setViewState} />}
-          {viewState === ViewState.PAYOUTS && <PayoutsPage setViewState={setViewState} />}
-          {viewState === ViewState.PROFILE_REVIEWS && <MyReviewsPage setViewState={setViewState} onHostClick={handleHostClick} />}
-          {viewState === ViewState.PROFILE_FOLLOWING && <FollowingPage setViewState={setViewState} onHostClick={handleHostClick} />}
-          {viewState === ViewState.PROFILE_FOLLOWERS && <FollowersPage setViewState={setViewState} onHostClick={handleHostClick} />}
-          {viewState === ViewState.DELETE_ACCOUNT && <DeleteAccountPage setViewState={setViewState} onConfirmDelete={handleLogout} />}
+            {/* PROFILE SUB-PAGES */}
+            {viewState === ViewState.PROFILE_BASIC && <BasicDetailsPage setViewState={setViewState} />}
+            {viewState === ViewState.PROFILE_NOTIFICATIONS && <NotificationSettingsPage setViewState={setViewState} />}
+            {viewState === ViewState.PROFILE_PRIVACY && <PrivacySettingsPage setViewState={setViewState} />}
+            {viewState === ViewState.PROFILE_STRIPE && <StripeSettingsPage setViewState={setViewState} />}
+            {viewState === ViewState.PAYOUT_SETUP && <PayoutSetupPage setViewState={setViewState} />}
+            {viewState === ViewState.PAYOUTS && <PayoutsPage setViewState={setViewState} />}
+            {viewState === ViewState.PROFILE_REVIEWS && <MyReviewsPage setViewState={setViewState} onHostClick={handleHostClick} />}
+            {viewState === ViewState.PROFILE_FOLLOWING && <FollowingPage setViewState={setViewState} onHostClick={handleHostClick} />}
+            {viewState === ViewState.PROFILE_FOLLOWERS && <FollowersPage setViewState={setViewState} onHostClick={handleHostClick} />}
+            {viewState === ViewState.DELETE_ACCOUNT && <DeleteAccountPage setViewState={setViewState} onConfirmDelete={handleLogout} />}
 
-          {/* CONFIRM RESERVATION (Confirm & Pay) */}
-          {viewState === ViewState.CONFIRM_RESERVATION && selectedEvent && (
-            <ConfirmReservationPage
-              event={selectedEvent}
-              setViewState={setViewState}
-              onHostClick={handleHostClick}
-              onConfirm={async (attendeeCount, supportContribution, paymentMethod, attendeePhone) => {
-                if (!user?.uid) {
-                  setViewState(ViewState.AUTH);
-                  window.history.pushState({ viewState: ViewState.AUTH }, '', '/auth?mode=signin');
-                  throw new Error('User not logged in');
-                }
+            {/* CONFIRM RESERVATION (Confirm & Pay) */}
+            {viewState === ViewState.CONFIRM_RESERVATION && selectedEvent && (
+              <ConfirmReservationPage
+                event={selectedEvent}
+                setViewState={setViewState}
+                onHostClick={handleHostClick}
+                onConfirm={async (attendeeCount, supportContribution, paymentMethod, attendeePhone) => {
+                  if (!user?.uid) {
+                    setViewState(ViewState.AUTH);
+                    window.history.pushState({ viewState: ViewState.AUTH }, '', '/auth?mode=signin');
+                    throw new Error('User not logged in');
+                  }
 
-                // Create a single reservation with attendee count
-                // Import pricing helpers to determine pricing mode
-                const { getEventPricingType, getEventFeeAmount } = await import('./utils/stripeHelpers');
+                  // Create a single reservation with attendee count
+                  // Import pricing helpers to determine pricing mode
+                  const { getEventPricingType, getEventFeeAmount } = await import('./utils/stripeHelpers');
 
-                // Calculate total amount using the correct fee amount
-                const feeAmountCents = getEventFeeAmount(selectedEvent);
-                const pricePerAttendee = feeAmountCents / 100; // Convert cents to dollars
-                const subtotal = pricePerAttendee * attendeeCount;
-                const totalAmount = subtotal + supportContribution;
+                  // Calculate total amount using the correct fee amount
+                  const feeAmountCents = getEventFeeAmount(selectedEvent);
+                  const pricePerAttendee = feeAmountCents / 100; // Convert cents to dollars
+                  const subtotal = pricePerAttendee * attendeeCount;
+                  const totalAmount = subtotal + supportContribution;
 
-                // Determine pricing mode from event
-                const pricingMode = getEventPricingType(selectedEvent);
+                  // Determine pricing mode from event
+                  const pricingMode = getEventPricingType(selectedEvent);
 
-                // Create reservation with options (this will also send notifications)
-                const reservationId = await addRSVP(user.uid, selectedEvent.id, {
-                  attendeeCount,
-                  supportContribution: supportContribution > 0 ? supportContribution : undefined,
-                  // Only set paymentMethod for online payments (Stripe)
-                  paymentMethod: pricingMode === 'online' ? paymentMethod : undefined,
-                  totalAmount: totalAmount > 0 ? Math.round(totalAmount * 100) : undefined, // Store in cents
-                  pricingMode: pricingMode, // Track pricing mode
-                  // Pass phone for door payments (optional)
-                  attendeePhone: attendeePhone || undefined,
-                });
+                  // Create reservation with options (this will also send notifications)
+                  const reservationId = await addRSVP(user.uid, selectedEvent.id, {
+                    attendeeCount,
+                    supportContribution: supportContribution > 0 ? supportContribution : undefined,
+                    // Only set paymentMethod for online payments (Stripe)
+                    paymentMethod: pricingMode === 'online' ? paymentMethod : undefined,
+                    totalAmount: totalAmount > 0 ? Math.round(totalAmount * 100) : undefined, // Store in cents
+                    pricingMode: pricingMode, // Track pricing mode
+                    // Pass phone for door payments (optional)
+                    attendeePhone: attendeePhone || undefined,
+                  });
 
-                // Update attendee count
-                const { getReservationCountForEvent } = await import('./firebase/db');
-                const newCount = await getReservationCountForEvent(selectedEvent.id);
-                const { updateEvent: updateEventInStore } = useEventStore.getState();
-                updateEventInStore(selectedEvent.id, { attendeesCount: newCount });
+                  // Update attendee count
+                  const { getReservationCountForEvent } = await import('./firebase/db');
+                  const newCount = await getReservationCountForEvent(selectedEvent.id);
+                  const { updateEvent: updateEventInStore } = useEventStore.getState();
+                  updateEventInStore(selectedEvent.id, { attendeesCount: newCount });
 
-                // Refresh user profile
-                await useUserStore.getState().refreshUserProfile();
+                  // Refresh user profile
+                  await useUserStore.getState().refreshUserProfile();
 
-                // Navigate to ticket page
-                const ticketUrl = `/ticket/${reservationId}`;
-                window.history.pushState({ viewState: ViewState.TICKET, reservationId }, '', ticketUrl);
-                setViewState(ViewState.TICKET);
+                  // Navigate to ticket page
+                  const ticketUrl = `/ticket/${reservationId}`;
+                  window.history.pushState({ viewState: ViewState.TICKET, reservationId }, '', ticketUrl);
+                  setViewState(ViewState.TICKET);
 
-                return reservationId;
-              }}
-            />
-          )}
+                  return reservationId;
+                }}
+              />
+            )}
 
-          {/* RESERVATION CONFIRMATION (legacy modal) */}
-          {viewState === ViewState.RESERVATION_CONFIRMED && confirmedReservation && (
-            <ReservationConfirmationPage
-              event={confirmedReservation.event}
-              reservationId={confirmedReservation.reservationId}
-              setViewState={setViewState}
-            />
-          )}
+            {/* RESERVATION CONFIRMATION (legacy modal) */}
+            {viewState === ViewState.RESERVATION_CONFIRMED && confirmedReservation && (
+              <ReservationConfirmationPage
+                event={confirmedReservation.event}
+                reservationId={confirmedReservation.reservationId}
+                setViewState={setViewState}
+              />
+            )}
 
-          {/* TICKET PAGE */}
-          {viewState === ViewState.TICKET && <TicketPage setViewState={setViewState} />}
+            {/* TICKET PAGE */}
+            {viewState === ViewState.TICKET && <TicketPage setViewState={setViewState} />}
 
-          {viewState === ViewState.CREATE_EVENT && <CreateEventPage setViewState={setViewState} />}
-          {viewState === ViewState.EDIT_EVENT && selectedEvent && (
-            <EditEventPage setViewState={setViewState} event={selectedEvent} eventId={selectedEvent.id} />
-          )}
+            {viewState === ViewState.CREATE_EVENT && <CreateEventPage setViewState={setViewState} />}
+            {viewState === ViewState.EDIT_EVENT && selectedEvent && (
+              <EditEventPage setViewState={setViewState} event={selectedEvent} eventId={selectedEvent.id} />
+            )}
 
-          {viewState === ViewState.NOTIFICATIONS && <NotificationsPage setViewState={setViewState} />}
-          {viewState === ViewState.MY_POPS && (
-            <MyPopsPage
-              setViewState={setViewState}
-              events={allEvents}
-              onEventClick={handleEventClick}
-              onChatClick={handleChatClick}
-              onReviewsClick={handleReviewsClick}
-              isLoggedIn={isLoggedIn}
-              favorites={favorites}
-              onToggleFavorite={handleToggleFavorite}
-              onEditEvent={(event) => {
-                setSelectedEvent(event);
-                setViewState(ViewState.EDIT_EVENT);
-              }}
-            />
-          )}
-          {viewState === ViewState.FAVORITES && (
-            <FavoritesPage
-              setViewState={setViewState}
-              events={allEvents}
-              onEventClick={handleEventClick}
-              onChatClick={handleChatClick}
-              onReviewsClick={handleReviewsClick}
-              favorites={favorites}
-              onToggleFavorite={handleToggleFavorite}
-            />
-          )}
-          {viewState === ViewState.MY_CALENDAR && (
-            <MyCalendarPage setViewState={setViewState} events={allEvents} onEventClick={handleEventClick} />
-          )}
+            {viewState === ViewState.NOTIFICATIONS && <NotificationsPage setViewState={setViewState} />}
+            {viewState === ViewState.MY_POPS && (
+              <MyPopsPage
+                setViewState={setViewState}
+                events={allEvents}
+                onEventClick={handleEventClick}
+                onChatClick={handleChatClick}
+                onReviewsClick={handleReviewsClick}
+                isLoggedIn={isLoggedIn}
+                favorites={favorites}
+                onToggleFavorite={handleToggleFavorite}
+                onEditEvent={(event) => {
+                  setSelectedEvent(event);
+                  setViewState(ViewState.EDIT_EVENT);
+                }}
+              />
+            )}
+            {viewState === ViewState.FAVORITES && (
+              <FavoritesPage
+                setViewState={setViewState}
+                events={allEvents}
+                onEventClick={handleEventClick}
+                onChatClick={handleChatClick}
+                onReviewsClick={handleReviewsClick}
+                favorites={favorites}
+                onToggleFavorite={handleToggleFavorite}
+              />
+            )}
+            {viewState === ViewState.MY_CALENDAR && (
+              <MyCalendarPage setViewState={setViewState} events={allEvents} onEventClick={handleEventClick} />
+            )}
 
-          {viewState === ViewState.ABOUT && <AboutPage setViewState={setViewState} />}
-          {viewState === ViewState.CAREERS && <CareersPage setViewState={setViewState} />}
-          {viewState === ViewState.CONTACT && <ContactPage setViewState={setViewState} />}
-          {viewState === ViewState.DEBUG_ENV && <DebugEnvPage setViewState={setViewState} />}
-          {viewState === ViewState.VERIFY_FIREBASE && <VerifyFirebasePage />}
-          {viewState === ViewState.DEBUG_SEED_DEMO && <DebugSeedDemoEventsPage setViewState={setViewState} />}
-          {viewState === ViewState.DEBUG_CLEANUP_REVIEWS && <CleanupReviewsPage setViewState={setViewState} />}
-          {viewState === ViewState.DEBUG_RESERVATIONS && <DebugReservationsPage onBack={() => setViewState(ViewState.PROFILE)} />}
-          {viewState === ViewState.TERMS && <TermsPage setViewState={setViewState} />}
-          {viewState === ViewState.PRIVACY && <PrivacyPage setViewState={setViewState} />}
-          {viewState === ViewState.CANCELLATION && <CancellationPage setViewState={setViewState} />}
-          {viewState === ViewState.GUIDELINES && <GuidelinesPage setViewState={setViewState} />}
-          {viewState === ViewState.REPORT_EVENT && <ReportPage setViewState={setViewState} />}
-          {viewState === ViewState.HELP && <HelpPage setViewState={setViewState} />}
-          {viewState === ViewState.SAFETY && <SafetyPage setViewState={setViewState} />}
-          {viewState === ViewState.PRESS && <PressPage setViewState={setViewState} />}
-          {viewState === ViewState.TICKETS_AND_PAYMENTS && <TicketsAndPaymentsPage setViewState={setViewState} />}
-          {viewState === ViewState.GUIDE_10_SEAT && <Guide10SeatPlaybookPage setViewState={setViewState} />}
-          {viewState === ViewState.MARKETING_HUB && <MarketingHubPage setViewState={setViewState} />}
-          {viewState === ViewState.UNSUBSCRIBE && <UnsubscribePage setViewState={setViewState} />}
-          {viewState === ViewState.BLOG && <BlogListPage setViewState={setViewState} setSelectedBlogSlug={setSelectedBlogSlug} />}
-          {viewState === ViewState.BLOG_POST && selectedBlogSlug && (
-            <BlogPostPage slug={selectedBlogSlug} setViewState={setViewState} setSelectedBlogSlug={setSelectedBlogSlug} />
-          )}
+            {viewState === ViewState.ABOUT && <AboutPage setViewState={setViewState} />}
+            {viewState === ViewState.CAREERS && <CareersPage setViewState={setViewState} />}
+            {viewState === ViewState.CONTACT && <ContactPage setViewState={setViewState} />}
+            {viewState === ViewState.DEBUG_ENV && <DebugEnvPage setViewState={setViewState} />}
+            {viewState === ViewState.VERIFY_FIREBASE && <VerifyFirebasePage />}
+            {viewState === ViewState.DEBUG_SEED_DEMO && <DebugSeedDemoEventsPage setViewState={setViewState} />}
+            {viewState === ViewState.DEBUG_CLEANUP_REVIEWS && <CleanupReviewsPage setViewState={setViewState} />}
+            {viewState === ViewState.DEBUG_RESERVATIONS && <DebugReservationsPage onBack={() => setViewState(ViewState.PROFILE)} />}
+            {viewState === ViewState.TERMS && <TermsPage setViewState={setViewState} />}
+            {viewState === ViewState.PRIVACY && <PrivacyPage setViewState={setViewState} />}
+            {viewState === ViewState.CANCELLATION && <CancellationPage setViewState={setViewState} />}
+            {viewState === ViewState.GUIDELINES && <GuidelinesPage setViewState={setViewState} />}
+            {viewState === ViewState.REPORT_EVENT && <ReportPage setViewState={setViewState} />}
+            {viewState === ViewState.HELP && <HelpPage setViewState={setViewState} />}
+            {viewState === ViewState.SAFETY && <SafetyPage setViewState={setViewState} />}
+            {viewState === ViewState.PRESS && <PressPage setViewState={setViewState} />}
+            {viewState === ViewState.TICKETS_AND_PAYMENTS && <TicketsAndPaymentsPage setViewState={setViewState} />}
+            {viewState === ViewState.GUIDE_10_SEAT && <Guide10SeatPlaybookPage setViewState={setViewState} />}
+            {viewState === ViewState.MARKETING_HUB && <MarketingHubPage setViewState={setViewState} />}
+            {viewState === ViewState.UNSUBSCRIBE && <UnsubscribePage setViewState={setViewState} />}
+            {viewState === ViewState.BLOG && <BlogListPage setViewState={setViewState} setSelectedBlogSlug={setSelectedBlogSlug} />}
+            {viewState === ViewState.BLOG_POST && selectedBlogSlug && (
+              <BlogPostPage slug={selectedBlogSlug} setViewState={setViewState} setSelectedBlogSlug={setSelectedBlogSlug} />
+            )}
 
-          {viewState === ViewState.HOST_PROFILE && selectedHost && (
-            <HostProfile
-              hostName={selectedHost}
-              hostId={selectedHostId || undefined}
-              onBack={() => setViewState(ViewState.FEED)}
-              onEventClick={handleEventClick}
-              allEvents={allEvents}
-              isLoggedIn={isLoggedIn}
-              favorites={favorites}
-              onToggleFavorite={handleToggleFavorite}
-            />
-          )}
+            {viewState === ViewState.HOST_PROFILE && selectedHost && (
+              <HostProfile
+                hostName={selectedHost}
+                hostId={selectedHostId || undefined}
+                onBack={() => setViewState(ViewState.FEED)}
+                onEventClick={handleEventClick}
+                allEvents={allEvents}
+                isLoggedIn={isLoggedIn}
+                favorites={favorites}
+                onToggleFavorite={handleToggleFavorite}
+              />
+            )}
 
-          {viewState === ViewState.FEED && (
-            <main className="min-h-screen pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-12 sm:pb-16 md:pb-20 lg:pb-24 bg-[#FAFAFA]">
-              {/* SEO: Explore/Feed page meta tags */}
-              <SeoHelmet viewState={ViewState.FEED} />
+            {viewState === ViewState.FEED && (
+              <main className="min-h-screen pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-12 sm:pb-16 md:pb-20 lg:pb-24 bg-[#FAFAFA]">
+                {/* SEO: Explore/Feed page meta tags */}
+                <SeoHelmet viewState={ViewState.FEED} />
 
-              {/* Container wrapper for consistent alignment */}
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                {/* Container wrapper for consistent alignment */}
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-                {/* Header Section - Matching Landing Page Structure */}
-                <div className="mb-6 sm:mb-8 md:mb-10 lg:mb-12">
-                  {/* Page Tag, Title, Subtitle */}
-                  <div className="flex flex-col gap-4 sm:gap-5 md:gap-6 mb-6 sm:mb-8 md:mb-10">
-                    <div className="max-w-3xl">
-                      <div className="mb-3 sm:mb-4 px-4 sm:px-0">
-                        <span className="inline-flex items-center gap-2 py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">
-                          <Sparkles size={10} className="sm:w-3 sm:h-3 -mt-0.5" />
-                          {t('feed.discover')}
-                        </span>
-                      </div>
-                      <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-[#15383c] mb-2 sm:mb-3 md:mb-4 px-4 sm:px-0">{t('feed.explorePopups')}</h1>
-                      <p className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-500 font-light leading-relaxed px-4 sm:px-0">{t('feed.description')}</p>
-                    </div>
-
-                    {/* Search Inputs Row - Below Title (matching landing page) */}
-                    <div className="mt-4 space-y-6 px-4 sm:px-0">
-                      <div className="flex flex-col md:flex-row gap-3 w-full md:max-w-3xl relative z-30">
-
-                        {/* City Input with Autocomplete */}
-                        <div className="w-full md:w-1/3">
-                          <CityInput />
+                  {/* Header Section - Matching Landing Page Structure */}
+                  <div className="mb-6 sm:mb-8 md:mb-10 lg:mb-12">
+                    {/* Page Tag, Title, Subtitle */}
+                    <div className="flex flex-col gap-4 sm:gap-5 md:gap-6 mb-6 sm:mb-8 md:mb-10">
+                      <div className="max-w-3xl">
+                        <div className="mb-3 sm:mb-4 px-4 sm:px-0">
+                          <span className="inline-flex items-center gap-2 py-1 sm:py-1.5 md:py-2 px-3.5 sm:px-4 md:px-5 rounded-full bg-[#15383c]/5 border border-[#15383c]/10 text-[#e35e25] text-[9px] sm:text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase">
+                            <Sparkles size={10} className="sm:w-3 sm:h-3 -mt-0.5" />
+                            {t('feed.discover')}
+                          </span>
                         </div>
+                        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-heading font-bold text-[#15383c] mb-2 sm:mb-3 md:mb-4 px-4 sm:px-0">{t('feed.explorePopups')}</h1>
+                        <p className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-500 font-light leading-relaxed px-4 sm:px-0">{t('feed.description')}</p>
+                      </div>
 
-                        {/* Keyword Search Bar */}
-                        <div className="relative w-full md:w-2/3 group z-10">
-                          <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                            <Search size={20} className="text-gray-400 group-focus-within:text-[#e35e25] transition-colors" />
+                      {/* Search Inputs Row - Below Title (matching landing page) */}
+                      <div className="mt-4 space-y-6 px-4 sm:px-0">
+                        <div className="flex flex-col md:flex-row gap-3 w-full md:max-w-3xl relative z-30">
+
+                          {/* City Input with Autocomplete */}
+                          <div className="w-full md:w-1/3">
+                            <CityInput />
                           </div>
-                          <input
-                            type="text"
-                            placeholder={t('feed.searchPlaceholder')}
-                            className="w-full pl-12 pr-4 py-3.5 md:py-4 min-h-[48px] sm:min-h-0 bg-white border border-gray-200 rounded-full text-base sm:text-sm focus:outline-none focus:border-[#15383c] focus:ring-2 focus:ring-[#15383c]/10 shadow-sm hover:shadow-md transition-all"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                          />
-                        </div>
-                      </div>
 
-                      {/* Category Tabs + Filter Button */}
-                      <div className="mt-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="text-sm font-semibold text-gray-600">Filter by Category</h3>
-                          <button
-                            onClick={() => setFilterDrawerOpen(true)}
-                            className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border-2 border-[#15383c] text-[#15383c] font-medium hover:bg-[#15383c] hover:text-white transition-colors flex-shrink-0 touch-manipulation active:scale-[0.95] text-xs sm:text-sm"
-                          >
-                            <Filter size={16} className="sm:w-[18px] sm:h-[18px]" />
-                            <span className="hidden sm:inline">Filters</span>
-                            {getActiveFilterCount() > 0 && (
-                              <span className="px-1.5 py-0.5 rounded-full bg-[#e35e25] text-white text-[10px] sm:text-xs font-bold">
-                                {getActiveFilterCount()}
-                              </span>
-                            )}
-                          </button>
+                          {/* Keyword Search Bar */}
+                          <div className="relative w-full md:w-2/3 group z-10">
+                            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                              <Search size={20} className="text-gray-400 group-focus-within:text-[#e35e25] transition-colors" />
+                            </div>
+                            <input
+                              type="text"
+                              placeholder={t('feed.searchPlaceholder')}
+                              className="w-full pl-12 pr-4 py-3.5 md:py-4 min-h-[48px] sm:min-h-0 bg-white border border-gray-200 rounded-full text-base sm:text-sm focus:outline-none focus:border-[#15383c] focus:ring-2 focus:ring-[#15383c]/10 shadow-sm hover:shadow-md transition-all"
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                          </div>
                         </div>
-                        <div className="relative z-10">
-                          <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4 scroll-pr-32 md:scroll-pr-4">
-                            {/* All tab */}
+
+                        {/* Category Tabs + Filter Button */}
+                        <div className="mt-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-sm font-semibold text-gray-600">Filter by Category</h3>
                             <button
-                              onClick={() => setFilter('mainCategory', null)}
-                              className={`shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-bold tracking-wider uppercase transition-all touch-manipulation active:scale-[0.95] ${filters.mainCategory === null
-                                ? 'bg-[#e35e25] text-white shadow-md'
-                                : 'bg-white/20 backdrop-blur-md text-[#15383c] border border-[#15383c]/20 hover:border-[#e35e25] hover:text-[#e35e25]'
-                                }`}
+                              onClick={() => setFilterDrawerOpen(true)}
+                              className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border-2 border-[#15383c] text-[#15383c] font-medium hover:bg-[#15383c] hover:text-white transition-colors flex-shrink-0 touch-manipulation active:scale-[0.95] text-xs sm:text-sm"
                             >
-                              All
+                              <Filter size={16} className="sm:w-[18px] sm:h-[18px]" />
+                              <span className="hidden sm:inline">Filters</span>
+                              {getActiveFilterCount() > 0 && (
+                                <span className="px-1.5 py-0.5 rounded-full bg-[#e35e25] text-white text-[10px] sm:text-xs font-bold">
+                                  {getActiveFilterCount()}
+                                </span>
+                              )}
                             </button>
-                            {/* Category tabs */}
-                            {MAIN_CATEGORIES.map(category => (
+                          </div>
+                          <div className="relative z-10">
+                            <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 md:mx-0 md:px-0 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4 scroll-pr-32 md:scroll-pr-4">
+                              {/* All tab */}
                               <button
-                                key={category}
-                                onClick={() => setFilter('mainCategory', filters.mainCategory === category ? null : category)}
-                                className={`shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-bold tracking-wider uppercase transition-all touch-manipulation active:scale-[0.95] whitespace-nowrap ${filters.mainCategory === category
+                                onClick={() => setFilter('mainCategory', null)}
+                                className={`shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-bold tracking-wider uppercase transition-all touch-manipulation active:scale-[0.95] ${filters.mainCategory === null
                                   ? 'bg-[#e35e25] text-white shadow-md'
                                   : 'bg-white/20 backdrop-blur-md text-[#15383c] border border-[#15383c]/20 hover:border-[#e35e25] hover:text-[#e35e25]'
                                   }`}
                               >
-                                {MAIN_CATEGORY_LABELS[category]}
+                                All
                               </button>
-                            ))}
+                              {/* Category tabs */}
+                              {MAIN_CATEGORIES.map(category => (
+                                <button
+                                  key={category}
+                                  onClick={() => setFilter('mainCategory', filters.mainCategory === category ? null : category)}
+                                  className={`shrink-0 px-4 py-2 rounded-full text-xs sm:text-sm font-bold tracking-wider uppercase transition-all touch-manipulation active:scale-[0.95] whitespace-nowrap ${filters.mainCategory === category
+                                    ? 'bg-[#e35e25] text-white shadow-md'
+                                    : 'bg-white/20 backdrop-blur-md text-[#15383c] border border-[#15383c]/20 hover:border-[#e35e25] hover:text-[#e35e25]'
+                                    }`}
+                                >
+                                  {MAIN_CATEGORY_LABELS[category]}
+                                </button>
+                              ))}
+                            </div>
+                            <div className="absolute right-0 top-0 bottom-2 w-6 sm:w-8 bg-gradient-to-l from-[#FAFAFA] to-transparent pointer-events-none md:hidden"></div>
                           </div>
-                          <div className="absolute right-0 top-0 bottom-2 w-6 sm:w-8 bg-gradient-to-l from-[#FAFAFA] to-transparent pointer-events-none md:hidden"></div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Use EventFeed component with filters */}
-                <React.Suspense fallback={<div className="text-center py-20">Loading events...</div>}>
-                  <EventFeed
-                    events={filteredEvents}
-                    onEventClick={handleEventClick}
-                    onChatClick={handleChatClick}
-                    onReviewsClick={handleReviewsClick}
-                    isLoggedIn={isLoggedIn}
-                    favorites={favorites}
-                    onToggleFavorite={handleToggleFavorite}
+                  {/* Use EventFeed component with filters */}
+                  <React.Suspense fallback={<div className="text-center py-20">Loading events...</div>}>
+                    <EventFeed
+                      events={filteredEvents}
+                      onEventClick={handleEventClick}
+                      onChatClick={handleChatClick}
+                      onReviewsClick={handleReviewsClick}
+                      isLoggedIn={isLoggedIn}
+                      favorites={favorites}
+                      onToggleFavorite={handleToggleFavorite}
+                    />
+                  </React.Suspense>
+
+                  {/* Filter Drawer for Explore Page */}
+                  <FilterDrawer
+                    isOpen={isFilterDrawerOpen}
+                    onClose={() => setFilterDrawerOpen(false)}
+                    events={allEvents}
                   />
-                </React.Suspense>
 
-                {/* Filter Drawer for Explore Page */}
-                <FilterDrawer
-                  isOpen={isFilterDrawerOpen}
-                  onClose={() => setFilterDrawerOpen(false)}
-                  events={allEvents}
-                />
-
-                {/* Legacy grouped view - disabled, using EventFeed instead */}
-                {false && (
-                  <div className="space-y-4">
-                    {(() => {
-                      const filteredEventsByCity: Record<string, Event[]> = {};
-                      filteredEvents.forEach((event) => {
-                        if (event?.city) {
-                          if (!filteredEventsByCity[event.city]) {
-                            filteredEventsByCity[event.city] = [];
+                  {/* Legacy grouped view - disabled, using EventFeed instead */}
+                  {false && (
+                    <div className="space-y-4">
+                      {(() => {
+                        const filteredEventsByCity: Record<string, Event[]> = {};
+                        filteredEvents.forEach((event) => {
+                          if (event?.city) {
+                            if (!filteredEventsByCity[event.city]) {
+                              filteredEventsByCity[event.city] = [];
+                            }
+                            filteredEventsByCity[event.city].push(event);
                           }
-                          filteredEventsByCity[event.city].push(event);
+                        });
+
+                        // Sort cities: selected city first, then alphabetically
+                        const cityEntries = Object.entries(filteredEventsByCity);
+                        const selectedCityName = location && location !== 'montreal'
+                          ? cityEntries.find(([city]) =>
+                            city.toLowerCase().includes(location.toLowerCase()) ||
+                            location.toLowerCase().includes(city.split(',')[0].toLowerCase())
+                          )?.[0]
+                          : null;
+
+                        // Sort: selected city first, then alphabetically
+                        cityEntries.sort(([cityA], [cityB]) => {
+                          if (selectedCityName) {
+                            if (cityA === selectedCityName) return -1;
+                            if (cityB === selectedCityName) return 1;
+                          }
+                          return cityA.localeCompare(cityB);
+                        });
+
+                        if (cityEntries.length === 0) {
+                          return (
+                            <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
+                              <p className="text-gray-500">No events found matching your criteria.</p>
+                              <button
+                                onClick={() => {
+                                  setSearchQuery('');
+                                  setCity('montreal');
+                                  setFilter('mainCategory', null);
+                                }}
+                                className="mt-4 text-[#e35e25] font-bold hover:underline"
+                              >
+                                Clear Filters
+                              </button>
+                            </div>
+                          );
                         }
-                      });
 
-                      // Sort cities: selected city first, then alphabetically
-                      const cityEntries = Object.entries(filteredEventsByCity);
-                      const selectedCityName = location && location !== 'montreal'
-                        ? cityEntries.find(([city]) =>
-                          city.toLowerCase().includes(location.toLowerCase()) ||
-                          location.toLowerCase().includes(city.split(',')[0].toLowerCase())
-                        )?.[0]
-                        : null;
-
-                      // Sort: selected city first, then alphabetically
-                      cityEntries.sort(([cityA], [cityB]) => {
-                        if (selectedCityName) {
-                          if (cityA === selectedCityName) return -1;
-                          if (cityB === selectedCityName) return 1;
-                        }
-                        return cityA.localeCompare(cityB);
-                      });
-
-                      if (cityEntries.length === 0) {
                         return (
-                          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
-                            <p className="text-gray-500">No events found matching your criteria.</p>
-                            <button
-                              onClick={() => {
-                                setSearchQuery('');
-                                setCity('montreal');
-                                setFilter('mainCategory', null);
-                              }}
-                              className="mt-4 text-[#e35e25] font-bold hover:underline"
-                            >
-                              Clear Filters
-                            </button>
+                          <div className="space-y-8 sm:space-y-10 md:space-y-12">
+                            {cityEntries.map(([cityName, cityEvents]) => {
+                              const scrollContainerId = `city-scroll-${cityName.replace(/\s+/g, '-')}`;
+
+                              const scrollLeft = () => {
+                                const container = document.getElementById(scrollContainerId);
+                                if (container) {
+                                  container.scrollBy({ left: -400, behavior: 'smooth' });
+                                }
+                              };
+
+                              const scrollRight = () => {
+                                const container = document.getElementById(scrollContainerId);
+                                if (container) {
+                                  container.scrollBy({ left: 400, behavior: 'smooth' });
+                                }
+                              };
+
+                              return (
+                                <div key={cityName} className="mb-8 sm:mb-10 md:mb-12">
+                                  <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">
+                                    {cityName}
+                                  </h2>
+                                  {/* Mobile: Horizontal scroll, Desktop: Horizontal scroll with 4 per row */}
+                                  <div className="relative group">
+                                    {/* Left Arrow - Desktop only */}
+                                    <button
+                                      onClick={scrollLeft}
+                                      className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100"
+                                      aria-label="Scroll left"
+                                    >
+                                      <ChevronLeft size={20} />
+                                    </button>
+
+                                    {/* Scrollable Container - Scrollable anywhere on screen */}
+                                    <div
+                                      id={scrollContainerId}
+                                      className="flex overflow-x-auto gap-4 md:gap-5 lg:gap-6 pb-2 md:pb-6 snap-x snap-mandatory scroll-smooth hide-scrollbar w-full touch-pan-x overscroll-x-contain scroll-pl-4 md:scroll-pl-0 cursor-grab active:cursor-grabbing"
+                                      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-x pan-y', WebkitOverflowScrolling: 'touch' }}
+                                      onWheel={(e) => {
+                                        // Allow horizontal scrolling with mouse wheel when hovering over the container
+                                        const container = e.currentTarget;
+                                        if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
+                                          // Use requestAnimationFrame to avoid passive listener warning
+                                          requestAnimationFrame(() => {
+                                            container.scrollLeft += e.deltaY;
+                                          });
+                                        }
+                                      }}
+                                      onMouseDown={(e) => {
+                                        // Enable drag scrolling - only on non-touch devices
+                                        if ('ontouchstart' in window) return;
+
+                                        const container = e.currentTarget;
+                                        const startX = e.pageX - container.offsetLeft;
+                                        const scrollLeft = container.scrollLeft;
+                                        let isDown = true;
+
+                                        const handleMouseMove = (e: MouseEvent) => {
+                                          if (!isDown) return;
+                                          const x = e.pageX - container.offsetLeft;
+                                          const walk = (x - startX) * 2;
+                                          container.scrollLeft = scrollLeft - walk;
+                                        };
+
+                                        const handleMouseUp = () => {
+                                          isDown = false;
+                                          document.removeEventListener('mousemove', handleMouseMove);
+                                          document.removeEventListener('mouseup', handleMouseUp);
+                                        };
+
+                                        document.addEventListener('mousemove', handleMouseMove, { passive: true });
+                                        document.addEventListener('mouseup', handleMouseUp, { passive: true });
+                                      }}
+                                    >
+                                      {cityEvents.map(event => (
+                                        <div key={event.id} className="snap-start shrink-0 w-[85vw] sm:w-[70vw] md:w-[calc(25%-1.5rem)] lg:w-[calc(25%-2rem)] flex-shrink-0" style={{ touchAction: 'pan-x pan-y' }}>
+                                          <EventCard
+                                            event={event}
+                                            onClick={handleEventClick}
+                                            onChatClick={handleChatClick}
+                                            onReviewsClick={handleReviewsClick}
+                                            isLoggedIn={isLoggedIn}
+                                            isFavorite={favorites.includes(event.id)}
+                                            onToggleFavorite={handleToggleFavorite}
+                                          />
+                                        </div>
+                                      ))}
+                                    </div>
+
+                                    {/* Right Arrow - Desktop only */}
+                                    <button
+                                      onClick={scrollRight}
+                                      className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100"
+                                      aria-label="Scroll right"
+                                    >
+                                      <ChevronRight size={20} />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         );
-                      }
+                      })()}
+                    </div>
+                  )}
 
-                      return (
-                        <div className="space-y-8 sm:space-y-10 md:space-y-12">
-                          {cityEntries.map(([cityName, cityEvents]) => {
-                            const scrollContainerId = `city-scroll-${cityName.replace(/\s+/g, '-')}`;
+                  {/* Mobile CTA FAB - Only show when logged in */}
+                  {isLoggedIn && (
+                    <button
+                      onClick={() => handleNav(ViewState.CREATE_EVENT)}
+                      className="md:hidden fixed bottom-6 right-4 sm:right-6 w-14 h-14 bg-[#e35e25] rounded-full flex items-center justify-center text-white shadow-2xl shadow-orange-900/40 z-40 hover:scale-105 active:scale-95 transition-transform border-4 border-white touch-manipulation safe-area-inset-bottom"
+                      aria-label="Create Circle"
+                    >
+                      <PlusCircle size={28} />
+                    </button>
+                  )}
+                </div>
+              </main>
+            )}
 
-                            const scrollLeft = () => {
-                              const container = document.getElementById(scrollContainerId);
-                              if (container) {
-                                container.scrollBy({ left: -400, behavior: 'smooth' });
-                              }
-                            };
-
-                            const scrollRight = () => {
-                              const container = document.getElementById(scrollContainerId);
-                              if (container) {
-                                container.scrollBy({ left: 400, behavior: 'smooth' });
-                              }
-                            };
-
-                            return (
-                              <div key={cityName} className="mb-8 sm:mb-10 md:mb-12">
-                                <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-[#15383c] mb-4 sm:mb-6">
-                                  {cityName}
-                                </h2>
-                                {/* Mobile: Horizontal scroll, Desktop: Horizontal scroll with 4 per row */}
-                                <div className="relative group">
-                                  {/* Left Arrow - Desktop only */}
-                                  <button
-                                    onClick={scrollLeft}
-                                    className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100"
-                                    aria-label="Scroll left"
-                                  >
-                                    <ChevronLeft size={20} />
-                                  </button>
-
-                                  {/* Scrollable Container - Scrollable anywhere on screen */}
-                                  <div
-                                    id={scrollContainerId}
-                                    className="flex overflow-x-auto gap-4 md:gap-5 lg:gap-6 pb-2 md:pb-6 snap-x snap-mandatory scroll-smooth hide-scrollbar w-full touch-pan-x overscroll-x-contain scroll-pl-4 md:scroll-pl-0 cursor-grab active:cursor-grabbing"
-                                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-x pan-y', WebkitOverflowScrolling: 'touch' }}
-                                    onWheel={(e) => {
-                                      // Allow horizontal scrolling with mouse wheel when hovering over the container
-                                      const container = e.currentTarget;
-                                      if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
-                                        // Use requestAnimationFrame to avoid passive listener warning
-                                        requestAnimationFrame(() => {
-                                          container.scrollLeft += e.deltaY;
-                                        });
-                                      }
-                                    }}
-                                    onMouseDown={(e) => {
-                                      // Enable drag scrolling - only on non-touch devices
-                                      if ('ontouchstart' in window) return;
-
-                                      const container = e.currentTarget;
-                                      const startX = e.pageX - container.offsetLeft;
-                                      const scrollLeft = container.scrollLeft;
-                                      let isDown = true;
-
-                                      const handleMouseMove = (e: MouseEvent) => {
-                                        if (!isDown) return;
-                                        const x = e.pageX - container.offsetLeft;
-                                        const walk = (x - startX) * 2;
-                                        container.scrollLeft = scrollLeft - walk;
-                                      };
-
-                                      const handleMouseUp = () => {
-                                        isDown = false;
-                                        document.removeEventListener('mousemove', handleMouseMove);
-                                        document.removeEventListener('mouseup', handleMouseUp);
-                                      };
-
-                                      document.addEventListener('mousemove', handleMouseMove, { passive: true });
-                                      document.addEventListener('mouseup', handleMouseUp, { passive: true });
-                                    }}
-                                  >
-                                    {cityEvents.map(event => (
-                                      <div key={event.id} className="snap-start shrink-0 w-[85vw] sm:w-[70vw] md:w-[calc(25%-1.5rem)] lg:w-[calc(25%-2rem)] flex-shrink-0" style={{ touchAction: 'pan-x pan-y' }}>
-                                        <EventCard
-                                          event={event}
-                                          onClick={handleEventClick}
-                                          onChatClick={handleChatClick}
-                                          onReviewsClick={handleReviewsClick}
-                                          isLoggedIn={isLoggedIn}
-                                          isFavorite={favorites.includes(event.id)}
-                                          onToggleFavorite={handleToggleFavorite}
-                                        />
-                                      </div>
-                                    ))}
-                                  </div>
-
-                                  {/* Right Arrow - Desktop only */}
-                                  <button
-                                    onClick={scrollRight}
-                                    className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 items-center justify-center text-[#15383c] hover:bg-[#eef4f5] hover:border-[#15383c] transition-all opacity-0 group-hover:opacity-100"
-                                    aria-label="Scroll right"
-                                  >
-                                    <ChevronRight size={20} />
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-
-                {/* Mobile CTA FAB - Only show when logged in */}
-                {isLoggedIn && (
-                  <button
-                    onClick={() => handleNav(ViewState.CREATE_EVENT)}
-                    className="md:hidden fixed bottom-6 right-4 sm:right-6 w-14 h-14 bg-[#e35e25] rounded-full flex items-center justify-center text-white shadow-2xl shadow-orange-900/40 z-40 hover:scale-105 active:scale-95 transition-transform border-4 border-white touch-manipulation safe-area-inset-bottom"
-                    aria-label="Create Circle"
-                  >
-                    <PlusCircle size={28} />
-                  </button>
-                )}
-              </div>
-            </main>
-          )}
-
-          {viewState === ViewState.DETAIL && selectedEvent && (
-            <EventDetailPage
-              key={selectedEvent.id}
-              event={selectedEvent}
-              setViewState={setViewState}
-              onReviewsClick={handleReviewsClick}
-              onHostClick={handleHostClick}
-              allEvents={allEvents}
-              onEventClick={handleEventClick}
-              isLoggedIn={isLoggedIn}
-              favorites={favorites}
-              onToggleFavorite={handleToggleFavorite}
-              onRSVP={handleRSVP}
-              rsvps={rsvps}
-              onEditEvent={(event) => {
-                setSelectedEvent(event);
-                setViewState(ViewState.EDIT_EVENT);
-              }}
-            />
-          )}
-        </React.Suspense>
+            {viewState === ViewState.DETAIL && selectedEvent && (
+              <EventDetailPage
+                key={selectedEvent.id}
+                event={selectedEvent}
+                setViewState={setViewState}
+                onReviewsClick={handleReviewsClick}
+                onHostClick={handleHostClick}
+                allEvents={allEvents}
+                onEventClick={handleEventClick}
+                isLoggedIn={isLoggedIn}
+                favorites={favorites}
+                onToggleFavorite={handleToggleFavorite}
+                onRSVP={handleRSVP}
+                rsvps={rsvps}
+                onEditEvent={(event) => {
+                  setSelectedEvent(event);
+                  setViewState(ViewState.EDIT_EVENT);
+                }}
+              />
+            )}
+          </React.Suspense>
+        </PageErrorBoundary>
       </div>
 
       {reviewEvent && (
