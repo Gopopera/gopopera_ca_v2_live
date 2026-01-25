@@ -310,6 +310,29 @@ export default async function handler(req: any, res: any) {
       throw new Error(`Failed to save reservation: ${reservationError?.message || 'Unknown error'}`);
     }
 
+    // Sync event attendeeCount for real-time display (especially for unauthenticated users)
+    try {
+      const activeSnapshot = await db
+        .collection('reservations')
+        .where('eventId', '==', eventId)
+        .where('status', 'in', ['reserved', 'checked_in'])
+        .get();
+
+      const totalAttendees = activeSnapshot.docs.reduce((sum, d) => {
+        const data = d.data() || {};
+        return sum + (data.attendeeCount || 1);
+      }, 0);
+
+      await db.collection('events').doc(eventId).update({
+        attendeeCount: totalAttendees,
+      });
+
+      console.log('[CREATE_GUEST_RESERVATION] ✅ Event attendeeCount synced:', { eventId, count: totalAttendees });
+    } catch (syncError) {
+      // Non-fatal - don't fail the reservation if sync fails
+      console.warn('[CREATE_GUEST_RESERVATION] ⚠️ Failed to sync attendeeCount:', syncError);
+    }
+
     const baseUrl = getBaseUrlServer();
     const ticketUrl = `${baseUrl}/ticket/${reservationId}?t=${publicToken}`;
 
