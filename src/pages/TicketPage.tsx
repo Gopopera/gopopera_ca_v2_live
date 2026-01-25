@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Event, ViewState } from '../../types';
-import { 
-  Download, Share2, Calendar, MapPin, Clock, 
+import {
+  Download, Share2, Calendar, MapPin, Clock,
   CheckCircle2, X, Loader2, AlertCircle, ArrowLeft
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -13,9 +13,9 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useUserStore } from '../../stores/userStore';
 import { AddToCalendarButton } from '../components/AddToCalendarButton';
 import { getInitials, getAvatarBgColor } from '../../utils/avatarUtils';
-import { 
-  getReservationById, 
-  getEventById, 
+import {
+  getReservationById,
+  getEventById,
   getUserProfile,
   updateReservationCheckIn,
   cancelReservation
@@ -62,7 +62,7 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
     }
     return undefined;
   }, [propReservationId]);
-  
+
   const publicToken = useMemo(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -70,7 +70,7 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
     }
     return null;
   }, []);
-  
+
   // Check for check-in mode from URL
   const isCheckInMode = useMemo(() => {
     if (typeof window !== 'undefined') {
@@ -88,12 +88,12 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
     }
     return null;
   }, []);
-  
+
   const { t } = useLanguage();
-  
+
   const user = useUserStore((state) => state.user);
   const userProfile = useUserStore((state) => state.userProfile);
-  
+
   const [ticketData, setTicketData] = useState<TicketData | null>(null);
   const [showPhoneModal, setShowPhoneModal] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -113,7 +113,7 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
     return new Promise((resolve, reject) => {
       const startTime = Date.now();
       const timeout = 5000; // 5 second timeout
-      
+
       const check = () => {
         if (exportRef.current?.dataset.ready === 'true') {
           resolve();
@@ -125,7 +125,7 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
         }
         requestAnimationFrame(check);
       };
-      
+
       requestAnimationFrame(check);
     });
   }, []);
@@ -291,27 +291,27 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
   const transactionSummary = useMemo(() => {
     if (!ticketData?.reservation) return 'Free';
     if (!ticketData.event) return 'Free';
-    
+
     const pricingType = getEventPricingType(ticketData.event);
     const currency = getEventCurrency(ticketData.event);
     const reservationPricingMode = (ticketData.reservation as any).pricingMode;
-    
+
     // Check for door payment using both event pricingType and reservation pricingMode
     const isDoorPayment = pricingType === 'door' || reservationPricingMode === 'door';
-    
+
     if (isDoorPayment) {
       const amount = ticketData.reservation.totalAmount || 0;
       const doorPaymentStatus = (ticketData.reservation as any).doorPaymentStatus;
-      
+
       if (doorPaymentStatus === 'paid') {
         return amount > 0 ? `${formatPaymentAmount(amount, currency)} (Paid)` : 'Paid';
       }
       // Unpaid door payment - clear "Payment due" phrasing
-      return amount > 0 
-        ? `${formatPaymentAmount(amount, currency)} — Payment due at door` 
+      return amount > 0
+        ? `${formatPaymentAmount(amount, currency)} — Payment due at door`
         : 'Payment due at door';
     }
-    
+
     if (ticketData.reservation.totalAmount && ticketData.reservation.totalAmount > 0) {
       return formatPaymentAmount(ticketData.reservation.totalAmount, currency);
     }
@@ -388,23 +388,23 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
 
     setIsExporting(true);
     setShowExport(true);
-    
+
     try {
       // Wait for export component to signal ready
       await waitForExportReady();
-      
+
       if (!exportRef.current) {
         throw new Error('Export component not mounted');
       }
-      
+
       // Wait for fonts
       if (document.fonts?.ready) {
         await document.fonts.ready;
       }
-      
+
       // Small delay to ensure paint
       await new Promise(resolve => setTimeout(resolve, 150));
-      
+
       // Capture using html2canvas
       const canvas = await html2canvas(exportRef.current, {
         backgroundColor: '#15383c',
@@ -415,9 +415,9 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
         allowTaint: true,
         logging: false,
       });
-      
+
       const dataUrl = canvas.toDataURL('image/png');
-      
+
       // Trigger download
       const link = document.createElement('a');
       link.download = `popera-ticket-${orderId}.png`;
@@ -521,7 +521,7 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
       </div>
 
       {/* Ticket Card */}
-      <div 
+      <div
         ref={ticketRef}
         className="max-w-lg mx-auto bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl overflow-hidden border border-white/60"
       >
@@ -705,6 +705,27 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
             </button>
           </div>
 
+          {/* Claim Account CTA - for guest users viewing via public token */}
+          {publicToken && !user && (
+            <div className="mt-5 p-5 bg-gradient-to-r from-[#15383c] to-[#1f4d52] rounded-xl text-center">
+              <h3 className="text-white font-semibold text-lg mb-2">
+                🚀 Create your Popera account
+              </h3>
+              <p className="text-white/70 text-sm mb-4">
+                Sign up to access your tickets anytime, chat with hosts, and discover more events in your community.
+              </p>
+              <button
+                onClick={() => {
+                  setViewState(ViewState.AUTH);
+                  window.history.replaceState({ viewState: ViewState.AUTH }, '', '/auth?mode=signup');
+                }}
+                className="w-full py-3 bg-[#e35e25] text-white rounded-full font-semibold hover:bg-[#d14e1a] transition-all shadow-lg"
+              >
+                Sign Up Now
+              </button>
+            </div>
+          )}
+
           {/* Cancel Reservation Link (for ticket owner, not cancelled) */}
           {!isCancelled && ticketData.reservation.userId === user?.uid && (
             <div className="mt-5 pt-5 border-t border-gray-100 text-center">
@@ -731,11 +752,11 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
 
       {/* Cancel Confirmation Modal */}
       {showCancelModal && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
           onClick={() => setShowCancelModal(false)}
         >
-          <div 
+          <div
             className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
             onClick={(e) => e.stopPropagation()}
           >
@@ -755,7 +776,7 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
 
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
               <p className="text-sm text-amber-800">
-                <strong>Cancellation Policy:</strong> Cancellations are processed immediately. 
+                <strong>Cancellation Policy:</strong> Cancellations are processed immediately.
                 For paid events, refunds are subject to our refund policy and may take 5-10 business days to process.
               </p>
             </div>
