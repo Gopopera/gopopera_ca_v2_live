@@ -1488,7 +1488,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                       {isEventFree(event) ? t('event.free') : formatEventPrice(event, false)}
                     </span>
                     {isPayAtDoor(event) && (
-                      <span className="text-sm text-amber-600 font-medium ml-2">(Pay at the door)</span>
+                      <span className="text-sm text-amber-600 font-medium ml-2">({language === 'fr' ? 'Paiement sur place' : 'Pay at the door'})</span>
                     )}
                     <p className="text-xs text-gray-500 font-medium mt-0.5">{t('ui.perPerson')}</p>
                   </div>
