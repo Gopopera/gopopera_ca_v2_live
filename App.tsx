@@ -584,7 +584,7 @@ const AppContent: React.FC = () => {
       // Initialize events store with real-time Firestore subscription
       useEventStore.getState().init();
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre',hypothesisId:'E1',location:'App.useEffect:init:585',message:'event store init called',data:{isAuthReady,authInitialized},timestamp:Date.now()})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'debug-session', runId: 'pre', hypothesisId: 'E1', location: 'App.useEffect:init:585', message: 'event store init called', data: { isAuthReady, authInitialized }, timestamp: Date.now() }) }).catch(() => { });
       // #endregion agent log
     } catch (error) {
       console.error('[APP] Error initializing event store:', error);
@@ -1045,7 +1045,7 @@ const AppContent: React.FC = () => {
 
   const handleEventClick = (event: Event) => {
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre',hypothesisId:'C2',location:'App.handleEventClick:1046',message:'event click',data:{eventId:event?.id || null,hasTitle:!!event?.title,hasPricingType:!!event?.pricingType,hasFee:!!event?.hasFee},timestamp:Date.now()})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'debug-session', runId: 'pre', hypothesisId: 'C2', location: 'App.handleEventClick:1046', message: 'event click', data: { eventId: event?.id || null, hasTitle: !!event?.title, hasPricingType: !!event?.pricingType, hasFee: !!event?.hasFee }, timestamp: Date.now() }) }).catch(() => { });
     // #endregion agent log
     setSelectedEvent(event);
     // Use pushState to create history entry for back button navigation
@@ -1907,7 +1907,11 @@ const AppContent: React.FC = () => {
             </React.Suspense>
           )}
 
-          {viewState === ViewState.AUTH && <AuthPage setViewState={setViewState} onLogin={handleLogin} />}
+          {viewState === ViewState.AUTH && (
+            <React.Suspense fallback={<PageSkeleton />}>
+              <AuthPage setViewState={setViewState} onLogin={handleLogin} />
+            </React.Suspense>
+          )}
 
           {viewState === ViewState.PROFILE && <ProfilePage setViewState={setViewState} userName={user?.displayName || user?.name || ''} onLogout={handleLogout} />}
 
