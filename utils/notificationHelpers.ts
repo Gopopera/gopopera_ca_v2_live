@@ -61,10 +61,10 @@ async function getUserNotificationPreferences(userId: string): Promise<UserNotif
     const userRef = doc(db, 'users', userId);
     const userDoc = await getDoc(userRef);
     const data = userDoc.data();
-    
+
     // Check both notification_settings and notificationPreferences (backward compatibility)
     const settings = data?.notification_settings || data?.notificationPreferences || {};
-    
+
     // Default to opt-in if preference doesn't exist (backward compatible, all enabled by default)
     return {
       email_opt_in: settings.email_opt_in !== undefined ? settings.email_opt_in : (settings.email !== undefined ? settings.email : true),
@@ -247,7 +247,7 @@ export async function notifyFollowersOfNewEvent(
         // Get host info
         const hostInfo = await getUserContactInfo(hostId);
         const hostName = hostInfo.name || 'Host';
-        
+
         // Get event details for template
         const db = getDbSafe();
         let eventDescription = '';
@@ -403,7 +403,7 @@ export async function notifyAttendeesOfPoll(
     if (preferences.email_opt_in && contactInfo.email) {
       try {
         // Parse poll options from message if available
-        const pollOptions = pollMessage.includes('Vote:') 
+        const pollOptions = pollMessage.includes('Vote:')
           ? pollMessage.split('Vote:')[1]?.split(' or ').map(opt => opt.trim()).filter(Boolean)
           : undefined;
 
@@ -656,19 +656,21 @@ export async function notifyUserOfReservationConfirmation(
 
 /**
  * Notify host when a user RSVPs to their event
+ * 
+ * In-app notification is sent client-side (immediate).
+ * Email/SMS is delegated to server-side via /api/notifications/host-rsvp for reliability.
  */
 export async function notifyHostOfRSVP(
   hostId: string,
   attendeeId: string,
   eventId: string,
-  eventTitle: string
+  eventTitle: string,
+  reservationId?: string
 ): Promise<void> {
   try {
-    const hostInfo = await getUserContactInfo(hostId);
     const attendeeInfo = await getUserContactInfo(attendeeId);
-    const preferences = await getUserNotificationPreferences(hostId);
 
-    // ALWAYS send in-app notification (cannot be disabled)
+    // ALWAYS send in-app notification (cannot be disabled, immediate)
     try {
       console.log('[NOTIFICATIONS] 📬 Creating RSVP notification:', {
         hostId,
@@ -694,59 +696,84 @@ export async function notifyHostOfRSVP(
         eventId,
         error: error?.message || error,
         code: error?.code,
-        stack: error?.stack,
       });
     }
 
-    // Email notification
-    if (preferences.email_opt_in && hostInfo.email) {
+    // Email + SMS via server endpoint (reliable, handles idempotency and retries)
+    // Fire-and-forget: don't block the RSVP flow
+    if (reservationId) {
       try {
-        const emailHtml = RSVPHostNotificationTemplate({
-          hostName: hostInfo.name || 'Host',
-          attendeeName: attendeeInfo.name || 'Someone',
-          attendeeEmail: attendeeInfo.email || '',
-          eventTitle,
-          eventUrl: `${getNotificationBaseUrl()}/event/${eventId}`,
-        });
+        // Get Firebase auth token for server-side verification
+        const { getAuthInstance } = await import('../src/lib/firebaseAuth');
+        const auth = getAuthInstance();
+        const idToken = await auth?.currentUser?.getIdToken();
 
-        await sendEmail({
-          to: hostInfo.email,
-          subject: `New RSVP: ${eventTitle}`,
-          html: emailHtml,
-          templateName: 'rsvp-host-notification',
-          eventId,
-          notificationType: 'rsvp_host',
-          skippedByPreference: false,
-        });
+        if (!idToken) {
+          console.warn('[NOTIFICATION_HELPERS] No auth token available for server host-rsvp call');
+          // Fall through to client-side fallback below
+        } else {
+          const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
+          fetch(`${apiBaseUrl}/notifications/host-rsvp`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({ reservationId }),
+          }).catch((error) => {
+            console.error('[NOTIFICATION_HELPERS] Server host-rsvp call failed:', error);
+          });
+          // Server call initiated - no need for client-side fallback
+          return;
+        }
       } catch (error) {
-        console.error('[NOTIFICATION_HELPERS] ❌ Error sending RSVP email to host:', error);
+        // Non-blocking - fall through to client-side fallback
+        console.error('[NOTIFICATION_HELPERS] Error initiating server host-rsvp call:', error);
       }
-    } else if (hostInfo.email) {
-      // Log skipped email due to preference
+    } else {
+      // Fallback: no reservationId provided, use client-side email/SMS (less reliable)
       try {
-        await sendEmail({
-          to: hostInfo.email,
-          subject: `New RSVP: ${eventTitle}`,
-          html: '',
-          templateName: 'rsvp-host-notification',
-          eventId,
-          notificationType: 'rsvp_host',
-          skippedByPreference: true,
-        });
-      } catch (error) {
-        // Silent fail for skipped emails
-      }
-    }
+        const hostInfo = await getUserContactInfo(hostId);
+        const preferences = await getUserNotificationPreferences(hostId);
 
-    // SMS (optional)
-    if (preferences.sms_opt_in && hostInfo.phone) {
-      try {
-        await sendSMSNotification({
-          to: hostInfo.phone,
-          message: `New RSVP: ${attendeeInfo.name || 'Someone'} joined ${eventTitle}`,
-        });
+        // Email notification
+        if (preferences.email_opt_in && hostInfo.email) {
+          try {
+            const emailHtml = RSVPHostNotificationTemplate({
+              hostName: hostInfo.name || 'Host',
+              attendeeName: attendeeInfo.name || 'Someone',
+              attendeeEmail: attendeeInfo.email || '',
+              eventTitle,
+              eventUrl: `${getNotificationBaseUrl()}/event/${eventId}`,
+            });
+
+            await sendEmail({
+              to: hostInfo.email,
+              subject: `New RSVP: ${eventTitle}`,
+              html: emailHtml,
+              templateName: 'rsvp-host-notification',
+              eventId,
+              notificationType: 'rsvp_host',
+              skippedByPreference: false,
+            });
+          } catch (error) {
+            console.error('[NOTIFICATION_HELPERS] ❌ Error sending RSVP email to host:', error);
+          }
+        }
+
+        // SMS (optional)
+        if (preferences.sms_opt_in && hostInfo.phone) {
+          try {
+            await sendSMSNotification({
+              to: hostInfo.phone,
+              message: `New RSVP: ${attendeeInfo.name || 'Someone'} joined ${eventTitle}`,
+            });
+          } catch (error) {
+            console.error('[NOTIFICATION_HELPERS] ❌ Error sending RSVP SMS to host:', error);
+          }
+        }
       } catch (error) {
-        console.error('[NOTIFICATION_HELPERS] ❌ Error sending RSVP SMS to host:', error);
+        console.error('[NOTIFICATION_HELPERS] ❌ Error in fallback host notify:', error);
       }
     }
   } catch (error) {

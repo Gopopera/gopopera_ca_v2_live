@@ -388,6 +388,29 @@ export default async function handler(req: any, res: any) {
       }
     }
 
+    // Notify host of new RSVP (non-blocking - never fails the reservation)
+    if (eventData.hostId && eventData.hostId !== uid) {
+      const hostNotifyRequestId = `req_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 6)}`;
+      try {
+        const { notifyHostOnReservation } = await import('../_lib/notifyHostOnReservation.js');
+        await notifyHostOnReservation({
+          db,
+          reservationId,
+          eventId,
+          hostId: eventData.hostId,
+          attendeeName: attendeeName || 'Someone',
+          attendeeEmail: email,
+          eventTitle: eventData.title || 'Event',
+          pricingType,
+          isGuest: true,
+          requestId: hostNotifyRequestId,
+        });
+      } catch (notifyError: any) {
+        // Non-fatal: log and continue
+        console.error(`[CREATE_GUEST_RESERVATION] Host notify failed: requestId=${hostNotifyRequestId} error="${notifyError?.message?.substring(0, 100) || 'Unknown'}"`);
+      }
+    }
+
     return res.status(200).json({
       reservationId,
       ticketUrl,
