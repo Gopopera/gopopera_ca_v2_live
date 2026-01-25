@@ -1889,342 +1889,185 @@ const AppContent: React.FC = () => {
       )}
 
       <div className="flex-grow">
-        <>
+        {/* Single Suspense boundary for ALL lazy-loaded pages */}
+        <React.Suspense fallback={<PageSkeleton />}>
           {viewState === ViewState.LANDING && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <LandingPage
-                setViewState={setViewState}
-                events={allEvents}
-                onEventClick={handleEventClick}
-                onChatClick={handleChatClick}
-                onReviewsClick={handleReviewsClick}
-                onHostClick={handleHostClick}
-                isLoggedIn={isLoggedIn}
-                favorites={favorites}
-                onToggleFavorite={handleToggleFavorite}
-                setSelectedBlogSlug={setSelectedBlogSlug}
-              />
-            </React.Suspense>
+            <LandingPage
+              setViewState={setViewState}
+              events={allEvents}
+              onEventClick={handleEventClick}
+              onChatClick={handleChatClick}
+              onReviewsClick={handleReviewsClick}
+              onHostClick={handleHostClick}
+              isLoggedIn={isLoggedIn}
+              favorites={favorites}
+              onToggleFavorite={handleToggleFavorite}
+              setSelectedBlogSlug={setSelectedBlogSlug}
+            />
           )}
 
           {viewState === ViewState.AUTH && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <AuthPage setViewState={setViewState} onLogin={handleLogin} />
-            </React.Suspense>
+            <AuthPage setViewState={setViewState} onLogin={handleLogin} />
           )}
 
           {viewState === ViewState.PROFILE && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <ProfilePage setViewState={setViewState} userName={user?.displayName || user?.name || ''} onLogout={handleLogout} />
-            </React.Suspense>
+            <ProfilePage setViewState={setViewState} userName={user?.displayName || user?.name || ''} onLogout={handleLogout} />
           )}
 
           {/* PROFILE SUB-PAGES */}
-          {viewState === ViewState.PROFILE_BASIC && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <BasicDetailsPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.PROFILE_NOTIFICATIONS && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <NotificationSettingsPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.PROFILE_PRIVACY && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <PrivacySettingsPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.PROFILE_STRIPE && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <StripeSettingsPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.PAYOUT_SETUP && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <PayoutSetupPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.PAYOUTS && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <PayoutsPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.PROFILE_REVIEWS && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <MyReviewsPage setViewState={setViewState} onHostClick={handleHostClick} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.PROFILE_FOLLOWING && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <FollowingPage setViewState={setViewState} onHostClick={handleHostClick} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.PROFILE_FOLLOWERS && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <FollowersPage setViewState={setViewState} onHostClick={handleHostClick} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.DELETE_ACCOUNT && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <DeleteAccountPage setViewState={setViewState} onConfirmDelete={handleLogout} />
-            </React.Suspense>
-          )}
+          {viewState === ViewState.PROFILE_BASIC && <BasicDetailsPage setViewState={setViewState} />}
+          {viewState === ViewState.PROFILE_NOTIFICATIONS && <NotificationSettingsPage setViewState={setViewState} />}
+          {viewState === ViewState.PROFILE_PRIVACY && <PrivacySettingsPage setViewState={setViewState} />}
+          {viewState === ViewState.PROFILE_STRIPE && <StripeSettingsPage setViewState={setViewState} />}
+          {viewState === ViewState.PAYOUT_SETUP && <PayoutSetupPage setViewState={setViewState} />}
+          {viewState === ViewState.PAYOUTS && <PayoutsPage setViewState={setViewState} />}
+          {viewState === ViewState.PROFILE_REVIEWS && <MyReviewsPage setViewState={setViewState} onHostClick={handleHostClick} />}
+          {viewState === ViewState.PROFILE_FOLLOWING && <FollowingPage setViewState={setViewState} onHostClick={handleHostClick} />}
+          {viewState === ViewState.PROFILE_FOLLOWERS && <FollowersPage setViewState={setViewState} onHostClick={handleHostClick} />}
+          {viewState === ViewState.DELETE_ACCOUNT && <DeleteAccountPage setViewState={setViewState} onConfirmDelete={handleLogout} />}
 
           {/* CONFIRM RESERVATION (Confirm & Pay) */}
           {viewState === ViewState.CONFIRM_RESERVATION && selectedEvent && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <ConfirmReservationPage
-                event={selectedEvent}
-                setViewState={setViewState}
-                onHostClick={handleHostClick}
-                onConfirm={async (attendeeCount, supportContribution, paymentMethod, attendeePhone) => {
-                  if (!user?.uid) {
-                    setViewState(ViewState.AUTH);
-                    window.history.pushState({ viewState: ViewState.AUTH }, '', '/auth?mode=signin');
-                    throw new Error('User not logged in');
-                  }
+            <ConfirmReservationPage
+              event={selectedEvent}
+              setViewState={setViewState}
+              onHostClick={handleHostClick}
+              onConfirm={async (attendeeCount, supportContribution, paymentMethod, attendeePhone) => {
+                if (!user?.uid) {
+                  setViewState(ViewState.AUTH);
+                  window.history.pushState({ viewState: ViewState.AUTH }, '', '/auth?mode=signin');
+                  throw new Error('User not logged in');
+                }
 
-                  // Create a single reservation with attendee count
-                  // Import pricing helpers to determine pricing mode
-                  const { getEventPricingType, getEventFeeAmount } = await import('./utils/stripeHelpers');
+                // Create a single reservation with attendee count
+                // Import pricing helpers to determine pricing mode
+                const { getEventPricingType, getEventFeeAmount } = await import('./utils/stripeHelpers');
 
-                  // Calculate total amount using the correct fee amount
-                  const feeAmountCents = getEventFeeAmount(selectedEvent);
-                  const pricePerAttendee = feeAmountCents / 100; // Convert cents to dollars
-                  const subtotal = pricePerAttendee * attendeeCount;
-                  const totalAmount = subtotal + supportContribution;
+                // Calculate total amount using the correct fee amount
+                const feeAmountCents = getEventFeeAmount(selectedEvent);
+                const pricePerAttendee = feeAmountCents / 100; // Convert cents to dollars
+                const subtotal = pricePerAttendee * attendeeCount;
+                const totalAmount = subtotal + supportContribution;
 
-                  // Determine pricing mode from event
-                  const pricingMode = getEventPricingType(selectedEvent);
+                // Determine pricing mode from event
+                const pricingMode = getEventPricingType(selectedEvent);
 
-                  // Create reservation with options (this will also send notifications)
-                  const reservationId = await addRSVP(user.uid, selectedEvent.id, {
-                    attendeeCount,
-                    supportContribution: supportContribution > 0 ? supportContribution : undefined,
-                    // Only set paymentMethod for online payments (Stripe)
-                    paymentMethod: pricingMode === 'online' ? paymentMethod : undefined,
-                    totalAmount: totalAmount > 0 ? Math.round(totalAmount * 100) : undefined, // Store in cents
-                    pricingMode: pricingMode, // Track pricing mode
-                    // Pass phone for door payments (optional)
-                    attendeePhone: attendeePhone || undefined,
-                  });
+                // Create reservation with options (this will also send notifications)
+                const reservationId = await addRSVP(user.uid, selectedEvent.id, {
+                  attendeeCount,
+                  supportContribution: supportContribution > 0 ? supportContribution : undefined,
+                  // Only set paymentMethod for online payments (Stripe)
+                  paymentMethod: pricingMode === 'online' ? paymentMethod : undefined,
+                  totalAmount: totalAmount > 0 ? Math.round(totalAmount * 100) : undefined, // Store in cents
+                  pricingMode: pricingMode, // Track pricing mode
+                  // Pass phone for door payments (optional)
+                  attendeePhone: attendeePhone || undefined,
+                });
 
-                  // Update attendee count
-                  const { getReservationCountForEvent } = await import('./firebase/db');
-                  const newCount = await getReservationCountForEvent(selectedEvent.id);
-                  const { updateEvent: updateEventInStore } = useEventStore.getState();
-                  updateEventInStore(selectedEvent.id, { attendeesCount: newCount });
+                // Update attendee count
+                const { getReservationCountForEvent } = await import('./firebase/db');
+                const newCount = await getReservationCountForEvent(selectedEvent.id);
+                const { updateEvent: updateEventInStore } = useEventStore.getState();
+                updateEventInStore(selectedEvent.id, { attendeesCount: newCount });
 
-                  // Refresh user profile
-                  await useUserStore.getState().refreshUserProfile();
+                // Refresh user profile
+                await useUserStore.getState().refreshUserProfile();
 
-                  // Navigate to ticket page
-                  const ticketUrl = `/ticket/${reservationId}`;
-                  window.history.pushState({ viewState: ViewState.TICKET, reservationId }, '', ticketUrl);
-                  setViewState(ViewState.TICKET);
+                // Navigate to ticket page
+                const ticketUrl = `/ticket/${reservationId}`;
+                window.history.pushState({ viewState: ViewState.TICKET, reservationId }, '', ticketUrl);
+                setViewState(ViewState.TICKET);
 
-                  return reservationId;
-                }}
-              />
-            </React.Suspense>
+                return reservationId;
+              }}
+            />
           )}
 
           {/* RESERVATION CONFIRMATION (legacy modal) */}
           {viewState === ViewState.RESERVATION_CONFIRMED && confirmedReservation && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <ReservationConfirmationPage
-                event={confirmedReservation.event}
-                reservationId={confirmedReservation.reservationId}
-                setViewState={setViewState}
-              />
-            </React.Suspense>
+            <ReservationConfirmationPage
+              event={confirmedReservation.event}
+              reservationId={confirmedReservation.reservationId}
+              setViewState={setViewState}
+            />
           )}
 
           {/* TICKET PAGE */}
-          {viewState === ViewState.TICKET && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <TicketPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
+          {viewState === ViewState.TICKET && <TicketPage setViewState={setViewState} />}
 
-          {viewState === ViewState.CREATE_EVENT && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <CreateEventPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
+          {viewState === ViewState.CREATE_EVENT && <CreateEventPage setViewState={setViewState} />}
           {viewState === ViewState.EDIT_EVENT && selectedEvent && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <EditEventPage setViewState={setViewState} event={selectedEvent} eventId={selectedEvent.id} />
-            </React.Suspense>
+            <EditEventPage setViewState={setViewState} event={selectedEvent} eventId={selectedEvent.id} />
           )}
 
-          {viewState === ViewState.NOTIFICATIONS && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <NotificationsPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
+          {viewState === ViewState.NOTIFICATIONS && <NotificationsPage setViewState={setViewState} />}
           {viewState === ViewState.MY_POPS && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <MyPopsPage
-                setViewState={setViewState}
-                events={allEvents}
-                onEventClick={handleEventClick}
-                onChatClick={handleChatClick}
-                onReviewsClick={handleReviewsClick}
-                isLoggedIn={isLoggedIn}
-                favorites={favorites}
-                onToggleFavorite={handleToggleFavorite}
-                onEditEvent={(event) => {
-                  setSelectedEvent(event);
-                  setViewState(ViewState.EDIT_EVENT);
-                }}
-              />
-            </React.Suspense>
+            <MyPopsPage
+              setViewState={setViewState}
+              events={allEvents}
+              onEventClick={handleEventClick}
+              onChatClick={handleChatClick}
+              onReviewsClick={handleReviewsClick}
+              isLoggedIn={isLoggedIn}
+              favorites={favorites}
+              onToggleFavorite={handleToggleFavorite}
+              onEditEvent={(event) => {
+                setSelectedEvent(event);
+                setViewState(ViewState.EDIT_EVENT);
+              }}
+            />
           )}
           {viewState === ViewState.FAVORITES && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <FavoritesPage
-                setViewState={setViewState}
-                events={allEvents}
-                onEventClick={handleEventClick}
-                onChatClick={handleChatClick}
-                onReviewsClick={handleReviewsClick}
-                favorites={favorites}
-                onToggleFavorite={handleToggleFavorite}
-              />
-            </React.Suspense>
+            <FavoritesPage
+              setViewState={setViewState}
+              events={allEvents}
+              onEventClick={handleEventClick}
+              onChatClick={handleChatClick}
+              onReviewsClick={handleReviewsClick}
+              favorites={favorites}
+              onToggleFavorite={handleToggleFavorite}
+            />
           )}
           {viewState === ViewState.MY_CALENDAR && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <MyCalendarPage setViewState={setViewState} events={allEvents} onEventClick={handleEventClick} />
-            </React.Suspense>
+            <MyCalendarPage setViewState={setViewState} events={allEvents} onEventClick={handleEventClick} />
           )}
 
-          {viewState === ViewState.ABOUT && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <AboutPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.CAREERS && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <CareersPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.CONTACT && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <ContactPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.DEBUG_ENV && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <DebugEnvPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.VERIFY_FIREBASE && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <VerifyFirebasePage />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.DEBUG_SEED_DEMO && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <DebugSeedDemoEventsPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.DEBUG_CLEANUP_REVIEWS && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <CleanupReviewsPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.DEBUG_RESERVATIONS && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <DebugReservationsPage onBack={() => setViewState(ViewState.PROFILE)} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.TERMS && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <TermsPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.PRIVACY && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <PrivacyPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.CANCELLATION && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <CancellationPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.GUIDELINES && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <GuidelinesPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.REPORT_EVENT && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <ReportPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.HELP && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <HelpPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.SAFETY && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <SafetyPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.PRESS && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <PressPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.TICKETS_AND_PAYMENTS && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <TicketsAndPaymentsPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.GUIDE_10_SEAT && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <Guide10SeatPlaybookPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.MARKETING_HUB && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <MarketingHubPage setViewState={setViewState} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.UNSUBSCRIBE && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <UnsubscribePage setViewState={setViewState} />
-            </React.Suspense>
-          )}
-          {viewState === ViewState.BLOG && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <BlogListPage setViewState={setViewState} setSelectedBlogSlug={setSelectedBlogSlug} />
-            </React.Suspense>
-          )}
+          {viewState === ViewState.ABOUT && <AboutPage setViewState={setViewState} />}
+          {viewState === ViewState.CAREERS && <CareersPage setViewState={setViewState} />}
+          {viewState === ViewState.CONTACT && <ContactPage setViewState={setViewState} />}
+          {viewState === ViewState.DEBUG_ENV && <DebugEnvPage setViewState={setViewState} />}
+          {viewState === ViewState.VERIFY_FIREBASE && <VerifyFirebasePage />}
+          {viewState === ViewState.DEBUG_SEED_DEMO && <DebugSeedDemoEventsPage setViewState={setViewState} />}
+          {viewState === ViewState.DEBUG_CLEANUP_REVIEWS && <CleanupReviewsPage setViewState={setViewState} />}
+          {viewState === ViewState.DEBUG_RESERVATIONS && <DebugReservationsPage onBack={() => setViewState(ViewState.PROFILE)} />}
+          {viewState === ViewState.TERMS && <TermsPage setViewState={setViewState} />}
+          {viewState === ViewState.PRIVACY && <PrivacyPage setViewState={setViewState} />}
+          {viewState === ViewState.CANCELLATION && <CancellationPage setViewState={setViewState} />}
+          {viewState === ViewState.GUIDELINES && <GuidelinesPage setViewState={setViewState} />}
+          {viewState === ViewState.REPORT_EVENT && <ReportPage setViewState={setViewState} />}
+          {viewState === ViewState.HELP && <HelpPage setViewState={setViewState} />}
+          {viewState === ViewState.SAFETY && <SafetyPage setViewState={setViewState} />}
+          {viewState === ViewState.PRESS && <PressPage setViewState={setViewState} />}
+          {viewState === ViewState.TICKETS_AND_PAYMENTS && <TicketsAndPaymentsPage setViewState={setViewState} />}
+          {viewState === ViewState.GUIDE_10_SEAT && <Guide10SeatPlaybookPage setViewState={setViewState} />}
+          {viewState === ViewState.MARKETING_HUB && <MarketingHubPage setViewState={setViewState} />}
+          {viewState === ViewState.UNSUBSCRIBE && <UnsubscribePage setViewState={setViewState} />}
+          {viewState === ViewState.BLOG && <BlogListPage setViewState={setViewState} setSelectedBlogSlug={setSelectedBlogSlug} />}
           {viewState === ViewState.BLOG_POST && selectedBlogSlug && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <BlogPostPage slug={selectedBlogSlug} setViewState={setViewState} setSelectedBlogSlug={setSelectedBlogSlug} />
-            </React.Suspense>
+            <BlogPostPage slug={selectedBlogSlug} setViewState={setViewState} setSelectedBlogSlug={setSelectedBlogSlug} />
           )}
 
           {viewState === ViewState.HOST_PROFILE && selectedHost && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <HostProfile
-                hostName={selectedHost}
-                hostId={selectedHostId || undefined}
-                onBack={() => setViewState(ViewState.FEED)}
-                onEventClick={handleEventClick}
-                allEvents={allEvents}
-                isLoggedIn={isLoggedIn}
-                favorites={favorites}
-                onToggleFavorite={handleToggleFavorite}
-              />
-            </React.Suspense>
+            <HostProfile
+              hostName={selectedHost}
+              hostId={selectedHostId || undefined}
+              onBack={() => setViewState(ViewState.FEED)}
+              onEventClick={handleEventClick}
+              allEvents={allEvents}
+              isLoggedIn={isLoggedIn}
+              favorites={favorites}
+              onToggleFavorite={handleToggleFavorite}
+            />
           )}
 
           {viewState === ViewState.FEED && (
@@ -2518,28 +2361,26 @@ const AppContent: React.FC = () => {
           )}
 
           {viewState === ViewState.DETAIL && selectedEvent && (
-            <React.Suspense fallback={<PageSkeleton />}>
-              <EventDetailPage
-                key={selectedEvent.id}
-                event={selectedEvent}
-                setViewState={setViewState}
-                onReviewsClick={handleReviewsClick}
-                onHostClick={handleHostClick}
-                allEvents={allEvents}
-                onEventClick={handleEventClick}
-                isLoggedIn={isLoggedIn}
-                favorites={favorites}
-                onToggleFavorite={handleToggleFavorite}
-                onRSVP={handleRSVP}
-                rsvps={rsvps}
-                onEditEvent={(event) => {
-                  setSelectedEvent(event);
-                  setViewState(ViewState.EDIT_EVENT);
-                }}
-              />
-            </React.Suspense>
+            <EventDetailPage
+              key={selectedEvent.id}
+              event={selectedEvent}
+              setViewState={setViewState}
+              onReviewsClick={handleReviewsClick}
+              onHostClick={handleHostClick}
+              allEvents={allEvents}
+              onEventClick={handleEventClick}
+              isLoggedIn={isLoggedIn}
+              favorites={favorites}
+              onToggleFavorite={handleToggleFavorite}
+              onRSVP={handleRSVP}
+              rsvps={rsvps}
+              onEditEvent={(event) => {
+                setSelectedEvent(event);
+                setViewState(ViewState.EDIT_EVENT);
+              }}
+            />
           )}
-        </>
+        </React.Suspense>
       </div>
 
       {reviewEvent && (
