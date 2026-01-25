@@ -1344,7 +1344,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
             </div>{/* End hero image container */}
 
             {/* TITLE + META - below hero image on desktop */}
-            <div className="hidden lg:block mt-6 mb-8">
+            <div className="hidden lg:block mt-6 mb-12">
               <h1 className="text-3xl font-heading font-bold text-[#15383c] leading-tight mb-4">
                 {event.title}
               </h1>
@@ -1551,26 +1551,6 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                 <div className="mt-4 pt-3 border-t border-gray-100 text-center">
                   <p className="text-[10px] text-gray-400 leading-relaxed">{t('ui.securePayment')}</p>
                 </div>
-              </div>
-
-              {/* LIVE COUNT - visible in sidebar as well */}
-              <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.05)] border border-white/60 p-4">
-                {reservationCount === null ? (
-                  <div className="flex items-center justify-center gap-2.5 text-gray-600">
-                    <User size={18} className="text-[#e35e25] shrink-0" />
-                    <MetricSkeleton width="w-24" height="h-5" />
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center gap-2.5 text-[#15383c]">
-                    <User size={18} className="text-[#e35e25] shrink-0" />
-                    <span className="text-lg font-semibold">
-                      {event.capacity
-                        ? `${reservationCount}/${event.capacity} attending`
-                        : `${reservationCount} attending`
-                      }
-                    </span>
-                  </div>
-                )}
               </div>
             </div>
           </div>{/* End RIGHT COLUMN (top grid) */}
