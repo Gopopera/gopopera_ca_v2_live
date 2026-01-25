@@ -1487,6 +1487,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                     <span className="text-2xl font-heading font-bold text-[#15383c]">
                       {isEventFree(event) ? t('event.free') : formatEventPrice(event, false)}
                     </span>
+                    {isPayAtDoor(event) && (
+                      <span className="text-sm text-amber-600 font-medium ml-2">(Pay at the door)</span>
+                    )}
                     <p className="text-xs text-gray-500 font-medium mt-0.5">{t('ui.perPerson')}</p>
                   </div>
                 </div>
@@ -1710,9 +1713,9 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               </div>
             </div>
 
-            {/* Description Section - Better spacing on desktop */}
+            {/* Description Section - Equal spacing above and below heading */}
             <div className="mb-12 sm:mb-16 lg:mt-8 lg:mb-10">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-6 sm:mb-8">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-heading font-bold text-[#15383c] mb-8">
                 {t('event.aboutEvent')}
               </h2>
               <div className="prose prose-lg max-w-none">
