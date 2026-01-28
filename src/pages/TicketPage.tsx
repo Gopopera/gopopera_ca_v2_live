@@ -21,6 +21,8 @@ import {
   cancelReservation
 } from '../../firebase/db';
 import { TicketStoryExport } from '../components/ticket/TicketStoryExport';
+import { TicketCardMock } from '../components/ticket/TicketCardMock';
+import { TicketExportWrapper } from '../components/ticket/TicketExportWrapper';
 import html2canvas from 'html2canvas';
 import { getBaseUrl } from '../utils/baseUrl';
 import { PhoneCollectionModal } from '../../components/auth/PhoneCollectionModal';
@@ -382,7 +384,7 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
     });
   };
 
-  // Handle download - generate high-quality IG Story image using html2canvas
+  // Handle download - generate ticket image using TicketExportWrapper (white background)
   const handleDownload = async () => {
     if (!ticketData) return;
 
@@ -405,13 +407,11 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
       // Small delay to ensure paint
       await new Promise(resolve => setTimeout(resolve, 150));
 
-      // Capture using html2canvas
+      // Capture using html2canvas - white background ticket card
       const canvas = await html2canvas(exportRef.current, {
-        backgroundColor: '#15383c',
+        backgroundColor: '#ffffff',
         scale: 2,
-        width: 1080,
-        height: 1920,
-        useCORS: false,
+        useCORS: true,
         allowTaint: true,
         logging: false,
       });
@@ -520,234 +520,145 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
         </button>
       </div>
 
-      {/* Ticket Card */}
-      <div
-        ref={ticketRef}
-        className="max-w-lg mx-auto bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl overflow-hidden border border-white/60"
-      >
-        {/* Event Image */}
-        <div className="relative">
-          <img
-            src={eventImageUrl}
-            alt={ticketData.event.title}
-            className="w-full aspect-[16/9] object-cover"
-          />
-          {/* Popera logo overlay */}
-          <div className="absolute top-4 left-4 flex items-baseline">
-            <span className="text-white font-bold text-lg drop-shadow-lg">P</span>
-            <span className="w-1.5 h-1.5 bg-[#e35e25] rounded-full ml-0.5 mb-1"></span>
-          </div>
-          {/* Status badges */}
-          {isCancelled && (
-            <div className="absolute top-4 right-4 px-3 py-1.5 bg-red-500 text-white text-sm font-bold rounded-full">
-              Cancelled
-            </div>
-          )}
-          {isCheckedIn && !isCancelled && (
-            <div className="absolute top-4 right-4 px-3 py-1.5 bg-green-500 text-white text-sm font-bold rounded-full flex items-center gap-1">
-              <CheckCircle2 size={14} />
-              Checked In
-            </div>
-          )}
-        </div>
+      {/* Ticket Card - Using TicketCardMock as single source of truth */}
+      <div ref={ticketRef} className="max-w-lg mx-auto">
+        <TicketCardMock
+          title={ticketData.event.title}
+          hostName={ticketData.host?.displayName}
+          imageUrl={eventImageUrl}
+          dateLabel={formattedDate}
+          timeLabel={ticketData.event.time || 'TBD'}
+          locationLabel={(() => {
+            if (ticketData.event.location) return ticketData.event.location;
+            const parts = [ticketData.event.address, ticketData.event.city].filter(Boolean);
+            return parts.length > 0 ? parts.join(', ') : 'TBD';
+          })()}
+          reservationId={orderId}
+          paymentLabel={transactionSummary}
+          qrValue={qrUrl}
+          attendeeCount={ticketData.reservation.attendeeCount}
+          isCancelled={isCancelled}
+          isCheckedIn={isCheckedIn}
+          showClaimCTA={!!(publicToken && !user)}
+          onClaimClick={() => {
+            setViewState(ViewState.AUTH);
+            window.history.replaceState({ viewState: ViewState.AUTH }, '', '/auth?mode=signup');
+          }}
+          variant="web"
+        />
+      </div>
 
-        {/* Content */}
-        <div className="p-6">
-          {/* Event Title */}
-          <h1 className="text-2xl font-heading font-bold text-[#15383c] mb-3">
-            {ticketData.event.title}
-          </h1>
+      {/* Additional Actions Section */}
+      <div className="max-w-lg mx-auto mt-4 bg-white rounded-[20px] border border-gray-200 overflow-hidden shadow-lg p-5">
 
-          {/* Host Info */}
-          {ticketData.host && (
-            <div className="flex items-center gap-3 mb-5 pb-5 border-b border-gray-100">
-              <div className={`w-10 h-10 rounded-full overflow-hidden ${getAvatarBgColor(ticketData.host.displayName, ticketData.host.id)}`}>
-                {ticketData.host.photoURL ? (
-                  <img
-                    src={ticketData.host.photoURL}
-                    alt={ticketData.host.displayName}
-                    className="w-full h-full object-cover"
-                  />
+        {/* Host Check-in Button (only in check-in mode for hosts) */}
+        {isCheckInMode && isHost && !isCheckedIn && !isCancelled && (
+          <div className="mb-5">
+            {checkInSuccess ? (
+              <div className="flex items-center justify-center gap-2 py-4 bg-green-50 text-green-700 rounded-xl font-semibold">
+                <CheckCircle2 size={20} />
+                Successfully checked in!
+              </div>
+            ) : (
+              <button
+                onClick={handleCheckIn}
+                disabled={checkingIn}
+                className="w-full py-4 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {checkingIn ? (
+                  <>
+                    <Loader2 size={20} className="animate-spin" />
+                    Checking in...
+                  </>
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-white font-bold">
-                    {getInitials(ticketData.host.displayName)}
-                  </div>
+                  <>
+                    <CheckCircle2 size={20} />
+                    Confirm Check-in
+                  </>
                 )}
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wider">Hosted by</p>
-                <p className="font-semibold text-[#15383c]">{ticketData.host.displayName}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Event Details */}
-          <div className="space-y-3 mb-5">
-            <div className="flex items-center gap-3 text-gray-700">
-              <Calendar size={18} className="text-[#e35e25] shrink-0" />
-              <span>{formattedDate}</span>
-            </div>
-            <div className="flex items-center gap-3 text-gray-700">
-              <Clock size={18} className="text-[#e35e25] shrink-0" />
-              <span>{ticketData.event.time || 'TBD'}</span>
-            </div>
-            <div className="flex items-center gap-3 text-gray-700">
-              <MapPin size={18} className="text-[#e35e25] shrink-0" />
-              <span className="line-clamp-2">
-                {(() => {
-                  // Format location with proper separators
-                  if (ticketData.event.location) return ticketData.event.location;
-                  const parts = [ticketData.event.address, ticketData.event.city].filter(Boolean);
-                  return parts.length > 0 ? parts.join(', ') : 'TBD';
-                })()}
-              </span>
-            </div>
-          </div>
-
-          {/* Reservation Info */}
-          <div className="bg-gray-50 rounded-xl p-4 mb-5">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-gray-500">Reservation ID</span>
-              <span className="font-mono font-semibold text-[#15383c]">#{orderId}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500">Transaction</span>
-              <span className="font-semibold text-[#15383c]">{transactionSummary}</span>
-            </div>
-            {ticketData.reservation.attendeeCount && ticketData.reservation.attendeeCount > 1 && (
-              <div className="flex justify-between items-center mt-2">
-                <span className="text-sm text-gray-500">Attendees</span>
-                <span className="font-semibold text-[#15383c]">{ticketData.reservation.attendeeCount}</span>
-              </div>
+              </button>
             )}
           </div>
+        )}
 
-          {/* QR Code */}
-          {!isCancelled && (
-            <div className="flex flex-col items-center py-6 border-t border-b border-gray-100 mb-5">
-              <QRCodeSVG
-                value={qrUrl}
-                size={180}
-                level="H"
-                includeMargin={true}
-                fgColor="#15383c"
-                bgColor="#ffffff"
-              />
-              <p className="text-sm text-[#e35e25] font-medium mt-3">
-                Show this QR code at check-in
-              </p>
+        {/* Action Buttons */}
+        {!isCancelled && (
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="col-span-3">
+              <AddToCalendarButton event={ticketData.event} />
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Host Check-in Button (only in check-in mode for hosts) */}
-          {isCheckInMode && isHost && !isCheckedIn && !isCancelled && (
-            <div className="mb-5">
-              {checkInSuccess ? (
-                <div className="flex items-center justify-center gap-2 py-4 bg-green-50 text-green-700 rounded-xl font-semibold">
-                  <CheckCircle2 size={20} />
-                  Successfully checked in!
-                </div>
-              ) : (
-                <button
-                  onClick={handleCheckIn}
-                  disabled={checkingIn}
-                  className="w-full py-4 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {checkingIn ? (
-                    <>
-                      <Loader2 size={20} className="animate-spin" />
-                      Checking in...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 size={20} />
-                      Confirm Check-in
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
-          )}
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={handleShare}
+            className="flex items-center justify-center gap-2 py-3 bg-white border-2 border-[#15383c]/20 text-[#15383c] rounded-full font-semibold hover:border-[#15383c] transition-all"
+          >
+            <Share2 size={18} />
+            Share
+          </button>
+          <button
+            onClick={handleDownload}
+            disabled={isExporting}
+            className="flex items-center justify-center gap-2 py-3 bg-[#15383c] text-white rounded-full font-semibold hover:bg-[#1f4d52] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isExporting ? (
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Download size={18} />
+                Download
+              </>
+            )}
+          </button>
+        </div>
 
-          {/* Action Buttons */}
-          {!isCancelled && (
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              <div className="col-span-3">
-                <AddToCalendarButton event={ticketData.event} />
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-3">
+        {/* Claim Account CTA - for guest users viewing via public token */}
+        {publicToken && !user && (
+          <div className="mt-5 p-5 bg-gradient-to-r from-[#15383c] to-[#1f4d52] rounded-xl text-center">
+            <h3 className="text-white font-semibold text-lg mb-2">
+              🚀 Create your Popera account
+            </h3>
+            <p className="text-white/70 text-sm mb-4">
+              Sign up to access your tickets anytime, chat with hosts, and discover more events in your community.
+            </p>
             <button
-              onClick={handleShare}
-              className="flex items-center justify-center gap-2 py-3 bg-white border-2 border-[#15383c]/20 text-[#15383c] rounded-full font-semibold hover:border-[#15383c] transition-all"
+              onClick={() => {
+                setViewState(ViewState.AUTH);
+                window.history.replaceState({ viewState: ViewState.AUTH }, '', '/auth?mode=signup');
+              }}
+              className="w-full py-3 bg-[#e35e25] text-white rounded-full font-semibold hover:bg-[#d14e1a] transition-all shadow-lg"
             >
-              <Share2 size={18} />
-              Share
-            </button>
-            <button
-              onClick={handleDownload}
-              disabled={isExporting}
-              className="flex items-center justify-center gap-2 py-3 bg-[#15383c] text-white rounded-full font-semibold hover:bg-[#1f4d52] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isExporting ? (
-                <>
-                  <Loader2 size={18} className="animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Download size={18} />
-                  Download
-                </>
-              )}
+              Sign Up Now
             </button>
           </div>
+        )}
 
-          {/* Claim Account CTA - for guest users viewing via public token */}
-          {publicToken && !user && (
-            <div className="mt-5 p-5 bg-gradient-to-r from-[#15383c] to-[#1f4d52] rounded-xl text-center">
-              <h3 className="text-white font-semibold text-lg mb-2">
-                🚀 Create your Popera account
-              </h3>
-              <p className="text-white/70 text-sm mb-4">
-                Sign up to access your tickets anytime, chat with hosts, and discover more events in your community.
-              </p>
-              <button
-                onClick={() => {
-                  setViewState(ViewState.AUTH);
-                  window.history.replaceState({ viewState: ViewState.AUTH }, '', '/auth?mode=signup');
-                }}
-                className="w-full py-3 bg-[#e35e25] text-white rounded-full font-semibold hover:bg-[#d14e1a] transition-all shadow-lg"
-              >
-                Sign Up Now
-              </button>
-            </div>
-          )}
+        {/* Cancel Reservation Link (for ticket owner, not cancelled) */}
+        {!isCancelled && ticketData.reservation.userId === user?.uid && (
+          <div className="mt-5 pt-5 border-t border-gray-100 text-center">
+            <button
+              onClick={() => setShowCancelModal(true)}
+              className="text-sm text-gray-500 hover:text-red-600 underline transition-colors"
+            >
+              Cancel reservation
+            </button>
+          </div>
+        )}
 
-          {/* Cancel Reservation Link (for ticket owner, not cancelled) */}
-          {!isCancelled && ticketData.reservation.userId === user?.uid && (
-            <div className="mt-5 pt-5 border-t border-gray-100 text-center">
-              <button
-                onClick={() => setShowCancelModal(true)}
-                className="text-sm text-gray-500 hover:text-red-600 underline transition-colors"
-              >
-                Cancel reservation
-              </button>
-            </div>
-          )}
-
-          {/* Cancelled State Message */}
-          {isCancelled && (
-            <div className="mt-4 p-4 bg-red-50 rounded-xl text-center">
-              <p className="text-red-700 font-medium">This reservation has been cancelled.</p>
-              <p className="text-red-600 text-sm mt-1">
-                Cancelled on {new Date(ticketData.reservation.cancelledAt || 0).toLocaleDateString()}
-              </p>
-            </div>
-          )}
-        </div>
+        {/* Cancelled State Message */}
+        {isCancelled && (
+          <div className="mt-4 p-4 bg-red-50 rounded-xl text-center">
+            <p className="text-red-700 font-medium">This reservation has been cancelled.</p>
+            <p className="text-red-600 text-sm mt-1">
+              Cancelled on {new Date(ticketData.reservation.cancelledAt || 0).toLocaleDateString()}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Cancel Confirmation Modal */}
@@ -809,15 +720,25 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
 
       {/* Export component rendered via Portal when download is triggered or in debug mode */}
       {(showExport || exportMode === 'debug') && ticketData && createPortal(
-        <TicketStoryExport
+        <TicketExportWrapper
           ref={exportRef}
-          event={ticketData.event}
-          hostName={ticketData.host?.displayName || 'Host'}
-          qrUrl={qrUrl}
-          formattedDate={formattedDateForExport}
-          eventImageUrl={eventImageUrl}
+          title={ticketData.event.title}
+          hostName={ticketData.host?.displayName}
+          imageUrl={eventImageUrl}
+          dateLabel={formattedDateForExport}
+          timeLabel={ticketData.event.time || 'TBD'}
+          locationLabel={(() => {
+            if (ticketData.event.location) return ticketData.event.location;
+            const parts = [ticketData.event.address, ticketData.event.city].filter(Boolean);
+            return parts.length > 0 ? parts.join(', ') : 'TBD';
+          })()}
+          reservationId={orderId}
+          paymentLabel={transactionSummary}
+          qrValue={qrUrl}
+          attendeeCount={ticketData.reservation.attendeeCount}
+          isCancelled={isCancelled}
+          isCheckedIn={isCheckedIn}
           debugMode={exportMode === 'debug'}
-          plainMode={exportMode === 'plain'}
         />,
         document.body
       )}
@@ -835,4 +756,5 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
 };
 
 export default TicketPage;
+
 

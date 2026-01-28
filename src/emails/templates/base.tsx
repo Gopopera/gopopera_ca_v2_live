@@ -166,3 +166,137 @@ export function getTipBox(content: string): string {
     </table>
   `;
 }
+
+// ============================================================================
+// LIGHT THEME HELPERS
+// Clean white background for better readability and print-friendliness
+// ============================================================================
+
+/**
+ * Base Email Template - Light Theme
+ * White background with dark teal text for clean, print-friendly emails
+ */
+export function getBaseEmailTemplateLight(content: string, ctaText?: string, ctaUrl?: string): string {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Popera</title>
+  <!--[if mso]>
+  <style type="text/css">
+    table, td, div, p { font-family: Arial, sans-serif !important; }
+  </style>
+  <![endif]-->
+</head>
+<body style="margin: 0; padding: 0; font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #ffffff;" bgcolor="#ffffff">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; background-color: #ffffff;" bgcolor="#ffffff">
+    <tr>
+      <td align="center" style="padding: 24px 16px; background-color: #ffffff;" bgcolor="#ffffff">
+        <!-- Main container -->
+        <table role="presentation" style="max-width: 580px; width: 100%; border-collapse: collapse; background-color: #ffffff;" bgcolor="#ffffff">
+          <!-- Header -->
+          <tr>
+            <td style="padding-bottom: 2px;">
+              <table role="presentation" style="width: 100%; background-color: #f8fafb; border-radius: 24px 24px 0 0; border: 1px solid #e5e7eb; border-bottom: none;">
+                <tr>
+                  <td style="padding: 28px 40px; text-align: center;">
+                    <table role="presentation" style="margin: 0 auto;">
+                      <tr>
+                        <td style="vertical-align: baseline;">
+                          <span style="color: #15383c; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;">Popera</span>
+                        </td>
+                        <td style="vertical-align: baseline; padding-left: 1px;">
+                          <span style="display: inline-block; width: 5px; height: 5px; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); border-radius: 50%; margin-bottom: 4px;"></span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+          <!-- Content Card -->
+          <tr>
+            <td>
+              <table role="presentation" style="width: 100%; background-color: #ffffff; border: 1px solid #e5e7eb; border-top: none; border-bottom: none;">
+                <tr>
+                  <td style="padding: 40px;">
+                    ${content}
+                    
+                    ${ctaText && ctaUrl ? `
+                    <table role="presentation" style="width: 100%; margin-top: 36px;">
+                      <tr>
+                        <td align="center">
+                          <a href="${ctaUrl}" style="display: inline-block; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 50px; font-weight: 600; font-size: 15px; letter-spacing: 0.3px; box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25);">${ctaText}</a>
+                        </td>
+                      </tr>
+                    </table>
+                    ` : ''}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+          <!-- Footer Card -->
+          <tr>
+            <td>
+              <table role="presentation" style="width: 100%; background-color: #f8fafb; border-radius: 0 0 24px 24px; border: 1px solid #e5e7eb; border-top: 1px solid #e5e7eb;">
+                <tr>
+                  <td style="padding: 28px 40px; text-align: center;">
+                    <p style="margin: 0 0 6px 0; color: #15383c; font-size: 14px; font-weight: 600;">
+                      Popera Team
+                    </p>
+                    <p style="margin: 0 0 16px 0; font-size: 14px;">
+                      <a href="mailto:support@gopopera.ca" style="color: #e35e25; text-decoration: none;">support@gopopera.ca</a>
+                    </p>
+                    <p style="margin: 0; color: rgba(21, 56, 60, 0.5); font-size: 12px;">
+                      © ${new Date().getFullYear()} Popera. All rights reserved.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+
+/**
+ * Light panel component for content sections
+ */
+export function getGlassPanelLight(content: string): string {
+  return `
+    <table role="presentation" style="width: 100%; background-color: #f8fafb; border-radius: 16px; border: 1px solid #e5e7eb; margin-bottom: 20px;">
+      <tr>
+        <td style="padding: 24px;">
+          ${content}
+        </td>
+      </tr>
+    </table>
+  `;
+}
+
+/**
+ * Info row component for key-value pairs - Light Theme
+ */
+export function getInfoRowLight(label: string, value: string): string {
+  return `
+    <table role="presentation" style="width: 100%; margin-bottom: 16px;">
+      <tr>
+        <td>
+          <p style="margin: 0 0 4px 0; color: rgba(21, 56, 60, 0.6); font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600;">${label}</p>
+          <p style="margin: 0; color: #15383c; font-size: 16px; font-weight: 500;">${value}</p>
+        </td>
+      </tr>
+    </table>
+  `;
+}

@@ -1,11 +1,10 @@
 import React, { useMemo, useEffect, useCallback } from 'react';
 import { Event, ViewState } from '../../types';
 import { X, Download } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
 import { formatDate } from '../../utils/dateFormatter';
-import { getMainCategoryLabelFromEvent } from '../../utils/categoryMapper';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { AddToCalendarButton } from '../components/AddToCalendarButton';
+import { TicketCardMock } from '../components/ticket/TicketCardMock';
 
 interface ReservationConfirmationPageProps {
   event: Event;
@@ -95,7 +94,7 @@ export const ReservationConfirmationPage: React.FC<ReservationConfirmationPagePr
       ctx.beginPath();
       ctx.arc(canvas.width / 2, 250, 60, 0, Math.PI * 2);
       ctx.stroke();
-      
+
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 6;
       ctx.beginPath();
@@ -115,7 +114,7 @@ export const ReservationConfirmationPage: React.FC<ReservationConfirmationPagePr
       const titleWords = event.title.split(' ');
       let titleY = 480;
       let currentLine = '';
-      
+
       for (const word of titleWords) {
         const testLine = currentLine + word + ' ';
         const metrics = ctx.measureText(testLine);
@@ -135,7 +134,7 @@ export const ReservationConfirmationPage: React.FC<ReservationConfirmationPagePr
       const orderY = titleY + 80;
       ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
       ctx.fillRect(canvas.width / 2 - 200, orderY - 30, 400, 60);
-      
+
       ctx.fillStyle = '#ffffff';
       ctx.font = '16px system-ui, -apple-system, sans-serif';
       ctx.fillText('Reservation ID', canvas.width / 2, orderY);
@@ -231,9 +230,9 @@ export const ReservationConfirmationPage: React.FC<ReservationConfirmationPagePr
     if (!event.date) return 'TBD';
     try {
       const date = new Date(event.date);
-      return date.toLocaleDateString('en-US', { 
-        weekday: 'short', 
-        month: 'short', 
+      return date.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
         day: 'numeric',
         year: 'numeric'
       });
@@ -256,7 +255,7 @@ export const ReservationConfirmationPage: React.FC<ReservationConfirmationPagePr
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-md" onClick={handleClose}>
-      <div 
+      <div
         className="bg-white/95 backdrop-blur-2xl rounded-2xl sm:rounded-3xl shadow-2xl border border-white/60 max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
@@ -274,64 +273,19 @@ export const ReservationConfirmationPage: React.FC<ReservationConfirmationPagePr
           </button>
         </div>
 
-        {/* Content */}
+        {/* Content - Using TicketCardMock as single source of truth */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 min-h-0">
-          {/* Event Image */}
-          <div className="mb-5">
-            <img
-              src={eventImageUrl}
-              alt={event.title}
-              className="w-full h-auto rounded-2xl shadow-lg border border-white/20 object-cover"
-              style={{ aspectRatio: '16/9' }}
-            />
-          </div>
-
-          {/* QR Code in Glass Panel */}
-          <div className="mb-5">
-            <div className="bg-white/80 backdrop-blur-sm border border-gray-200/60 rounded-2xl p-6 flex flex-col items-center shadow-lg">
-              <QRCodeSVG
-                value={qrData}
-                size={180}
-                level="H"
-                includeMargin={true}
-                fgColor="#15383c"
-                bgColor="#ffffff"
-              />
-              <p className="text-xs text-[#e35e25] text-center font-medium mt-4 max-w-xs leading-relaxed">
-                Show this QR code at check-in
-              </p>
-            </div>
-          </div>
-
-          {/* Minimal Details Grid */}
-          <div className="bg-white/60 backdrop-blur-sm border border-gray-200/40 rounded-xl p-4 mb-4">
-            <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-              <div>
-                <p className="text-xs text-gray-500 mb-1 font-medium">Date</p>
-                <p className="text-sm font-semibold text-[#15383c]">{formattedDate}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1 font-medium">Time</p>
-                <p className="text-sm font-semibold text-[#15383c]">{event.time || 'TBD'}</p>
-              </div>
-              <div className="col-span-2">
-                <p className="text-xs text-gray-500 mb-1 font-medium">Location</p>
-                <p className="text-sm font-semibold text-[#15383c] break-words">
-                  {event.location || `${event.address || ''}, ${event.city || ''}`.trim() || 'TBD'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1 font-medium">Reservation ID</p>
-                <p className="text-sm font-semibold text-[#15383c] font-mono">{orderId}</p>
-              </div>
-              {event.price && event.price !== 'Free' ? (
-                <div>
-                  <p className="text-xs text-gray-500 mb-1 font-medium">Price</p>
-                  <p className="text-sm font-semibold text-[#e35e25]">{event.price}</p>
-                </div>
-              ) : null}
-            </div>
-          </div>
+          <TicketCardMock
+            title={event.title}
+            imageUrl={eventImageUrl}
+            dateLabel={formattedDate}
+            timeLabel={event.time || 'TBD'}
+            locationLabel={event.location || `${event.address || ''}, ${event.city || ''}`.trim() || 'TBD'}
+            reservationId={orderId}
+            paymentLabel={event.price && event.price !== 'Free' ? event.price : 'Free'}
+            qrValue={qrData}
+            variant="web"
+          />
         </div>
 
         {/* Action Buttons */}
