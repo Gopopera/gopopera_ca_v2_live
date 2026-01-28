@@ -1848,7 +1848,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               className="flex overflow-x-auto gap-6 lg:gap-8 pb-2 snap-x snap-mandatory scroll-smooth hide-scrollbar scroll-smooth touch-pan-x overscroll-x-contain justify-center"
             >
               {recommendedEvents.map((recEvent, index) => (
-                <div key={recEvent.id} className="snap-start shrink-0 w-[280px] lg:w-[300px] flex-shrink-0 flex">
+                <div key={recEvent.id} className="snap-start shrink-0 w-[340px] lg:w-[380px] flex-shrink-0 flex">
                   <EventCard
                     event={recEvent}
                     onClick={onEventClick}
@@ -1889,7 +1889,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
         <div className="md:hidden">
           <div className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth gap-4 pb-2 -mx-4 px-4 hide-scrollbar scroll-smooth w-full touch-pan-x overscroll-x-contain scroll-pl-4">
             {recommendedEvents.map((recEvent, index) => (
-              <div key={recEvent.id} className="snap-start shrink-0 w-[85vw] max-w-[360px] flex">
+              <div key={recEvent.id} className="snap-start shrink-0 w-[88vw] max-w-[420px] flex">
                 <EventCard
                   event={recEvent}
                   onClick={onEventClick}
