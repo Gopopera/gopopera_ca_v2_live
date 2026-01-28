@@ -25,6 +25,10 @@ function hashIp(ip: string): string {
   return crypto.createHash('sha256').update(ip).digest('hex');
 }
 
+function hashEmail(email: string): string {
+  return crypto.createHash('sha256').update(email).digest('hex');
+}
+
 function checkRateLimit(map: Map<string, RateLimitEntry>, key: string, limit: number): boolean {
   const now = Date.now();
   const entry = map.get(key);
@@ -186,6 +190,39 @@ export default async function handler(req: any, res: any) {
       }
     }
 
+    // --- GUEST EMAIL LIMIT ENFORCEMENT (check only, do NOT increment yet) ---
+    const emailHash = hashEmail(email);
+    const guestIdentityRef = db.collection('guest_identities').doc(emailHash);
+    const guestDoc = await guestIdentityRef.get();
+
+    if (guestDoc.exists) {
+      const guestData = guestDoc.data() || {};
+      // Check if already has a reservation AND it's not for this same event (allow re-reserving same event)
+      if ((guestData.reservationCount || 0) >= 1) {
+        // Check if the existing reservation is for a different event
+        // Allow re-reserving same event (idempotency)
+        const existingForThisEvent = await db
+          .collection('reservations')
+          .where('guestEmailHash', '==', emailHash)
+          .where('eventId', '==', eventId)
+          .where('status', 'in', ['reserved', 'checked_in'])
+          .limit(1)
+          .get();
+
+        if (existingForThisEvent.empty) {
+          // Guest already has a reservation for a DIFFERENT event - block
+          console.log('[CREATE_GUEST_RESERVATION] Guest limit reached:', { email, eventId });
+          return res.status(409).json({
+            code: 'GUEST_LIMIT_REACHED',
+            message: 'You have already reserved with this email. Please sign up or sign in to reserve more events.',
+            email: email,
+          });
+        }
+        // else: existing reservation is for this same event, allow (idempotent re-submit)
+        console.log('[CREATE_GUEST_RESERVATION] Idempotent re-reserve for same event:', { email, eventId });
+      }
+    }
+
     let userRecord;
     try {
       userRecord = await auth.getUserByEmail(email);
@@ -262,6 +299,9 @@ export default async function handler(req: any, res: any) {
       createdVia: 'guest',
       createdIpHash: hashIp(ip),
       createdUserAgent: userAgent,
+      // Guest identity tracking fields
+      guestEmailHash: emailHash,
+      isGuestReservation: true,
     };
 
     // Only set phone fields if phone was provided
@@ -308,6 +348,45 @@ export default async function handler(req: any, res: any) {
     } catch (reservationError: any) {
       console.error('[CREATE_GUEST_RESERVATION] Failed to save reservation:', reservationError?.message);
       throw new Error(`Failed to save reservation: ${reservationError?.message || 'Unknown error'}`);
+    }
+
+    // --- INCREMENT GUEST IDENTITY COUNTER (only after successful reservation) ---
+    // Use transaction with guard to prevent double-counting on retries
+    try {
+      await db.runTransaction(async (tx) => {
+        const freshGuestDoc = await tx.get(guestIdentityRef);
+        const freshData = freshGuestDoc.exists ? freshGuestDoc.data() || {} : {};
+
+        // Guard: check if this reservationId was already counted
+        const countedIds: string[] = freshData.countedReservationIds || [];
+        if (countedIds.includes(reservationId)) {
+          console.log('[CREATE_GUEST_RESERVATION] Reservation already counted, skipping increment:', reservationId);
+          return; // Already counted, skip
+        }
+
+        // Keep only last 3 reservation IDs to limit document size
+        const newCountedIds = [...countedIds, reservationId].slice(-3);
+
+        if (freshGuestDoc.exists) {
+          tx.update(guestIdentityRef, {
+            reservationCount: (freshData.reservationCount || 0) + 1,
+            lastReservationAt: Date.now(),
+            countedReservationIds: newCountedIds,
+          });
+        } else {
+          tx.set(guestIdentityRef, {
+            normalizedEmail: email,
+            reservationCount: 1,
+            createdAt: Date.now(),
+            lastReservationAt: Date.now(),
+            countedReservationIds: [reservationId],
+          });
+        }
+      });
+      console.log('[CREATE_GUEST_RESERVATION] Guest identity counter updated:', { emailHash, reservationId });
+    } catch (guestIdError) {
+      // Non-fatal: reservation already succeeded, just log the error
+      console.error('[CREATE_GUEST_RESERVATION] Failed to update guest identity counter:', guestIdError);
     }
 
     // Sync event attendeeCount for real-time display (especially for unauthenticated users)

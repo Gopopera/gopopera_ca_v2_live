@@ -69,17 +69,17 @@ export const GuestReserveModal: React.FC<GuestReserveModalProps> = ({
       setLocalError('Please fill out name and email.');
       return;
     }
-    
+
     // Normalize and validate phone only if provided
     const phone = normalizePhone(phoneRaw);
     if (phone && !isValidE164(phone)) {
       setLocalError('Please enter a valid phone number (e.g. +14165551234) or leave blank.');
       return;
     }
-    
+
     setLocalError(null);
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre',hypothesisId:'H4',location:'GuestReserveModal.handleSubmit:81',message:'guest submit',data:{hasName:!!name.trim(),hasEmail:!!email.trim(),hasPhone:!!phone, smsOptIn:!!smsOptIn},timestamp:Date.now()})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'debug-session', runId: 'pre', hypothesisId: 'H4', location: 'GuestReserveModal.handleSubmit:81', message: 'guest submit', data: { hasName: !!name.trim(), hasEmail: !!email.trim(), hasPhone: !!phone, smsOptIn: !!smsOptIn }, timestamp: Date.now() }) }).catch(() => { });
     // #endregion agent log
     onSubmit({
       attendeeName: name.trim(),
@@ -149,20 +149,51 @@ export const GuestReserveModal: React.FC<GuestReserveModalProps> = ({
                 </div>
               )}
 
-              <button
-                onClick={handleSubmit}
-                disabled={loading}
-                className="w-full py-3 bg-[#e35e25] text-white rounded-full font-semibold hover:bg-[#cf4d1d] disabled:opacity-50"
-              >
-                {loading ? 'Reserving...' : 'Reserve spot'}
-              </button>
+              {/* Special handling for GUEST_LIMIT_REACHED - show sign-in/sign-up CTA */}
+              {error && (error.includes('already reserved') || error.includes('GUEST_LIMIT_REACHED')) && (
+                <div className="space-y-3 pt-2">
+                  <p className="text-sm text-gray-600 text-center">
+                    Sign in or create an account to reserve more events.
+                  </p>
+                  <button
+                    onClick={onSignIn}
+                    className="w-full py-3 bg-[#15383c] text-white rounded-full font-semibold hover:bg-[#1f4d52]"
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    onClick={() => {
+                      // Close modal and navigate to auth page with signup mode
+                      onClose();
+                      window.history.replaceState({}, '', '/auth?mode=signup');
+                      window.location.href = '/auth?mode=signup';
+                    }}
+                    className="w-full py-3 border border-[#15383c] text-[#15383c] rounded-full font-semibold hover:bg-gray-50"
+                  >
+                    Create Account
+                  </button>
+                </div>
+              )}
 
-              <button
-                onClick={onSignIn}
-                className="w-full py-2 text-sm text-[#15383c] underline"
-              >
-                Already have an account? Sign in
-              </button>
+              {/* Only show reserve button if not blocked by guest limit */}
+              {!(error && (error.includes('already reserved') || error.includes('GUEST_LIMIT_REACHED'))) && (
+                <>
+                  <button
+                    onClick={handleSubmit}
+                    disabled={loading}
+                    className="w-full py-3 bg-[#e35e25] text-white rounded-full font-semibold hover:bg-[#cf4d1d] disabled:opacity-50"
+                  >
+                    {loading ? 'Reserving...' : 'Reserve spot'}
+                  </button>
+
+                  <button
+                    onClick={onSignIn}
+                    className="w-full py-2 text-sm text-[#15383c] underline"
+                  >
+                    Already have an account? Sign in
+                  </button>
+                </>
+              )}
             </div>
           </>
         ) : (

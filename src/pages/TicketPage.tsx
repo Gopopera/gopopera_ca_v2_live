@@ -26,6 +26,7 @@ import { TicketExportWrapper } from '../components/ticket/TicketExportWrapper';
 import html2canvas from 'html2canvas';
 import { getBaseUrl } from '../utils/baseUrl';
 import { PhoneCollectionModal } from '../../components/auth/PhoneCollectionModal';
+import { sendPasswordReset } from '../lib/firebaseAuth';
 
 interface TicketData {
   reservation: {
@@ -109,6 +110,9 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
   const exportRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [showExport, setShowExport] = useState(false);
+  const [claimLoading, setClaimLoading] = useState(false);
+  const [claimSent, setClaimSent] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
 
   // Helper: wait for export component to be ready with timeout
   const waitForExportReady = useCallback((): Promise<void> => {
@@ -626,15 +630,49 @@ export const TicketPage: React.FC<TicketPageProps> = ({ reservationId: propReser
             <p className="text-white/70 text-sm mb-4">
               Sign up to access your tickets anytime, chat with hosts, and discover more events in your community.
             </p>
-            <button
-              onClick={() => {
-                setViewState(ViewState.AUTH);
-                window.history.replaceState({ viewState: ViewState.AUTH }, '', '/auth?mode=signup');
-              }}
-              className="w-full py-3 bg-[#e35e25] text-white rounded-full font-semibold hover:bg-[#d14e1a] transition-all shadow-lg"
-            >
-              Sign Up Now
-            </button>
+
+            {claimSent ? (
+              <div className="p-4 bg-white/10 rounded-xl">
+                <p className="text-white font-semibold mb-1">Email sent!</p>
+                <p className="text-white/80 text-sm">
+                  Check your inbox at <strong>{(ticketData.reservation as any)?.attendeeEmail}</strong> to set your password.
+                </p>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={async () => {
+                    const guestEmail = (ticketData.reservation as any)?.attendeeEmail;
+                    if (guestEmail) {
+                      try {
+                        setClaimLoading(true);
+                        setClaimError(null);
+                        await sendPasswordReset(guestEmail);
+                        setClaimSent(true);
+                      } catch (err: any) {
+                        console.error('[TICKET_PAGE] Failed to send claim email:', err);
+                        setClaimError(err?.message || 'Failed to send email. Please try again.');
+                      } finally {
+                        setClaimLoading(false);
+                      }
+                    } else {
+                      // No email on reservation, fall back to sign-in page
+                      setViewState(ViewState.AUTH);
+                      window.history.replaceState({ viewState: ViewState.AUTH }, '', '/auth?mode=signin');
+                    }
+                  }}
+                  disabled={claimLoading}
+                  className="w-full py-3 bg-[#e35e25] text-white rounded-full font-semibold hover:bg-[#d14e1a] transition-all shadow-lg disabled:opacity-50"
+                >
+                  {claimLoading ? 'Sending...' : 'Claim Your Account'}
+                </button>
+                {claimError && (
+                  <div className="mt-3 p-3 bg-red-500/20 border border-red-400/30 rounded-lg text-sm text-white">
+                    {claimError}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
 

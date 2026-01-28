@@ -158,6 +158,35 @@ export const useUserStore = create<UserStore>()(
         } catch (err) {
           console.error('[AUTH] Popera profile/seeding failed, continuing', err);
         }
+
+        // Link any guest reservations to this user (non-blocking)
+        // This finds reservations made with the user's email before they signed up
+        (async () => {
+          try {
+            const idToken = await firebaseUser.getIdToken();
+            const apiBaseUrl = import.meta.env?.VITE_API_BASE_URL || '/api';
+            const response = await fetch(`${apiBaseUrl}/reservations/link-guest`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`,
+              },
+            });
+            if (response.ok) {
+              const result = await response.json();
+              if (result.linked > 0) {
+                console.log('[AUTH] Linked guest reservations:', result);
+                // Refresh user profile to include newly linked reservations
+                get().fetchUserProfile(firebaseUser.uid).catch(() => { });
+              }
+            } else {
+              console.warn('[AUTH] Failed to link guest reservations:', response.status);
+            }
+          } catch (linkError) {
+            // Non-fatal - don't block auth if linking fails
+            console.error('[AUTH] Error linking guest reservations:', linkError);
+          }
+        })();
       },
 
       init: () => {

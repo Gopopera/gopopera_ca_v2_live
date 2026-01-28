@@ -657,7 +657,16 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'debug-session', runId: 'pre', hypothesisId: 'H4', location: 'EventDetailPage.createGuestReservation:635', message: 'guest reservation response error', data: { status: response.status, hasError: !!err?.error, errorCode: err?.code || null }, timestamp: Date.now() }) }).catch(() => { });
       // #endregion agent log
-      throw new Error(err.error || 'Guest reservation failed');
+
+      // Preserve error code for GUEST_LIMIT_REACHED handling in UI
+      const error = new Error(err.message || err.error || 'Guest reservation failed') as Error & { code?: string; email?: string };
+      if (err.code) {
+        error.code = err.code;
+      }
+      if (err.email) {
+        error.email = err.email;
+      }
+      throw error;
     }
 
     return response.json() as Promise<{ reservationId: string; ticketUrl: string; claimLink: string }>;
