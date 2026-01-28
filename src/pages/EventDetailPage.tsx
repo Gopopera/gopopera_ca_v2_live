@@ -252,7 +252,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
     fetch('http://127.0.0.1:7242/ingest/f7065768-27bb-48d1-b0ad-1695bbe5dd63', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'debug-session', runId: 'pre', hypothesisId: 'C2', location: 'EventDetailPage.useEffect:252', message: 'event detail mount', data: { eventId: event?.id || null, hasEvent: !!event, hasTitle: !!event?.title, pricingType: event?.pricingType || null, hasFee: !!event?.hasFee }, timestamp: Date.now() }) }).catch(() => { });
     // #endregion agent log
   }, [event?.id]);
-  const [guestSuccess, setGuestSuccess] = useState<{ email: string; ticketUrl: string; claimLink: string } | null>(null);
+  const [guestSuccess, setGuestSuccess] = useState<{ email: string; ticketUrl: string; claimLink: string | null; isNewGuestUser: boolean } | null>(null);
   const [guestDraft, setGuestDraft] = useState<{ attendeeName: string; attendeeEmail: string; attendeePhoneE164: string; smsOptIn: boolean } | null>(null);
   const [hostStripeStatus, setHostStripeStatus] = useState<{ enabled: boolean; checked: boolean }>({ enabled: false, checked: false });
   const [showHostPaymentSetupError, setShowHostPaymentSetupError] = useState(false);
@@ -669,7 +669,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
       throw error;
     }
 
-    return response.json() as Promise<{ reservationId: string; ticketUrl: string; claimLink: string }>;
+    return response.json() as Promise<{ reservationId: string; ticketUrl: string; claimLink: string | null; isNewGuestUser: boolean }>;
   };
 
   const handleRSVP = async () => {
@@ -1011,7 +1011,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
                   paymentStatus: 'succeeded',
                   totalAmount: event.feeAmount,
                 });
-                setGuestSuccess({ email: guestDraft.attendeeEmail, ticketUrl: result.ticketUrl, claimLink: result.claimLink });
+                setGuestSuccess({ email: guestDraft.attendeeEmail, ticketUrl: result.ticketUrl, claimLink: result.claimLink, isNewGuestUser: result.isNewGuestUser });
                 setShowGuestReserveModal(true);
               } catch (error: any) {
                 setGuestError(error?.message || 'Failed to create reservation');
@@ -1081,7 +1081,7 @@ export const EventDetailPage: React.FC<EventDetailPageProps> = ({
               totalAmount: isDoor && !isFree ? getEventFeeAmount(event) : undefined,
             });
 
-            setGuestSuccess({ email: data.attendeeEmail, ticketUrl: result.ticketUrl, claimLink: result.claimLink });
+            setGuestSuccess({ email: data.attendeeEmail, ticketUrl: result.ticketUrl, claimLink: result.claimLink, isNewGuestUser: result.isNewGuestUser });
           } catch (error: any) {
             setGuestError(error?.message || 'Failed to reserve');
           } finally {

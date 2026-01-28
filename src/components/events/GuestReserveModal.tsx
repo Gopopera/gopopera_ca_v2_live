@@ -11,7 +11,8 @@ type GuestInfo = {
 type GuestSuccess = {
   email: string;
   ticketUrl: string;
-  claimLink: string;
+  claimLink: string | null;
+  isNewGuestUser: boolean;
 };
 
 type GuestReserveModalProps = {
@@ -207,12 +208,21 @@ export const GuestReserveModal: React.FC<GuestReserveModalProps> = ({
               >
                 View ticket
               </button>
-              <button
-                onClick={() => window.location.assign(success.claimLink)}
-                className="w-full py-3 bg-white border border-[#15383c] text-[#15383c] rounded-full font-semibold hover:bg-gray-50"
-              >
-                Claim your account
-              </button>
+              {success.isNewGuestUser && success.claimLink ? (
+                <button
+                  onClick={() => window.location.assign(success.claimLink!)}
+                  className="w-full py-3 bg-white border border-[#15383c] text-[#15383c] rounded-full font-semibold hover:bg-gray-50"
+                >
+                  Claim your account
+                </button>
+              ) : (
+                <button
+                  onClick={() => window.location.assign('/auth?mode=signin')}
+                  className="w-full py-3 bg-white border border-[#15383c] text-[#15383c] rounded-full font-semibold hover:bg-gray-50"
+                >
+                  Sign in
+                </button>
+              )}
             </div>
           </>
         )}

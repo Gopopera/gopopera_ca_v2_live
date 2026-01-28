@@ -494,6 +494,7 @@ export default async function handler(req: any, res: any) {
       reservationId,
       ticketUrl,
       claimLink,
+      isNewGuestUser,
     });
   } catch (error: any) {
     console.error('[CREATE_GUEST_RESERVATION] Error:', error);
