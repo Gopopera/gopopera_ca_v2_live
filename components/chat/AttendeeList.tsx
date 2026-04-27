@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, X, UserX, Ban, Crown, CreditCard, Banknote, Gift } from 'lucide-react';
+import { Users, X, UserX, Ban, Crown, CreditCard, Banknote, Gift, Download } from 'lucide-react';
 import { getDbSafe } from '../../src/lib/firebase';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { useUserStore } from '../../stores/userStore';
@@ -50,6 +50,7 @@ const PaymentBadge: React.FC<{ pricingMode?: string; doorPaymentStatus?: string 
 interface Attendee {
   userId: string;
   userName: string;
+  email?: string;
   userPhoto?: string;
   isHost: boolean;
   hasRSVP: boolean;
@@ -227,6 +228,10 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
           attendeeList.push({
             userId,
             userName: userData?.displayName || userData?.name || 'User',
+            // Host-only: populate email from user profile or guest reservation fallback
+            email: isHost
+              ? userData?.email || rsvpData.attendeeEmail || undefined
+              : undefined,
             userPhoto: userData?.photoURL || userData?.imageUrl,
             isHost: false,
             hasRSVP: true, // Always true since we only query active statuses
@@ -266,6 +271,31 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
   // FIX: Compute RSVP'd count (excluding host) to match EventDetailPage
   const rsvpdCount = attendees.filter(a => a.hasRSVP && !a.isHost).length;
 
+  // Host-only: Download attendee list as CSV
+  const handleDownloadCsv = () => {
+    const csvAttendees = attendees.filter(a => !a.isHost && a.hasRSVP);
+    if (csvAttendees.length === 0) return;
+
+    const headers = ['Name', 'Email', 'Status', 'Reserved At'];
+    const rows = csvAttendees.map(a => [
+      `"${(a.userName || '').replace(/"/g, '""')}"`,
+      `"${(a.email || '').replace(/"/g, '""')}"`,
+      a.status === 'checked_in' ? 'Checked In' : 'Reserved',
+      a.reservedAt && typeof a.reservedAt === 'number' && a.reservedAt > 0
+        ? new Date(a.reservedAt).toISOString()
+        : '',
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `attendees-${eventId}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="fixed inset-0 z-[70] flex items-end md:items-center justify-end md:justify-center p-0 md:p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div 
@@ -281,12 +311,24 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
               {rsvpdCount}
             </span>
           </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            {isHost && rsvpdCount > 0 && (
+              <button
+                onClick={handleDownloadCsv}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#15383c] text-white text-xs font-medium rounded-full hover:bg-[#1a4549] transition-colors touch-manipulation active:scale-[0.97]"
+                title="Download attendee list as CSV"
+              >
+                <Download size={12} />
+                CSV
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* List */}
@@ -337,6 +379,12 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
                       <p className={`font-bold text-sm truncate ${attendee.isBanned ? 'text-red-600' : 'text-[#15383c]'}`}>
                         {attendee.userName}
                       </p>
+                      {/* Host-only: show attendee email */}
+                      {isHost && attendee.email && !attendee.isHost && (
+                        <p className="text-[11px] text-gray-400 truncate max-w-[140px]" title={attendee.email}>
+                          {attendee.email}
+                        </p>
+                      )}
                       {attendee.isHost && (
                         <span className="text-[10px] bg-[#e35e25]/10 text-[#e35e25] px-2 py-0.5 rounded-full font-bold uppercase">
                           Host

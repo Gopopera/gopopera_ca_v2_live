@@ -387,8 +387,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         {/* Left image panel - desktop only */}
         <div className="pointer-events-none absolute inset-y-0 left-0 hidden lg:block lg:w-[38%]">
           <img
-            src="/hero-private-chef-vertical.webp"
-            alt="Private chef serving a group dinner"
+            src="/images/small-circles-connections.png"
+            alt="Small circles and real connections"
             width={800}
             height={1200}
             className="h-full w-full object-cover"
@@ -396,7 +396,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             decoding="async"
             fetchPriority="low"
             style={{
-              objectPosition: 'center 25%',
+              objectPosition: 'center center',
               WebkitMaskImage:
                 "linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 55%, rgba(0,0,0,0) 95%)",
               maskImage:

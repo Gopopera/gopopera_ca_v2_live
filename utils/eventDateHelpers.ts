@@ -44,6 +44,54 @@ export function isEventEnded(event: Event): boolean {
 }
 
 /**
+ * Check if an event should be hidden from public discovery surfaces.
+ * Events remain visible for 24 hours after their parsed end time.
+ * Use this ONLY for public listing/discovery filters (eventStore).
+ * For checking if an event has actually ended (e.g., favorites cleanup,
+ * follow suggestions), use isEventEnded() instead.
+ */
+export function isEventExpiredForDiscovery(event: Event): boolean {
+  if (!event.date) return false;
+  
+  try {
+    // Parse event date (same approach as isEventEnded)
+    const eventDate = new Date(event.date);
+    
+    // If time is provided, parse it and add to date
+    if (event.time) {
+      const timeParts = event.time.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+      if (timeParts) {
+        let hours = parseInt(timeParts[1], 10);
+        const minutes = parseInt(timeParts[2], 10);
+        const period = timeParts[3]?.toUpperCase();
+        
+        // Convert to 24-hour format
+        if (period === 'PM' && hours !== 12) {
+          hours += 12;
+        } else if (period === 'AM' && hours === 12) {
+          hours = 0;
+        }
+        
+        eventDate.setHours(hours, minutes, 0, 0);
+      }
+    } else {
+      // If no time, assume event ends at end of day (23:59:59)
+      eventDate.setHours(23, 59, 59, 999);
+    }
+    
+    // Add 24-hour grace period for public discovery
+    const visibleUntil = new Date(eventDate.getTime() + 24 * 60 * 60 * 1000);
+    
+    // Event is expired for discovery only after the 24h grace period
+    return visibleUntil < new Date();
+  } catch (error) {
+    console.warn('[EVENT_DATE] Error parsing event date for discovery:', error, event);
+    // If we can't parse the date, keep event visible (safe default)
+    return false;
+  }
+}
+
+/**
  * Check if an event date has passed (simpler check, just date without time)
  */
 export function isEventPast(event: Event): boolean {
