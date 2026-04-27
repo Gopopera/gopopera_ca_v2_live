@@ -176,7 +176,7 @@ export default async function handler(req: any, res: any) {
     if (isEventRateLimited(eventId)) {
       return res.status(429).json({
         success: false,
-        error: 'Popera Guide is taking a short break for this circle. Try again in a few minutes.',
+        error: 'Popera Guide is taking a short break for this event. Try again in a few minutes.',
         cooldown: true,
       });
     }
@@ -240,7 +240,7 @@ Reply directly (no JSON, no quotes, just the message text):`;
           role: 'system', 
           content: `You are Popera Guide, an AI helper inside a small in-person group chat on Popera.
 Rules:
-- Reply in 1–3 short sentences. Be warm, practical, and relevant to the circle.
+- Reply in 1–3 short sentences. Be warm, practical, and relevant to the event.
 - Do NOT request or infer sensitive personal data (phone, email, address, IDs, payment details).
 - Do NOT claim you are human, present at the event, or that you can verify facts outside the chat.
 - If asked for medical, legal, or financial advice, refuse briefly and suggest consulting a qualified professional. For food/allergy questions, tell users to check ingredients and confirm allergies directly with participants.

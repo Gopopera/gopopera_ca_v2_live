@@ -381,9 +381,9 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
             {expandedSections.groupSize && (
               <div className="space-y-2">
                 {[
-                  { value: 'tiny', label: language === 'fr' ? 'Petits cercles (2–5)' : 'Tiny Circles (2–5)' },
-                  { value: 'small', label: language === 'fr' ? 'Cercles moyens (5–10)' : 'Small Circles (5–10)' },
-                  { value: 'larger', label: language === 'fr' ? 'Grands cercles (10+)' : 'Larger Circles (10+)' },
+                  { value: 'tiny', label: language === 'fr' ? 'Petit (2–5)' : 'Small (2–5)' },
+                  { value: 'small', label: language === 'fr' ? 'Moyen (5–10)' : 'Medium (5–10)' },
+                  { value: 'larger', label: language === 'fr' ? 'Grand (10+)' : 'Large (10+)' },
                 ].map(size => (
                   <button
                     key={size.value}
@@ -512,7 +512,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
               onClick={() => toggleSection('circleContinuity')}
               className="w-full flex items-center justify-between mb-4"
             >
-              <h3 className="text-lg font-heading font-bold text-[#15383c]">{language === 'fr' ? 'Continuité du cercle' : 'Circle Continuity'}</h3>
+              <h3 className="text-lg font-heading font-bold text-[#15383c]">{language === 'fr' ? 'Type d\'événement' : 'Event Type'}</h3>
               {expandedSections.circleContinuity ? (
                 <ChevronUp size={20} className="text-gray-400" />
               ) : (
@@ -523,8 +523,8 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({ isOpen, onClose, eve
             {expandedSections.circleContinuity && (
               <div className="space-y-2">
                 {[
-                  { value: 'startingSoon', label: language === 'fr' ? 'Débute bientôt ↠ Cercles qui commencent leurs premières sessions' : 'Starting Soon ↠ Circles beginning their first sessions' },
-                  { value: 'ongoing', label: language === 'fr' ? 'En cours ↠ Cercles déjà commencés avec des places disponibles' : 'Ongoing ↠ Circles that already started and still have available spots' },
+                  { value: 'startingSoon', label: language === 'fr' ? 'Bientôt ↠ Événements qui commencent bientôt' : 'Starting Soon ↠ Events beginning soon' },
+                  { value: 'ongoing', label: language === 'fr' ? 'En cours ↠ Événements avec places disponibles' : 'Ongoing ↠ Events with available spots' },
                 ].map(option => (
                   <button
                     key={option.value}

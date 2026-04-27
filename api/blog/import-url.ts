@@ -264,14 +264,14 @@ export default async function handler(req: any, res: any) {
         const now = Date.now();
 
         // Rewrite as original article with Popera context
-        const systemPrompt = `You are a content writer for Popera, a platform for small in-person community experiences called "Circles" (3-10 seats each).
+        const systemPrompt = `You are a content writer for Popera, a platform for small in-person community experiences called "Events" (3-50 seats each).
 
 Your task is to take source material and write an ENTIRELY ORIGINAL article inspired by it. DO NOT COPY any text verbatim from the source. Create fresh, unique content that:
 
 1. Takes the core topic/theme and presents it through the lens of small, intimate gatherings
-2. Adds specific advice for people hosting or attending Popera Circles
-3. Includes at least ONE fictional but realistic Popera Circle example
-4. Ends with a call-to-action to host or join a Circle on Popera
+2. Adds specific advice for people hosting or attending Popera Events
+3. Includes at least ONE fictional but realistic Popera Event example
+4. Ends with a call-to-action to host or join an Event on Popera
 5. Uses a warm, friendly, conversational tone
 6. Is SEO-optimized with proper heading structure (H2, H3)
 

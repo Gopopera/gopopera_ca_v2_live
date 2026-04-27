@@ -382,7 +382,7 @@ export const MockMap: React.FC<MockMapProps> = ({
                 onClick={() => handleNavigateToEvent(selectedEvent)}
                 className="w-full px-3 py-2 bg-[#e35e25] text-white text-xs font-semibold rounded-lg hover:bg-[#cf4d1d] transition-colors"
               >
-                View Circle
+                View Event
               </button>
             </div>
           </InfoWindowF>
@@ -418,11 +418,11 @@ export const MockMap: React.FC<MockMapProps> = ({
           <div className="bg-white/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg border border-gray-100 text-xs">
             <div className="flex items-center gap-2 mb-1">
               <div className="w-3 h-3 rounded-full bg-[#e35e25] border border-white shadow-sm" />
-              <span className="text-[#15383c] font-medium">This circle</span>
+              <span className="text-[#15383c] font-medium">This event</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-[#15383c] border border-white shadow-sm" />
-              <span className="text-gray-600">Other circles</span>
+              <span className="text-gray-600">Other events</span>
             </div>
           </div>
         </div>

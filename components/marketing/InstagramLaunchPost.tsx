@@ -105,7 +105,8 @@ export const InstagramLaunchPost: React.FC = () => {
             style={{ fontSize: '72px' }}
           >
             Find small in-person<br />
-            social circles near you.
+            Popera is the new way to discover and host intimate 
+            social events near you.
           </h1>
           
           {/* Subheadline */}
@@ -113,8 +114,8 @@ export const InstagramLaunchPost: React.FC = () => {
             className="text-[#f2f2f2]/85 font-normal text-center max-w-xl leading-relaxed"
             style={{ fontSize: '26px' }}
           >
-            Join 3–50 person circles to meet people<br />
-            in your city — or start your own.
+            Join 3–50 person events to meet people<br />
+            or host your own and earn from what you know.
           </p>
         </div>
 

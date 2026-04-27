@@ -605,7 +605,7 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
             >
               <ChevronLeft size={20} />
             </button>
-            <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c]">My Circles</h1>
+            <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#15383c]">My Events</h1>
           </div>
           <button
             onClick={() => setViewState(ViewState.MY_CALENDAR)}
@@ -668,12 +668,12 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
         {activeTab === 'hosting' && hostedLoading ? (
           <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm">
             <Loader2 size={32} className="text-[#e35e25] animate-spin mb-4" />
-            <p className="text-gray-500 text-sm">Loading your circles…</p>
+            <p className="text-gray-500 text-sm">Loading your events…</p>
           </div>
         ) : activeTab === 'attending' && attendingLoading ? (
           <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm">
             <Loader2 size={32} className="text-[#e35e25] animate-spin mb-4" />
-            <p className="text-gray-500 text-sm">Loading attending circles…</p>
+            <p className="text-gray-500 text-sm">Loading attending events…</p>
           </div>
         ) : currentEvents.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center bg-white rounded-2xl sm:rounded-3xl border-2 border-dashed border-gray-200 shadow-sm">
@@ -685,7 +685,7 @@ export const MyPopsPage: React.FC<MyPopsPageProps> = ({
             </h3>
             <p className="text-gray-500 text-sm sm:text-base max-w-md">
               {activeTab === 'hosting' 
-                ? 'Start hosting your first circle and bring your community together!' 
+                ? 'Start hosting your first event and bring your community together!' 
                 : activeTab === 'attending'
                 ? 'RSVP to events you\'re interested in and they\'ll appear here.'
                 : activeTab === 'draft'

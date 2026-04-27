@@ -201,7 +201,7 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
       <div className="pointer-events-none absolute inset-y-0 right-0 hidden lg:block lg:w-[52%]">
         <img
           src={heroImageUrl}
-          alt="People enjoying a circle gathering"
+          alt="People enjoying a local event"
           width={1920}
           height={1080}
           className="h-full w-full object-cover object-center"

@@ -223,9 +223,8 @@ export default async function handler(req: any, res: any) {
                 ? 'CRÉER & FABRIQUER; MANGER & BOIRE; BOUGER & RESPIRER; DISCUTER & RÉFLÉCHIR; COMMUNAUTÉ & SOUTIEN (+ TOUT)'
                 : 'MAKE & CREATE; EAT & DRINK; MOVE & FLOW; TALK & THINK; COMMUNITY & SUPPORT (+ ALL)';
 
-        const systemPrompt = `
-You write blog posts for Popera (${siteBaseUrl}).
-Popera is a peer-to-peer marketplace for small in-person circles (3–10 people) designed for real local connection and micro-learning.
+        const systemPrompt = `You are a professional blog writer for Popera. 
+Popera is a peer-to-peer marketplace for small in-person events (3–50 people) designed for real local connection and micro-learning.
 Categories taxonomy:
 ${categoryTaxonomy}
 
@@ -242,9 +241,9 @@ Hard rules:
 
 Content requirements (must be included inside contentHtml):
 1) TL;DR at the top (3–5 bullets) using <ul><li>...</li></ul>
-2) 2–3 Popera-specific "Circle" examples across different categories
-3) 1 mini case study (practical: steps + what works + what fails)
-4) 2–5 inline internal links using provided hrefs (e.g., /explore, /auth, /community)
+2) 2–3 Popera-specific "Event" examples across different categories
+3) A warm, community-focused tone that feels human, local, and welcoming
+4) 2–5 inline internal links using provided hrefs (e.g., /explore, /host)
 5) A "trust block" near the end:
    <div class="popera-trust"><strong>Written by Popera Team</strong><p>...</p></div>
 6) End with a short, non-cringe CTA paragraph (no shouting).
@@ -256,11 +255,10 @@ TOPIC: ${topic.title}
 SHARED CONTEXT: ${topic.context ?? '(none)'}
 
 Internal links you can use (choose 2–5):
-- Browse circles: /explore
-- Join Popera: /auth
-- Community: /community
-- Host a Circle: /host
-- Blog: /blog
+- Browse events: /explore
+- Host an event: /host
+- About: /about
+- FAQ: /faq
 
 Also return:
 - internalLinks array matching the anchors you used

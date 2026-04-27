@@ -334,9 +334,9 @@ function getSuggestedPrompt(category?: string, mode: TimingMode = 'during'): Sug
 // SUGGESTION VISIBILITY GATING (When to show "Group message suggestion")
 // ============================================================================
 
-// Keywords for icebreaker-heavy circles (EN + FR)
+// Keywords for icebreaker-heavy events (EN + FR)
 const SOCIAL_KEYWORDS = [
-  'dinner', 'strangers', 'meetup', 'mingle', 'social', 'brunch', 'circle',
+  'dinner', 'strangers', 'meetup', 'mingle', 'social', 'brunch', 'event',
   'souper', 'dîner', 'inconnus', 'rencontre', 'cercle'
 ];
 
@@ -383,7 +383,7 @@ function shouldShowSuggestion(input: SuggestionGatingInput): boolean {
   }
   
   // ========================================================================
-  // Condition C: Icebreaker-heavy circle types
+  // Condition C: Icebreaker-heavy event types
   // Show if category is TALK & THINK or COMMUNITY & SUPPORT
   // OR title/description contains social keywords
   // ========================================================================
@@ -393,10 +393,10 @@ function shouldShowSuggestion(input: SuggestionGatingInput): boolean {
   const titleAndDesc = `${event?.title || ''} ${event?.description || ''}`.toLowerCase();
   const hasSocialKeywords = SOCIAL_KEYWORDS.some(keyword => titleAndDesc.includes(keyword));
   
-  const isIcebreakerCircle = isSocialCategory || hasSocialKeywords;
+  const isIcebreakerEvent = isSocialCategory || hasSocialKeywords;
   
   // Return true if ANY condition is met
-  return isHighActivity || isHappeningNow || isIcebreakerCircle;
+  return isHighActivity || isHappeningNow || isIcebreakerEvent;
 }
 
 // ============================================================================
