@@ -65,9 +65,9 @@ export const Hero: React.FC<HeroProps> = ({ setViewState }) => {
     window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
-  // Hero image URL - coffee circle gathering (WebP for faster loading)
-  const heroImageUrl = '/hero-circle-gathering.webp';
-  const heroImageUrlMobile = '/hero-circle-gathering-mobile.webp';
+  // Hero image URL - Brussels afternoon social event
+  const heroImageUrl = '/images/hero-brussels-social-event.png';
+  const heroImageUrlMobile = '/images/hero-brussels-social-event.png';
 
   return (
     <section className="relative min-h-[90vh] sm:min-h-[85vh] md:min-h-[80vh] lg:min-h-[70vh] xl:min-h-[75vh] flex items-center overflow-hidden bg-[#15383c] pt-20 sm:pt-24 md:pt-28 lg:pt-20 xl:pt-24 pb-12 sm:pb-16 lg:pb-0 w-full">
