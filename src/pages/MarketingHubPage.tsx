@@ -509,7 +509,7 @@ export const MarketingHubPage: React.FC<MarketingHubPageProps> = ({ setViewState
         categoryKey: 'yoga_studio',
         subject: '',
         preheader: '',
-        markdownBody: 'Hi {{business_name}},\n\nI noticed your {{category}} in {{city}} and thought you might be interested in hosting a circle on Popera.\n\n**What is Popera?**\nPopera is a platform where local businesses host intimate community gatherings (3-50 people).\n\nWould you be open to a quick chat?\n\nBest,\nThe Popera Team',
+        markdownBody: 'Hi {{business_name}},\n\nI noticed your {{category}} in {{city}} and thought you might be interested in hosting an event on Popera.\n\n**What is Popera?**\nPopera is a platform where local businesses host community events and handle ticketing for 10-1000+ attendees.\n\nWould you be open to a quick chat?\n\nBest,\nThe Popera Team',
         theme: 'dark',
         ctaText: 'Learn More',
         ctaUrl: 'https://gopopera.ca',

@@ -10,8 +10,8 @@ import { getAdminFirestore } from './_lib/firebaseAdmin.js';
 
 const SITE_URL = 'https://gopopera.ca';
 const DEFAULT_OG_IMAGE = `${SITE_URL}/2.jpg`;
-const DEFAULT_TITLE = 'Popera — Small in-person experiences, hosted by people near you';
-const DEFAULT_DESCRIPTION = 'Join intimate 3–50 person events in your neighborhood to cook, create, learn, and connect — or host your own and earn from what you know.';
+const DEFAULT_TITLE = 'Popera — In-person events and ticketing, hosted by people near you';
+const DEFAULT_DESCRIPTION = 'Join in-person events in your neighborhood to cook, create, learn, and connect — or host your own and earn from what you know.';
 
 function toAbsoluteUrl(url: string): string {
   if (!url) return '';

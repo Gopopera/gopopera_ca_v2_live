@@ -110,7 +110,7 @@ export default async function handler(request: Request) {
               <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#e35e25', marginLeft: '4px' }}></span>
             </div>
             <p style={{ fontSize: '28px', color: 'rgba(255,255,255,0.8)', textAlign: 'center', maxWidth: '600px' }}>
-              Small in-person experiences, hosted by people near you
+              In-person events and ticketing, hosted by people near you
             </p>
           </div>
         ),

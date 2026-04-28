@@ -15,13 +15,13 @@ export const PLAYBOOK_IMAGES = {
 } as const;
 
 export const PLAYBOOK_IMAGE_ALTS = {
-  hero: 'Small circle gathering of people connecting',
-  seats: 'Small group of people enjoying an intimate gathering',
+  hero: 'Group gathering of people connecting',
+  seats: 'Group of people enjoying a gathering',
   step1: 'Cozy cafe group of 5 people around a table',
-  step2: 'Creator hosting a small group experience',
+  step2: 'Creator hosting an experience',
   step3: '7-day promotion plan calendar and strategy graphic',
   step4: 'RSVP card UI showing reservation options',
-  step5: 'Create your next circle form interface in Popera',
+  step5: 'Create your next event form interface in Popera',
   templates: 'Copy-paste templates for creators',
 } as const;
 

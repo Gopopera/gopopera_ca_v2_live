@@ -22,7 +22,7 @@ test.describe('Event metadata', () => {
 
     const ogTitle = await page.locator('meta[property="og:title"]').getAttribute('content');
     expect(ogTitle).toBeTruthy();
-    expect(ogTitle).not.toContain('Popera — Small in-person experiences');
+    expect(ogTitle).not.toContain('Popera — In-person events');
     if (titleText) {
       expect(ogTitle).toContain(titleText);
     }

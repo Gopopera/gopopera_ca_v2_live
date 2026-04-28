@@ -224,7 +224,7 @@ export default async function handler(req: any, res: any) {
                 : 'MAKE & CREATE; EAT & DRINK; MOVE & FLOW; TALK & THINK; COMMUNITY & SUPPORT (+ ALL)';
 
         const systemPrompt = `You are a professional blog writer for Popera. 
-Popera is a peer-to-peer marketplace for small in-person events (3–50 people) designed for real local connection and micro-learning.
+Popera is a ticketing platform for in-person events (10–1000 people) designed for real local connection and micro-learning.
 Categories taxonomy:
 ${categoryTaxonomy}
 

@@ -163,7 +163,7 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
   
   // Bio text
   const bio = isPoperaProfile 
-    ? "Popera is where local events come alive. We help creators, organizers, and communities host intimate 3–50 person events that bring people together. From hands-on workshops to meaningful gatherings, Popera makes it easy to connect with your neighbors and create real-world experiences. Join our early-user community and help shape the future of in-person connection."
+    ? "Popera is where local events come alive. We help creators, organizers, and communities host 10–1000 person events that bring people together. From hands-on workshops to meaningful gatherings, Popera makes it easy to connect with your neighbors and create real-world experiences. Join our early-user community and help shape the future of in-person connection."
     : "Community organizer and event host.";
   
   const [isFollowingState, setIsFollowingState] = useState(false);

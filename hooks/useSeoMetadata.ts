@@ -3,7 +3,7 @@
  * 
  * Generates view-aware meta tags for improved SEO within a CSR SPA.
  * All copy aligns with Popera's positioning as a peer-to-peer marketplace
- * for small, in-person experiences (3–50 person circles).
+ * for in-person experiences (10-1000 person events).
  */
 
 import { useMemo } from 'react';
@@ -17,8 +17,8 @@ const DEFAULT_OG_IMAGE = `${BASE_URL}/2.jpg`;
 
 // Brand name and positioning — peer-to-peer marketplace for small, in-person experiences
 const BRAND_NAME = 'Popera';
-const BRAND_TAGLINE = 'Small in-person experiences, hosted by people near you';
-const BRAND_DESCRIPTION = 'Join intimate 3–50 person circles in your neighborhood to cook, create, learn, and connect — or host your own and earn from what you know.';
+const BRAND_TAGLINE = 'In-person events and ticketing, hosted by people near you';
+const BRAND_DESCRIPTION = 'Join in-person events in your neighborhood to cook, create, learn, and connect — or host your own and earn from what you know.';
 
 /**
  * SEO metadata structure returned by the hook
@@ -88,7 +88,7 @@ function toAbsoluteUrl(url: string): string {
 function getExperienceTypeLabel(event: Event): string {
   if (event.mainCategory) {
     const categoryLabels: Record<string, string> = {
-      curatedSales: 'Small-group sale',
+      curatedSales: 'Curated sale',
       connectAndPromote: 'Networking circle',
       mobilizeAndSupport: 'Community gathering',
       learnAndGrow: 'Learning circle',
@@ -110,19 +110,19 @@ const STATIC_METADATA: Partial<Record<ViewState, Partial<SeoMetadata>>> = {
   },
   [ViewState.FEED]: {
     title: `Explore Circles Near You — ${BRAND_NAME}`,
-    description: 'Browse small, intimate circles hosted by locals — cooking nights, creative workshops, learning sessions, and social gatherings for 3–50 people.',
+    description: 'Browse events hosted by locals — cooking nights, creative workshops, learning sessions, and social gatherings for 10-1000 people.',
     canonicalUrl: `${BASE_URL}/explore`,
     ogType: 'website',
   },
   [ViewState.ABOUT]: {
     title: `About Us — ${BRAND_NAME}`,
-    description: 'Popera connects neighbors through small, in-person experiences. Learn how we are building a peer-to-peer marketplace for intimate circles across Canada.',
+    description: 'Popera connects neighbors through in-person experiences. Learn how we are building a peer-to-peer marketplace for events across Canada.',
     canonicalUrl: `${BASE_URL}/about`,
     ogType: 'website',
   },
   [ViewState.GUIDELINES]: {
     title: `Community Guidelines — ${BRAND_NAME}`,
-    description: 'Guidelines for hosts and guests to ensure safe, respectful, and memorable small-group experiences on Popera.',
+    description: 'Guidelines for hosts and guests to ensure safe, respectful, and memorable experiences on Popera.',
     canonicalUrl: `${BASE_URL}/guidelines`,
     ogType: 'website',
   },
@@ -140,7 +140,7 @@ const STATIC_METADATA: Partial<Record<ViewState, Partial<SeoMetadata>>> = {
   },
   [ViewState.SAFETY]: {
     title: `Safety Center — ${BRAND_NAME}`,
-    description: 'Safety tips and resources for hosts and guests joining small-group experiences on Popera.',
+    description: 'Safety tips and resources for hosts and guests joining experiences on Popera.',
     canonicalUrl: `${BASE_URL}/safety`,
     ogType: 'website',
   },
@@ -152,7 +152,7 @@ const STATIC_METADATA: Partial<Record<ViewState, Partial<SeoMetadata>>> = {
   },
   [ViewState.CAREERS]: {
     title: `Careers — ${BRAND_NAME}`,
-    description: 'Join the Popera team and help build the peer-to-peer marketplace for small, in-person experiences.',
+    description: 'Join the Popera team and help build the peer-to-peer marketplace for in-person experiences.',
     canonicalUrl: `${BASE_URL}/careers`,
     ogType: 'website',
   },
@@ -176,25 +176,25 @@ const STATIC_METADATA: Partial<Record<ViewState, Partial<SeoMetadata>>> = {
   },
   [ViewState.CREATE_EVENT]: {
     title: `Host a Circle — ${BRAND_NAME}`,
-    description: 'Create and share your own small-group experience on Popera. From cooking to crafts, share your passion with your neighborhood and get paid for what you know.',
+    description: 'Create and share your own experience on Popera. From cooking to crafts, share your passion with your neighborhood and get paid for what you know.',
     canonicalUrl: `${BASE_URL}/create-event`,
     ogType: 'website',
   },
   [ViewState.AUTH]: {
     title: `Sign In — ${BRAND_NAME}`,
-    description: 'Sign in or create an account to host and join small-group experiences on Popera.',
+    description: 'Sign in or create an account to host and join experiences on Popera.',
     canonicalUrl: `${BASE_URL}/auth`,
     ogType: 'website',
   },
   [ViewState.GUIDE_10_SEAT]: {
     title: `The 10-Seat Event Playbook | ${BRAND_NAME}`,
-    description: 'Practical 5-step guide for creators to host and fill small in-person circles (3–10 seats) in their city — plus copy-paste templates.',
+    description: 'Practical 5-step guide for creators to host and fill in-person events in their city — plus copy-paste templates.',
     canonicalUrl: `${BASE_URL}/the-10-seat-event-playbook`,
     ogType: 'website',
   },
   [ViewState.TICKETS_AND_PAYMENTS]: {
     title: `Tickets & Payments — ${BRAND_NAME}`,
-    description: 'Learn how reservations, payments, tickets, and refunds work on Popera. Secure Stripe payments, host payouts, and attendance tracking for small in-person circles.',
+    description: 'Learn how reservations, payments, tickets, and refunds work on Popera. Secure Stripe payments, host payouts, and attendance tracking for in-person events.',
     canonicalUrl: `${BASE_URL}/tickets-and-payments`,
     ogType: 'website',
   },
@@ -208,7 +208,7 @@ function getEventDetailMetadata(event: Event): SeoMetadata {
   const hostName = event.hostName || event.host || 'a local host';
   const city = event.city || 'your neighborhood';
   const formattedDate = formatEventDate(event.date);
-  const groupSize = event.capacity ? `${event.capacity} people` : 'a small group';
+  const groupSize = event.capacity ? `${event.capacity} people` : 'attendees';
   const dateCitySummary = [formattedDate, city].filter(Boolean).join(' • ');
   const summaryText = dateCitySummary || event.shortDescription || event.description || '';
   const description = truncate(
@@ -244,7 +244,7 @@ function getHostProfileMetadata(options: SeoMetadataOptions): SeoMetadata {
   
   const description = hostBio 
     ? truncate(hostBio, 160)
-    : `Discover small-group experiences hosted by ${hostName} on Popera. Join their upcoming circles and connect with your community.`;
+    : `Discover events hosted by ${hostName} on Popera. Join their upcoming events and connect with your community.`;
 
   // Encode host name for URL (handle special characters)
   const encodedHostName = encodeURIComponent(hostName.toLowerCase().replace(/\s+/g, '-'));
@@ -269,7 +269,7 @@ function getCityMetadata(city: string): Partial<SeoMetadata> {
   const cityName = city.charAt(0).toUpperCase() + city.slice(1).toLowerCase();
   return {
     title: `Circles in ${cityName} — ${BRAND_NAME}`,
-    description: `Discover small-group experiences in ${cityName}. Join cooking nights, creative workshops, learning circles, and more hosted by your neighbors.`,
+    description: `Discover events in ${cityName}. Join cooking nights, creative workshops, learning circles, and more hosted by your neighbors.`,
     canonicalUrl: `${BASE_URL}/${city.toLowerCase()}/experiences`,
     ogType: 'website',
   };
@@ -282,7 +282,7 @@ function getCategoryMetadata(category: string): Partial<SeoMetadata> {
   const categoryName = category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
   return {
     title: `${categoryName} Circles — ${BRAND_NAME}`,
-    description: `Browse ${categoryName.toLowerCase()} circles on Popera. Join intimate 3–50 person experiences and learn from hosts in your neighborhood.`,
+    description: `Browse ${categoryName.toLowerCase()} events on Popera. Join in-person experiences and learn from hosts in your neighborhood.`,
     canonicalUrl: `${BASE_URL}/circles/${category.toLowerCase()}`,
     ogType: 'website',
   };

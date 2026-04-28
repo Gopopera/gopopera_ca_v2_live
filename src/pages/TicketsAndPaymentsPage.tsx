@@ -39,7 +39,7 @@ export const TicketsAndPaymentsPage: React.FC<TicketsAndPaymentsPageProps> = ({ 
             Tickets & Payments
           </h1>
           <p className="text-gray-600 text-sm sm:text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
-            Popera is built for small in-person circles: simple seat reservations, flexible pricing, and tools to manage attendance.
+            Popera is built for in-person events: simple ticketing, flexible pricing, and tools to manage attendance.
           </p>
         </div>
 

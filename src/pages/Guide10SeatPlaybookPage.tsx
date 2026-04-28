@@ -26,11 +26,11 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
     trackEvent('view_content', {
       content_type: 'guide',
       content_id: '10-seat-playbook',
-      content_name: 'The 10-Seat Event Playbook',
+      content_name: 'The Event Playbook',
     });
   }, []);
 
-  // Handle primary CTA - Start your first circle
+  // Handle primary CTA - Start your first event
   const handlePrimaryCTA = () => {
     trackEvent('guide_start_circle_click', {
       section: 'primary_cta',
@@ -102,10 +102,10 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
             {/* Left: Content */}
             <div>
               <h1 className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-heading font-bold text-[#15383c] mb-4 md:mb-6 leading-[1.1] md:leading-tight">
-                The 10-Seat Event Playbook
+                The Event Playbook
               </h1>
               <p className="text-lg md:text-xl lg:text-2xl text-gray-700 mb-4 md:mb-6 lg:mb-8 leading-6 md:leading-relaxed">
-                Turn followers into real people. Host small paid circles (3–10 seats) and run them again.
+                Turn followers into real people. Host paid events and run them again.
               </p>
               
               {/* Badges */}
@@ -114,7 +114,7 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
                   Made for creators
                 </span>
                 <span className="inline-block py-1.5 md:py-2 px-3 md:px-4 rounded-full bg-[#15383c]/10 border border-[#15383c]/20 text-[#15383c] text-xs md:text-sm font-bold">
-                  3–10 seats
+                  10–1000 seats
                 </span>
                 <span className="inline-block py-1.5 md:py-2 px-3 md:px-4 rounded-full bg-[#15383c]/10 border border-[#15383c]/20 text-[#15383c] text-xs md:text-sm font-bold">
                   Works in any city
@@ -127,7 +127,7 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
                   onClick={handlePrimaryCTA}
                   className="w-full md:w-auto px-6 md:px-8 py-3 md:py-4 bg-[#e35e25] text-white rounded-full font-bold text-base md:text-lg hover:bg-[#cf4d1d] transition-colors shadow-sm md:shadow-lg md:shadow-orange-900/20 hover:shadow-md md:hover:shadow-xl touch-manipulation active:scale-[0.98]"
                 >
-                  Start your first circle
+                  Start your first event
                 </button>
                 <button
                   onClick={() => {
@@ -174,7 +174,7 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
             </div>
             <div className="flex items-center gap-3 md:gap-4">
               <CheckCircle2 className="text-[#e35e25] flex-shrink-0" size={24} />
-              <span className="text-gray-700 font-medium text-sm md:text-base">Better show-up rates with small groups</span>
+              <span className="text-gray-700 font-medium text-sm md:text-base">Better show-up rates with events</span>
             </div>
           </div>
         </div>
@@ -186,19 +186,19 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
           <div className="flex flex-col lg:grid lg:grid-cols-2 gap-6 lg:gap-8 xl:gap-12 lg:items-center">
             <div className="order-1 lg:order-1">
               <h2 className="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-heading font-bold text-[#15383c] mb-4 md:mb-6 lg:mb-8 leading-tight">
-                Small seats fill faster — and feel better
+                Events fill faster — and feel better
               </h2>
               <ul className="space-y-3 md:space-y-4 mb-6 md:mb-8">
                 <li className="flex items-start gap-2.5 md:gap-3">
                   <span className="text-[#e35e25] font-bold text-base md:text-xl leading-none mt-0.5 md:mt-1">•</span>
                   <span className="text-gray-700 text-base md:text-lg leading-6 md:leading-relaxed">
-                    Scarcity without pressure: 10 seats creates urgency naturally.
+                    Scarcity without pressure: limited seats creates urgency naturally.
                   </span>
                 </li>
                 <li className="flex items-start gap-2.5 md:gap-3">
                   <span className="text-[#e35e25] font-bold text-base md:text-xl leading-none mt-0.5 md:mt-1">•</span>
                   <span className="text-gray-700 text-base md:text-lg leading-6 md:leading-relaxed">
-                    Safer for strangers: small groups lower social friction.
+                    Safer for strangers: curated events lower social friction.
                   </span>
                 </li>
                 <li className="flex items-start gap-2.5 md:gap-3">
@@ -241,12 +241,12 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
         bullets={[
           "Start from your brand: host something your followers already want from you.",
           "Keep it tight: 60–120 minutes, clear plan, clear outcome.",
-          "Small seats = premium vibe: 3–10 seats to keep it personal (and easy to sell out).",
+          "Limited seats = premium vibe: 10–1000 seats to keep it manageable.",
         ]}
         exampleCard={
           <GlassCard>
             <p className="text-[#15383c] font-semibold text-base md:text-lg">
-              8 seats · Restaurant support + tasting · Mile End · Sunday 2pm
+              Event · Restaurant support + tasting · Mile End · Sunday 2pm
             </p>
           </GlassCard>
         }
@@ -289,13 +289,13 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
               {/* Offer cards */}
               <div className="space-y-3 md:space-y-4">
                 <GlassCard>
-                  <p className="text-[#15383c] font-semibold text-base md:text-lg">6 seats — Chef tasting with the community</p>
+                  <p className="text-[#15383c] font-semibold text-base md:text-lg">Event — Chef tasting with the community</p>
                 </GlassCard>
                 <GlassCard>
-                  <p className="text-[#15383c] font-semibold text-base md:text-lg">8 seats — Beginner salsa mini-session + drinks</p>
+                  <p className="text-[#15383c] font-semibold text-base md:text-lg">Event — Beginner salsa mini-session + drinks</p>
                 </GlassCard>
                 <GlassCard>
-                  <p className="text-[#15383c] font-semibold text-base md:text-lg">10 seats — No-phone wine bar hang (community experience)</p>
+                  <p className="text-[#15383c] font-semibold text-base md:text-lg">Event — No-phone wine bar hang (community experience)</p>
                 </GlassCard>
               </div>
             </div>
@@ -509,7 +509,7 @@ export const Guide10SeatPlaybookPage: React.FC<Guide10SeatPlaybookPageProps> = (
               templateId="event-description"
               content={`[X seats] Meet the community with me in [neighborhood] • [day/time]
 
-This is a small in-person experience for people who follow my work and want real connection — not a huge crowd.
+This is an in-person event for people who follow my work and want real connection.
 
 What we're doing: [experience / theme]
 Who it's for: [your community / niche / beginners welcome]
@@ -526,10 +526,10 @@ Reserve to unlock the group chat link.`}
               title="3 IG Story Scripts"
               templateId="ig-stories"
               content={`Script 1 (poll / validation):
-Montreal people: if I host a small [experience] this week, would you join? YES/NO
+Montreal people: if I host an [experience] this week, would you join? YES/NO
 
 Script 2 (offer + link):
-I'm hosting a small [X seat] [experience] in [area] on [day/time].
+I'm hosting an [experience] in [area] on [day/time].
 It's for people who want to meet the community in real life.
 Reserve here: [link]
 
@@ -541,7 +541,7 @@ Reserve now to join the group chat: [link]`}
             <TemplateAccordion
               title="DM Reply Template"
               templateId="dm-reply"
-              content={`Hey! I'm hosting a small [X seat] in-person [experience] in [area] on [day/time].
+              content={`Hey! I'm hosting an in-person [experience] in [area] on [day/time].
 It's for people who follow my work and want to meet the community IRL.
 Want the reserve link?`}
             />
@@ -560,7 +560,7 @@ Want the reserve link?`}
           </div>
           
           <p className="mt-8 text-center text-gray-600 font-medium">
-            Small groups win because they're easy to commit to.
+            Events win because they're easy to commit to.
           </p>
         </div>
       </section>
@@ -569,17 +569,17 @@ Want the reserve link?`}
       <section className="py-12 md:py-16 lg:py-20 xl:py-24 bg-[#15383c] text-white">
         <div className="max-w-4xl mx-auto px-4 md:px-6 lg:px-8 text-center">
           <h2 className="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-heading font-bold mb-4 md:mb-6 leading-tight">
-            Ready to host your first circle?
+            Ready to host your first event?
           </h2>
           <p className="text-base md:text-xl text-gray-300 mb-8 md:mb-10">
-            Start with 6–10 seats. Run it again next week. That's how you grow.
+            Start with 10–100 seats. Run it again next week. That's how you grow.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center">
             <button
               onClick={handlePrimaryCTA}
               className="w-full sm:w-auto px-8 md:px-10 py-4 md:py-5 bg-[#e35e25] text-white rounded-full font-bold text-base md:text-lg hover:bg-[#cf4d1d] transition-colors shadow-sm md:shadow-lg md:shadow-orange-900/20 hover:shadow-md md:hover:shadow-xl touch-manipulation active:scale-[0.98]"
             >
-              Start your first circle
+              Start your first event
             </button>
             <button
               onClick={handleSecondaryCTA}
@@ -636,7 +636,7 @@ Want the reserve link?`}
       <StickyCTA
         onPrimaryClick={handlePrimaryCTA}
         onSecondaryClick={handleSecondaryCTA}
-        primaryText="Start your first circle"
+        primaryText="Start your first event"
         secondaryText="Get setup help"
       />
     </main>
