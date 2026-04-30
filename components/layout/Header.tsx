@@ -240,7 +240,19 @@ export const Header: React.FC<HeaderProps> = ({ setViewState, viewState, isLogge
           >
             {language === 'en' ? 'FR' : 'EN'}
           </button>
-          <button className={`p-2 rounded-full transition-all ${isLandingAtTop ? 'hover:bg-white/10' : 'bg-white/80 backdrop-blur-sm border border-gray-200/60 hover:bg-white hover:border-gray-300'} ${getTextColor(false)}`}>
+          <button
+            onClick={() => {
+              handleNav(ViewState.FEED);
+              // FEED mounts asynchronously after state update — defer focus to next frame.
+              requestAnimationFrame(() => {
+                const input = document.getElementById('feed-search-input') as HTMLInputElement | null;
+                input?.focus();
+                input?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+              });
+            }}
+            aria-label="Search events"
+            className={`p-2 rounded-full transition-all ${isLandingAtTop ? 'hover:bg-white/10' : 'bg-white/80 backdrop-blur-sm border border-gray-200/60 hover:bg-white hover:border-gray-300'} ${getTextColor(false)}`}
+          >
             <Search size={18} />
           </button>
 

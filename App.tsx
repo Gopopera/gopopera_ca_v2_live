@@ -2150,6 +2150,7 @@ const AppContent: React.FC = () => {
                               <Search size={20} className="text-gray-400 group-focus-within:text-[#e35e25] transition-colors" />
                             </div>
                             <input
+                              id="feed-search-input"
                               type="text"
                               placeholder={t('feed.searchPlaceholder')}
                               className="w-full pl-12 pr-4 py-3.5 md:py-4 min-h-[48px] sm:min-h-0 bg-white border border-gray-200 rounded-full text-base sm:text-sm focus:outline-none focus:border-[#15383c] focus:ring-2 focus:ring-[#15383c]/10 shadow-sm hover:shadow-md transition-all"
