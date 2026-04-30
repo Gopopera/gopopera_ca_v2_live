@@ -469,6 +469,10 @@ const AppContent: React.FC = () => {
       return ViewState.PAYOUT_SETUP;
     } else if (pathname === '/host/payouts') {
       return ViewState.PAYOUTS;
+    } else if (pathname.startsWith('/host/')) {
+      // Public host profile page: /host/{displayName}
+      // Must be evaluated AFTER the /host/payouts checks above so they keep precedence.
+      return ViewState.HOST_PROFILE;
     } else if (pathname.startsWith('/ticket/')) {
       return ViewState.TICKET;
     } else if (pathname === '/debug-seed') {
@@ -492,7 +496,22 @@ const AppContent: React.FC = () => {
   const [viewState, setViewState] = useState<ViewState>(getInitialViewState());
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [reviewEvent, setReviewEvent] = useState<Event | null>(null);
-  const [selectedHost, setSelectedHost] = useState<string | null>(null);
+  const [selectedHost, setSelectedHost] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const pathname = window.location.pathname;
+    if (
+      pathname.startsWith('/host/') &&
+      pathname !== '/host/payouts' &&
+      pathname !== '/host/payouts/setup'
+    ) {
+      try {
+        return decodeURIComponent(pathname.replace('/host/', '')) || null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
   const [selectedHostId, setSelectedHostId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBlogSlug, setSelectedBlogSlug] = useState<string | null>(() => {
@@ -1602,6 +1621,27 @@ const AppContent: React.FC = () => {
               return;
             }
           }
+        }
+
+        // Handle HOST_PROFILE view on page reload / refresh — re-seed selectedHost from URL
+        if (
+          urlBasedState === ViewState.HOST_PROFILE &&
+          pathname.startsWith('/host/') &&
+          pathname !== '/host/payouts' &&
+          pathname !== '/host/payouts/setup'
+        ) {
+          try {
+            const hostNameFromUrl = decodeURIComponent(pathname.replace('/host/', ''));
+            if (hostNameFromUrl) {
+              setSelectedHost(hostNameFromUrl);
+              setSelectedHostId(null); // resolved by HostProfile via Firestore fallback
+            }
+          } catch {
+            // malformed URL — fall through to default handling
+          }
+          setViewState(ViewState.HOST_PROFILE);
+          window.history.replaceState({ viewState: ViewState.HOST_PROFILE }, '', pathname);
+          return;
         }
 
         // For other viewStates, set normally

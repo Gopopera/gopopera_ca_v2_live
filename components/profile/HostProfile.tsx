@@ -9,7 +9,7 @@ import { PoperaProfilePicture } from './PoperaProfilePicture';
 import { SeoHelmet } from '../seo/SeoHelmet';
 import { formatDate } from '@/utils/dateFormatter';
 import { formatRating } from '@/utils/formatRating';
-import { getUserProfile } from '@/firebase/db';
+import { getUserProfile, findUserIdByDisplayName } from '@/firebase/db';
 import { FirestoreReview } from '@/firebase/types';
 import { useHostData } from '@/hooks/useHostProfileCache';
 import { useHostReviews } from '@/hooks/useHostReviewsCache';
@@ -34,10 +34,42 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
   const userProfile = useUserStore((state) => state.userProfile);
   const isPoperaProfile = hostName === POPERA_HOST_NAME;
   
-  // REFACTORED: Prefer passed hostId prop for reliable profile picture sync
-  // Fall back to looking up from events if not provided (backward compatibility)
-  const hostEvent = allEvents.find(e => e.hostId && (e.hostName === hostName || e.host === hostName));
-  const hostId = propHostId || hostEvent?.hostId || (isPoperaProfile ? POPERA_HOST_ID : null);
+  // Synchronous resolution: prop > event cache > Popera special case.
+  // Used when navigating in-app — handleHostClick passes propHostId, so this hits instantly.
+  const derivedHostId = useMemo(() => {
+    if (propHostId) return propHostId;
+    const hostEvent = allEvents.find(e => e.hostId && (e.hostName === hostName || e.host === hostName));
+    if (hostEvent?.hostId) return hostEvent.hostId;
+    if (isPoperaProfile) return POPERA_HOST_ID;
+    return null;
+  }, [propHostId, allEvents, hostName, isPoperaProfile]);
+
+  // Async fallback: when sync resolution fails (e.g. /host/{name} deep link to a host
+  // with no live events cached), look up the uid by displayName once.
+  const [resolvedHostId, setResolvedHostId] = useState<string | null>(null);
+  const [hostLookupComplete, setHostLookupComplete] = useState<boolean>(false);
+
+  useEffect(() => {
+    setResolvedHostId(null);
+    setHostLookupComplete(false);
+
+    if (derivedHostId || !hostName) {
+      setHostLookupComplete(true);
+      return;
+    }
+
+    let cancelled = false;
+    findUserIdByDisplayName(hostName).then(uid => {
+      if (cancelled) return;
+      setResolvedHostId(uid);
+      setHostLookupComplete(true);
+    });
+
+    return () => { cancelled = true; };
+  }, [derivedHostId, hostName]);
+
+  const hostId = derivedHostId || resolvedHostId;
+  const hostNotFound = hostLookupComplete && !hostId && !isPoperaProfile;
   
   // Safe fallback if hostName is missing
   const displayName = hostName || 'Unknown Host';
@@ -247,6 +279,23 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
           </button>
           <div className="bg-white rounded-2xl p-8 text-center">
             <p className="text-gray-500">Loading host profile...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Host-not-found: deep link to /host/{name} resolved no user.
+  if (hostNotFound) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-20 pb-12">
+        <div className="max-w-5xl mx-auto px-6">
+          <button onClick={onBack} className="flex items-center text-gray-500 hover:text-popera-teal transition-colors font-medium mb-6">
+            <ArrowLeft size={20} className="mr-2" /> Back
+          </button>
+          <div className="bg-white rounded-2xl p-8 text-center">
+            <h2 className="text-xl font-semibold text-[#15383c] mb-2">Host not found</h2>
+            <p className="text-gray-500">We couldn't find a host called "{displayName}".</p>
           </div>
         </div>
       </div>

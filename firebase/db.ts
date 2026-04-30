@@ -7,7 +7,7 @@
  */
 
 import { getDbSafe } from "../src/lib/firebase";
-import { collection, doc, getDoc, getDocs, query, where, orderBy, addDoc, updateDoc, setDoc, deleteDoc, serverTimestamp, arrayUnion, onSnapshot, type Unsubscribe } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where, orderBy, limit, addDoc, updateDoc, setDoc, deleteDoc, serverTimestamp, arrayUnion, onSnapshot, type Unsubscribe } from "firebase/firestore";
 import { FirestoreEvent, FirestoreReservation, FirestoreChatMessage, FirestoreReview, FirestoreUser } from "./types";
 import { Event } from "../types";
 import { validateFirestoreData, removeUndefinedValues, sanitizeFirestoreData } from "../utils/firestoreValidation";
@@ -2246,6 +2246,41 @@ export async function getUserProfile(uid: string): Promise<FirestoreUser | null>
     // Don't log permission errors - they're expected and handled elsewhere
     if (error?.code !== 'permission-denied' && !error?.message?.includes('permission')) {
       console.error("Error fetching user profile:", error);
+    }
+    return null;
+  }
+}
+
+// Resolve a host's uid from their displayName.
+// Used by /host/{name} deep links when the host has no live events in the cache.
+// Tries the canonical `displayName` field first, then falls back to legacy `name`.
+// Returns the first match (collisions are an acceptable v1 limitation).
+export async function findUserIdByDisplayName(displayNameStr: string): Promise<string | null> {
+  if (!displayNameStr) return null;
+  const db = getDbSafe();
+  if (!db) return null;
+
+  try {
+    const usersCol = collection(db, "users");
+
+    const byDisplayName = await getDocs(
+      query(usersCol, where("displayName", "==", displayNameStr), limit(1))
+    );
+    if (!byDisplayName.empty) {
+      return byDisplayName.docs[0].id;
+    }
+
+    const byLegacyName = await getDocs(
+      query(usersCol, where("name", "==", displayNameStr), limit(1))
+    );
+    if (!byLegacyName.empty) {
+      return byLegacyName.docs[0].id;
+    }
+
+    return null;
+  } catch (error: any) {
+    if (error?.code !== 'permission-denied' && !error?.message?.includes('permission')) {
+      console.error("[findUserIdByDisplayName] Error:", error);
     }
     return null;
   }
