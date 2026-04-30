@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ViewState, Event } from '../../types';
-import { ChevronRight, ChevronLeft, Calendar, Users, Star, Heart, Settings, Bell, Shield, HelpCircle, CreditCard, LogOut, User } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Calendar, Users, Star, Heart, Settings, Bell, Shield, HelpCircle, CreditCard, LogOut, User, Link as LinkIcon, Check } from 'lucide-react';
 import { useUserStore } from '../../stores/userStore';
 import { useEventStore } from '../../stores/eventStore';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -28,6 +28,38 @@ interface ProfilePageProps {
   userName: string;
   onLogout: () => void;
 }
+
+// Compact pill that shows the user's public host-page URL and copies it to clipboard on click.
+const ShareHostLink: React.FC<{ displayName: string }> = ({ displayName }) => {
+  const [copied, setCopied] = React.useState(false);
+  const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/host/${encodeURIComponent(displayName)}`;
+  const shortUrl = url.replace(/^https?:\/\//, '');
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Older browsers / private mode: silently no-op rather than throw
+    }
+  };
+
+  return (
+    <div className="mt-4 flex flex-col items-center gap-2">
+      <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Your public host page</p>
+      <button
+        onClick={handleCopy}
+        aria-label="Copy host page link"
+        className="flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 hover:border-[#15383c] hover:shadow-md transition-all text-sm text-[#15383c] touch-manipulation active:scale-[0.98]"
+      >
+        {copied ? <Check size={14} className="text-green-600" /> : <LinkIcon size={14} />}
+        <span className="font-mono">{shortUrl}</span>
+        <span className="text-xs font-semibold text-[#e35e25] ml-1">{copied ? 'Copied!' : 'Copy'}</span>
+      </button>
+    </div>
+  );
+};
 
 export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName, onLogout }) => {
   const { t } = useLanguage();
@@ -375,12 +407,17 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ setViewState, userName
           )}
           
           {/* Edit Profile Button - Liquid Glass Style */}
-          <button 
-            onClick={() => setViewState(ViewState.PROFILE_BASIC)} 
+          <button
+            onClick={() => setViewState(ViewState.PROFILE_BASIC)}
             className="px-7 py-2.5 rounded-full bg-white/80 backdrop-blur-sm border border-[#15383c]/30 text-[#15383c] text-sm sm:text-base font-semibold hover:bg-white hover:border-[#15383c] transition-all shadow-sm touch-manipulation active:scale-95"
           >
             {t('profile.editProfile')}
           </button>
+
+          {/* Public host page link — visible once user has hosted at least one event */}
+          {hostedEvents.length > 0 && displayName && (
+            <ShareHostLink displayName={displayName} />
+          )}
         </div>
 
         {/* Stats Cards - Liquid Glass Grid */}

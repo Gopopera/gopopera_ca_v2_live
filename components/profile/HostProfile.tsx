@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ArrowLeft, MapPin, Star, Users, Instagram, Twitter, Globe, Check, Calendar } from 'lucide-react';
+import { ArrowLeft, MapPin, Star, Users, Instagram, Twitter, Globe, Check, Calendar, Link as LinkIcon } from 'lucide-react';
 import { Event, ViewState } from '@/types';
 import { EventCard } from '../events/EventCard';
 import { useProfileStore } from '@/stores/profileStore';
@@ -70,6 +70,21 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
 
   const hostId = derivedHostId || resolvedHostId;
   const hostNotFound = hostLookupComplete && !hostId && !isPoperaProfile;
+  const isOwnProfile = !!hostId && !!currentUser?.id && currentUser.id === hostId;
+
+  // Copy public host-page URL — used by the share button when the viewer is the host themselves.
+  const [linkCopied, setLinkCopied] = useState(false);
+  const copyOwnHostLink = async () => {
+    if (!hostName) return;
+    const url = `${window.location.origin}/host/${encodeURIComponent(hostName)}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      // Older browsers / private mode: silently no-op
+    }
+  };
   
   // Safe fallback if hostName is missing
   const displayName = hostName || 'Unknown Host';
@@ -313,14 +328,34 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
       />
       
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        {/* Back Button */}
-        <div className="mb-4 sm:mb-6">
-          <button 
-            onClick={onBack} 
+        {/* Back Button + (own profile) Share-link Button */}
+        <div className="mb-4 sm:mb-6 flex items-center justify-between gap-3">
+          <button
+            onClick={onBack}
             className="flex items-center text-gray-400 hover:text-[#15383c] transition-colors font-medium text-sm sm:text-base touch-manipulation active:scale-95"
           >
             <ArrowLeft size={18} className="sm:w-5 sm:h-5 mr-1" /> Back
           </button>
+          {isOwnProfile && (
+            <button
+              onClick={copyOwnHostLink}
+              aria-label="Copy your public host page link"
+              title="Copy your public host page link"
+              className="flex items-center gap-2 px-3 py-2 rounded-full bg-white border border-gray-200 hover:border-[#15383c] hover:shadow-md transition-all text-xs sm:text-sm text-[#15383c] touch-manipulation active:scale-[0.98]"
+            >
+              {linkCopied ? (
+                <>
+                  <Check size={14} className="text-green-600" />
+                  <span className="font-semibold text-green-600">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <LinkIcon size={14} />
+                  <span className="font-semibold">Share link</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
 
         {/* Profile Banner with Profile Picture */}
