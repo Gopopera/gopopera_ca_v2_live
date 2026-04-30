@@ -1046,6 +1046,23 @@ const AppContent: React.FC = () => {
     );
   }
 
+  // Step B: derive matching hosts from allEvents for the search results section.
+  // Substring match on hostName, dedupe by hostId, cap at 5. Zero new Firestore reads.
+  let matchingHosts: Array<{ hostId: string; hostName: string; hostPhotoURL?: string }> = [];
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase().trim();
+    const seen = new Map<string, { hostId: string; hostName: string; hostPhotoURL?: string }>();
+    for (const e of allEvents) {
+      if (!e.hostId || !e.hostName) continue;
+      if (seen.has(e.hostId)) continue;
+      if (e.hostName.toLowerCase().includes(query)) {
+        seen.set(e.hostId, { hostId: e.hostId, hostName: e.hostName, hostPhotoURL: e.hostPhotoURL });
+      }
+      if (seen.size >= 5) break;
+    }
+    matchingHosts = Array.from(seen.values());
+  }
+
 
   // Group events by time periods for display
   const now = new Date();
@@ -2209,6 +2226,35 @@ const AppContent: React.FC = () => {
                       </div>
                     </div>
                   </div>
+
+                  {/* Hosts matching search query — clicking a host opens their profile page */}
+                  {searchQuery.trim() && matchingHosts.length > 0 && (
+                    <div className="mb-8 px-4 sm:px-0">
+                      <h2 className="text-base sm:text-lg font-semibold text-[#15383c] mb-3">Hosts</h2>
+                      <div className="flex flex-wrap gap-2 sm:gap-3">
+                        {matchingHosts.map(host => (
+                          <button
+                            key={host.hostId}
+                            onClick={() => handleHostClick(host.hostName, host.hostId)}
+                            className="flex items-center gap-3 px-4 py-2.5 bg-white border border-gray-200 rounded-full hover:border-[#15383c] hover:shadow-md active:scale-[0.98] transition-all touch-manipulation"
+                          >
+                            {host.hostPhotoURL ? (
+                              <img
+                                src={host.hostPhotoURL}
+                                alt={host.hostName}
+                                className="w-8 h-8 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-[#15383c] text-white flex items-center justify-center text-sm font-bold">
+                                {host.hostName.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <span className="font-medium text-sm text-[#15383c]">{host.hostName}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Use EventFeed component with filters */}
                   <React.Suspense fallback={<div className="text-center py-20">Loading events...</div>}>
