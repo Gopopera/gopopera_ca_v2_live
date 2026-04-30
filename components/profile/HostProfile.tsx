@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { ArrowLeft, MapPin, Star, Users, Instagram, Twitter, Globe, Check, Calendar, Link as LinkIcon } from 'lucide-react';
 import { Event, ViewState } from '@/types';
 import { EventCard } from '../events/EventCard';
@@ -34,41 +34,67 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
   const userProfile = useUserStore((state) => state.userProfile);
   const isPoperaProfile = hostName === POPERA_HOST_NAME;
   
-  // Synchronous resolution: prop > event cache > Popera special case.
-  // Used when navigating in-app — handleHostClick passes propHostId, so this hits instantly.
+  // Synchronous resolution from props/events on each render. Feeds the sticky
+  // capture below — we never read this directly for UI to avoid flicker when
+  // allEvents updates and momentarily drops this host.
   const derivedHostId = useMemo(() => {
     if (propHostId) return propHostId;
+    if (!hostName) return null;
     const hostEvent = allEvents.find(e => e.hostId && (e.hostName === hostName || e.host === hostName));
     if (hostEvent?.hostId) return hostEvent.hostId;
     if (isPoperaProfile) return POPERA_HOST_ID;
     return null;
   }, [propHostId, allEvents, hostName, isPoperaProfile]);
 
-  // Async fallback: when sync resolution fails (e.g. /host/{name} deep link to a host
-  // with no live events cached), look up the uid by displayName once.
-  const [resolvedHostId, setResolvedHostId] = useState<string | null>(null);
-  const [hostLookupComplete, setHostLookupComplete] = useState<boolean>(false);
+  // Sticky resolved hostId. Once set from any source it never reverts to null
+  // for the same host — this prevents the brief "Host not found" flicker that
+  // happened when allEvents updated and the host's events disappeared from the
+  // snapshot mid-life.
+  const [resolvedHostId, setResolvedHostId] = useState<string | null>(
+    propHostId || (isPoperaProfile ? POPERA_HOST_ID : null)
+  );
+  const [hostLookupComplete, setHostLookupComplete] = useState<boolean>(
+    !!propHostId || isPoperaProfile
+  );
 
+  // Reset sticky state when navigating to a different host (hostName changes).
+  const lastHostNameRef = useRef(hostName);
   useEffect(() => {
-    setResolvedHostId(null);
-    setHostLookupComplete(false);
+    if (lastHostNameRef.current === hostName) return;
+    lastHostNameRef.current = hostName;
+    setResolvedHostId(propHostId || (isPoperaProfile ? POPERA_HOST_ID : null));
+    setHostLookupComplete(!!propHostId || isPoperaProfile);
+  }, [hostName, propHostId, isPoperaProfile]);
 
-    if (derivedHostId || !hostName) {
+  // Sticky capture: as soon as derivedHostId resolves, save it and stop listening.
+  useEffect(() => {
+    if (derivedHostId && !resolvedHostId) {
+      setResolvedHostId(derivedHostId);
       setHostLookupComplete(true);
-      return;
     }
+  }, [derivedHostId, resolvedHostId]);
 
+  // Async Firestore fallback — only fires if the sync sources didn't produce a
+  // hostId within a brief grace period. Gives allEvents a chance to load before
+  // we resort to a name-based lookup that may fail on displayName mismatch.
+  useEffect(() => {
+    if (resolvedHostId || !hostName) return;
     let cancelled = false;
-    findUserIdByDisplayName(hostName).then(uid => {
+    const timer = setTimeout(() => {
       if (cancelled) return;
-      setResolvedHostId(uid);
-      setHostLookupComplete(true);
-    });
+      findUserIdByDisplayName(hostName).then(uid => {
+        if (cancelled) return;
+        if (uid) setResolvedHostId(uid);
+        setHostLookupComplete(true);
+      });
+    }, 800);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [resolvedHostId, hostName]);
 
-    return () => { cancelled = true; };
-  }, [derivedHostId, hostName]);
-
-  const hostId = derivedHostId || resolvedHostId;
+  const hostId = resolvedHostId;
   const hostNotFound = hostLookupComplete && !hostId && !isPoperaProfile;
   const isOwnProfile = !!hostId && !!currentUser?.id && currentUser.id === hostId;
 
