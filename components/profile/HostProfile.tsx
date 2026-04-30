@@ -37,14 +37,35 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
   // Synchronous resolution from props/events on each render. Feeds the sticky
   // capture below — we never read this directly for UI to avoid flicker when
   // allEvents updates and momentarily drops this host.
+  // Case-insensitive match: URL slug case may differ from event hostName case.
   const derivedHostId = useMemo(() => {
     if (propHostId) return propHostId;
     if (!hostName) return null;
-    const hostEvent = allEvents.find(e => e.hostId && (e.hostName === hostName || e.host === hostName));
+    const lower = hostName.toLowerCase();
+    const hostEvent = allEvents.find(e =>
+      e.hostId && (
+        e.hostName?.toLowerCase() === lower ||
+        e.host?.toLowerCase() === lower
+      )
+    );
     if (hostEvent?.hostId) return hostEvent.hostId;
     if (isPoperaProfile) return POPERA_HOST_ID;
     return null;
   }, [propHostId, allEvents, hostName, isPoperaProfile]);
+
+  // Soft existence check: are there any events for this host name (regardless of
+  // whether they carry a hostId)? Old events sometimes lack the hostId field, so
+  // derivedHostId can stay null even when the host clearly exists. We use this to
+  // gate the "Host not found" UI — if events match by name, the host exists and
+  // we should render the page (without uid-dependent data) rather than block it.
+  const hasHostEvents = useMemo(() => {
+    if (!hostName) return false;
+    const lower = hostName.toLowerCase();
+    return allEvents.some(e =>
+      e.hostName?.toLowerCase() === lower ||
+      e.host?.toLowerCase() === lower
+    );
+  }, [allEvents, hostName]);
 
   // Sticky resolved hostId. Once set from any source it never reverts to null
   // for the same host — this prevents the brief "Host not found" flicker that
@@ -95,7 +116,10 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
   }, [resolvedHostId, hostName]);
 
   const hostId = resolvedHostId;
-  const hostNotFound = hostLookupComplete && !hostId && !isPoperaProfile;
+  // Only treat as "not found" if the async lookup completed AND we have no
+  // hostId AND no events match by name. The events-by-name check covers the
+  // case where derivedHostId failed because old events lack a hostId field.
+  const hostNotFound = hostLookupComplete && !hostId && !isPoperaProfile && !hasHostEvents;
   const isOwnProfile = !!hostId && !!currentUser?.id && currentUser.id === hostId;
 
   // Copy public host-page URL — used by the share button when the viewer is the host themselves.
