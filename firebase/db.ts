@@ -2251,30 +2251,49 @@ export async function getUserProfile(uid: string): Promise<FirestoreUser | null>
   }
 }
 
+// Build a deduplicated list of case variants for a name string. Used to make
+// findUserIdByDisplayName tolerant of case mismatches between URL slugs and
+// stored displayNames (e.g. /host/nezpaal vs displayName "NEZPAAL").
+function buildCaseVariants(s: string): string[] {
+  const trimmed = s.trim();
+  if (!trimmed) return [];
+  const lower = trimmed.toLowerCase();
+  const upper = trimmed.toUpperCase();
+  const firstCap = trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+  const titleCase = lower
+    .split(' ')
+    .map(w => (w ? w.charAt(0).toUpperCase() + w.slice(1) : w))
+    .join(' ');
+  return Array.from(new Set([trimmed, lower, upper, firstCap, titleCase]));
+}
+
 // Resolve a host's uid from their displayName.
 // Used by /host/{name} deep links when the host has no live events in the cache.
-// Tries the canonical `displayName` field first, then falls back to legacy `name`.
+// Tries the canonical `displayName` field first across common case variants of
+// the input, then falls back to the legacy `name` field with the same variants.
+// Each query is limit(1); worst case is ~10 reads but typically 1-2.
 // Returns the first match (collisions are an acceptable v1 limitation).
 export async function findUserIdByDisplayName(displayNameStr: string): Promise<string | null> {
   if (!displayNameStr) return null;
   const db = getDbSafe();
   if (!db) return null;
 
+  const variants = buildCaseVariants(displayNameStr);
+  if (variants.length === 0) return null;
+
   try {
     const usersCol = collection(db, "users");
 
-    const byDisplayName = await getDocs(
-      query(usersCol, where("displayName", "==", displayNameStr), limit(1))
-    );
-    if (!byDisplayName.empty) {
-      return byDisplayName.docs[0].id;
+    // Try canonical displayName field across all case variants first.
+    for (const v of variants) {
+      const snap = await getDocs(query(usersCol, where("displayName", "==", v), limit(1)));
+      if (!snap.empty) return snap.docs[0].id;
     }
 
-    const byLegacyName = await getDocs(
-      query(usersCol, where("name", "==", displayNameStr), limit(1))
-    );
-    if (!byLegacyName.empty) {
-      return byLegacyName.docs[0].id;
+    // Fall back to legacy `name` field across the same variants.
+    for (const v of variants) {
+      const snap = await getDocs(query(usersCol, where("name", "==", v), limit(1)));
+      if (!snap.empty) return snap.docs[0].id;
     }
 
     return null;
