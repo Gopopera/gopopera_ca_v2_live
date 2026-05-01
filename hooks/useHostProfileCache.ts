@@ -21,6 +21,7 @@ interface CachedHostData {
   photoURL: string | null;
   coverPhotoURL?: string | null;
   createdAt?: number | null;
+  bio?: string | null;
   followersCount: number;
   isLoading: boolean;
 }
@@ -123,6 +124,7 @@ export function useHostData(hostId: string | undefined): CachedHostData | null {
             photoURL: userData.photoURL || null,
             coverPhotoURL: userData.coverPhotoURL || null,
             createdAt: userData.createdAt || null,
+            bio: userData.bio || null,
             followersCount: userData.followers?.length || 0,
             isLoading: false,
           };

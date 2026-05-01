@@ -275,10 +275,11 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
     return mostCommonCity ? `${mostCommonCity[0]}, CA` : 'Montreal, CA';
   }, [hostEvents]);
   
-  // Bio text
-  const bio = isPoperaProfile 
+  // Bio text — prefer the host's own bio (from /users/{uid}.bio via useHostData),
+  // fall back to a generic placeholder only when the host hasn't set one.
+  const bio = isPoperaProfile
     ? "Popera is where local events come alive. We help creators, organizers, and communities host 10–1000 person events that bring people together. From hands-on workshops to meaningful gatherings, Popera makes it easy to connect with your neighbors and create real-world experiences. Join our early-user community and help shape the future of in-person connection."
-    : "Community organizer and event host.";
+    : (hostData?.bio?.trim() || "Community organizer and event host.");
   
   const [isFollowingState, setIsFollowingState] = useState(false);
   const [isUpdatingFollow, setIsUpdatingFollow] = useState(false);
