@@ -25,9 +25,12 @@ interface HostProfileProps {
   isLoggedIn?: boolean;
   favorites?: string[];
   onToggleFavorite?: (e: React.MouseEvent, eventId: string) => void;
+  // Tells us whether the events store is still doing its initial load. Used to avoid
+  // declaring "Host not found" while events are still arriving.
+  isEventsLoading?: boolean;
 }
 
-export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: propHostId, onBack, onEventClick, allEvents, isLoggedIn, favorites = [], onToggleFavorite }) => {
+export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: propHostId, onBack, onEventClick, allEvents, isLoggedIn, favorites = [], onToggleFavorite, isEventsLoading = false }) => {
   const [activeTab, setActiveTab] = useState<'events' | 'reviews'>('events');
   const [error, setError] = useState<string | null>(null);
   const currentUser = useUserStore((state) => state.getCurrentUser());
@@ -116,10 +119,24 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
   }, [resolvedHostId, hostName]);
 
   const hostId = resolvedHostId;
-  // Only treat as "not found" if the async lookup completed AND we have no
-  // hostId AND no events match by name. The events-by-name check covers the
-  // case where derivedHostId failed because old events lack a hostId field.
-  const hostNotFound = hostLookupComplete && !hostId && !isPoperaProfile && !hasHostEvents;
+
+  // Have we definitively confirmed the host (positive signal)?
+  const hostConfirmed = !!hostId || hasHostEvents || isPoperaProfile;
+
+  // Have we finished trying everything (no more positive signals possible)?
+  // Both the async Firestore lookup must have completed AND the events store
+  // must have finished its initial load before we declare a host missing.
+  const exhaustedAllSources = hostLookupComplete && !isEventsLoading;
+
+  // Still figuring it out — neither confirmed nor exhausted. Show a loading
+  // state instead of rendering the URL slug as a fake host page.
+  const isResolving = !hostConfirmed && !exhaustedAllSources;
+
+  // Only treat as "not found" if every source has been exhausted with no positive
+  // signal. The events-by-name check covers old events lacking a hostId field;
+  // the events-loading check prevents flickering through "Host not found" while
+  // events are still arriving.
+  const hostNotFound = exhaustedAllSources && !hostConfirmed;
   const isOwnProfile = !!hostId && !!currentUser?.id && currentUser.id === hostId;
 
   // Copy public host-page URL — used by the share button when the viewer is the host themselves.
@@ -336,6 +353,25 @@ export const HostProfile: React.FC<HostProfileProps> = ({ hostName, hostId: prop
 
   // Loading state
   if (!hostName) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-20 pb-12">
+        <div className="max-w-5xl mx-auto px-6">
+          <button onClick={onBack} className="flex items-center text-gray-500 hover:text-popera-teal transition-colors font-medium mb-6">
+            <ArrowLeft size={20} className="mr-2" /> Back
+          </button>
+          <div className="bg-white rounded-2xl p-8 text-center">
+            <p className="text-gray-500">Loading host profile...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Still resolving — events store hasn't finished its initial load AND the
+  // async Firestore fallback hasn't returned yet. Showing the URL slug as a
+  // heading here would look like a real host page that then flips to "not
+  // found" when async resolves with null. Prefer an honest loading state.
+  if (isResolving) {
     return (
       <div className="min-h-screen bg-gray-50 pt-20 pb-12">
         <div className="max-w-5xl mx-auto px-6">

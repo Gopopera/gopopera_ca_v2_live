@@ -2126,6 +2126,7 @@ const AppContent: React.FC = () => {
                 isLoggedIn={isLoggedIn}
                 favorites={favorites}
                 onToggleFavorite={handleToggleFavorite}
+                isEventsLoading={isLoadingEvents}
               />
             )}
 
